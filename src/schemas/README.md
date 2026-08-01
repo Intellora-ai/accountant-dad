@@ -20,6 +20,11 @@ Two of these wrap named components. Those components are shapes *within* an arti
 |---|---|
 | **Document Evidence Object** | Document ID · Source references · **Structured Document** · **Confidence Report** |
 | **Business Understanding Object** | **Transaction Story** · **Supporting Understanding Data** (the six Understanding Results) · **Identified Unknowns** · **Confidence Assessment** |
+| **Accounting Decision** | Decision ID · **Decision Status** · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts |
+
+**IDENTITY ≠ INTELLIGENCE.** `Document ID` and `Decision ID` are identifiers only — identity, traceability, lifecycle tracking, audit history. Neither may be shaped into anything a downstream engine could reason from.
+
+**Internal artifacts do not belong here.** The **Accounting Treatment Result** never crosses an engine boundary; it is Engine 3's internal combination of the Ledger Recommendation, Tax Treatment Recommendation and Accounting Period Treatment.
 
 ## What must not belong here
 

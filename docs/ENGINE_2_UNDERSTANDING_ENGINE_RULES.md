@@ -804,14 +804,15 @@ Governed by [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULE
 
 ## Outbound — Understanding Engine → Accounting Engine
 
-**Placeholder.** The Understanding Engine sends the **Business Understanding Object** and nothing else. The full boundary contract is authored when Engine 3 is specified, and this engine owns it, since the sending engine owns the contract of what leaves it.
+Governed by [`COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md`](COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md) — **owned by this engine**, since the sending engine owns the contract of what leaves it.
 
-What is already fixed:
+In summary:
 
 - **Artifact sent:** Business Understanding Object.
 - **Creator:** Story Builder. **Owner:** Understanding Engine.
-- **Allowed:** the Accounting Engine reads, analyzes and references it.
-- **Forbidden:** the Accounting Engine modifies, rewrites, deletes, removes uncertainty from, or changes confidence in it.
+- **Allowed:** the Accounting Engine reads, analyzes and references it — it may interpret the business story and apply accounting reasoning.
+- **Forbidden:** the Accounting Engine changes the story, removes unknowns, edits evidence, or modifies, rewrites, deletes, removes uncertainty from, or changes confidence in the artifact.
+- **The Understanding Engine sends facts, never accounting conclusions.** ✗ *"Fixed asset purchase"* · ✓ *"Item description: Laptop."*
 
 ## Decision Authority
 

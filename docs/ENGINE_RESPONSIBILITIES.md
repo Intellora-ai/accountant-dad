@@ -113,27 +113,39 @@ Turn the business story into an accounting decision, plus its doubts and risks.
 - Which ledger accounts are involved, and whether a new one is required.
 - The double entry itself — debits, credits, amounts, balance.
 - The tax treatment: GST applicability and rate, place of supply, ITC eligibility, TDS.
-- The company's accounting reality that constrains all of the above.
+- **Accounting period treatment** — which period the transaction affects.
+- The company's accounting context that informs all of the above.
 - An honest statement of how risky the resulting decision is.
 - An honest statement of where the decision is uncertain, and what fact would resolve it.
+- **Decision confidence**, and the assumptions every part of the decision rested on.
 - The assembly of all of the above into one decision artifact.
 
 Sub-engines: `transaction_analyzer` · `accounting_rules` · `ledger_intelligence` · `journal_intelligence` · `tax_intelligence` · `company_understanding` · `risk_analysis` · `doubt_detection` · `decision_output`
 
+> **Scope of the assembly responsibility.** `decision_output` **creates** the Accounting Decision; the **Accounting Engine owns** it. The parent assembles the internal Accounting Treatment Result **mechanically** — it may combine, organize and structure, but may never change the Ledger Recommendation, change the Tax Treatment Recommendation, remove uncertainty, or increase confidence. It does not own system-wide orchestration, engine routing, workflow control, or **overriding sub-engine outputs**. No sub-engine creates another sub-engine's decision.
+
 ### Inputs
 - The **Business Understanding Object**, from the Understanding Engine.
+- **Company information** — chart of accounts structure, policies, preferences, historical patterns.
 - Resolved Facts, when the Clarification Engine returns answers.
 
 ### Outputs
-- **Accounting Decision** — ledgers, journal entry, tax treatment, the reasoning behind them, the risks they carry, and the doubts that remain.
+- **Accounting Decision** — the engine's single output artifact, thirteen components: Decision ID · **Decision Status** · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · **accounting assumptions** · risk indicators · **decision confidence** · supporting reasoning · unresolved doubts.
+
+Every decision shows **why it exists, what information supports it, and what uncertainty remains**. **Decision ID exists only for identity, traceability, lifecycle tracking and audit history; it has zero accounting meaning** — IDENTITY ≠ INTELLIGENCE.
+
+Full specification: [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](ENGINE_3_ACCOUNTING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md).
 
 ### Cannot Do
 - Cannot post to Tally, or communicate with Tally in any way.
 - Cannot ask the user a question directly.
-- Cannot approve its own decision, or declare it safe.
-- Cannot read the raw artifact or the Document Evidence Object — it reasons from the Business Understanding Object only.
-- Cannot resolve its own doubt by guessing, defaulting, or picking the most common treatment.
-- Cannot validate itself; correctness is judged by the Validation Engine.
+- Cannot approve its own decision, or declare it safe. Cannot override validation results.
+- Cannot read the raw artifact or the Document Evidence Object — it reasons from the Business Understanding Object and company information only.
+- Cannot modify the Business Understanding Object, change source evidence, or invent missing facts.
+- Cannot resolve its own doubt by guessing, defaulting, or picking the most common treatment. **Never guess** — insufficient information produces `INCOMPLETE_INFORMATION_REQUIRED`, not a decision.
+- **Cannot pretend assumptions are confirmed facts.** Nothing may assume silently.
+- Cannot decide whether the document information is correct, whether the business story is correct, or whether the user intended something different. Those belong upstream.
+- Cannot validate itself; correctness is judged by the Validation Engine. **Balance ≠ correctness** — a balanced journal on a wrong ledger is still wrong.
 
 ---
 

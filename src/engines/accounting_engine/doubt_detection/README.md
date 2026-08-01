@@ -1,30 +1,44 @@
 # doubt_detection
 
-> Sub-engine of the **Accounting Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md).
+> Sub-engine of the **Accounting Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md). Deep spec: [`docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](../../../../docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md#88-doubt_detection).
 >
 > **Phase 1 placeholder — no implementation.**
 
 ## Purpose
 
-Guessing quietly is the worst failure this system could have; doubt must be produced as an output.
+Identify unresolved accounting uncertainty.
 
 ## Responsibility
 
-Owns identification of every point at which the accounting decision is uncertain, and the precise statement of what fact would remove each doubt.
+Owns **accounting doubts** — where the decision is uncertain, and the specific fact that would resolve each.
 
 ## Input
 
-The decision components, the rulings, the Identified Unknowns in the Business Understanding Object, and the Confidence Report within the Document Evidence Object.
+All accounting outputs.
 
 ## Output
 
-Structured doubts: what is uncertain, why, and the specific fact that would resolve it.
+**Accounting Doubt Report** — missing information · conflicts · required clarification areas.
 
 ## Boundary
 
-Cannot ask the user anything. Cannot resolve its own doubt by guessing, defaulting, or selecting the most common treatment. Cannot suppress a doubt because it is inconvenient or would delay posting. Cannot judge which doubts matter enough to block posting — that is the Clarification Engine's [`uncertainty_detection`](../../clarification_engine/uncertainty_detection/).
+**Can:** identify where the decision is uncertain · name the fact that would resolve each doubt · record conflicts between sub-engine Results.
+
+**Cannot:** **ask users directly** · resolve doubts itself · guess · default · select the most common treatment · suppress a doubt because it is inconvenient or would delay posting · judge which doubts block posting — that is the Clarification Engine's [`uncertainty_detection`](../../clarification_engine/uncertainty_detection/).
+
+## Decision Authority
+
+**Owns.** Identify uncertainty.
+
+**Cannot.** Resolve it, or ask anyone about it.
+
+No other component may override this Result.
+
+## Failure Behaviour
+
+Preserve uncertainty. A doubt that cannot be characterised precisely is still recorded, marked as uncharacterised — never dropped for being hard to describe.
 
 ## Future Notes
 
-- **Adjacent-ownership warning.** This *produces* doubt; `uncertainty_detection` triages it for materiality. Production versus materiality — see [Ownership Collisions](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md#ownership-collisions).
+- **Adjacent-ownership warning.** This *produces* doubt from accounting reasoning; `uncertainty_detection` triages it for materiality across the whole case. Production versus materiality.
 - "The specific fact that would resolve it" is the hard requirement and the valuable one: a doubt that names no resolving fact cannot become a good question.

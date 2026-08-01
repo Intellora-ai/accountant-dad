@@ -31,7 +31,7 @@ Every arrow carries exactly one named artifact. An engine may only consume the a
 | 0 | *external* → **Input** | **Raw Artifact** | The document as received: scan, photograph, PDF, digital file. |
 | 1 | **Input** → **Understanding** | **Document Evidence Object** | Document ID · source references · the **Structured Document** (extracted text, detected fields, document structure, tables, field values, field locations) · the **Confidence Report** (confidence scores, uncertainty markers, reliability information, risky fields). |
 | 2 | **Understanding** → **Accounting** | **Business Understanding Object** | The **Transaction Story** (the assembled narrative) · **Supporting Understanding Data** (the six sub-engine Results) · **Identified Unknowns** · **Confidence Assessment**. What happened, in business terms only. Every fact traced to its evidence; every gap named; every conflict preserved. No accounting vocabulary. |
-| 3 | **Accounting** → **Clarification** *or* **Validation** | **Accounting Decision** | Ledger selection, the balanced journal entry, tax treatment, the reasoning behind each, the risk profile of the decision, and the unresolved doubts. |
+| 3 | **Accounting** → **Clarification** *or* **Validation** | **Accounting Decision** | Decision ID · **Decision Status** · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts. |
 | 4a | **Clarification** → *human* | **Question Set** | The minimal set of questions, what each resolves, and the form of answer expected. |
 | 4b | *human* → **Clarification** | **Answers** | The human's replies, as given. |
 | 4c | **Clarification** → **Accounting** | **Resolved Facts** | The answers as structured facts, attributed to the question each answers. |
@@ -81,6 +81,35 @@ Business Understanding Object
 **Creator and owner differ here.** `story_builder` **creates** the artifact; the **Understanding Engine owns** it. Story Builder does not become an independent owner.
 
 Full contract: [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md` §5](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md#5-output-contract).
+
+### 2.3 Accounting Decision
+
+The Accounting Engine's output. The name is **final**, fixed by the Engine 3 contract.
+
+```text
+Accounting Decision
+├── Decision ID              identity only — see IDENTITY ≠ INTELLIGENCE (§9)
+├── Decision Status          COMPLETE | INCOMPLETE_INFORMATION_REQUIRED
+├── Accounting treatment
+├── Ledger classification
+├── Debit entries
+├── Credit entries
+├── Journal structure
+├── Tax treatment
+├── Accounting assumptions
+├── Risk indicators          from the Accounting Risk Analysis
+├── Decision confidence
+├── Supporting reasoning
+└── Unresolved doubts        from the Accounting Doubt Report
+```
+
+**Decision Status** exists so a downstream engine can ask *can this move forward?* and get a structured answer rather than infer one from prose. `INCOMPLETE_INFORMATION_REQUIRED` names the required clarification; the Accounting Engine never completes a decision by guessing.
+
+**Creator and owner differ here.** `decision_output` **creates** the artifact; the **Accounting Engine owns** it. `decision_output` does not become an independent owner.
+
+**Accounting Treatment Result** is internal to Engine 3 and does not cross any engine boundary — it combines the Ledger Recommendation, Tax Treatment Recommendation and Accounting Period Treatment before journal construction.
+
+Full contract: [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md` §5](ENGINE_3_ACCOUNTING_ENGINE_RULES.md#5-output-contract).
 
 ---
 
@@ -301,6 +330,63 @@ Every communication contract carries this, unchanged:
 |---|---|---|
 | Input → Understanding | [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md) | Locked |
 | Understanding, internal | [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md) | Locked |
-| Understanding → Accounting | — | Placeholder until Engine 3 |
+| Understanding → Accounting | [`COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md`](COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md) | Locked |
+| Accounting, internal | [`COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md) | Locked |
+| Accounting → Clarification | — | Placeholder until Engine 4 |
+| Accounting → Validation | — | Placeholder until Engine 5 |
 
 **One contract per boundary.** The sending engine owns the contract of what leaves it; the receiving engine references it. No duplicate communication documents.
+
+---
+
+## 9. IDENTITY ≠ INTELLIGENCE
+
+> **IDs identify objects. They do not influence reasoning.**
+
+Applies to **Document ID**, **Decision ID**, Transaction ID, User ID, and any future identifier.
+
+An identifier exists only for:
+
+- Identity
+- Traceability
+- Lifecycle tracking
+- Audit history
+
+An identifier must **never** influence ledger selection · journal creation · tax treatment · validation outcome · confidence · future decisions of any kind.
+
+```text
+✓ Correct     Decision ID: ACC-000123        → "Track this decision."
+
+✗ Incorrect   "Because ACC-000123 existed before, choose the same accounting treatment."
+```
+
+The failure this prevents is subtle and would be very hard to detect once present: reasoning that quietly keys off an identifier produces decisions that look justified, cite a real reference, and are wrong for a reason nothing in the audit trail records.
+
+| Identifier | Owner | Carries |
+|---|---|---|
+| **Document ID** | Input Engine | Identity of the artifact only |
+| **Decision ID** | Accounting Engine | Identity of the decision only |
+
+---
+
+## 10. Confidence Across Engines
+
+Confidence is **layered, not merged.** Each engine measures confidence about its own responsibility, and every level is reported in its own right.
+
+| Engine | Confidence | Asks |
+|---|---|---|
+| Input | Evidence confidence | Was information extracted correctly? |
+| Understanding | Understanding confidence | Was the business event understood correctly? |
+| Accounting | Decision confidence | Is the accounting treatment likely correct? |
+| Validation | Validation confidence | Is this safe to approve? *(declared; specified with Engine 5)* |
+
+> **Confidence can only decrease downstream unless new evidence is introduced.**
+
+```text
+Evidence Confidence  →  Understanding Confidence  →  Decision Confidence  →  Validation Confidence
+                              (never increases without new evidence)
+```
+
+Later engines cannot magically increase certainty. They may only **maintain**, **reduce**, or **request clarification**. The single exemption is new evidence — which is what the Clarification Engine exists to obtain.
+
+**A later confidence cannot ignore earlier uncertainty. Confidence must have traceability.**

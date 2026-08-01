@@ -9,8 +9,9 @@
 > | Engine | Specification | Status |
 > |---|---|---|
 > | 1. Input | [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RULES.md) · [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md) | **Locked** |
-> | 2. Understanding | [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md) | **Locked** |
-> | 3–6 | — | Not yet specified |
+> | 2. Understanding | [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md`](COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md) · [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md) | **Locked** |
+> | 3. Accounting | [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](ENGINE_3_ACCOUNTING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md) | **Locked** |
+> | 4–6 | — | Not yet specified |
 >
 > Each sub-engine owns exactly one problem. No two entries in this document claim the same problem — see §"Ownership Collisions" at the end for the pairs that look alike and how they are separated.
 
@@ -208,129 +209,153 @@
 
 # 3. Accounting Engine
 
+> **Specification locked.** Deeper authority: [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](ENGINE_3_ACCOUNTING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md).
+>
+> **Three specialised decisions, then one combined treatment.** `ledger_intelligence`, `tax_intelligence` and `accounting_rules` each decide their own question; their outputs are **combined** by the parent engine into the internal **Accounting Treatment Result**, which `journal_intelligence` then consumes. **`accounting_rules` does not produce the Ledger Recommendation or the Tax Treatment Recommendation** — that would be fake ownership.
+>
+> **Engine-level ownership.** `decision_output` **creates** the **Accounting Decision**; the **Accounting Engine owns** it. The parent assembles **mechanically** — it may combine, organize and structure, never change a recommendation, remove uncertainty, or increase confidence. **No sub-engine creates another sub-engine's decision.** Every Result carries confidence, assumptions and evidence references — none may omit them.
+
 ## 3.1 `transaction_analyzer`
 
-**Purpose.** A business story must first be read as an economic event before treatment can be considered.
+**Purpose.** Determine the accounting nature of the business event.
 
-**Responsibility.** Owns determination of the economic substance of the transaction in accounting terms — what was acquired or disposed of, what obligation arose or was discharged, and which accounting event class it belongs to.
+**Responsibility.** Owns initial accounting interpretation — the accounting-relevant facts of the understood event: substance, event class, and the aspects requiring treatment.
 
 **Input.** The Business Understanding Object.
 
-**Output.** An accounting characterisation of the event: substance, event class, and the aspects requiring treatment.
+**Output.** **Transaction Analysis Result** — transaction category · accounting implications · supporting facts · unknowns · confidence.
 
-**Boundary.** Cannot select specific ledgers or write any entry. Cannot read the Document Evidence Object or the raw artifact. Cannot re-derive business facts — it consumes the understanding as given.
+**Boundary.** Cannot create final journal entries · modify the business story · decide tax · select ledgers. Cannot read the Document Evidence Object or the raw artifact — it consumes the understanding as given.
 
----
-
-## 3.2 `accounting_rules`
-
-**Purpose.** Treatment must follow principle, not habit.
-
-**Responsibility.** Owns the body of accounting principles and policies that govern treatment — double entry, revenue and expense recognition, capital versus revenue, matching, accrual — and the determination of which apply to this event.
-
-**Input.** The accounting characterisation from `transaction_analyzer`, and the company's accounting profile.
-
-**Output.** The applicable rule set, and the ruling each rule produces for this transaction.
-
-**Boundary.** Cannot invent a rule from the transaction in front of it. Cannot own tax rules — GST, ITC and TDS belong to `tax_intelligence`. Cannot select ledgers or construct entries.
+**Failure Behaviour.** Return incomplete analysis with uncertainty. Where the accounting nature cannot be determined, that is recorded in unknowns — never resolved by picking the likeliest category.
 
 ---
 
-## 3.3 `ledger_intelligence`
+## 3.2 `company_understanding`
 
-**Purpose.** An entry is only as correct as the accounts it touches.
+**Purpose.** Understand company-specific accounting context. The same transaction means different things at different companies — a laptop is an employee expense at one and resale inventory at another.
 
-**Responsibility.** Owns selection of the ledger accounts involved, their groups, and the determination that an existing master is inadequate and a new ledger is required.
+**Responsibility.** Owns company accounting preferences and context — **context provision, not decision-making**: company profile, industry, accounting preferences, chart of accounts structure, historical patterns, policies.
 
-**Input.** The accounting characterisation, the applicable rulings, and the company's chart of accounts and existing masters.
+**Input.** The Business Understanding Object and company information.
 
-**Output.** Ledger selection: each account involved, its group, and — where required — a specification for a ledger that does not yet exist.
+**Output.** **Company Context Result** — company rules · historical patterns · relevant preferences · confidence.
 
-**Boundary.** Cannot create a ledger in Tally or anywhere else; it specifies, it does not provision. Cannot compute amounts. Cannot decide the debit/credit direction — that is `journal_intelligence`.
+**Boundary.** Cannot decide debit · credit · ledger · tax treatment · journal. Cannot override accounting standards. Cannot change evidence. **Historical patterns are evidence, not decisions** — *"the company usually does X, therefore automatically do X"* is forbidden; a laptop treated as expense last year may legitimately be an asset this year.
+
+**Failure Behaviour.** Mark missing company context. Absent configuration is recorded as absent, never substituted with a general default.
 
 ---
 
-## 3.4 `journal_intelligence`
+## 3.3 `accounting_rules`
 
-**Purpose.** The double entry is the decision's core; it must balance and mean what it says.
+**Purpose.** Apply accounting principles and timing rules to the analyzed transaction.
 
-**Responsibility.** Owns construction of the entry itself — which accounts are debited, which credited, in what amounts — and the guarantee that it balances.
+**Responsibility.** Owns accounting rule application, **accounting period treatment**, and recognition timing rules.
 
-**Input.** Ledger selection from `ledger_intelligence`, the applicable rulings, tax lines from `tax_intelligence`, and the amounts in the Business Understanding Object.
+**Input.** Transaction Analysis Result and Company Context Result.
 
-**Output.** The journal entry: a balanced, system-neutral set of debit and credit lines.
+**Output.** **Accounting Rule Application Result** — applied accounting rules · accounting period treatment · recognition timing rules · rule references · assumptions · confidence.
 
-**Boundary.** Cannot select the accounts itself — it consumes `ledger_intelligence`'s selection. Cannot determine tax amounts — it consumes `tax_intelligence`'s lines. Cannot format for Tally. Cannot force a balance by inserting a plug figure.
+**Boundary.** Cannot modify facts · create Tally postings · hide uncertainty · invent a rule from the transaction in front of it. **Cannot produce the Ledger Recommendation or the Tax Treatment Recommendation** — those belong to `ledger_intelligence` and `tax_intelligence`. Period boundary: `timeline_understanding` states *"this event happened on this date"*; this component decides *"this event belongs to this accounting period."*
+
+**Failure Behaviour.** Flag rule uncertainty. Where two principles could apply and the evidence does not distinguish them, both are recorded with the ambiguity — never resolved by preference.
+
+---
+
+## 3.4 `ledger_intelligence`
+
+**Purpose.** Determine appropriate ledger classification — *where does this transaction go?*
+
+**Responsibility.** Owns ledger reasoning: which accounts are involved, their groups, and the determination that an existing master is inadequate and a new ledger is required.
+
+**Input.** Transaction Analysis Result and Company Context Result.
+
+**Output.** **Ledger Recommendation** — recommended ledgers · classification reasoning · confidence.
+
+**Boundary.** Cannot create journal posting · change transaction meaning · create a ledger anywhere — it specifies, it does not provision. Cannot compute amounts or decide debit/credit direction.
+
+**Failure Behaviour.** Return possible ledgers with uncertainty. A weak match against an existing master is a doubt, not a decision.
 
 ---
 
 ## 3.5 `tax_intelligence`
 
-**Purpose.** Tax treatment is a distinct discipline with its own rules and its own consequences.
+**Purpose.** Analyze tax implications — *what tax treatment applies?*
 
-**Responsibility.** Owns the transaction's tax treatment — GST applicability, rate and classification, place of supply, reverse charge, input tax credit eligibility, and TDS.
+**Responsibility.** Owns tax treatment reasoning — GST applicability, rate and classification, place of supply, reverse charge, input tax credit eligibility, TDS.
 
-**Input.** The accounting characterisation, item facts and party facts from the story, and the company's registration and tax profile.
+**Input.** Transaction Analysis Result and Company Context Result.
 
-**Output.** Tax treatment and the resulting tax lines, each with the basis on which it was determined.
+**Output.** **Tax Treatment Recommendation** — applicable tax treatment · tax assumptions · risks · confidence.
 
-**Boundary.** Cannot validate its own compliance — that is the Validation Engine's `tax_validation`. Cannot file, report or reconcile anything with a tax authority. Cannot choose a rate because it is the most common one.
+**Boundary.** Cannot file taxes · guarantee compliance · override the accounting decision · modify transaction facts · apply unsupported assumptions. Cannot validate its own compliance — that is the Validation Engine's `tax_validation`.
+
+**Failure Behaviour.** Flag tax uncertainty. A rate is never chosen for being the most common one; where the basis is absent, the treatment is recorded as undetermined.
 
 ---
 
-## 3.6 `company_understanding`
+## 3.6 `journal_intelligence`
 
-**Purpose.** Every decision above is constrained by the accounting reality of this specific company.
+**Purpose.** Design the journal structure — *is the final journal structurally correct?*
 
-**Responsibility.** Owns knowledge of the company's accounting configuration — chart of accounts, existing ledger and group masters, GST registrations, method and basis of accounting, financial year, and book conventions.
+**Responsibility.** Owns debit/credit construction and **the balance guarantee**: combining the approved accounting components, creating the journal structure, and ensuring debit = credit and accounting-equation balance.
 
-**Input.** The company's accounting configuration and master data.
+**Input.** The **Accounting Treatment Result** — ledger recommendation, tax treatment recommendation and accounting period treatment, combined.
 
-**Output.** The company accounting profile that constrains every other Accounting sub-engine.
+**Output.** **Journal Entry Recommendation** — debit accounts · credit accounts · amounts · reasoning · confidence.
 
-**Boundary.** Cannot decide treatment for a transaction. Cannot create or modify a master. Cannot own the business's *operating* context — recurrence, branch and trade pattern belong to the Understanding Engine's `business_context`.
+**Boundary.** Cannot post to Tally · change accounting rules · **calculate or interpret tax** · **select ledgers** — it consumes those decisions. Cannot force a balance by inserting a plug figure. **Balance ≠ correctness**: it guarantees internal journal mathematical balance only, never accounting, tax or business correctness — *wrong ledger + balanced journal = still wrong*. Correctness is judged by the Validation Engine.
+
+**Failure Behaviour.** Return incomplete journal reasoning. An entry that will not balance is a doubt to be raised, never a rounding line to be invented.
 
 ---
 
 ## 3.7 `risk_analysis`
 
-**Purpose.** A decision that is defensible and a decision that is risky are different things, and the difference must be stated.
+**Purpose.** Identify accounting decision risks.
 
-**Responsibility.** Owns assessment of how risky *the decision this engine just made* is — how aggressive the treatment is, how thin its basis, how unusual the amount or pattern, how much it depends on a contested reading.
+**Responsibility.** Owns accounting risk identification — how aggressive a treatment is, how thin its basis, how unusual the amount or pattern, how much it depends on a contested reading.
 
-**Input.** The assembled components of the decision, the rulings behind them, and the Business Understanding Object.
+**Input.** All accounting analysis outputs.
 
-**Output.** A risk profile of the decision: each risk, its source, and its severity.
+**Output.** **Accounting Risk Analysis** — risk indicators · risk reasons · severity · confidence. **Not named "Risk Assessment"** — the Validation Engine owns that name.
 
-**Boundary.** Cannot block, approve or gate anything. Cannot assess the consequences of *posting* — exposure, materiality and reversibility belong to the Validation Engine's `risk_assessment`. Cannot change the decision to reduce its own risk score.
+**Boundary.** Cannot reject decisions · modify decisions · block or gate anything · change a decision to reduce its own risk score. Cannot assess the consequences of *posting* — exposure, materiality and reversibility belong to the Validation Engine's `risk_assessment`.
+
+**Failure Behaviour.** Report unknown risks. Where the risk of a treatment cannot be assessed, that inability is itself recorded — an unassessed risk is not a zero risk.
 
 ---
 
 ## 3.8 `doubt_detection`
 
-**Purpose.** Guessing quietly is the worst failure this system could have; doubt must be produced as an output.
+**Purpose.** Identify unresolved accounting uncertainty.
 
-**Responsibility.** Owns identification of every point at which the accounting decision is uncertain, and the precise statement of what fact would remove each doubt.
+**Responsibility.** Owns accounting doubts — where the decision is uncertain, and the specific fact that would resolve each.
 
-**Input.** The decision components, the rulings, the Identified Unknowns in the Business Understanding Object, and the Confidence Report within the Document Evidence Object.
+**Input.** All accounting outputs.
 
-**Output.** Structured doubts: what is uncertain, why, and the specific fact that would resolve it.
+**Output.** **Accounting Doubt Report** — missing information · conflicts · required clarification areas.
 
-**Boundary.** Cannot ask the user anything. Cannot resolve its own doubt by guessing, defaulting, or selecting the most common treatment. Cannot suppress a doubt because it is inconvenient or would delay posting. Cannot judge which doubts matter enough to block posting — that is the Clarification Engine's `uncertainty_detection`.
+**Boundary.** **Cannot ask users directly.** Cannot resolve doubts itself · guess · default · select the most common treatment · suppress a doubt because it is inconvenient or would delay posting. Cannot judge which doubts matter enough to block posting — that is the Clarification Engine's `uncertainty_detection`.
+
+**Failure Behaviour.** Preserve uncertainty. A doubt that cannot be characterised precisely is still recorded, marked as uncharacterised — never dropped for being hard to describe.
 
 ---
 
 ## 3.9 `decision_output`
 
-**Purpose.** Downstream engines must receive one decision, not nine partial opinions.
+**Purpose.** Assemble the final Accounting Decision artifact.
 
-**Responsibility.** Owns assembly of the complete **Accounting Decision** — entry, ledgers, tax treatment, reasoning, risks and doubts — as a single coherent artifact.
+**Responsibility.** Owns final accounting decision assembly, including setting **Decision Status** from the state of the doubts and missing information.
 
 **Input.** The outputs of all eight preceding Accounting sub-engines.
 
-**Output.** The **Accounting Decision**.
+**Output.** The **Accounting Decision** — Decision ID · Decision Status · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts.
 
-**Boundary.** Cannot alter, reconcile or soften any component it assembles. Cannot post the decision. Cannot mark it approved, safe or final. Cannot omit doubts or risks from the assembled artifact.
+**Boundary.** Cannot invent conclusions · remove uncertainty · override sub-engines · alter, reconcile or soften any component it assembles · omit risks or doubts · bypass validation · mark the decision approved or safe. It **creates** the artifact but does not **own** it — the Accounting Engine does.
+
+**Failure Behaviour.** Where the sub-engine outputs do not support a complete decision, it emits `INCOMPLETE_INFORMATION_REQUIRED` with the required clarification named. **Never guess** — it does not complete the decision by assumption.
 
 ---
 
@@ -617,13 +642,36 @@ Four pairs of sub-engines have similar names and adjacent concerns. Each pair is
 | Accounting `doubt_detection` **vs** Clarification `uncertainty_detection` | `doubt_detection` **produces** doubt, from accounting reasoning only, and names the fact that would resolve each. `uncertainty_detection` **triages** uncertainty across the whole case — extraction, story and accounting — and judges which are material enough to block posting. Production versus materiality. |
 | Accounting `ledger_intelligence` **vs** `journal_intelligence` | `ledger_intelligence` decides **which accounts**. `journal_intelligence` decides **which side and how much**. Neither does the other's job; `journal_intelligence` consumes the account selection as given. |
 
-## Two confidence artifacts
+## Layered confidence
 
-The system carries confidence in two places. They measure different things and neither replaces the other — both travel.
+Confidence is measured at every stage. Each level answers about its own engine's responsibility, and none replaces another — all of them travel.
 
-| Artifact | Owner | Measures | Bounded by |
+| Confidence | Owner | Lives in | Measures |
 |---|---|---|---|
-| **Confidence Report** — within the Document Evidence Object | Input Engine | Confidence in the **extraction**: was this read correctly? | — |
-| **Confidence Assessment** — within the Business Understanding Object | Understanding Engine | Confidence in the **understanding**: does the evidence support this interpretation? | The Confidence Report |
+| **Evidence confidence** | Input Engine | Confidence Report, within the Document Evidence Object | Was this read correctly? |
+| **Understanding confidence** | Understanding Engine | Confidence Assessment, within the Business Understanding Object | Does the evidence support this interpretation? |
+| **Decision confidence** | Accounting Engine | Decision confidence, within the Accounting Decision | Is the accounting treatment likely correct? |
+| **Validation confidence** | Validation Engine | *declared; specified with Engine 5* | Is this safe to approve? |
 
-The binding constraint is the **Confidence Propagation Rule**: `Understanding Confidence ≤ Evidence Reliability`. A confident interpretation of an unreliable reading is not understanding — see [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md` §11](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md#11-understanding-confidence-model).
+Two rules bind them:
+
+- **`Understanding Confidence ≤ Evidence Reliability`** — the arithmetic bound locked with Engine 2.
+- **Confidence can only decrease downstream unless new evidence is introduced.** Later engines may maintain, reduce or request clarification — never raise. The single exemption is new evidence, which is what the Clarification Engine exists to obtain.
+
+## Two risk artifacts
+
+| Artifact | Owner | Measures |
+|---|---|---|
+| **Accounting Risk Analysis** — from `risk_analysis` | Accounting Engine | Risk in the **reasoning**: how aggressive the treatment, how thin its basis |
+| **Risk Assessment** — from `risk_assessment` | Validation Engine | Risk in **approving and executing**: exposure, materiality, reversibility |
+
+Two engines may not own the same concept name, which is why Accounting's output is deliberately *not* called a Risk Assessment.
+
+## Dates versus periods
+
+| Component | Statement |
+|---|---|
+| Understanding `timeline_understanding` | *"This event happened on this date."* |
+| Accounting `accounting_rules` | *"This event belongs to this accounting period."* |
+
+An invoice dated 31 March and paid 10 April raises the question of March closing versus April. That is an accounting decision, not a timeline fact — which is why `timeline_understanding` is forbidden from answering it and `accounting_rules` owns accounting period treatment.

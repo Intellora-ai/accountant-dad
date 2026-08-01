@@ -101,19 +101,50 @@ It also cannot:
 
 ## 3. Accounting Engine
 
-**Accounting Engine cannot post to Tally.**
-**Accounting Engine cannot question the user directly.**
+> **Specification locked.** Deeper authority: [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](ENGINE_3_ACCOUNTING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md).
+
+**The Accounting Engine decides treatment. It does not read documents, discover business events, ask users, post, or approve.**
+
+It **MUST NEVER**:
+
+1. Modify the Document Evidence Object.
+2. Modify the Business Understanding Object.
+3. Invent missing facts.
+4. Hide uncertainty.
+5. Ask users questions directly.
+6. Post transactions to Tally.
+7. Override validation results.
+8. Change source evidence.
+9. **Pretend assumptions are confirmed facts.**
 
 It also cannot:
 
 - Communicate with Tally in any way, for any reason.
 - Approve its own decision, or declare it correct, safe or final.
-- Read the raw artifact or the Document Evidence Object. It reasons from the Business Understanding Object only.
+- Read the raw artifact or the Document Evidence Object. It reasons from the Business Understanding Object and company information only.
 - Resolve its own doubt by guessing, defaulting, or selecting the most common treatment.
 - Suppress a doubt or a risk because it is inconvenient, or because it would delay posting.
-- Validate itself. Correctness is judged by the Validation Engine.
+- Decide whether the document information is correct, whether the business story is correct, or whether the user intended something different. **Those belong upstream.**
 
-**Per sub-engine:** `transaction_analyzer` characterises, never selects accounts. `accounting_rules` applies principle, never invents a rule from the transaction in front of it, and never owns tax rules. `ledger_intelligence` specifies accounts, never provisions them. `journal_intelligence` builds the entry, never selects the accounts itself and never forces a balance with a plug figure. `tax_intelligence` determines treatment, never validates its own compliance and never picks a rate for being common. `company_understanding` supplies configuration, never decides treatment and never modifies a master. `risk_analysis` rates its own decision, never blocks and never changes the decision to improve its own score. `doubt_detection` produces doubt, never asks and never resolves. `decision_output` assembles, never alters a component and never omits a doubt or risk.
+**The assumptions rule.** Every sub-engine relying on an assumption records it in its own Result — what was assumed, and why. **Nothing may assume silently.** An unrecorded assumption is the mechanism by which assumptions become confirmed facts: one that is written down can be challenged, questioned or spotted; one that is not, cannot.
+
+**Insufficient information.** The engine returns a named output, never a guess:
+
+```text
+Decision Status:         INCOMPLETE_INFORMATION_REQUIRED
+Reason:                  Missing information
+Required clarification:  …
+```
+
+> **Never guess.**
+
+**Balance ≠ correctness.** `journal_intelligence` guarantees internal journal mathematical balance only — debit = credit. It does **not** guarantee accounting, tax or business correctness. *Wrong ledger + balanced journal = still wrong.* Correctness is judged by the Validation Engine.
+
+**Assembly ownership.** `decision_output` **creates** the Accounting Decision; the **Accounting Engine owns** it. The parent assembles the Accounting Treatment Result **mechanically** — it may combine, organize and structure, but may never change the Ledger Recommendation, change the Tax Treatment Recommendation, remove uncertainty, or increase confidence. It does not orchestrate the system, route workflows, or **override sub-engine outputs**. **No sub-engine creates another sub-engine's decision** — no hidden override, no circular reasoning.
+
+**Per sub-engine:** `transaction_analyzer` characterises, never selects accounts and never decides tax. `accounting_rules` applies principle and decides accounting period, never invents a rule from the transaction in front of it, and **never produces the Ledger Recommendation or Tax Treatment Recommendation**. `ledger_intelligence` specifies accounts, never provisions them. `journal_intelligence` designs and balances the entry, never calculates or interprets tax, never selects the accounts itself, and never forces a balance with a plug figure. `tax_intelligence` recommends treatment, never files, never guarantees compliance, and never picks a rate for being common. `company_understanding` supplies context, never decides treatment — **historical patterns are evidence, not decisions**: *"the company usually does X, therefore automatically do X"* is forbidden. `risk_analysis` rates its own decision, never blocks and never changes the decision to improve its own score. `doubt_detection` produces doubt, never asks and never resolves. `decision_output` assembles, never alters a component and never omits a doubt or risk.
+
+> **Understanding Engine creates interpretation. Accounting Engine decides treatment. Validation Engine decides safety.**
 
 ---
 
@@ -184,6 +215,9 @@ These bind every engine and every sub-engine.
 8. **Nothing unapproved is executed.** The only decision that reaches Tally is one the Validation Engine approved.
 9. **Every rejection names its owner.** No finding is returned to the pipeline without naming the stage that must handle it.
 10. **Failure is as loggable as success.** No error, retry or partial outcome is omitted from the audit record.
+11. **IDENTITY ≠ INTELLIGENCE.** **IDs identify objects. They do not influence reasoning.** Document ID, Decision ID, Transaction ID, User ID and any future identifier exist only for identity, traceability, lifecycle tracking and audit history. None may influence ledger selection, journal creation, tax treatment, validation outcome, confidence, or any future decision. *"Because ACC-000123 existed before, choose the same treatment"* — never. See [`DATA_FLOW.md` §9](DATA_FLOW.md#9-identity--intelligence).
+12. **Confidence only decreases.** **Confidence can only decrease downstream unless new evidence is introduced.** Later engines may maintain, reduce or request clarification — never magically increase certainty. The single exemption is new evidence, which is what the Clarification Engine exists to obtain. See [`DATA_FLOW.md` §10](DATA_FLOW.md#10-confidence-across-engines).
+13. **Nothing assumes silently.** Every component relying on an assumption records what it assumed and why. An unrecorded assumption becomes a confirmed fact by default, and nothing downstream can tell the difference.
 
 ---
 
