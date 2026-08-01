@@ -133,7 +133,45 @@ The Input Engine only **marks** uncertainty. Whether an uncertainty is material 
 
 ---
 
-# 4. What This Boundary Protects
+# 4. Boundary Contract
+
+Every engine boundary must define all nine items ([`DATA_FLOW.md` §8](DATA_FLOW.md#8-boundary-contract-requirement)). For Input → Understanding:
+
+| # | Item | Definition |
+|---|---|---|
+| 1 | **Input artifact** | Raw artifact — photo, camera capture, image upload, PDF, scan, handwritten note, receipt, bill, or other supporting accounting document. |
+| 2 | **Output artifact** | **Document Evidence Object.** |
+| 3 | **Artifact creator** | The Input Engine (parent), assembling its four sub-engines' outputs and assigning the Document ID. |
+| 4 | **Artifact owner** | The **Input Engine**, permanently. |
+| 5 | **Allowed transformation** | The Understanding Engine may **read**, **analyze** and **reference** the Document Evidence Object, and produce its own artifact from it. |
+| 6 | **Forbidden transformation** | It may **not** modify, rewrite, delete, remove uncertainty from, or change confidence in the Document Evidence Object. Artifacts are immutable after creation. |
+| 7 | **Decision authority** | Input decides extraction method, extraction confidence and document structure. Understanding decides business event interpretation, entity relationships and the business story. Neither may make the other's decision. |
+| 8 | **Uncertainty movement** | Confidence scores, uncertainty markers, reliability information and risky fields cross intact. Understanding confidence may never exceed the evidence reliability it received. Uncertainty is only ever described more precisely — never removed. |
+| 9 | **Failure movement** | The Input Engine does not halt the pipeline. Unreadable regions, damaged artifacts and failed extractions cross the boundary **as low confidence and named uncertainty**, not as errors. A Validation finding that the data are unsound returns to Input — or to Clarification, if a human can supply what is missing ([`DATA_FLOW.md` §4.4](DATA_FLOW.md#44-validation-returns-work-it-never-passes-it-on)). |
+
+## Engine 2 receiving rules
+
+The Understanding Engine must:
+
+1. **Respect confidence** — a value extracted at 40% is not treated as a value known at 100%.
+2. **Preserve uncertainty** — every uncertainty marker received travels forward.
+3. **Trace understanding back to evidence** — every fact it produces points to the evidence that produced it.
+4. **Never modify source evidence** — the Document Evidence Object is read-only to it, permanently.
+
+## Decision Authority
+
+Every communication contract in this system carries this block unchanged:
+
+> **The sending engine owns the meaning of its artifact.**
+>
+> The receiving engine **may** consume, analyze, and produce its own artifact.
+> The receiving engine **may not** rewrite upstream artifacts, change upstream decisions, or remove uncertainty.
+
+The Input Engine defines what the Document Evidence Object asserts. If the Understanding Engine disagrees with the evidence, it records that disagreement in **its own** artifact — it never amends the evidence to match.
+
+---
+
+# 5. What This Boundary Protects
 
 > **Input Engine provides evidence. Understanding Engine creates interpretation. The boundary between observation and reasoning must never be crossed.**
 
