@@ -1,6 +1,6 @@
 # tally_connector
 
-> Sub-engine of the **Tally Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md).
+> Sub-engine of the **Execution Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md). Deep spec: [`docs/ENGINE_6_EXECUTION_ENGINE_RULES.md`](../../../../docs/ENGINE_6_EXECUTION_ENGINE_RULES.md#92-tally_connector).
 >
 > **Phase 1 placeholder — no implementation.**
 
@@ -10,19 +10,29 @@ The connection to an external system is its own concern, with its own failures.
 
 ## Responsibility
 
-Owns the connection to Tally — transport, session, company selection, and availability.
+Owns **connection, transmission and acknowledgement** — external connections, authentication, API communication, connector sessions, session and company selection, and availability.
+
+## Name and responsibility
+
+**Architecturally this is the destination connector.** Its responsibility covers all external accounting systems, not Tally alone — Zoho, Busy, SAP, QuickBooks, portals and exports all connect here. **The locked folder name is retained: identities are stable, responsibilities are not.** Same pattern as Engine 4's three.
 
 ## Input
 
-Connection configuration, and payloads to be transmitted.
+The **Translated Voucher**, and connection configuration.
 
 ## Output
 
-A working channel, connection state, and transport-level results.
+The **Connection Result** — a working channel, connection state, and transport-level results.
 
 ## Boundary
 
-Cannot inspect, interpret or modify a payload passing through it. Cannot decide whether to retry. Cannot judge whether a Tally response means success — that is [`response_processor`](../response_processor/).
+**Can:** connect · authenticate · send voucher · receive responses · disconnect safely.
+
+**Cannot:** modify voucher · inspect or interpret a payload passing through it · change accounting · **retry endlessly** · skip authentication · ignore connection failures · **reason**. Cannot judge whether a response means success — that is [`response_processor`](../response_processor/).
+
+## Failure Behaviour
+
+**Report failure · hand control to [`error_handler`](../error_handler/) · preserve execution state.**
 
 ## Future Notes
 

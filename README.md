@@ -34,7 +34,9 @@ What exists is the thing that has to exist first: an unambiguous statement of wh
 | Evidence provenance · optional human business context | ✅ **Locked** |
 | **Phase 0** — invariants, transaction identity, Application Layer, correction model | ✅ **Locked** |
 | **Engine 5 — Validation Engine** specification lock | ✅ **Locked** |
-| Engine 6 — Execution Engine specification lock | Not yet started |
+| **Engine 6 — Execution Engine** specification lock | ✅ **Locked** |
+| **Six-engine architecture fully specified** | ✅ |
+| Canonical Schemas · Consistency Audit · Architecture Freeze v1.0 | Next |
 
 ### Phase 1 does **not** include
 
@@ -55,7 +57,7 @@ Each engine is one **cognitive stage**, not one technical layer.
 | 3 | **Accounting** | *How should it be recorded?* |
 | 4 | **Clarification** | *What do we still need to ask a human?* |
 | 5 | **Validation** | *Is this safe to post?* |
-| 6 | **Tally** | *Put it in the books, and record that we did.* |
+| 6 | **Execution** | *Put it in the books, exactly once, and record that we did.* |
 
 The split exists because these are genuinely different kinds of thinking, and collapsing any two destroys a property that makes the system trustworthy:
 
@@ -115,6 +117,9 @@ docs/
   COMMUNICATION_RULES_CLARIFICATION_ENGINE.md . Engine 4 → Engine 5 boundary — LOCKED
   ENGINE_5_VALIDATION_ENGINE_RULES.md ......... Engine 5 specification — LOCKED
   COMMUNICATION_RULES_VALIDATION_INTERNAL.md .. inside Engine 5 — LOCKED
+  COMMUNICATION_RULES_VALIDATION_ENGINE.md .... Engine 5 → Engine 6 boundary — LOCKED
+  ENGINE_6_EXECUTION_ENGINE_RULES.md .......... Engine 6 specification — LOCKED
+  COMMUNICATION_RULES_EXECUTION_INTERNAL.md ... inside Engine 6 — LOCKED
 
 src/
   engines/       6 engines, 39 sub-engines — each a folder with a README
@@ -143,6 +148,7 @@ Every engine and sub-engine folder holds exactly one `README.md` stating its **p
 6. [`docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md) — the third engine, in full
 7. [`docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md) — the fourth engine, in full
 8. [`docs/ENGINE_5_VALIDATION_ENGINE_RULES.md`](docs/ENGINE_5_VALIDATION_ENGINE_RULES.md) — the fifth engine, in full
+9. [`docs/ENGINE_6_EXECUTION_ENGINE_RULES.md`](docs/ENGINE_6_EXECUTION_ENGINE_RULES.md) — the sixth engine, in full
 
 ---
 

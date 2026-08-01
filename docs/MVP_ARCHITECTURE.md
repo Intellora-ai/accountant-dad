@@ -36,7 +36,7 @@ The system is divided into six engines. **Each engine is one cognitive stage, no
 | 3 | **Accounting Engine** | *How should it be recorded?* |
 | 4 | **Clarification Engine** | *What do we still need to ask a human?* |
 | 5 | **Validation Engine** | *Is the reasoning chain correct, complete, traceable and safe to execute?* |
-| 6 | **Tally Engine** | *Put it in the books, and record that we did.* |
+| 6 | **Execution Engine** | *How do we safely execute an already validated decision in the outside world?* |
 
 ### Why this split exists
 
@@ -102,13 +102,14 @@ AI Accountant
 │   ├── risk_assessment ..................... what posting this would expose us to
 │   └── validation_decision ................. the final Validation Decision
 │
-└── 6. Tally Engine ......................... Put it in the books.
-    ├── voucher_translator .................. decision → Tally voucher
-    ├── tally_connector ..................... own the connection
-    ├── posting_manager ..................... control the act of posting
-    ├── response_processor .................. what Tally actually said
-    ├── error_handler ....................... classify and route failures
-    └── audit_logger ........................ the immutable record
+└── 6. Execution Engine ..................... Put it in the books.
+    │      folder: src/engines/tally_engine/  — locked name, never renamed
+    ├── voucher_translator .................. decision → destination voucher
+    ├── tally_connector ..................... the destination connection
+    ├── posting_manager ..................... idempotency and the act of posting
+    ├── response_processor .................. what the destination actually said
+    ├── error_handler ....................... classify failures, name the stage
+    └── audit_logger ........................ the append-only record
 ```
 
 Per-engine detail: [ENGINE_RESPONSIBILITIES.md](ENGINE_RESPONSIBILITIES.md).
@@ -161,7 +162,7 @@ Per-sub-engine detail: [SUB_ENGINE_RESPONSIBILITIES.md](SUB_ENGINE_RESPONSIBILIT
       reject └──────────────► back to the named     └──────────────┘
                               stage, never forward          │
                                                             ▼
-                                             Posting Result + Audit Record
+                                                  Execution Result
 ```
 
 ### The flow in words
@@ -171,7 +172,7 @@ Per-sub-engine detail: [SUB_ENGINE_RESPONSIBILITIES.md](SUB_ENGINE_RESPONSIBILIT
 3. The **Accounting Engine** converts that understanding, together with company context, into an **Accounting Decision**: the ledgers, the double entry, the tax treatment and the accounting period — together with the assumptions it rested on, the risks it carries, the doubts it could not resolve, and a status saying plainly whether it is complete.
 4. The **Clarification Engine** detects what would prevent that decision being completed safely — what is missing, what is uncertain, what contradicts what — and emits a **Clarification Request** saying what is required, why it matters and how urgent it is. It resolves nothing and asks no one: a later system layer delivers the request, and any answer re-enters at Engine 1, 2 or 3, which emits a **new artifact version**.
 5. The **Validation Engine** independently judges the decision — accounting correctness, tax compliance, data soundness, duplication, posting risk — reading both the Accounting Decision and the Clarification Request, and returns one **Validation Decision**: `Approved`, `Approved With Warning`, `Clarification Required` or `Rejected`, with every finding naming the engine responsible for it.
-6. Only an approved decision reaches the **Tally Engine**, which translates it to a voucher, posts it exactly once, reads what Tally actually said, classifies any failure, and writes an immutable audit record.
+6. Only an approved decision reaches the **Execution Engine**, which translates it to a destination voucher, posts it **exactly once** — keyed on decision version and destination, so a correction can still post — reads what the destination actually said, classifies any failure and names the stage responsible, and appends to an immutable audit record. It emits one **Execution Result** and reasons about nothing. **It is the only engine that touches the outside world**, and it has no backward arrow: the Application Layer routes what it names.
 
 Artifact-by-artifact detail, including the conditional paths and the return rule: [DATA_FLOW.md](DATA_FLOW.md).
 

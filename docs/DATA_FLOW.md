@@ -42,7 +42,7 @@ Every arrow carries exactly one named artifact. An engine may only consume the a
 | 4y | *external actor* → **Input / Understanding / Accounting** | **Clarification Answer** | New information re-entering through the normal pipeline. It never returns to Engine 4; the responsible upstream engine emits a **new artifact version**. |
 | 5 | **Validation** → **Tally** *or* back | **Validation Decision** | Validation ID · Transaction ID · Related Decision ID · Related Artifact Version · **Validation Status** (`Approved` · `Approved With Warning` · `Clarification Required` · `Rejected`) · findings · errors · warnings · risks · failed validation rules · supporting evidence references · Validation Confidence · reasoning · timestamp. Every finding names the **responsible engine**. |
 | 6 | **Validation** → **Tally** | **Approved Accounting Decision** | The decision, and the Validation Decision approving it. Nothing unapproved crosses this arrow. |
-| 7 | **Tally** → *external* | **Posting Result** + **Audit Record** | Posted, rejected or partial, with Tally's identifiers; and the permanent, append-only record of the attempt. |
+| 7 | **Execution** → *permanent record* | **Execution Result** | Execution ID · Execution Attempt ID · Transaction ID · Accounting Decision ID · Decision Version · Validation Decision ID · Destination System · Corrects Execution Result · **Posting Status** · External Transaction ID(s) · Retry Count · Queue Status · Notification Status · **Classified Error** · **Audit Reference** · Execution Outcome · **Execution Confidence** · timestamp. `Posting Result`, `Classified Error` and `Audit Reference` are **components**; the **Audit Record** is append-only history, referenced rather than carried. |
 
 ### 2.1 Document Evidence Object
 
@@ -214,7 +214,7 @@ Full contract: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md` §5](ENGINE_4_CLARIFICA
           └────────────────────┘              never forward, never
                      │                        silently discarded
                      ▼
-        Posting Result + Audit Record
+              Execution Result
 ```
 
 ---
@@ -280,12 +280,14 @@ A rejection does not move forward and is never quietly dropped. **Every finding 
 These hold for every transaction, without exception.
 
 1. **One direction.** Work moves forward only. **No artifact ever moves backward, and no engine ever mutates an upstream artifact.** The only backward movement in the system is a *return* — Validation returning a rejection to a named stage, which is a routing instruction, not an artifact edit. New information re-enters at Engine 1, 2 or 3 as a **new artifact version**, never as a patch.
-2. **No skipping.** No stage may be bypassed. A decision cannot reach Tally without a Validation Decision approving it, however obvious it appears.
-3. **No reaching back.** An engine consumes only the artifact handed to it. The Accounting Engine reasons from the Business Understanding Object, never from the Document Evidence Object or the raw artifact. The Tally Engine acts on the Approved Decision, never on the understanding.
+2. **No skipping.** No stage may be bypassed. A decision cannot reach an external system without a Validation Decision approving it, however obvious it appears — and an `Approved With Warning` decision only after the Application Layer releases it.
+3. **No reaching back.** An engine consumes only the artifact handed to it. The Accounting Engine reasons from the Business Understanding Object, never from the Document Evidence Object or the raw artifact. The Execution Engine acts on the approved decision, never on the understanding.
+3a. **Execution has no backward arrow.** `error_handler` **names** the responsible stage inside the Classified Error; the **Application Layer** reads it and routes. The last engine in the pipeline never moves work itself.
 4. **No reaching sideways.** No engine writes into another engine's output. Every artifact has exactly one producing engine.
 5. **Doubt travels.** Doubts, risks and low-confidence markers are carried forward with the artifact at every stage. They are never dropped because a later stage found them inconvenient.
 6. **Gaps stay gaps.** A fact that is absent is marked absent and remains absent until a human supplies it. No stage fills a gap by inference, default or convention.
-7. **Approval precedes execution.** Nothing reaches Tally that the Validation Engine has not approved.
+7. **Approval precedes execution.** Nothing reaches an external system that the Validation Engine has not approved.
+7a. **Execution is exactly once.** Duplicate protection is keyed on **Accounting Decision ID + Decision Version + Destination System** — never on Transaction ID, which must never block a legitimate execution.
 8. **Every attempt is recorded.** Posting attempts, successes, partials and failures are all written to the audit record. Failure is not less loggable than success.
 
 ---
@@ -352,7 +354,7 @@ This is why the clarification loop runs *outside* Engine 4 (§4.2): an answer do
 | **Accounting** | Accounting treatment recommendation | Validation approval · execution |
 | **Clarification** | Questions required to remove uncertainty · when enough information exists | Accounting answers without evidence |
 | **Validation** | Data soundness · accounting correctness · tax correctness · economic duplication · execution risk · **execution permission** · the Validation Decision | Creating or repairing accounting decisions · generating clarification · asking users · posting |
-| **Tally** | Execution result | Accounting reasoning |
+| **Execution** | When execution begins · where it is sent · retry timing · queue timing · notification timing · execution completion, failure and status | Accounting treatment · journal structure · ledger selection · tax treatment · validation approval · clarification requirements · business meaning · accounting confidence |
 
 Authority is also divided *within* an engine. See each locked engine specification for its internal authority table — [Engine 1](ENGINE_1_INPUT_ENGINE_RULES.md) · [Engine 2](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md).
 
@@ -396,7 +398,8 @@ Every communication contract carries this, unchanged:
 | Clarification, internal | [`COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md`](COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md) | Locked |
 | Clarification → Validation | [`COMMUNICATION_RULES_CLARIFICATION_ENGINE.md`](COMMUNICATION_RULES_CLARIFICATION_ENGINE.md) | Locked |
 | Validation, internal | [`COMMUNICATION_RULES_VALIDATION_INTERNAL.md`](COMMUNICATION_RULES_VALIDATION_INTERNAL.md) | Locked |
-| Validation → Tally | — | Placeholder until Engine 6 |
+| Validation → Execution | [`COMMUNICATION_RULES_VALIDATION_ENGINE.md`](COMMUNICATION_RULES_VALIDATION_ENGINE.md) | Locked |
+| Execution, internal | [`COMMUNICATION_RULES_EXECUTION_INTERNAL.md`](COMMUNICATION_RULES_EXECUTION_INTERNAL.md) | Locked |
 
 **One contract per boundary.** The sending engine owns the contract of what leaves it; the receiving engine references it. No duplicate communication documents.
 
@@ -441,16 +444,20 @@ Confidence is **layered, not merged.** Each engine measures confidence about its
 | Input | Evidence confidence | Was information extracted correctly? |
 | Understanding | Understanding confidence | Was the business event understood correctly? |
 | Accounting | Decision confidence | Is the accounting treatment likely correct? |
-| Validation | Validation confidence | Is execution safe? |
+| Validation | Validation confidence | Is execution safe and permitted? |
+| Clarification | Clarification confidence | Has every decision-blocking uncertainty been found? |
+| **Execution** | **Execution confidence** | **Did execution succeed? Transport only — never accounting correctness.** |
 
-> **Confidence can only decrease downstream unless new evidence is introduced.**
+> **Confidence is recalculated whenever evidence changes** — [`SYSTEM_INVARIANTS.md` INV-2](SYSTEM_INVARIANTS.md#inv-2--confidence-changes-only-when-evidence-changes). It may increase, decrease or stay the same given the complete evidence set, and never rises because an engine reasoned harder.
+
+**Execution Confidence sits outside this chain.** It measures transport and execution only; it never changes accounting confidence or Validation confidence, and a failed execution can never be high.
 
 ```text
 Evidence Confidence  →  Understanding Confidence  →  Decision Confidence  →  Validation Confidence
-                              (never increases without new evidence)
+                              (recalculated only when evidence changes)
 ```
 
-Later engines cannot magically increase certainty. They may only **maintain**, **reduce**, or **request clarification**. The single exemption is new evidence — which is what the Clarification Engine exists to obtain.
+Later engines cannot manufacture certainty. Only a change in evidence changes confidence — which is what the Clarification Engine exists to obtain.
 
 **A later confidence cannot ignore earlier uncertainty. Confidence must have traceability.**
 
@@ -667,6 +674,26 @@ Wrong Entry → New Business Understanding → New Accounting Decision (new vers
 ```
 
 The **Transaction ID stays the same.** A wrong tax rate on a laptop purchase is still that purchase; reversing and reposting does not make it a different business event. What changes is a new **version** of the decision and a new Execution Result, both under the original identity.
+
+### Execution lineage
+
+The correction chain must be answerable in the other direction too:
+
+```text
+Original Execution Result → Correction Accounting Decision → Correction Execution Result
+```
+
+The Execution Result's **`Corrects Execution Result`** field records which execution corrected which — **structurally, not by inference**. The original Execution Result is never edited; the correction is a new one that points at it.
+
+### Why the idempotency key is not the Transaction ID
+
+A correction is a **new decision version under the same Transaction ID**. Duplicate protection keyed on Transaction ID would therefore read every correction as a duplicate of the original and block it.
+
+```text
+Idempotency Key = Accounting Decision ID + Decision Version + Destination System
+```
+
+**Decision Version** determines *what* is executed; **Destination System** determines *where*. Transaction ID is for lifecycle grouping and **never gates execution** — [§9](#9-identity--intelligence).
 
 Nothing new is required: the discovery that an entry was wrong arrives as **new evidence at Engine 1** — already how all new information enters — and a reversal *is* a journal entry the Accounting Engine already knows how to produce.
 

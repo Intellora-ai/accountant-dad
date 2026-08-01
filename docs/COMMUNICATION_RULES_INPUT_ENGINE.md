@@ -21,7 +21,7 @@ Document Evidence Object
 Understanding Engine
 ```
 
-There is no other outbound path. The Input Engine does not communicate with the Accounting, Clarification, Validation or Tally Engines, and does not communicate with the user.
+There is no other outbound path. The Input Engine does not communicate with the Accounting, Clarification, Validation or Execution Engines, and does not communicate with the user.
 
 ---
 

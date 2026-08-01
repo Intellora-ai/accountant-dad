@@ -613,7 +613,7 @@ Clarification Confidence
 >
 > **Higher certainty cannot emerge from weaker evidence.**
 
-This is the system-wide layered-confidence rule at its fourth level — **confidence can only decrease downstream unless new evidence is introduced.** See [`DATA_FLOW.md` §10](DATA_FLOW.md#10-confidence-across-engines).
+This is the system-wide layered-confidence rule at its fourth level — **confidence is recalculated only when evidence changes**, never because an engine reasoned harder. See [`SYSTEM_INVARIANTS.md` INV-2](SYSTEM_INVARIANTS.md#inv-2--confidence-changes-only-when-evidence-changes) and [`DATA_FLOW.md` §10](DATA_FLOW.md#10-confidence-across-engines).
 
 | Engine | Confidence | Asks |
 |---|---|---|

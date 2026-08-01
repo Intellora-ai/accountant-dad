@@ -224,20 +224,32 @@ It also cannot:
 
 ---
 
-## 6. Tally Engine
+## 6. Execution Engine
 
-**Tally Engine cannot reason.**
+> Locked folder: [`src/engines/tally_engine/`](../src/engines/tally_engine/). The architectural name is **Execution Engine**; identities are never renamed once referenced.
+
+**Execution Engine cannot reason.**
+
+> **It transports approved decisions. It cannot create, modify or interpret business meaning.**
 
 It also cannot:
 
 - Interpret or make any judgement about the transaction.
-- Alter the accounting meaning of what it was given.
+- Alter the accounting meaning of what it was given — no ledger, no journal entry, no tax treatment.
 - Supply a value that is missing. Missing data is an error, not a gap to fill.
 - Decide whether posting should happen. That was decided by the Validation Engine.
-- Correct a rejected voucher and resubmit it.
+- Correct a rejected voucher and resubmit it, or invent a correction.
+- Modify any upstream artifact, or override a Validation Decision.
+- **Create a duplicate posting**, invent an external response, or suppress a failure.
 - Alter, delete or omit an audit record — including records of failure.
+- **Route work backwards.** It names the responsible stage; the Application Layer routes.
+- Communicate outside defined execution channels, or execute an unapproved decision.
 
-**Per sub-engine:** `voucher_translator` translates faithfully, never chooses between representations on accounting grounds. `tally_connector` carries payloads, never inspects or modifies them. `posting_manager` controls posting, never changes payload content and never decides whether posting should happen. `response_processor` reads Tally's answer, never retries and never reads an ambiguous or absent response as success. `error_handler` classifies and routes, never corrects data, never retries directly and never suppresses an error it cannot classify. `audit_logger` records, never alters, deletes, omits or summarises away detail.
+**A posting failure must never cause the system to silently change the accounting decision.**
+
+**Per sub-engine:** `voucher_translator` translates faithfully, never chooses between representations on accounting grounds and never invents a missing value. `tally_connector` — architecturally the destination connector — carries payloads, never inspects or modifies them, never retries endlessly and never reasons. `posting_manager` controls posting and owns **idempotency on Accounting Decision ID + Decision Version + Destination System**, never changes payload content, never decides whether posting should happen, and never restarts a crashed workflow. `response_processor` reads the destination's answer, never retries and **never reads an ambiguous or absent response as success**. `error_handler` classifies and **names the responsible stage — it never routes**, never corrects data, never retries directly and never suppresses an error it cannot classify. `audit_logger` records **append-only**, never alters, deletes, omits or summarises away detail.
+
+**Engine 6 is the only engine allowed to interact with external systems.** Tally, Zoho, Busy, SAP, QuickBooks, portals, APIs, webhooks, email, WhatsApp, notifications, file exports — all of it passes through here, and no earlier engine may reach outside.
 
 ---
 
@@ -252,11 +264,11 @@ These bind every engine and every sub-engine.
 5. **No problem is owned twice.** If two components could each plausibly make the same call, the ownership is unclear: stop and ask. The four adjacent pairs are separated explicitly in [SUB_ENGINE_RESPONSIBILITIES.md](SUB_ENGINE_RESPONSIBILITIES.md#ownership-collisions).
 6. **Doubt is never dropped.** Doubts, risks and low-confidence markers travel with the artifact at every stage.
 7. **A gap is never filled by inference.** An absent fact stays absent until a human supplies it. No defaults, no conventions, no most-common-value.
-8. **Nothing unapproved is executed.** The only decision that reaches Tally is one the Validation Engine approved.
+8. **Nothing unapproved is executed.** The only decision that reaches an external system is one the Validation Engine approved — and an `Approved With Warning` decision only after the Application Layer releases it.
 9. **Every rejection names its owner.** No finding is returned to the pipeline without naming the stage that must handle it.
 10. **Failure is as loggable as success.** No error, retry or partial outcome is omitted from the audit record.
 11. **IDENTITY ≠ INTELLIGENCE.** **IDs identify objects. They do not influence reasoning.** Document ID, Decision ID, Transaction ID, User ID and any future identifier exist only for identity, traceability, lifecycle tracking and audit history. None may influence ledger selection, journal creation, tax treatment, validation outcome, confidence, or any future decision. *"Because ACC-000123 existed before, choose the same treatment"* — never. See [`DATA_FLOW.md` §9](DATA_FLOW.md#9-identity--intelligence).
-12. **Confidence only decreases.** **Confidence can only decrease downstream unless new evidence is introduced.** Later engines may maintain, reduce or request clarification — never magically increase certainty. The single exemption is new evidence, which is what the Clarification Engine exists to obtain. See [`DATA_FLOW.md` §10](DATA_FLOW.md#10-confidence-across-engines).
+12. **Confidence changes only when evidence changes.** Confidence is **recalculated** whenever evidence changes and may increase, decrease or stay the same given the complete evidence set. It never rises because an engine reasoned harder; corroboration raises it only through added **independent** evidential support. **Execution Confidence sits outside this chain** — it measures transport only and never alters any confidence above it. See [`SYSTEM_INVARIANTS.md` INV-2](SYSTEM_INVARIANTS.md#inv-2--confidence-changes-only-when-evidence-changes) and [`DATA_FLOW.md` §10](DATA_FLOW.md#10-confidence-across-engines).
 13. **Nothing assumes silently.** Every component relying on an assumption records what it assumed and why. An unrecorded assumption becomes a confirmed fact by default, and nothing downstream can tell the difference.
 14. **Artifacts are versioned, never edited.** Every artifact carries an Artifact ID, a Version and its Parent Artifact Version(s). A version is immutable once created — **correction means a new version, never an edit** — and only the owning engine may create one. Superseded versions are never deleted; the version chain is the audit trail. A downstream artifact whose parent version is no longer current is **stale**, and staleness is structural rather than noticed. See [`DATA_FLOW.md` §11](DATA_FLOW.md#11-artifact-versioning).
 14A. **Transaction identity is separate from artifact identity.** One immutable **Transaction ID** per business event, generated once by the Application Layer, referenced by exactly one from every artifact. Engines consume it; they never create or modify it. **Many Document Evidence Objects may contribute to one Business Understanding Object** — extraction is document-centric, understanding is transaction-centric. See [`DATA_FLOW.md` §13](DATA_FLOW.md#13-transaction-identity).
@@ -264,6 +276,7 @@ These bind every engine and every sub-engine.
 14C. **Engine failure is not an artifact.** An engine that cannot complete produces **nothing** — never a partial artifact. Business failures belong to sub-engines; runtime failures belong to the Application Layer, which preserves completed artifacts, records the failure, and allows safe restart from the last completed artifact.
 14D. **A correction is a new Accounting Decision under the same Transaction ID.** Reversing and reposting does not create a different business event. Execution never edits history. See [`DATA_FLOW.md` §15](DATA_FLOW.md#15-correction).
 14E. **Screening is not deciding.** A cheap identity check and a judgement are different problems with different owners: the **Input Engine screens** for duplicate artifacts and produces a *fact*; the **Validation Engine decides** economic duplication and produces a *judgement*. A screening component never rejects and never decides.
+14G. **Execution is transport, not reasoning.** The Execution Engine may translate, communicate, process responses, retry transmissions and record outcomes. It may never choose accounts, change accounting treatment, modify tax decisions, resolve missing information, invent corrections or override Validation. **Duplicate protection is keyed on Accounting Decision ID + Decision Version + Destination System** — never on Transaction ID, which must never block a legitimate execution. Every correction execution records which execution it corrected.
 14F. **Permission to execute is decided before execution.** The Accounting Engine decides correct treatment; the **Validation Engine** decides whether execution is legally permitted — closed periods, statutory locks, authorisation limits. **Execution must never discover that posting was impossible.**
 15. **Evidence carries its origin, permanently.** Every fact records **Source Type** (`Document` · `Human` · `Structured Metadata`), **Source ID**, **Evidence Reference**, **Timestamp**, **Confidence** and **Corroborated**. **No engine may merge these origins into a single anonymous fact**, and **no engine may raise confidence because a human asserted something.** A human note is evidence, not truth: it may never be treated as confirmed fact, never automatically override document evidence, and never be rewritten. Capture confidence measures how faithfully an input was stored — never whether it is true. See [`DATA_FLOW.md` §12](DATA_FLOW.md#12-evidence-provenance).
 16. **Knowledge is shared; authority is not.** The **Knowledge Brain** ([`src/brain/`](../src/brain/)) provides accounting standards, rules, guidance, terminology, references and historical patterns to every engine on identical terms. It is **advisory, never binding** — any engine may ignore it, recording why. It may never return a decision, a recommended treatment, an approval, a ledger, a rate, or an instruction; may never create clarification requests, approve clarification, make accounting decisions, or override engine outputs; and owns no decisions, artifacts, confidence or workflow. **Knowledge flows into engines. Decision authority never leaves engines.**

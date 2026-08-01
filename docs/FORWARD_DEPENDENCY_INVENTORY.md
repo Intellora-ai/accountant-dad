@@ -48,6 +48,8 @@
 
 # Engine 6 — Execution Engine
 
+> **Locked.** [`ENGINE_6_EXECUTION_ENGINE_RULES.md`](ENGINE_6_EXECUTION_ENGINE_RULES.md). Every row below is honoured, added or explicitly revised by that specification.
+
 ## Commitments made by Engines 1–5
 
 | # | Commitment | Made in | Status |
@@ -57,10 +59,13 @@
 | 3 | Execution **cannot supply a missing value** — missing data is an error, not a gap to fill | `SYSTEM_BOUNDARIES` §6 | Honoured |
 | 4 | Execution **cannot correct a rejected voucher and resubmit** | `SYSTEM_BOUNDARIES` §6 | Honoured |
 | 5 | Audit records are **append-only**; failures are as loggable as success | `SYSTEM_BOUNDARIES` §6, INV-13 uncertainty rules | Honoured |
-| 6 | `posting_manager` guarantees **at most one post** per approved decision | Engine 6 sub-engine locks | Honoured — restated as idempotency |
-| 7 | `response_processor` **never reads an ambiguous or absent response as success** | Engine 6 sub-engine locks | Honoured |
-| 8 | `error_handler` classifies and routes; **never retries directly** | Engine 6 sub-engine locks | Honoured |
-| 9 | A correction is a **new Accounting Decision under the same Transaction ID** — execution never edits history | INV-5 | **Added** |
+| 6 | `posting_manager` guarantees **at most one post** per approved decision | `SUB_ENGINE_RESPONSIBILITIES.md` §6.3, `posting_manager/README.md` | Honoured — restated as idempotency on **Decision ID + Version + Destination** |
+| 7 | `response_processor` **never reads an ambiguous or absent response as success** | `SUB_ENGINE_RESPONSIBILITIES.md` §6.4, `response_processor/README.md` | Honoured |
+| 8 | `error_handler` classifies and routes; **never retries directly** | `SUB_ENGINE_RESPONSIBILITIES.md` §6.5, `error_handler/README.md` | **Revised.** Never retries directly — honoured. **Never routes** — the Classified Error names the responsible stage; the Application Layer routes. Engine 6 gains no backward arrow. |
+| 9 | A correction is a **new Accounting Decision under the same Transaction ID** — execution never edits history | INV-5 | **Added** — with explicit execution lineage via `Corrects Execution Result` |
+| 10 | **Execution Confidence** is the sixth confidence layer | INV-2 | **Added** — was absent from both level-2 confidence tables; assembled by the parent, transport only |
+| 11 | Every artifact carries a **Transaction ID** | INV-3 | **Added** — carried by the Execution Result, and **never part of the idempotency key** |
+| 12 | *"An unclassifiable error goes to a human"* | `error_handler/README.md` | **Added** — recorded as unclassifiable with a notification trigger; never suppressed |
 
 ## Conflicts resolved before locking
 
@@ -70,6 +75,14 @@
 | **`tally_connector` name vs role** — now all external systems, not only Tally | Name locked | **Name unchanged, responsibility expanded.** Recorded as a name-and-responsibility case, as with Engine 4's three. Identities are stable; responsibilities are not. |
 | **New responsibilities** — queue, notification, retry ownership | Not previously assigned | Assigned to existing sub-engines: `posting_manager` owns queue and retry coordination; `error_handler` owns notification triggers. **No sub-engine added.** |
 | **Flow diagram** — `audit_logger` shown last, but receives *all* execution events | — | **Both true.** It observes throughout; it is last only in assembly order. |
+| **Three outbound artifacts vs one-artifact-per-arrow** | One artifact per arrow | **`Execution Result` is the single envelope.** `Posting Result`, `Classified Error` and `Audit Reference` become components. Fifth use of the wrap pattern. |
+| **Idempotency key undefined** — and Transaction ID would block every correction | Undefined | **`Accounting Decision ID + Decision Version + Destination System`.** Transaction ID never gates execution. Destination included so one decision may reach two systems independently. |
+| **Retry owned by `posting_manager` and the Application Layer** | Both claimed it | **Split.** Engine 6 reposts a transport-failed voucher; the Application Layer restarts a crashed engine. |
+| **Audit Record `immutable` vs `append-only`** | Both used | **Append-only history, not a versioned artifact.** One per Execution ID, referenced by `Audit Reference`, never carried on an arrow. |
+| **`partial` outcome vs *"engine failure is not an artifact"*** | Both stated | **Different things.** A partial *post* is a business outcome in a complete Execution Result; a partial *artifact* is a runtime failure and produces nothing. |
+| **Engine named *Tally Engine* in 6 docs, *Execution Engine* in 6 others** | Split | **Execution Engine** is the name; `src/engines/tally_engine/` is the locked folder. Name-and-responsibility case, as with `tally_connector`. |
+| **`Approved With Warning` — nobody held the human-attention gate** | Unowned | **Application Layer.** Engine 6 receives nothing until released; it cannot own a workflow gate (INV-4). |
+| **Directional *"confidence only decreases"* in 3 level-2 docs** | Directional | **INV-2 governs** — recalculation, not direction. Same resolution as Engine 5. |
 | **Destination scope** — Zoho, Busy, SAP, QuickBooks, portals, exports, messaging | Tally only | `voucher_translator` is **destination-parametric**, not Tally-shaped. |
 
 ---
@@ -93,6 +106,10 @@
 | `Transaction Story` as artifact name | Superseded by **Business Understanding Object**; survives as its narrative component | Engine 2 lock |
 | `src/brain/` role | Defined as the **Knowledge Brain** | Engine 4 lock |
 | Clarification lifecycle states | `Created/Waiting/Information Received/Obsolete/Closed` → **`Open/Answered/Superseded/Cancelled/Resolved`** | Phase 0 |
+| `Posting Result` as artifact name | Superseded by **Execution Result**; survives as `posting_manager`'s **internal** output and as the `Posting Status` component | Engine 6 lock |
+| Engine 6 outbound artifact count | Three (`Posting Result` + `Classified Error` + `Audit Record`) → **one** `Execution Result` | Engine 6 lock |
+| Engine 6 backward routing | `error_handler` routed → **names the responsible stage; the Application Layer routes** | Engine 6 lock |
+| Sixth confidence layer | Declared in INV-2, missing from both tables → **Execution Confidence** present in all three | Engine 6 lock |
 | `Validation Verdict` as artifact name | Superseded by **Validation Decision**; the old name survives nowhere | Engine 5 lock |
 | Validation statuses | `approve / reject / flag` → **`Approved` · `Approved With Warning` · `Clarification Required` · `Rejected`** | Engine 5 lock |
 | Validation internal flow | `data_validation` gates; the other four validators always run | Engine 5 lock |

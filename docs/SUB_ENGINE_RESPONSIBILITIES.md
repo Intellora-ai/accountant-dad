@@ -613,33 +613,47 @@ A closed accounting period, a statutory lock or an exceeded authorisation limit 
 
 ---
 
-# 6. Tally Engine
+# 6. Execution Engine
+
+> **Specification locked.** Deep authority: [`ENGINE_6_EXECUTION_ENGINE_RULES.md`](ENGINE_6_EXECUTION_ENGINE_RULES.md) · [`COMMUNICATION_RULES_EXECUTION_INTERNAL.md`](COMMUNICATION_RULES_EXECUTION_INTERNAL.md).
+>
+> **Name and folder.** The architectural name is **Execution Engine**; the locked folder is [`src/engines/tally_engine/`](../src/engines/tally_engine/). Identities are part of the system contract and are never renamed — the folder stays. Same case as `tally_connector` below.
+>
+> **Engine 6 transports approved decisions. It cannot create, modify or interpret business meaning.** Reasoning ended at Validation.
+>
+> **It is the only engine that touches the outside world** — Tally, Zoho, Busy, SAP, QuickBooks, portals, APIs, webhooks, email, WhatsApp, notifications, file exports. No earlier engine may.
 
 ## 6.1 `voucher_translator`
 
-**Purpose.** Tally has its own representation, and something must speak it.
+**Purpose.** A destination system has its own representation, and something must speak it.
 
-**Responsibility.** Owns the faithful translation of an approved accounting decision into Tally's voucher representation.
+**Responsibility.** Owns **translation only** — the faithful conversion of an approved Accounting Decision into the destination's voucher representation, with format mapping, field mapping and export structure.
 
-**Input.** The **Approved Accounting Decision**.
+**Input.** Accounting Decision · Validation Decision · Destination System.
 
-**Output.** A Tally voucher payload, together with the mapping from each decision element to each payload element.
+**Output.** The **Translated Voucher**, together with the mapping from each decision element to each payload element.
 
-**Boundary.** Cannot alter the accounting meaning of what it translates. Cannot supply a value the decision left undecided — a missing value is a translation error, not a gap to fill. Cannot choose between two possible representations on accounting grounds.
+**Boundary.** Can map fields, convert formats, generate the destination-specific voucher, verify required destination fields exist. Cannot change accounting treatment · ledger selection · journal entries · tax treatment · **the accounting meaning of what it translates**. Cannot supply a value the decision left undecided — a missing value is a translation error, not a gap to fill. Cannot choose between two representations on accounting grounds.
+
+**Failure Behaviour.** Stop execution · preserve the Accounting Decision · report translation failure · **never invent missing values**.
 
 ---
 
 ## 6.2 `tally_connector`
 
+> **Locked folder name retained. Architecturally the destination connector** — its responsibility covers all external accounting systems, not Tally alone. **Identities are stable; responsibilities are not.**
+
 **Purpose.** The connection to an external system is its own concern, with its own failures.
 
-**Responsibility.** Owns the connection to Tally — transport, session, company selection, and availability.
+**Responsibility.** Owns **connection, transmission and acknowledgement** — external connections, authentication, API communication, connector sessions, and connection state.
 
-**Input.** Connection configuration, and payloads to be transmitted.
+**Input.** The Translated Voucher, and connection configuration.
 
-**Output.** A working channel, connection state, and transport-level results.
+**Output.** The **Connection Result** — a working channel, connection state, and transport-level results.
 
-**Boundary.** Cannot inspect, interpret or modify a payload passing through it. Cannot decide whether to retry. Cannot judge whether a Tally response means success — that is `response_processor`.
+**Boundary.** Can connect, authenticate, send, receive, disconnect safely. Cannot inspect, interpret or modify a payload passing through it · change accounting · **retry endlessly** · skip authentication · ignore connection failures · **reason**. Cannot judge whether a response means success — that is `response_processor`.
+
+**Failure Behaviour.** Report failure · hand control to `error_handler` · **preserve execution state**.
 
 ---
 
@@ -647,27 +661,39 @@ A closed accounting period, a statutory lock or an exceeded authorisation limit 
 
 **Purpose.** Posting the same entry twice is worse than not posting it at all.
 
-**Responsibility.** Owns the act of posting — ordering, the single-post guarantee, idempotency, and retry policy.
+**Responsibility.** Owns **idempotency, execution lifecycle, and retry of transport failures** — plus posting control, ordering and queue coordination.
 
-**Input.** Tally voucher payloads and the connection state.
+**The idempotency key.**
 
-**Output.** Post attempts and their outcomes, with the guarantee that each approved decision is posted at most once.
+```text
+Idempotency Key = Accounting Decision ID + Decision Version + Destination System
+```
 
-**Boundary.** Cannot change payload content. Cannot decide *whether* posting should happen — the Validation Engine decided that. Cannot retry a failure it has not been told is retryable by `error_handler`.
+**Decision Version** determines *what* is executed — so a correction, being a new version, posts, while a retry of the same version never does. **Destination System** determines *where* — so one approved decision may legitimately reach two destinations, each independently protected. **Transaction ID is never part of the key**: it represents the complete business event and must never block a legitimate execution.
+
+**Input.** Connection Result · Translated Voucher.
+
+**Output.** The **Posting Result** — post attempts and their outcomes, with the guarantee that each approved decision version reaches each destination at most once. *Internal to Engine 6; it becomes the Posting Status component of the Execution Result and never crosses an engine boundary.*
+
+**Boundary.** Can execute posting, retry per policy, queue, resume, prevent duplicate execution. Cannot post duplicates · change payload content · change accounting decisions · ignore retry policy · bypass Validation · decide *whether* posting should happen — Validation decided that. **Cannot restart crashed workflows** — that is the Application Layer. Reposting a transport-failed voucher is Engine 6; restarting a crashed engine is not.
+
+**Failure Behaviour.** Retry automatically; if retries fail, **queue safely and notify the user**. **Never lose the validated transaction. Never execute twice accidentally.**
 
 ---
 
 ## 6.4 `response_processor`
 
-**Purpose.** "Tally replied" and "the entry is in the books" are not the same statement.
+**Purpose.** *"The system replied"* and *"the entry is in the books"* are not the same statement.
 
-**Responsibility.** Owns interpretation of what Tally returned into one definite outcome — posted, rejected, or partial — with the identifiers Tally assigned.
+**Responsibility.** Owns **success/failure interpretation** — turning what the destination returned into one definite outcome (posted, rejected, or partial), with the identifiers it assigned.
 
-**Input.** Tally's raw responses and the corresponding post attempts.
+**Input.** The External Response, and the corresponding post attempts.
 
-**Output.** The **Posting Result**: outcome, Tally identifiers, and the raw response it was derived from.
+**Output.** The **Processed Execution Result** — outcome, external transaction identifiers, and the raw response it was derived from.
 
-**Boundary.** Cannot retry or resubmit. Cannot interpret an ambiguous or absent response as success. Cannot classify or route a failure — that is `error_handler`.
+**Boundary.** Can interpret response codes, extract transaction IDs, record posting status, detect successful execution. Cannot rewrite responses · ignore failures · retry or resubmit · modify accounting decisions · **increase accounting confidence** · change business decisions. Cannot classify or route a failure — that is `error_handler`.
+
+**Failure Behaviour.** **Unknown responses remain visible. Never assume success. Never invent external IDs.** An ambiguous or absent response is never read as success.
 
 ---
 
@@ -675,13 +701,17 @@ A closed accounting period, a statutory lock or an exceeded authorisation limit 
 
 **Purpose.** A failed post has a cause, and the cause determines who must fix it.
 
-**Responsibility.** Owns classification of failures — transport, Tally rejection, data defect, or translation defect — and routing each to the stage that must handle it.
+**Responsibility.** Owns **error category, severity, and responsible stage identification** — transport, destination rejection, data defect or translation defect — plus retry decisions, queue decisions and user notification triggers.
 
-**Input.** Posting Results indicating failure, transport-level errors, and translation errors.
+**It names; it does not route.** The **Classified Error** carries the responsible stage as a *field* and becomes a component of the Execution Result. The **Application Layer** reads it and routes, because workflow is its property. **Engine 6 therefore has no backward arrow** — [`DATA_FLOW.md` §5](DATA_FLOW.md#5-flow-rules) rule 1 holds through the last engine in the pipeline.
 
-**Output.** A **Classified Error**: category, cause, whether a retry is permissible, and the stage that must act.
+**Input.** Failed Execution · Failed Connection · Failed Posting · Failed Response.
 
-**Boundary.** Cannot correct data or re-decide anything. Cannot retry directly — it tells `posting_manager` whether retry is permissible. Cannot route a failure to a stage that could not have caused it. Cannot suppress an error it cannot classify.
+**Output.** The **Error Resolution Result**, containing the **Classified Error**: category, cause, severity, whether retry is permissible, and the responsible stage.
+
+**Boundary.** Can classify, retry, queue, notify, stop execution safely. Cannot ignore or **hide failures** · delete failed executions · correct data · re-decide anything · modify accounting · override Validation · **route work to another engine**. Cannot suppress an error it cannot classify — an unclassifiable error is recorded *as unclassifiable*, with a notification trigger.
+
+**Failure Behaviour.** **Every failure remains permanently visible. Execution never silently disappears. Users always receive execution status.**
 
 ---
 
@@ -689,13 +719,42 @@ A closed accounting period, a statutory lock or an exceeded authorisation limit 
 
 **Purpose.** The books must be defensible, which means the trail must be complete.
 
-**Responsibility.** Owns the immutable record of every posting attempt — what was sent, when, on which decision's authority, and what came back.
+**Responsibility.** Owns **audit linkage** — the append-only record of every execution event: execution history, retry history, queue history, notification history and external response history.
 
-**Input.** Voucher payloads, post attempts, Posting Results, and Classified Errors.
+**Input.** **All execution events.** It observes throughout the chain; it is last only in *assembly* order.
 
-**Output.** The **Audit Record**: permanent, append-only, and linked to the decision that authorised it.
+**Output.** The **Audit Record** — permanent, **append-only history rather than a versioned artifact**. One per Execution ID, reached through the Execution Result's `Audit Reference` and never crossing an arrow itself.
 
-**Boundary.** Cannot alter or delete a record once written. Cannot omit failures, retries or partial outcomes. Cannot summarise away detail that would be needed to reconstruct what happened.
+**Boundary.** Can record events, retries, failures, notifications, timestamps, destination systems, operator actions. Cannot delete or **rewrite history** · alter a record once written · omit failures, retries or partial outcomes · modify previous audit records · summarise away detail needed to reconstruct what happened.
+
+**Failure Behaviour.** If logging cannot complete: **execution status remains visible · failure is reported immediately · no audit record may be silently lost.**
+
+---
+
+## The Execution Result
+
+Engine 6 publishes exactly one artifact, assembled by the **parent Execution Engine** — the only engine where the parent creates the outbound artifact, because its assembly draws on every stage and no single sub-engine sees the whole chain.
+
+```text
+Execution Result
+├── Execution ID · Execution Attempt ID     identity only
+├── Transaction ID                          lifecycle grouping only
+├── Accounting Decision ID · Decision Version · Validation Decision ID
+├── Destination System
+├── Corrects Execution Result               lineage; empty unless a correction
+├── Posting Status                          from posting_manager
+├── External Transaction ID(s)
+├── Retry Count · Queue Status · Notification Status
+├── Classified Error                        from error_handler
+├── Audit Reference                         points at the append-only Audit Record
+├── Execution Outcome
+├── Execution Confidence                    transport success only
+└── Execution Timestamp
+```
+
+**Execution Attempt ID** exists because one decision version may be attempted many times — *destination unavailable*, then *posted*. It tracks attempts and **is not a business identity**.
+
+**Corrects Execution Result** answers *"which execution corrected which previous execution?"* structurally. **No existing Execution Result is ever edited.**
 
 ---
 
@@ -720,12 +779,14 @@ Confidence is measured at every stage. Each level answers about its own engine's
 | **Understanding confidence** | Understanding Engine | Confidence Assessment, within the Business Understanding Object | Does the evidence support this interpretation? |
 | **Decision confidence** | Accounting Engine | Decision confidence, within the Accounting Decision | Is the accounting treatment likely correct? |
 | **Clarification confidence** | Clarification Engine | Clarification Confidence, within the Clarification Request | Has every decision-blocking uncertainty been found? |
-| **Validation confidence** | Validation Engine | *declared; specified with Engine 5* | Is this safe to approve? |
+| **Validation confidence** | Validation Engine | Validation Confidence, within the Validation Decision | Is execution safe and permitted? |
+| **Execution confidence** | Execution Engine | Execution Confidence, within the Execution Result | Did execution succeed? **Transport only — never accounting correctness.** |
 
 Two rules bind them:
 
 - **`Understanding Confidence ≤ Evidence Reliability`** — the arithmetic bound locked with Engine 2.
-- **Confidence can only decrease downstream unless new evidence is introduced.** Later engines may maintain, reduce or request clarification — never raise. The single exemption is new evidence, which is what the Clarification Engine exists to obtain.
+- **Confidence is recalculated whenever evidence changes** — [`SYSTEM_INVARIANTS.md` INV-2](SYSTEM_INVARIANTS.md#inv-2--confidence-changes-only-when-evidence-changes). It may increase, decrease or stay the same given the complete evidence set. It never rises because an engine reasoned harder; corroboration raises it only through added **independent** evidential support. New evidence is what the Clarification Engine exists to obtain.
+- **Execution Confidence sits outside the chain.** It measures transport, never accounting, and never alters any confidence above it.
 
 ## Two risk artifacts
 

@@ -687,9 +687,9 @@ Each engine measures confidence about its own responsibility:
 
 **A later confidence cannot ignore earlier uncertainty. Confidence must have traceability.**
 
-## Confidence can only decrease downstream
+## Confidence changes only when evidence changes
 
-> **Confidence can only decrease downstream unless new evidence is introduced.**
+> **Confidence is recalculated only when evidence changes** — [`SYSTEM_INVARIANTS.md` INV-2](SYSTEM_INVARIANTS.md#inv-2--confidence-changes-only-when-evidence-changes). It may increase, decrease or stay the same given the complete evidence set, and never rises because an engine reasoned harder.
 
 ```text
 Evidence Confidence  →  Understanding Confidence  →  Decision Confidence  →  Validation Confidence

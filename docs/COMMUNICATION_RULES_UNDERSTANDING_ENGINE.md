@@ -21,7 +21,7 @@ Business Understanding Object
 Accounting Engine
 ```
 
-The Understanding Engine's sole outbound artifact is the Business Understanding Object, and its sole recipient is the Accounting Engine. It does not communicate with the Clarification, Validation or Tally Engines, and it does not communicate with the user.
+The Understanding Engine's sole outbound artifact is the Business Understanding Object, and its sole recipient is the Accounting Engine. It does not communicate with the Clarification, Validation or Execution Engines, and it does not communicate with the user.
 
 Communication *inside* Engine 2 is governed separately by [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md).
 
@@ -40,7 +40,7 @@ All nine items, per [`DATA_FLOW.md` §8](DATA_FLOW.md#8-boundary-contract-requir
 | 5 | **Allowed transformation** | The Accounting Engine may **read**, **analyze** and **reference** it — it may interpret the business story and apply accounting reasoning — and produce its own artifact, the Accounting Decision. |
 | 6 | **Forbidden transformation** | It may **not** change the story, remove unknowns, edit evidence, modify, rewrite, delete, remove uncertainty from, or change confidence in the Business Understanding Object. Artifacts are immutable after creation. |
 | 7 | **Decision authority** | Understanding decides business event interpretation, entity relationships and the business story. Accounting decides accounting treatment, ledger mapping, debit/credit structure, journal design and tax interpretation. Neither may make the other's decision. |
-| 8 | **Uncertainty movement** | The Transaction Story, Supporting Understanding Data, **Identified Unknowns** and **Confidence Assessment** all cross intact. Decision confidence may never exceed what the understanding supports — confidence can only decrease downstream unless new evidence is introduced. Uncertainty is only ever described more precisely, never removed. |
+| 8 | **Uncertainty movement** | The Transaction Story, Supporting Understanding Data, **Identified Unknowns** and **Confidence Assessment** all cross intact. Decision confidence may never exceed what the understanding supports. **Confidence is recalculated only when evidence changes** ([INV-2](SYSTEM_INVARIANTS.md#inv-2--confidence-changes-only-when-evidence-changes)) — never because an engine reasoned harder. Uncertainty is only ever described more precisely, never removed. |
 | 9 | **Failure movement** | The Understanding Engine does not halt the pipeline. Gaps, conflicts and low confidence cross the boundary **as named unknowns and preserved conflicts**, not as errors. A Validation finding that a business fact is wrong or contradictory returns to **Understanding**; one a human could resolve returns to **Clarification** ([`DATA_FLOW.md` §4.4](DATA_FLOW.md#44-validation-returns-work-it-never-passes-it-on)). |
 
 ## Sender ownership · receiver responsibility

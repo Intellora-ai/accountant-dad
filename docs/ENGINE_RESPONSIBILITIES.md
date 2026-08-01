@@ -264,33 +264,62 @@ Boundary contracts: [`COMMUNICATION_RULES_ACCOUNTING_ENGINE.md`](COMMUNICATION_R
 
 ---
 
-## 6. Tally Engine
+## 6. Execution Engine
+
+> **Specification locked.** Deep authority: [`ENGINE_6_EXECUTION_ENGINE_RULES.md`](ENGINE_6_EXECUTION_ENGINE_RULES.md).
+>
+> **Name and folder.** The architectural name is **Execution Engine**; the locked folder is [`src/engines/tally_engine/`](../src/engines/tally_engine/). Identities are never renamed once referenced — the folder stays.
 
 ### Mission
-Execute the approved decision against Tally and record the truth of what happened.
+Safely execute validated accounting decisions in the outside world, and record the truth of what happened.
+
+> **How do we safely execute an already validated accounting decision in the outside world?**
+
+**It never decides whether execution should happen.** That belongs exclusively to Validation. Execution is irreversible, so the engine is built around determinism, duplicate prevention, retry safety and complete auditability.
 
 ### Owns
-- Translation of an approved decision into Tally's voucher representation.
-- The connection to Tally, and its state.
-- The act of posting: ordering, single-post guarantee, retry policy.
-- Interpretation of Tally's response into a definite outcome.
-- Classification of failures and routing them to the stage that must handle them.
-- The immutable record of what was sent, when, on whose decision, and what came back.
+- Translation of an approved decision into the destination's voucher representation.
+- The connection to external systems, and its state.
+- The act of posting: ordering, **idempotency**, the single-post guarantee, retry of transport failures, queue coordination.
+- Interpretation of the destination's response into a definite outcome.
+- Classification of failures, their severity, and **naming the responsible stage**.
+- The append-only record of what was sent, when, on whose decision, and what came back.
+- Execution notifications · execution status · **Execution Result generation**.
 
 Sub-engines: `voucher_translator` · `tally_connector` · `posting_manager` · `response_processor` · `error_handler` · `audit_logger`
 
+**The only engine that touches the outside world.** Tally, Zoho, Busy, SAP, QuickBooks, portals, APIs, webhooks, email, WhatsApp, notifications, file exports. **No earlier engine may communicate with an external system.**
+
 ### Inputs
-- **Approved Accounting Decision** — and nothing that has not been approved.
+- **Validation Decision** — `Approved` only, and released. Nothing else reaches this engine.
+- **Accounting Decision** — what is executed.
+- **Reference only:** Document Evidence Object · Business Understanding Object · Clarification Request · Validation artifacts.
+
+Boundary contract: [`COMMUNICATION_RULES_VALIDATION_ENGINE.md`](COMMUNICATION_RULES_VALIDATION_ENGINE.md).
+
+An `Approved With Warning` decision reaches Engine 6 **only after the Application Layer releases it** — Engine 6 cannot hold a workflow gate.
 
 ### Outputs
-- **Posting Result** — posted, rejected or partial, with Tally's identifiers.
-- **Classified Error** — where posting failed, its category and the stage that must act.
-- **Audit Record** — the permanent, immutable account of the attempt and its outcome.
+- **Execution Result** — the single canonical artifact. Execution ID · Execution Attempt ID · Transaction ID · Accounting Decision ID · Decision Version · Validation Decision ID · Destination System · Corrects Execution Result · Posting Status · External Transaction ID(s) · Retry Count · Queue Status · Notification Status · Classified Error · Audit Reference · Execution Outcome · Execution Confidence · Execution Timestamp.
+
+`Posting Result`, `Classified Error` and `Audit Reference` are **components**, never artifacts in their own right. The **Audit Record** is append-only history, referenced rather than carried.
 
 ### Cannot Do
 - Cannot reason, interpret or make any judgement about the transaction.
-- Cannot alter the accounting meaning of what it was given.
+- Cannot alter the accounting meaning of what it was given, or change ledgers, journal entries or tax treatment.
 - Cannot supply a value that is missing — missing data is an error, not a gap to fill.
-- Cannot decide whether posting should happen; that was decided by the Validation Engine.
-- Cannot correct a rejected voucher and resubmit it.
+- Cannot decide whether posting should happen; Validation decided that.
+- Cannot correct a rejected voucher and resubmit it, or invent a correction.
+- Cannot modify any upstream artifact, or override a Validation Decision.
+- Cannot create duplicate postings, invent an external response, or suppress a failure.
 - Cannot alter, delete or omit an audit record, including records of failure.
+- Cannot route work backwards — it names the responsible stage; the Application Layer routes.
+
+> **The Execution Engine transports approved decisions. It cannot create, modify or interpret business meaning.**
+>
+> **A posting failure must never cause the system to silently change the accounting decision.**
+
+**Failure behaviour:** report exactly what failed, why, where, the current execution status and the recommended next action. **Never guess. Never hide failure. Never change the accounting decision.**
+
+### Execution Confidence
+The sixth confidence layer, assembled by the parent from connection, posting, acknowledgement, response processing, audit logging and notification status. **It measures transport only.** It never changes accounting or Validation confidence, and **a failed execution can never be high**.

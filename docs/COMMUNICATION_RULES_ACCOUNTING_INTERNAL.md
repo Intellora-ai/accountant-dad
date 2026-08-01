@@ -114,7 +114,7 @@ A sub-engine that believes a sibling's Result is wrong does not correct it. It r
 
 Every Result carries confidence. No Result may omit it, and no Result may raise it.
 
-> **Confidence can only decrease downstream unless new evidence is introduced.**
+> **Confidence is recalculated only when evidence changes** — [`SYSTEM_INVARIANTS.md` INV-2](SYSTEM_INVARIANTS.md#inv-2--confidence-changes-only-when-evidence-changes). Never because a sub-engine reasoned harder.
 
 A sub-engine consuming a sibling's Result inherits that Result's uncertainty. It cannot become more certain than what it consumed. **High confidence cannot exist when critical information is uncertain.**
 
