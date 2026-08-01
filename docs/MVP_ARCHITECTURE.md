@@ -130,22 +130,28 @@ Per-sub-engine detail: [SUB_ENGINE_RESPONSIBILITIES.md](SUB_ENGINE_RESPONSIBILIT
              │  Business Understanding Object
              ▼
    ┌───────────────────┐
-   │  3. ACCOUNTING    │◄──────────────┐  decides treatment,
-   └───────────────────┘               │  and declares its doubts
-             │  Accounting Decision    │
-             │  (+ doubts, + risk)     │  Resolved Facts
-             ▼                         │
-      doubts material?                 │
-             │                         │
-        yes  ├─────────────────────────┤
-             │                ┌───────────────────┐
-             │                │ 4. CLARIFICATION  │  asks the human
-             │                └───────────────────┘
-         no  │
-             ▼
+   │  3. ACCOUNTING    │  decides treatment, declares
+   └───────────────────┘  its assumptions, risks, doubts
+             │  Accounting Decision
+             ├───────────────────────────┐
+             ▼                           │
+   ┌───────────────────┐                 │
+   │  4. CLARIFICATION │  detects what   │
+   └───────────────────┘  blocks it      │
+             │  Clarification Request    │
+             │                           │
+             ├──► external actor         │
+             │    (UI / API / human)     │
+             │         │                 │
+             │  Clarification Answer     │
+             │         ▼                 │
+             │  Engine 1/2/3 rebuild     │
+             │  → new artifact version   │
+             │                           │
+             ▼                           ▼
    ┌───────────────────┐
-   │  5. VALIDATION    │  judges the decision
-   └───────────────────┘
+   │  5. VALIDATION    │  judges the decision —
+   └───────────────────┘  receives BOTH artifacts
              │
       approve├──────────────► Approved Decision ──► ┌──────────────┐
              │                                      │  6. TALLY    │  posts it
@@ -160,8 +166,8 @@ Per-sub-engine detail: [SUB_ENGINE_RESPONSIBILITIES.md](SUB_ENGINE_RESPONSIBILIT
 1. A raw artifact enters — a photo, a scan, a PDF, a handwritten note. The **Input Engine** makes it readable, extracts it, structures it, and scores how much of that extraction can be trusted, emitting one **Document Evidence Object**.
 2. The **Understanding Engine** converts that evidence into a **Business Understanding Object** — the parties, the goods, the money, the dates, the context, assembled into one narrative with no accounting vocabulary in it, alongside every gap it found and every conflict it refused to resolve.
 3. The **Accounting Engine** converts that understanding, together with company context, into an **Accounting Decision**: the ledgers, the double entry, the tax treatment and the accounting period — together with the assumptions it rested on, the risks it carries, the doubts it could not resolve, and a status saying plainly whether it is complete.
-4. If those doubts are material, the **Clarification Engine** turns them into human questions, interprets the answers, and returns the resolved facts so the decision is remade under the Accounting Engine's authority. It also decides when to stop asking.
-5. The **Validation Engine** independently judges the decision — accounting correctness, tax compliance, data soundness, duplication, posting risk — and returns one verdict: approve, reject, or flag.
+4. The **Clarification Engine** detects what would prevent that decision being completed safely — what is missing, what is uncertain, what contradicts what — and emits a **Clarification Request** saying what is required, why it matters and how urgent it is. It resolves nothing and asks no one: a later system layer delivers the request, and any answer re-enters at Engine 1, 2 or 3, which emits a **new artifact version**.
+5. The **Validation Engine** independently judges the decision — accounting correctness, tax compliance, data soundness, duplication, posting risk — reading both the Accounting Decision and the Clarification Request, and returns one verdict: approve, reject, or flag.
 6. Only an approved decision reaches the **Tally Engine**, which translates it to a voucher, posts it exactly once, reads what Tally actually said, classifies any failure, and writes an immutable audit record.
 
 Artifact-by-artifact detail, including the conditional paths and the return rule: [DATA_FLOW.md](DATA_FLOW.md).

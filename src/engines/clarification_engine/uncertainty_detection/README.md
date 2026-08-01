@@ -1,30 +1,40 @@
 # uncertainty_detection
 
-> Sub-engine of the **Clarification Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md).
+> Sub-engine of the **Clarification Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md). Deep spec: [`docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](../../../../docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md#102-uncertainty_detection).
 >
 > **Phase 1 placeholder — no implementation.**
 
 ## Purpose
 
-Not every uncertainty is worth a human's attention; asking about all of them is as bad as asking about none.
+Determine whether available information is reliable enough for downstream execution.
 
 ## Responsibility
 
-Owns the judgement of which uncertainties *across the whole case* — extraction confidence, story gaps, accounting doubts — are material enough to block posting, and their relative priority.
+Owns **uncertainty evaluation** — measuring and classifying uncertainty, and stating its impact on confidence.
+
+## Name and responsibility
+
+Detection is the act; analysis is its output. The Phase 1 name describes what it does, the artifact name what it produces — the same faculty named from opposite ends.
 
 ## Input
 
-The case understanding, the accounting doubts, the Identified Unknowns in the Business Understanding Object, and the Confidence Report within the Document Evidence Object.
+**Missing Information Result** and the **Accounting Decision**.
 
 ## Output
 
-Ranked material uncertainties, each with the reason it blocks posting.
+**Uncertainty Analysis Result** — uncertainty sources · uncertainty severity · confidence impact · affected decisions · supporting reasoning.
 
 ## Boundary
 
-Cannot resolve an uncertainty. Cannot raise an uncertainty that has no evidence upstream. Cannot detect *accounting* ambiguity itself — it consumes what [`doubt_detection`](../../accounting_engine/doubt_detection/) produced and judges materiality.
+**Can:** measure uncertainty · classify uncertainty · preserve supporting evidence.
+
+**Cannot:** increase confidence without evidence · remove uncertainty · modify accounting reasoning.
+
+## Failure Behaviour
+
+**Unknown uncertainty remains visible. Never convert uncertainty into certainty.** Uncertainty that cannot be classified is recorded as unclassified, not dropped.
 
 ## Future Notes
 
-- **Adjacent-ownership warning.** `doubt_detection` produces doubt from accounting reasoning; this component triages uncertainty from all three upstream sources. See [Ownership Collisions](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md#ownership-collisions).
-- This is the gate for the whole engine: an empty ranked list means clarification is skipped entirely.
+- Severity is what makes the next three steps possible: a conflict between two low-confidence readings is not the same finding as one between two reliable ones.
+- It measures uncertainty in the **decision**, not in the extraction. Extraction confidence belongs to Engine 1's `confidence`.

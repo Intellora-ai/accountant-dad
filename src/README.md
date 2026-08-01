@@ -7,7 +7,7 @@
 | Directory | Contains |
 |---|---|
 | [`engines/`](engines/) | The six engines and their 39 sub-engines. The system itself. |
-| [`brain/`](brain/) | *Reserved — role not yet defined.* |
+| [`brain/`](brain/) | **The Knowledge Brain** — the system-wide knowledge provider. Advisory, never binding; owns no decisions, artifacts, confidence or workflow. |
 | [`rules/`](rules/) | *Reserved* — declarative accounting and tax rule content. |
 | [`models/`](models/) | *Reserved* — internal representations of domain concepts. |
 | [`schemas/`](schemas/) | *Reserved* — the shape of the artifacts passed between engines. |

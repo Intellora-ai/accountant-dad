@@ -32,11 +32,9 @@ Every arrow carries exactly one named artifact. An engine may only consume the a
 | 1 | **Input** → **Understanding** | **Document Evidence Object** | Document ID · source references · the **Structured Document** (extracted text, detected fields, document structure, tables, field values, field locations) · the **Confidence Report** (confidence scores, uncertainty markers, reliability information, risky fields). |
 | 2 | **Understanding** → **Accounting** | **Business Understanding Object** | The **Transaction Story** (the assembled narrative) · **Supporting Understanding Data** (the six sub-engine Results) · **Identified Unknowns** · **Confidence Assessment**. What happened, in business terms only. Every fact traced to its evidence; every gap named; every conflict preserved. No accounting vocabulary. |
 | 3 | **Accounting** → **Clarification** *or* **Validation** | **Accounting Decision** | Decision ID · **Decision Status** · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts. |
-| 4a | **Clarification** → *human* | **Question Set** | The minimal set of questions, what each resolves, and the form of answer expected. |
-| 4b | *human* → **Clarification** | **Answers** | The human's replies, as given. |
-| 4c | **Clarification** → **Accounting** | **Resolved Facts** | The answers as structured facts, attributed to the question each answers. |
-| 4d | **Accounting** → **Validation** | **Updated Accounting Decision** | The decision remade under the Accounting Engine's authority, with a record of what changed and which answer caused it. |
-| 4e | **Clarification** → *pipeline* | **Clarification Outcome** | Whether questioning is complete, why, and any uncertainty left unresolved. |
+| 4 | **Clarification** → **Validation** | **Clarification Request** | Clarification ID · Related Decision ID · **Related Artifact Version** · missing information · detected conflicts · required clarification · reason it is required · affected decision · priority · supporting evidence references · Clarification Confidence · status. |
+| 4x | **Clarification** → *external actor* | *(the same Clarification Request)* | Delivered by a later system layer to a user, accountant or external system. **Engine 4 never asks anyone directly.** |
+| 4y | *external actor* → **Input / Understanding / Accounting** | **Clarification Answer** | New information re-entering through the normal pipeline. It never returns to Engine 4; the responsible upstream engine emits a **new artifact version**. |
 | 5 | **Validation** → **Tally** *or* back | **Validation Verdict** | Approve, reject, or flag — with every finding that drove it and, for a rejection, the stage responsible. |
 | 6 | **Validation** → **Tally** | **Approved Accounting Decision** | The decision, and the verdict approving it. Nothing unapproved crosses this arrow. |
 | 7 | **Tally** → *external* | **Posting Result** + **Audit Record** | Posted, rejected or partial, with Tally's identifiers; and the permanent, append-only record of the attempt. |
@@ -111,6 +109,35 @@ Accounting Decision
 
 Full contract: [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md` §5](ENGINE_3_ACCOUNTING_ENGINE_RULES.md#5-output-contract).
 
+### 2.4 Clarification Request
+
+The Clarification Engine's output. It states what prevents a decision from being safely completed — and never resolves it.
+
+```text
+Clarification Request
+├── Clarification ID                 identity only — see IDENTITY ≠ INTELLIGENCE (§9)
+├── Related Decision ID
+├── Related Artifact Version         the exact decision version this was raised against
+├── Missing Information
+├── Detected Conflicts
+├── Required Clarification
+├── Reason Clarification Is Required
+├── Affected Decision
+├── Priority                         Critical | High | Medium | Low
+├── Supporting Evidence References
+├── Clarification Confidence
+└── Status                           Created | Waiting for Information |
+                                     Information Received | Obsolete | Closed
+```
+
+**Related Artifact Version** is the universal versioning rule (§11) applied at this boundary. A request raised against decision `v3` is **Obsolete** the moment `v4` exists — it must never be answered against a decision that has since been rebuilt.
+
+**Creator and owner differ here.** `question_generator` **creates** the artifact; the **Clarification Engine owns** it, along with Clarification Status and Clarification History.
+
+**Validation receives two artifacts** — the Accounting Decision (primary, from the Accounting Engine) and the Clarification Request (supplementary, from the Clarification Engine). Validation cannot validate a Clarification Request alone.
+
+Full contract: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md` §5](ENGINE_4_CLARIFICATION_ENGINE_RULES.md#5-output-contract).
+
 ---
 
 ## 3. The Flow in Full
@@ -133,34 +160,37 @@ Full contract: [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md` §5](ENGINE_3_ACCOUNTING_E
                  Business Understanding Object
                                │
                                ▼
-                ┌──────────────────────────┐
-        ┌──────►│   ACCOUNTING ENGINE      │
-        │       └──────────────────────────┘
-        │                      │
-        │          Accounting Decision (+ doubts, + risk)
-        │                      │
-        │                      ▼
-        │            ╔═══════════════════╗
-        │            ║ material doubts?  ║
-        │            ╚═══════════════════╝
-        │               │             │
-        │           yes │             │ no
-        │               ▼             │
-        │    ┌────────────────────┐   │
-        │    │  CLARIFICATION     │   │
-        │    │                    │   │
-        │    │   ──► human        │   │
-        │    │   ◄── answers      │   │
-        │    └────────────────────┘   │
-        │               │             │
-        └───────────────┘             │
-           Resolved Facts             │
-       (decision is remade)           │
-                                      │
-                                      ▼
+                    ┌──────────────────────────┐
+                    │   ACCOUNTING ENGINE      │
+                    └──────────────────────────┘
+                               │
+                   Accounting Decision (+ assumptions,
+                               │          + risks, + doubts)
+                    ┌──────────┴───────────┐
+                    ▼                      │
+          ┌────────────────────┐           │
+          │  CLARIFICATION     │           │
+          └────────────────────┘           │
+                    │                      │
+          Clarification Request            │
+                    │                      │
+                    ├──► external actor    │
+                    │    (UI / API / human)│
+                    │         │            │
+                    │  Clarification Answer│
+                    │         │            │
+                    │         ▼            │
+                    │  Engine 1 / 2 / 3    │
+                    │  rebuild → new       │
+                    │  artifact version    │
+                    │                      │
+                    ▼                      ▼
                          ┌────────────────────┐
                          │ VALIDATION ENGINE  │
                          └────────────────────┘
+                          receives BOTH the
+                          Accounting Decision
+                          and the Clarification Request
                                       │
                      ┌────────────────┴────────────────┐
                      │                                 │
@@ -184,21 +214,41 @@ Full contract: [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md` §5](ENGINE_3_ACCOUNTING_E
 
 ### 4.1 Clarification is conditional
 
-Clarification runs **only when the Clarification Engine's `uncertainty_detection` judges an uncertainty material enough to block posting.** When it does not, the Accounting Decision goes directly to Validation.
+Clarification runs **only when `stop_decision` judges clarification necessary.** Not every uncertainty deserves a request: some has no effect on accounting treatment, some changes the entire decision. When no clarification is required, no Clarification Request is created and the Accounting Decision goes to Validation alone.
 
-The condition is not "the Accounting Engine raised a doubt." The Accounting Engine's `doubt_detection` produces doubt; whether that doubt is *material* is judged separately and later. A decision may carry recorded doubts and still proceed, provided none of them blocks posting — and the doubts travel with it either way.
+The condition is not "the Accounting Engine raised a doubt." `doubt_detection` produces doubt; whether that doubt *blocks* is judged separately and later. A decision may carry recorded doubts and still proceed — and the doubts travel with it either way.
 
-### 4.2 Clarification loops, then terminates
+**If necessity cannot be determined safely, the default is Clarification Required.** An unnecessary question costs time; a missed one costs correctness.
 
-Within Clarification, question → answer → update may repeat. The loop is ended by `stop_decision`, which concludes on one of three grounds: clarity is now sufficient; further questions would not change the decision; or the human cannot supply what is needed.
+### 4.2 The clarification loop runs outside Engine 4
 
-`stop_decision` never concludes that the decision is *correct*. It concludes only that **questioning is complete.** Any uncertainty still unresolved at that point is carried forward openly in the Clarification Outcome, not suppressed.
+Engine 4 is **emit-only**. It never asks users and never receives answers as a decision engine.
 
-### 4.3 A clarified decision is remade, not edited
+```text
+Accounting Decision
+        ↓
+Clarification Request
+        ↓
+External actor  (UI / API / human)          ← outside every engine
+        ↓
+Clarification Answer
+        ↓
+Engine 1 / 2 / 3 rebuilds the affected artifact
+        ↓
+New Accounting Decision
+        ↓
+Engine 4 runs again if needed
+```
 
-When answers arrive, `decision_updater` does not patch the decision. It returns **Resolved Facts** to the Accounting Engine, which remakes the decision under its own rules. The record of what changed, and which answer caused it, travels with the Updated Accounting Decision.
+New information enters through the **normal pipeline**. This preserves artifact ownership — the engine that owns an artifact is the only one that ever rewrites it — and it means no backward mutation exists anywhere in the system.
 
-This is why the arrow from Clarification points **back to Accounting**, not forward to Validation.
+### 4.3 Clarification tracks status; it never resolves
+
+`decision_updater` owns the Clarification Status lifecycle: **Created → Waiting for Information → Information Received → Closed**, with **Obsolete** reachable from any state. Both `Closed` and `Obsolete` are terminal.
+
+Engine 4 owns **every transition** but no **resolution**. A request is closed only when a new artifact version no longer carries the uncertainty that caused it; it becomes obsolete when a newer version supersedes the one it was raised against. **Obsolete ≠ Closed** — collapsing the two would hide that a question went unanswered.
+
+Full state machine: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md` §7](ENGINE_4_CLARIFICATION_ENGINE_RULES.md#7-clarification-lifecycle).
 
 ### 4.4 Validation returns work; it never passes it on
 
@@ -220,7 +270,7 @@ A **flag** is distinct from a rejection: the decision is not defective, but post
 
 These hold for every transaction, without exception.
 
-1. **One direction.** Work moves forward only. The single backward path in the system is a *return* — Validation returning a rejection to a named stage, or Clarification returning Resolved Facts to Accounting. A return is always explicit and always names its target.
+1. **One direction.** Work moves forward only. **No artifact ever moves backward, and no engine ever mutates an upstream artifact.** The only backward movement in the system is a *return* — Validation returning a rejection to a named stage, which is a routing instruction, not an artifact edit. New information re-enters at Engine 1, 2 or 3 as a **new artifact version**, never as a patch.
 2. **No skipping.** No stage may be bypassed. A decision cannot reach Tally without a Validation Verdict approving it, however obvious it appears.
 3. **No reaching back.** An engine consumes only the artifact handed to it. The Accounting Engine reasons from the Business Understanding Object, never from the Document Evidence Object or the raw artifact. The Tally Engine acts on the Approved Decision, never on the understanding.
 4. **No reaching sideways.** No engine writes into another engine's output. Every artifact has exactly one producing engine.
@@ -276,7 +326,7 @@ Business Understanding Object → missing information detected → Clarification
     → new information collected → Understanding Engine creates updated version
 ```
 
-This generalises a commitment the system already had: `decision_updater` returns **Resolved Facts** to the Accounting Engine, which *remakes* the decision — it never patches it in place (§4.3).
+This is why the clarification loop runs *outside* Engine 4 (§4.2): an answer does not return to the engine that asked, it re-enters at Engine 1, 2 or 3, which **remakes** the artifact it owns. Nothing is ever patched in place. Full rules: §11.
 
 ---
 
@@ -332,8 +382,11 @@ Every communication contract carries this, unchanged:
 | Understanding, internal | [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md) | Locked |
 | Understanding → Accounting | [`COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md`](COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md) | Locked |
 | Accounting, internal | [`COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md) | Locked |
-| Accounting → Clarification | — | Placeholder until Engine 4 |
-| Accounting → Validation | — | Placeholder until Engine 5 |
+| Accounting → Clarification | [`COMMUNICATION_RULES_ACCOUNTING_ENGINE.md` §2](COMMUNICATION_RULES_ACCOUNTING_ENGINE.md#2-boundary-contract--accounting--clarification) | Locked |
+| Accounting → Validation | [`COMMUNICATION_RULES_ACCOUNTING_ENGINE.md` §3](COMMUNICATION_RULES_ACCOUNTING_ENGINE.md#3-boundary-contract--accounting--validation) | Locked |
+| Clarification, internal | [`COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md`](COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md) | Locked |
+| Clarification → Validation | — | Placeholder until Engine 5 |
+| Validation → Tally | — | Placeholder until Engine 5 |
 
 **One contract per boundary.** The sending engine owns the contract of what leaves it; the receiving engine references it. No duplicate communication documents.
 
@@ -390,3 +443,58 @@ Evidence Confidence  →  Understanding Confidence  →  Decision Confidence  �
 Later engines cannot magically increase certainty. They may only **maintain**, **reduce**, or **request clarification**. The single exemption is new evidence — which is what the Clarification Engine exists to obtain.
 
 **A later confidence cannot ignore earlier uncertainty. Confidence must have traceability.**
+
+---
+
+## 11. Artifact Versioning
+
+**Every artifact follows identical rules.** Versioning is a property of the system, not a feature of any one engine.
+
+### Every artifact carries
+
+| Field | Meaning |
+|---|---|
+| **Artifact ID** | Identity of the artifact across all its versions. Identity only — see §9. |
+| **Version** | Which version this is. |
+| **Parent Artifact Version(s)** | The exact versions this one was derived from. |
+
+### When a new version is created
+
+When **new information changes what an artifact should assert.** Only the **owning engine** creates it — the engine that created the artifact is the only one that may ever create another version of it.
+
+### What never changes
+
+**A version, once created, is immutable.** Its content, confidence, uncertainty, assumptions and reasoning are all frozen.
+
+> **Correction means a new version, never an edit.**
+
+There is no mechanism for amending a version in place, and that absence is the point: an artifact that could be quietly corrected could be quietly falsified.
+
+### Parent–child tracking
+
+Each version records the exact parent versions it was derived from. Any artifact can therefore be traced backwards through every intermediate version to the raw artifact it came from.
+
+```text
+Raw Artifact
+  └─ Document Evidence Object      v1
+       └─ Business Understanding Object  v1
+            └─ Accounting Decision       v1
+                 └─ Clarification Request    v1   (Related Artifact Version = Decision v1)
+
+  new information arrives …
+
+  └─ Document Evidence Object      v2
+       └─ Business Understanding Object  v2
+            └─ Accounting Decision       v2
+                                             ↑ Clarification Request v1 is now Obsolete
+```
+
+### Stale detection
+
+A downstream artifact is **stale** when a parent version it was derived from is no longer current.
+
+Staleness is **structural, not noticed**. No engine has to spot it, remember it, or be told: the version chain makes it computable. This is what lets the Clarification Engine mark a request `Obsolete` without any engine reporting back to it.
+
+### Audit
+
+**Every version is retained.** Superseded versions are never deleted. The version chain *is* the audit trail — it records not only what the system concluded, but what it concluded before, and what changed the answer.

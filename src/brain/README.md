@@ -1,24 +1,89 @@
-# brain
+# brain — the Knowledge Brain
 
-> **Reserved directory. Phase 1 placeholder — no implementation.**
+> **Defined as of the Engine 4 specification lock.** This directory's role was reserved and undefined from Phase 1 until now.
+>
+> **Phase 1 placeholder — no implementation.**
 
-## Status: role not yet defined
+## Purpose
 
-This directory is part of the agreed repository structure, but its responsibility has **not** been defined by the architecture. Nothing in [`docs/`](../../docs/) assigns it a mission, inputs, outputs or boundary.
+The **Knowledge Brain** is the system-wide knowledge provider used by multiple engines.
 
-## Before anything is placed here
+**It is not an engine. It is not a decision maker.** It holds what the system *knows*; it holds none of what the system *decides*.
 
-Its role must be defined first, in the documentation, and agreed. Specifically:
+> **Knowledge flows into engines. Decision authority never leaves engines.**
 
-- What problem does it own that no engine owns?
-- What does it receive, and from whom?
-- What does it produce, and for whom?
-- What is it forbidden to do?
+## What it owns
 
-**Do not resolve this by writing code here.** An undefined component that acquires responsibilities by accident is exactly how ownership becomes unclear — which [`docs/SYSTEM_BOUNDARIES.md`](../../docs/SYSTEM_BOUNDARIES.md) forbids.
+Reusable knowledge only:
 
-If work appears to belong here: **stop and ask.**
+- Accounting standards.
+- Indian accounting rules.
+- GST guidance.
+- Company accounting policies.
+- Chart of accounts references.
+- Historical accounting patterns.
+- Accounting terminology.
+- Reference material.
+- Previously resolved clarification patterns.
 
-## What must not happen here
+## What it never owns
 
-No engine responsibility may be moved into this directory. The six engines own the reasoning; nothing here may decide, validate or post on their behalf.
+- **Decisions** — every decision belongs to the engine responsible for it.
+- **Artifacts** — it creates none, owns none, and versions none.
+- **Confidence** — the four confidence types belong to Engines 1, 2, 3 and 4.
+- **Workflow** — it never routes, orchestrates or sequences anything.
+
+## Interface
+
+Identical for every engine. No engine gets a privileged channel.
+
+| | |
+|---|---|
+| **An engine may request** | Standards, rules, guidance, terminology, references and historical patterns relevant to a stated question. |
+| **The Brain returns** | Knowledge, with its source reference and the Brain's own confidence **in the knowledge** — never in the decision. |
+| **The Brain must never return** | A decision · a recommended treatment · an approval · a ledger to use · a rate to use · an instruction of any kind. |
+| **Determinism** | **Advisory, never binding.** The Brain informs; it does not constrain. |
+| **May engines ignore it?** | **Yes, always.** An engine that acts against Brain knowledge records why in its own reasoning. |
+| **Ownership** | Unchanged by the exchange. The engine that asked still owns every decision it makes with the answer. |
+
+### The distinction that matters
+
+```text
+✓ Engine asks:    "What does the standard say about capitalising a laptop?"
+  Brain returns:  the standard, its source, and its confidence in that reading.
+  Engine decides: asset or expense — and owns that decision.
+
+✗ Brain returns:  "Treat as Office Equipment."
+```
+
+The second is a decision wearing knowledge's clothing. The Brain may state what a rule says and what it implies; it may never state what should be done.
+
+## Boundary
+
+The Brain **may never**:
+
+- Create clarification requests.
+- Approve clarification.
+- Make accounting decisions.
+- Override engine outputs.
+- Become a hidden decision maker by returning knowledge shaped as an instruction.
+
+The last is the failure this boundary exists to prevent. A knowledge provider that answers *"what should I do?"* instead of *"what is true?"* has taken authority no one granted it, and nothing downstream can tell that a decision was made outside the engine that owns it.
+
+## Why knowledge and authority are separated
+
+Three properties depend on it:
+
+- **Decisions stay traceable.** A decision made by an engine cites its own reasoning. A decision made by a shared service cites nothing an auditor can follow.
+- **Knowledge can be wrong without being catastrophic.** An advisory answer an engine may reject is a suggestion; a binding one is a silent single point of failure across every engine at once.
+- **Ownership stays countable.** Every decision has exactly one owner. A service that decides would be an owner appearing in no authority table.
+
+## Status
+
+Empty by design. No knowledge content is added until implementation begins.
+
+## Related documents
+
+- [`docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md` §8](../../docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md#8-knowledge-brain-boundary) — the Knowledge Brain boundary.
+- [`docs/SYSTEM_BOUNDARIES.md`](../../docs/SYSTEM_BOUNDARIES.md) — system-wide forbidden behaviour.
+- [`docs/DATA_FLOW.md`](../../docs/DATA_FLOW.md) — artifact ownership, decision authority, confidence, versioning.

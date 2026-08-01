@@ -861,7 +861,7 @@ Note the asymmetry, as in Engine 1: a story that is incomplete and honestly mark
 
 - [x] Input Engine → Understanding Engine contract exists — and is not duplicated.
 - [x] Understanding internal communication exists.
-- [x] Understanding → Accounting placeholder exists.
+- [x] Understanding → Accounting contract exists — [`COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md`](COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md).
 
 ## Intelligence
 

@@ -1,30 +1,40 @@
 # missing_information
 
-> Sub-engine of the **Clarification Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md).
+> Sub-engine of the **Clarification Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md). Deep spec: [`docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](../../../../docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md#101-missing_information).
 >
 > **Phase 1 placeholder — no implementation.**
 
 ## Purpose
 
-A question is only answerable if the missing fact and its holder are known.
+Identify every piece of information required to safely continue that is currently unavailable.
 
 ## Responsibility
 
-Owns determination of exactly which facts are absent, and who or what could supply each — the user, the source document, a party, or company master data.
+Owns **missing information identification**. Runs first in the chain — absence is one of uncertainty's sources, so it must be known before uncertainty can be measured.
+
+## Name and responsibility
+
+Name and role are identical. It found what was absent in Phase 1, and it finds what is absent now.
 
 ## Input
 
-Ranked material uncertainties, the Identified Unknowns in the Business Understanding Object, and the company accounting profile.
+The **Accounting Decision**, and the **Business Understanding Object** (reference only).
 
 ## Output
 
-A missing-fact list: each absent fact, why it is needed, and its likely source.
+**Missing Information Result** — missing facts · missing relationships · missing supporting evidence · affected accounting decisions · confidence · evidence references.
 
 ## Boundary
 
-Cannot fabricate, default or estimate a missing value. Cannot fetch the fact itself. Cannot declare a fact missing that is present but merely low-confidence — that is an uncertainty, not an absence.
+**Can:** compare required information against available information · detect absent information · preserve traceability.
+
+**Cannot:** infer missing facts · invent values · modify previous artifacts · ask users directly.
+
+## Failure Behaviour
+
+If completeness cannot be determined, **preserve uncertainty and report incomplete detection rather than assuming completeness.** An undetermined completeness is never recorded as complete.
 
 ## Future Notes
 
-- Absence and low confidence are different problems with different questions: "what was it?" versus "is this right?".
-- Naming the likely source is what lets a question be aimed at someone who can actually answer it.
+- Distinct from the two gaps named upstream: `parser` records a field the document lacks; `story_builder` records a business fact the evidence does not establish. This records what the **accounting decision** needs and does not have. See [Ownership Collisions](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md#ownership-collisions).
+- Only a gap that reaches here is a candidate for a Clarification Request — and only after `stop_decision` judges it necessary.

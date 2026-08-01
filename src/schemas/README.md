@@ -12,7 +12,9 @@ Every arrow in [`docs/DATA_FLOW.md`](../../docs/DATA_FLOW.md) carries exactly on
 
 The artifacts named in [`docs/DATA_FLOW.md`](../../docs/DATA_FLOW.md):
 
-Document Evidence Object · Business Understanding Object · Accounting Decision · Question Set · Resolved Facts · Clarification Outcome · Validation Verdict · Approved Accounting Decision · Posting Result · Classified Error · Audit Record
+Document Evidence Object · Business Understanding Object · Accounting Decision · Clarification Request · Validation Verdict · Approved Accounting Decision · Posting Result · Classified Error · Audit Record
+
+**Every artifact also carries** an Artifact ID, a Version, and its Parent Artifact Version(s) — the universal versioning rule in [`docs/DATA_FLOW.md` §11](../../docs/DATA_FLOW.md#11-artifact-versioning). A version is immutable once created; correction means a new version, never an edit.
 
 Two of these wrap named components. Those components are shapes *within* an artifact, never artifacts in their own right — there is exactly one name for what crosses each arrow.
 
@@ -21,6 +23,7 @@ Two of these wrap named components. Those components are shapes *within* an arti
 | **Document Evidence Object** | Document ID · Source references · **Structured Document** · **Confidence Report** |
 | **Business Understanding Object** | **Transaction Story** · **Supporting Understanding Data** (the six Understanding Results) · **Identified Unknowns** · **Confidence Assessment** |
 | **Accounting Decision** | Decision ID · **Decision Status** · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts |
+| **Clarification Request** | Clarification ID · Related Decision ID · **Related Artifact Version** · missing information · detected conflicts · required clarification · reason · affected decision · priority · supporting evidence references · Clarification Confidence · status |
 
 **IDENTITY ≠ INTELLIGENCE.** `Document ID` and `Decision ID` are identifiers only — identity, traceability, lifecycle tracking, audit history. Neither may be shaped into anything a downstream engine could reason from.
 

@@ -1,30 +1,42 @@
 # answer_understanding
 
-> Sub-engine of the **Clarification Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md).
+> Sub-engine of the **Clarification Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md). Deep spec: [`docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](../../../../docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md#105-answer_understanding).
 >
 > **Phase 1 placeholder — no implementation.**
 
 ## Purpose
 
-A human's reply is prose; the system needs facts.
+Determine the order in which clarification should occur. Critical accounting blockers must always be resolved before cosmetic or informational clarification.
 
 ## Responsibility
 
-Owns interpretation of the human's answers into structured facts, and the judgement of whether each answer actually addresses the question asked.
+Owns **clarification priority**.
+
+## Name and responsibility
+
+Priority is a judgement about **answers**. Nothing can be ranked without understanding how much the answer to each clarification would change the decision. In Phase 1 this component reasoned about answers received; it now reasons about the weight of answers **not yet received**. It is the answer-centric component in both eras.
 
 ## Input
 
-The Question Set and the human's replies.
+**Clarification Necessity Result**.
 
 ## Output
 
-**Resolved Facts** — structured, attributed to the question they answer — plus any question left unanswered or answered inadequately.
+**Clarification Priority Result** — priority level · affected decision · business impact · accounting impact · urgency reasoning.
+
+Priority levels: **Critical · High · Medium · Low.**
 
 ## Boundary
 
-Cannot infer beyond what was said. Cannot accept a non-answer as an answer. Cannot correct or complete an answer it finds implausible — it records the answer and flags the implausibility.
+**Can:** prioritise clarification · group related clarification · determine execution order.
+
+**Cannot:** remove clarification requirements · modify accounting reasoning · modify previous artifacts.
+
+## Failure Behaviour
+
+**Unknown priority defaults to High until sufficient information exists.** Under-prioritising an unknown is the more expensive error.
 
 ## Future Notes
 
-- "Yes" to a two-part question is a non-answer. Detecting that is this component's job, and it is what keeps a bad answer from becoming a bad posting.
-- A flagged implausible answer is evidence for [`stop_decision`](../stop_decision/) and for Validation; it is not grounds to overrule the human.
+- One answer often resolves several clarifications at once. Finding that answer is where grouping earns its place.
+- Priority is a field of the Clarification Request, which is why this runs before `question_generator` rather than after it.

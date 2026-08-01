@@ -26,7 +26,10 @@ Read before doing anything in this repository:
 9. [`docs/COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md`](docs/COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md) — Engine 2 → Engine 3 boundary
 10. [`docs/COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](docs/COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md) — inside Engine 2
 11. [`docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md) — Engine 3: Accounting Engine
-12. [`docs/COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](docs/COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md) — inside Engine 3
+12. [`docs/COMMUNICATION_RULES_ACCOUNTING_ENGINE.md`](docs/COMMUNICATION_RULES_ACCOUNTING_ENGINE.md) — Engine 3 → Engines 4 and 5
+13. [`docs/COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](docs/COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md) — inside Engine 3
+14. [`docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md) — Engine 4: Clarification Engine
+15. [`docs/COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md`](docs/COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md) — inside Engine 4
 
 **Precedence.** `SUB_ENGINE_RESPONSIBILITIES.md` is canonical for the system-wide map. A locked engine specification is the deeper authority for that engine's allowed and forbidden actions, output contracts and failure behaviour. Where they overlap they must agree — a disagreement is a defect to fix, not a choice to make.
 
@@ -37,6 +40,7 @@ Read before doing anything in this repository:
 | **Document Evidence Object** | Input Engine | Document ID · Source references · Structured Document · Confidence Report |
 | **Business Understanding Object** | Understanding Engine | Transaction Story · Supporting Understanding Data · Identified Unknowns · Confidence Assessment |
 | **Accounting Decision** | Accounting Engine | Decision ID · Decision Status · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts — **name final** |
+| **Clarification Request** | Clarification Engine | Clarification ID · Related Decision ID · Related Artifact Version · missing information · detected conflicts · required clarification · reason · affected decision · priority · supporting evidence references · Clarification Confidence · status |
 
 **Artifact ownership.** Every artifact has exactly one owner: the engine that creates it. Artifacts are **immutable after creation**. Other engines may read, analyze and reference; they may never modify, rewrite, delete, remove uncertainty, or change confidence. New information produces a **new version authored by the owner**, never an edit in place. See [`docs/DATA_FLOW.md` §6–8](docs/DATA_FLOW.md#6-artifact-ownership).
 
@@ -47,6 +51,12 @@ Read before doing anything in this repository:
 **Confidence only decreases.** **Confidence can only decrease downstream unless new evidence is introduced.** Later engines may maintain, reduce or request clarification — never raise. Evidence → Understanding → Decision → Validation. See [`docs/DATA_FLOW.md` §10](docs/DATA_FLOW.md#10-confidence-across-engines).
 
 **One contract per boundary.** The sending engine owns the contract of what leaves it; the receiving engine references it. No duplicate communication documents.
+
+**Artifacts are versioned, never edited.** Every artifact carries an Artifact ID, a Version and its Parent Artifact Version(s). A version is immutable once created — **correction means a new version, never an edit** — and only the owning engine may create one. Superseded versions are never deleted; the version chain is the audit trail. A downstream artifact whose parent version is no longer current is **stale**, detectable structurally. See [`docs/DATA_FLOW.md` §11](docs/DATA_FLOW.md#11-artifact-versioning).
+
+**Knowledge is shared; authority is not.** The **Knowledge Brain** ([`src/brain/`](src/brain/)) provides standards, rules, guidance, terminology, references and historical patterns to every engine on identical terms. **Advisory, never binding** — any engine may ignore it, recording why. It may never return a decision, recommendation, approval, ledger, rate or instruction, and owns no decisions, artifacts, confidence or workflow. **Knowledge flows into engines. Decision authority never leaves engines.**
+
+**Names are stable; responsibilities are not.** Sub-engine identities are part of the system contract and are never renamed once other engines reference them. Where a responsibility has changed, the component's README states why its name owns its present job. Engine 4 carries three such cases.
 
 ---
 

@@ -10,8 +10,9 @@
 > |---|---|---|
 > | 1. Input | [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RULES.md) · [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md) | **Locked** |
 > | 2. Understanding | [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md`](COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md) · [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md) | **Locked** |
-> | 3. Accounting | [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](ENGINE_3_ACCOUNTING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md) | **Locked** |
-> | 4–6 | — | Not yet specified |
+> | 3. Accounting | [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](ENGINE_3_ACCOUNTING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_ACCOUNTING_ENGINE.md`](COMMUNICATION_RULES_ACCOUNTING_ENGINE.md) · [`COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md) | **Locked** |
+> | 4. Clarification | [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](ENGINE_4_CLARIFICATION_ENGINE_RULES.md) · [`COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md`](COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md) | **Locked** |
+> | 5–6 | — | Not yet specified |
 >
 > Each sub-engine owns exactly one problem. No two entries in this document claim the same problem — see §"Ownership Collisions" at the end for the pairs that look alike and how they are separated.
 
@@ -361,101 +362,137 @@
 
 # 4. Clarification Engine
 
-## 4.1 `understanding`
+> **Specification locked.** Deeper authority: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](ENGINE_4_CLARIFICATION_ENGINE_RULES.md) · [`COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md`](COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md).
+>
+> **Emit-only.** Engine 4 detects what blocks a decision and emits a **Clarification Request**. It never asks users and never receives answers — new information re-enters through Engine 1, 2 or 3 as a **new artifact version**.
+>
+> **Names are historical; responsibilities are current.** Three of these names were coined in Phase 1 for a clarification loop that then ran *inside* the engine. That loop now runs outside it. Identities are part of the system contract and do not change; each entry below states why its name owns its present responsibility.
+>
+> **Engine-level ownership.** `question_generator` **creates** the **Clarification Request**; the **Clarification Engine owns** it, with Clarification Status and Clarification History. The parent assembles; it never rewrites sub-engine outputs. Every Result carries confidence and evidence references — none may omit them.
 
-**Purpose.** You cannot ask a good question about a case you do not understand.
+## 4.1 `missing_information`
 
-**Responsibility.** Owns comprehension of the accounting decision and its attached doubts — what was decided, on what basis, and what the doubts actually concern — in terms a human can be spoken to about.
+**Purpose.** Identify every piece of information required to safely continue that is currently unavailable.
 
-**Input.** The Accounting Decision, including its doubts and risks, plus the Business Understanding Object for context.
+**Responsibility.** Owns missing information identification.
 
-**Output.** An internal case understanding: the decision restated in plain terms, with each doubt located in it.
+**Name and responsibility.** Name and role are identical: it found what was absent in Phase 1, and it finds what is absent now.
 
-**Boundary.** Cannot change the decision. Cannot form an accounting judgement of its own. Cannot dispute the decision's correctness — that is the Validation Engine's role.
+**Input.** The Accounting Decision, and the Business Understanding Object (reference only).
+
+**Output.** **Missing Information Result** — missing facts · missing relationships · missing supporting evidence · affected accounting decisions · confidence · evidence references.
+
+**Boundary.** Can compare required against available information, detect absence, preserve traceability. Cannot infer missing facts · invent values · modify previous artifacts · ask users directly.
+
+**Failure Behaviour.** If completeness cannot be determined, preserve uncertainty and report incomplete detection rather than assuming completeness. An undetermined completeness is never recorded as complete.
 
 ---
 
 ## 4.2 `uncertainty_detection`
 
-**Purpose.** Not every uncertainty is worth a human's attention; asking about all of them is as bad as asking about none.
+**Purpose.** Determine whether available information is reliable enough for downstream execution.
 
-**Responsibility.** Owns the judgement of which uncertainties *across the whole case* — extraction confidence, story gaps, accounting doubts — are material enough to block posting, and their relative priority.
+**Responsibility.** Owns uncertainty evaluation.
 
-**Input.** The case understanding, the accounting doubts, the Identified Unknowns in the Business Understanding Object, and the Confidence Report within the Document Evidence Object.
+**Name and responsibility.** Detection is the act; analysis is its output. The Phase 1 name describes what it does, the artifact name what it produces — the same faculty named from opposite ends.
 
-**Output.** Ranked material uncertainties, each with the reason it blocks posting.
+**Input.** Missing Information Result and the Accounting Decision.
 
-**Boundary.** Cannot resolve an uncertainty. Cannot raise an uncertainty that has no evidence upstream. Cannot detect *accounting* ambiguity itself — it consumes what `doubt_detection` produced and judges materiality.
+**Output.** **Uncertainty Analysis Result** — uncertainty sources · uncertainty severity · confidence impact · affected decisions · supporting reasoning.
 
----
+**Boundary.** Can measure and classify uncertainty, preserve supporting evidence. Cannot increase confidence without evidence · remove uncertainty · modify accounting reasoning.
 
-## 4.3 `missing_information`
-
-**Purpose.** A question is only answerable if the missing fact and its holder are known.
-
-**Responsibility.** Owns determination of exactly which facts are absent, and who or what could supply each — the user, the source document, a party, or company master data.
-
-**Input.** Ranked material uncertainties, the Identified Unknowns in the Business Understanding Object, and the company accounting profile.
-
-**Output.** A missing-fact list: each absent fact, why it is needed, and its likely source.
-
-**Boundary.** Cannot fabricate, default or estimate a missing value. Cannot fetch the fact itself. Cannot declare a fact missing that is present but merely low-confidence — that is an uncertainty, not an absence.
+**Failure Behaviour.** Unknown uncertainty remains visible. **Never convert uncertainty into certainty.** Uncertainty that cannot be classified is recorded as unclassified, not dropped.
 
 ---
 
-## 4.4 `question_generator`
+## 4.3 `understanding`
 
-**Purpose.** The human's time is the scarcest resource in the system.
+**Purpose.** Detect contradictions between evidence, understanding and accounting decisions.
 
-**Responsibility.** Owns the wording, ordering and minimality of what is put to the human — the fewest questions that resolve the most blocking uncertainty, phrased so the person who has the answer can give it.
+**Responsibility.** Owns conflict identification.
 
-**Input.** Ranked material uncertainties and the missing-fact list.
+**Name and responsibility.** A contradiction cannot be found without comprehending all three artifacts together. In Phase 1 this component comprehended the case and located the **doubts** in it; it now comprehends the case and locates the **contradictions** in it. Same faculty, sharper target.
 
-**Output.** The **Question Set** — each question, what it resolves, and the form of answer expected.
+**Input.** The Accounting Decision, the Business Understanding Object, and the Missing Information Result.
 
-**Boundary.** Cannot ask about anything already known or already answered. Cannot ask in accounting jargon the respondent cannot be expected to answer. Cannot ask the human to choose the accounting treatment on the system's behalf. Cannot ask a question whose answer would change nothing.
+**Output.** **Conflict Analysis Result** — detected conflicts · conflicting assumptions · conflicting reasoning · conflict severity · affected accounting decisions.
+
+**Boundary.** Can identify contradictions, preserve all conflicting information, maintain traceability. **Cannot resolve conflicts** · discard conflicting evidence · **choose one interpretation**.
+
+**Failure Behaviour.** Every detected conflict remains visible until resolved by the responsible engine. A conflict that cannot be characterised is still recorded, marked as uncharacterised.
+
+---
+
+## 4.4 `stop_decision`
+
+**Purpose.** Determine whether clarification is actually required. Not every uncertainty deserves a request: some has no effect on accounting treatment, some changes the entire decision.
+
+**Responsibility.** Owns clarification necessity.
+
+**Name and responsibility.** It was always the go/no-go gate on the clarification path. Phase 1 asked *is questioning complete?*; it now asks *is clarification required at all?* Both are one binary judgement about whether clarification runs.
+
+**Input.** Missing Information Result, Uncertainty Analysis Result, Conflict Analysis Result, and the Accounting Decision.
+
+**Output.** **Clarification Necessity Result** — clarification required · clarification optional · clarification unnecessary · business impact · accounting impact · supporting reasoning.
+
+**Boundary.** Can evaluate decision impact, determine necessity, preserve reasoning. Cannot generate clarification requests · modify accounting decisions · modify uncertainty.
+
+**Failure Behaviour.** **If necessity cannot be determined safely, default to Clarification Required. Never silently ignore uncertainty.** The asymmetry is deliberate: an unnecessary question costs time, a missed one costs correctness.
 
 ---
 
 ## 4.5 `answer_understanding`
 
-**Purpose.** A human's reply is prose; the system needs facts.
+**Purpose.** Determine the order in which clarification should occur. Critical accounting blockers must always be resolved before cosmetic or informational clarification.
 
-**Responsibility.** Owns interpretation of the human's answers into structured facts, and the judgement of whether each answer actually addresses the question asked.
+**Responsibility.** Owns clarification priority.
 
-**Input.** The Question Set and the human's replies.
+**Name and responsibility.** Priority is a judgement about **answers** — nothing can be ranked without understanding how much the answer to each clarification would change the decision. Phase 1 it reasoned about answers received; it now reasons about the weight of answers not yet received. The answer-centric component in both eras.
 
-**Output.** **Resolved Facts** — structured, attributed to the question they answer — plus any question left unanswered or answered inadequately.
+**Input.** Clarification Necessity Result.
 
-**Boundary.** Cannot infer beyond what was said. Cannot accept a non-answer as an answer. Cannot correct or complete an answer it finds implausible — it records the answer and flags the implausibility.
+**Output.** **Clarification Priority Result** — priority level (Critical · High · Medium · Low) · affected decision · business impact · accounting impact · urgency reasoning.
 
----
+**Boundary.** Can prioritise clarification, group related clarification, determine execution order. Cannot remove clarification requirements · modify accounting reasoning · modify previous artifacts.
 
-## 4.6 `decision_updater`
-
-**Purpose.** An answer is worthless until it changes the decision.
-
-**Responsibility.** Owns carrying resolved facts back so that the decision is remade under the Accounting Engine's authority, and recording the difference between the decision before and after.
-
-**Input.** Resolved Facts, and the Accounting Decision as it stood.
-
-**Output.** The **Updated Accounting Decision**, together with a record of what changed and which answer caused it.
-
-**Boundary.** Cannot author accounting treatment — it applies answers, the Accounting Engine decides. Cannot edit a decision's reasoning in place, or silently overwrite it. Cannot discard a doubt that the answers did not actually resolve.
+**Failure Behaviour.** **Unknown priority defaults to High until sufficient information exists.** Under-prioritising an unknown is the more expensive error.
 
 ---
 
-## 4.7 `stop_decision`
+## 4.6 `question_generator`
 
-**Purpose.** Asking forever is its own failure mode.
+**Purpose.** Construct the canonical Clarification Request.
 
-**Responsibility.** Owns the judgement of when questioning ends — because clarity is sufficient, because further questions would not change the decision, or because the human cannot supply what is needed.
+**Responsibility.** Owns Clarification Request creation.
 
-**Input.** The state of the material uncertainties, the answers received, and the questions already asked.
+**Name and responsibility.** It formulates what is asked. The Clarification Request *is* what Phase 1 called the Question Set, in structured form — what is missing, why it matters, what is needed. Generating the question is generating the request.
 
-**Output.** The **Clarification Outcome** — continue or stop, the reason, and any uncertainty that remains unresolved.
+**Input.** Outputs from every previous Clarification sub-engine.
 
-**Boundary.** Cannot stop by declaring the decision correct or safe — it concludes only that questioning is complete. Cannot conceal an unresolved uncertainty when stopping. Cannot continue questioning where no question would change the outcome.
+**Output.** The **Clarification Request** — Clarification ID · Related Decision ID · Related Artifact Version · missing information · detected conflicts · required clarification · reason · affected decision · priority · supporting evidence references · Clarification Confidence · status.
+
+**Boundary.** Can assemble clarification, merge components, preserve evidence references. Cannot invent clarification · modify upstream decisions · hide uncertainty · rewrite reasoning. It **creates** the artifact but does not **own** it — the Clarification Engine does.
+
+**Failure Behaviour.** Produces an incomplete Clarification Request while preserving every unresolved issue. An incomplete request naming what it could not determine is correct output; a complete-looking request that dropped an issue is not.
+
+---
+
+## 4.7 `decision_updater`
+
+**Purpose.** Track the lifecycle of every clarification request. Clarification is not complete when a request is created — only when the required information has been received and the responsible upstream engine has produced a new artifact version.
+
+**Responsibility.** Owns clarification lifecycle, clarification status and clarification history.
+
+**Name and responsibility.** It is the component that knows the relationship between a clarification and the **state of the decision**. Phase 1 it carried answers back so the decision could be remade; it now links each clarification to the decision version it was raised against and marks it obsolete when a newer version supersedes it. Version-and-state tracking in both eras.
+
+**Input.** The Clarification Request.
+
+**Output.** **Clarification Status Result** — current status · timestamps · related artifact versions · resolution history · audit trail.
+
+**Boundary.** Can track progress, maintain history, link clarification to artifact versions. **Cannot resolve clarification** · modify decisions · approve execution. It owns every status transition but no resolution — resolution is an upstream engine emitting a new artifact version.
+
+**Failure Behaviour.** Preserve complete audit history even if clarification remains unresolved. History is never trimmed because a request went nowhere.
 
 ---
 
@@ -651,6 +688,7 @@ Confidence is measured at every stage. Each level answers about its own engine's
 | **Evidence confidence** | Input Engine | Confidence Report, within the Document Evidence Object | Was this read correctly? |
 | **Understanding confidence** | Understanding Engine | Confidence Assessment, within the Business Understanding Object | Does the evidence support this interpretation? |
 | **Decision confidence** | Accounting Engine | Decision confidence, within the Accounting Decision | Is the accounting treatment likely correct? |
+| **Clarification confidence** | Clarification Engine | Clarification Confidence, within the Clarification Request | Has every decision-blocking uncertainty been found? |
 | **Validation confidence** | Validation Engine | *declared; specified with Engine 5* | Is this safe to approve? |
 
 Two rules bind them:
@@ -675,3 +713,24 @@ Two engines may not own the same concept name, which is why Accounting's output 
 | Accounting `accounting_rules` | *"This event belongs to this accounting period."* |
 
 An invoice dated 31 March and paid 10 April raises the question of March closing versus April. That is an accounting decision, not a timeline fact — which is why `timeline_understanding` is forbidden from answering it and `accounting_rules` owns accounting period treatment.
+
+## Three places gaps are named
+
+Absence is recorded at three stages, and each records a different kind.
+
+| Component | Records | The gap is |
+|---|---|---|
+| Input `parser` | **missing field information** | A field the document does not contain |
+| Understanding `story_builder` | **Identified Unknowns** | A business fact the evidence does not establish |
+| Clarification `missing_information` | **Missing Information Result** | Information the *accounting decision* needs and does not have |
+
+They narrow as they descend: the document lacks a field · the story lacks a fact · the decision lacks what it needs to be safe. A field can be missing without the story caring; a fact can be unknown without the decision depending on it. Only the third is a candidate for a Clarification Request, and only after `stop_decision` judges it necessary.
+
+## Conflicts are detected twice, for different reasons
+
+| Component | Detects | Between |
+|---|---|---|
+| Understanding `story_builder` | Contradictions in the business story | The six Understanding Results |
+| Clarification `understanding` | Contradictions across the pipeline | Evidence, understanding **and** the accounting decision |
+
+Neither resolves. The first asks *do the facts disagree with each other?*; the second asks *does the decision disagree with the facts it was built on?*

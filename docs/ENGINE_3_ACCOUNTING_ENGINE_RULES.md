@@ -704,21 +704,20 @@ Governed by [`COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md`](COMMUNICATION_RULES_
 
 Governed by [`COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md).
 
-## Outbound — Accounting Engine → Clarification Engine
+## Outbound — Accounting Engine → Clarification Engine, and → Validation Engine
 
-**Placeholder.** The full boundary contract is authored when Engine 4 is specified, and this engine owns it.
+Both boundaries are governed by [`COMMUNICATION_RULES_ACCOUNTING_ENGINE.md`](COMMUNICATION_RULES_ACCOUNTING_ENGINE.md) — **owned by this engine**, since the sending engine owns the contract of what leaves it. Two separate contracts, no overlap.
 
-What is already fixed:
+The **same immutable artifact** crosses both. It is not copied, forked or altered.
 
-- **Artifact sent:** Accounting Decision — with assumptions, risks, doubts and confidence.
-- **Creator:** `decision_output`. **Owner:** Accounting Engine.
-- **Allowed:** the Clarification Engine reads, analyzes and references it; it may identify blockers and request information.
-- **Forbidden:** the Clarification Engine changes the accounting treatment, rewrites the decision, or removes uncertainty.
-- **Engine 3 does not ask questions.** Engine 4 handles clarification.
+| | → Clarification | → Validation |
+|---|---|---|
+| **Artifact** | Accounting Decision | Accounting Decision |
+| **Creator / Owner** | `decision_output` / Accounting Engine | `decision_output` / Accounting Engine |
+| **Allowed** | Read, analyze, reference; identify blockers; request information | Read, analyze, reference; produce a verdict |
+| **Forbidden** | Change treatment, rewrite the decision, remove uncertainty | Amend, correct or repair it — a defect is reported, never fixed |
 
-## Outbound — Accounting Engine → Validation Engine
-
-**Placeholder.** Authored when Engine 5 is specified. Validation receives the Accounting Decision and checks correctness, compliance, risk and integrity. It decides accept, reject or flag. This engine does not approve its own decision.
+**Engine 3 does not ask questions.** Engine 4 detects what blocks the decision and emits a Clarification Request; Validation receives **both** artifacts, since it cannot validate a Clarification Request alone. This engine does not approve its own decision.
 
 ## Decision Authority
 

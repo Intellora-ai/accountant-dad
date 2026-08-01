@@ -28,8 +28,10 @@ What exists is the thing that has to exist first: an unambiguous statement of wh
 | **Engine 1 — Input Engine** specification lock | ✅ **Locked** |
 | **Engine 2 — Understanding Engine** specification lock | ✅ **Locked** |
 | **Engine 3 — Accounting Engine** specification lock | ✅ **Locked** |
+| **Engine 4 — Clarification Engine** specification lock | ✅ **Locked** |
 | Communication architecture — ownership, authority, boundary contracts | ✅ **Locked** |
-| Engines 4–6 specification locks | Not yet started |
+| Artifact versioning · Knowledge Brain | ✅ **Locked** |
+| Engines 5–6 specification locks | Not yet started |
 
 ### Phase 1 does **not** include
 
@@ -100,11 +102,14 @@ docs/
   COMMUNICATION_RULES_UNDERSTANDING_ENGINE.md . Engine 2 → Engine 3 boundary — LOCKED
   COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md  inside Engine 2 — LOCKED
   ENGINE_3_ACCOUNTING_ENGINE_RULES.md ......... Engine 3 specification — LOCKED
+  COMMUNICATION_RULES_ACCOUNTING_ENGINE.md .... Engine 3 → Engines 4 & 5 — LOCKED
   COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md .. inside Engine 3 — LOCKED
+  ENGINE_4_CLARIFICATION_ENGINE_RULES.md ...... Engine 4 specification — LOCKED
+  COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md inside Engine 4 — LOCKED
 
 src/
   engines/       6 engines, 39 sub-engines — each a folder with a README
-  brain/         reserved — role not yet defined
+  brain/         the Knowledge Brain — shared knowledge, never decisions
   rules/         reserved — declarative accounting and tax rule content
   models/        reserved — internal representations of domain concepts
   schemas/       reserved — the shape of artifacts passed between engines
@@ -126,6 +131,7 @@ Every engine and sub-engine folder holds exactly one `README.md` stating its **p
 4. [`docs/ENGINE_1_INPUT_ENGINE_RULES.md`](docs/ENGINE_1_INPUT_ENGINE_RULES.md) — the first engine, in full
 5. [`docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) — the second engine, in full
 6. [`docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md) — the third engine, in full
+7. [`docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md) — the fourth engine, in full
 
 ---
 

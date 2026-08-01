@@ -150,19 +150,49 @@ Required clarification:  …
 
 ## 4. Clarification Engine
 
-**Clarification Engine cannot invent answers.**
-**Clarification Engine cannot decide accounting treatment on its own.**
+> **Specification locked.** Deeper authority: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](ENGINE_4_CLARIFICATION_ENGINE_RULES.md) · [`COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md`](COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md).
+
+**The Clarification Engine detects what prevents a decision from being safely completed. It resolves nothing.**
+
+It **MUST NEVER**:
+
+1. Create journal entries.
+2. Choose ledgers.
+3. Decide accounting treatment.
+4. Decide tax treatment.
+5. Modify evidence.
+6. Modify business understanding.
+7. Modify accounting decisions.
+8. Approve execution.
+9. Reject execution.
+10. Invent facts.
+11. **Silently resolve conflicts.**
+12. Convert assumptions into facts.
+13. Convert uncertainty into certainty.
+14. **Ask users directly.**
+15. Bypass previous engines or bypass validation.
 
 It also cannot:
 
-- Assume or default a value the human did not give.
+- Assume or default a value nobody supplied.
 - Mark a decision correct, approved or safe.
 - Raise an uncertainty that has no evidence upstream.
-- Post to Tally.
-- Ask the human to make the accounting decision on the system's behalf.
-- Conceal an unresolved uncertainty when it stops asking.
+- Communicate directly with Engine 1.
+- Increase confidence without new evidence.
 
-**Per sub-engine:** `understanding` comprehends, never changes the decision. `uncertainty_detection` judges materiality, never resolves and never detects accounting ambiguity itself. `missing_information` locates absences, never fabricates or estimates a value. `question_generator` asks minimally, never in unanswerable jargon, never about what is already known, and never a question whose answer changes nothing. `answer_understanding` interprets, never infers beyond what was said and never accepts a non-answer. `decision_updater` applies answers, never authors treatment, never edits reasoning in place and never discards a doubt the answers did not resolve. `stop_decision` ends questioning, never declares the decision correct.
+**Emit-only.** Engine 4 produces a structured **Clarification Request** and stops. A later system layer may deliver it to a user, accountant or external system. **Engine 4 never receives answers as a decision engine** — new information re-enters through Engine 1, 2 or 3, which emits a **new artifact version**. This is why no backward mutation exists anywhere in the system.
+
+**Failure behaviour.** If clarification cannot safely continue, return what is known, what is unknown, why clarification is required, and which decision is affected. **Never guess.**
+
+**Lifecycle.** `Created → Waiting for Information → Information Received → Closed`, with `Obsolete` reachable from any state; both terminals. Engine 4 owns **every transition** but no **resolution** — a request closes only when a new artifact version no longer carries the uncertainty that caused it. **Obsolete ≠ Closed.**
+
+**Conflict handling.** Every conflict remains visible until either new information arrives and the responsible upstream engine emits a new artifact version, or the conflict is explicitly accepted by a future validation or human process. **Clarification exists to expose uncertainty, never to hide it.**
+
+**Assembly ownership.** `question_generator` **creates** the Clarification Request; the **Clarification Engine owns** it, with Clarification Status and Clarification History. The parent assembles; it never rewrites sub-engine outputs, resolves a conflict, changes a priority, or removes uncertainty.
+
+**Per sub-engine:** `missing_information` locates absences, never fabricates, estimates or infers a value. `uncertainty_detection` measures and classifies uncertainty, never removes it and never raises confidence without evidence. `understanding` identifies contradictions, never resolves one and never chooses an interpretation. `stop_decision` judges whether clarification is required, never modifies a decision — and defaults to *Clarification Required* when necessity cannot be determined. `answer_understanding` prioritises, never removes a clarification requirement — and defaults to *High* when priority is unknown. `question_generator` assembles the Request, never invents clarification, hides uncertainty or rewrites reasoning. `decision_updater` tracks status and history, never resolves clarification, modifies decisions or approves execution.
+
+> **Accounting Engine decides treatment. Clarification Engine detects what blocks it. Validation Engine decides safety.**
 
 ---
 
@@ -218,6 +248,8 @@ These bind every engine and every sub-engine.
 11. **IDENTITY ≠ INTELLIGENCE.** **IDs identify objects. They do not influence reasoning.** Document ID, Decision ID, Transaction ID, User ID and any future identifier exist only for identity, traceability, lifecycle tracking and audit history. None may influence ledger selection, journal creation, tax treatment, validation outcome, confidence, or any future decision. *"Because ACC-000123 existed before, choose the same treatment"* — never. See [`DATA_FLOW.md` §9](DATA_FLOW.md#9-identity--intelligence).
 12. **Confidence only decreases.** **Confidence can only decrease downstream unless new evidence is introduced.** Later engines may maintain, reduce or request clarification — never magically increase certainty. The single exemption is new evidence, which is what the Clarification Engine exists to obtain. See [`DATA_FLOW.md` §10](DATA_FLOW.md#10-confidence-across-engines).
 13. **Nothing assumes silently.** Every component relying on an assumption records what it assumed and why. An unrecorded assumption becomes a confirmed fact by default, and nothing downstream can tell the difference.
+14. **Artifacts are versioned, never edited.** Every artifact carries an Artifact ID, a Version and its Parent Artifact Version(s). A version is immutable once created — **correction means a new version, never an edit** — and only the owning engine may create one. Superseded versions are never deleted; the version chain is the audit trail. A downstream artifact whose parent version is no longer current is **stale**, and staleness is structural rather than noticed. See [`DATA_FLOW.md` §11](DATA_FLOW.md#11-artifact-versioning).
+15. **Knowledge is shared; authority is not.** The **Knowledge Brain** ([`src/brain/`](../src/brain/)) provides accounting standards, rules, guidance, terminology, references and historical patterns to every engine on identical terms. It is **advisory, never binding** — any engine may ignore it, recording why. It may never return a decision, a recommended treatment, an approval, a ledger, a rate, or an instruction; may never create clarification requests, approve clarification, make accounting decisions, or override engine outputs; and owns no decisions, artifacts, confidence or workflow. **Knowledge flows into engines. Decision authority never leaves engines.**
 
 ---
 

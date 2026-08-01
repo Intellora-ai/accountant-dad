@@ -127,7 +127,7 @@ Sub-engines: `transaction_analyzer` · `accounting_rules` · `ledger_intelligenc
 ### Inputs
 - The **Business Understanding Object**, from the Understanding Engine.
 - **Company information** — chart of accounts structure, policies, preferences, historical patterns.
-- Resolved Facts, when the Clarification Engine returns answers.
+- Clarification Answers arriving from an external actor — which cause this engine to emit a **new version** of the Accounting Decision, never to patch the existing one.
 
 ### Outputs
 - **Accounting Decision** — the engine's single output artifact, thirteen components: Decision ID · **Decision Status** · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · **accounting assumptions** · risk indicators · **decision confidence** · supporting reasoning · unresolved doubts.
@@ -152,36 +152,52 @@ Full specification: [`ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](ENGINE_3_ACCOUNTING_
 ## 4. Clarification Engine
 
 ### Mission
-Resolve doubt by asking the human the fewest, sharpest questions, then update the decision.
+Prevent incorrect execution by detecting uncertainty before validation. **Validation should never discover uncertainty that Clarification should have identified.**
 
 ### Owns
-- Comprehension of the case and the doubts attached to it.
-- The judgement of which uncertainties across the whole case are material enough to block posting.
-- Identification of exactly what facts are missing and who or what could supply them.
-- The wording, ordering and minimality of the questions put to the human.
-- Interpretation of the human's answers into structured facts.
-- Carrying resolved facts back so the decision is remade.
-- The judgement of when questioning is complete.
+- Missing information detection.
+- Uncertainty detection.
+- Conflict identification.
+- Clarification generation.
+- Clarification prioritisation.
+- Clarification traceability.
+- Clarification lifecycle tracking.
+- Clarification confidence.
+- Clarification completeness.
 
 Sub-engines: `understanding` · `uncertainty_detection` · `missing_information` · `question_generator` · `answer_understanding` · `decision_updater` · `stop_decision`
 
+> **Names are historical; responsibilities are current.** Three of these were coined in Phase 1 for a clarification loop that then ran inside the engine. That loop now runs outside it. Identities are part of the system contract and do not change — each sub-engine's entry in [`SUB_ENGINE_RESPONSIBILITIES.md`](SUB_ENGINE_RESPONSIBILITIES.md) states why its name owns its present responsibility.
+
+> **Scope of the assembly responsibility.** `question_generator` **creates** the Clarification Request; the **Clarification Engine owns** it, with Clarification Status and Clarification History. The parent assembles; it never rewrites sub-engine outputs, resolves a conflict, changes a priority, or removes uncertainty.
+
 ### Inputs
-- Accounting Decision, including its doubts and risks.
-- The Confidence Report within the Document Evidence Object, and the Business Understanding Object, as evidence of where uncertainty originated.
-- The human's answers.
+- **Primary: the Accounting Decision** — accounting treatment, ledger classification, journal structure, tax treatment, assumptions, risk indicators, decision confidence, supporting reasoning, unresolved doubts.
+- **Secondary: the Business Understanding Object** — *reference only*, for traceability, explanation, conflict identification and context.
+
+It must preserve evidence references, reasoning, assumptions, confidence, uncertainty and traceability. It never communicates directly with Engine 1.
 
 ### Outputs
-- **Question Set** — the minimal set of questions put to the human.
-- **Resolved Facts** — the human's answers, structured, returned to the Accounting Engine.
-- **Clarification Outcome** — whether questioning is complete, and why.
+- **Clarification Request** — the engine's single output artifact: Clarification ID · **Decision Status–bearing Related Decision ID** · **Related Artifact Version** · missing information · detected conflicts · required clarification · reason it is required · affected decision · priority · supporting evidence references · **Clarification Confidence** · status.
+
+Every request answers: what was unclear · why it mattered · what information is required · which decision depends on it · how important it is. **Clarification ID exists only for identity, traceability, lifecycle tracking and audit history** — IDENTITY ≠ INTELLIGENCE.
+
+**Emit-only.** Questions are outputs, not actions. A later system layer may deliver the request to a user, accountant or external system; **Engine 4 never asks anyone directly and never receives answers.** New information re-enters through Engine 1, 2 or 3 as a new artifact version.
+
+Full specification: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](ENGINE_4_CLARIFICATION_ENGINE_RULES.md) · [`COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md`](COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md).
 
 ### Cannot Do
-- Cannot invent, assume or default an answer the human did not give.
-- Cannot decide accounting treatment; it applies answers, it does not author judgement.
+- Cannot create journal entries, choose ledgers, decide accounting treatment, or decide tax treatment.
+- Cannot modify evidence, business understanding or accounting decisions.
+- Cannot approve or reject execution.
+- Cannot invent facts, or assume or default a value nobody supplied.
+- **Cannot silently resolve conflicts.** Cannot convert assumptions into facts or uncertainty into certainty.
+- **Cannot ask users directly.**
+- Cannot bypass previous engines or bypass validation.
+- Cannot raise uncertainty that has no evidence upstream, or increase confidence without new evidence.
 - Cannot mark a decision correct, approved or safe.
-- Cannot raise uncertainty that has no evidence upstream.
-- Cannot post to Tally.
-- Cannot ask the human to make the accounting decision on the system's behalf.
+
+**Failure behaviour:** return what is known, what is unknown, why clarification is required, and which decision is affected. **Never guess.**
 
 ---
 
