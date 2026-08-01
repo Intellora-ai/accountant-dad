@@ -20,7 +20,7 @@ Two of these wrap named components. Those components are shapes *within* an arti
 
 | Artifact | Components |
 |---|---|
-| **Document Evidence Object** | Document ID · Source references · **Structured Document** · **Confidence Report** |
+| **Document Evidence Object** | Document ID · Source references · **Structured Document** · **Human Business Context** *(optional)* · **Confidence Report** |
 | **Business Understanding Object** | **Transaction Story** · **Supporting Understanding Data** (the six Understanding Results) · **Identified Unknowns** · **Confidence Assessment** |
 | **Accounting Decision** | Decision ID · **Decision Status** · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts |
 | **Clarification Request** | Clarification ID · Related Decision ID · **Related Artifact Version** · missing information · detected conflicts · required clarification · reason · affected decision · priority · supporting evidence references · Clarification Confidence · status |

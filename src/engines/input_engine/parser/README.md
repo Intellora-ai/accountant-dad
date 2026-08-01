@@ -55,6 +55,8 @@ No other component may override this result — not a sibling sub-engine, and no
 
 ## Failure Behaviour
 
+**A provided source receives no structure.** A Human Business Description is narrative, not fields; imposing structure on it would begin interpreting it, which belongs to the Understanding Engine.
+
 **Unknown fields remain unknown. Never fabricate values.**
 
 - A field that is absent is recorded in missing field information as absent — not defaulted, not estimated, not omitted.

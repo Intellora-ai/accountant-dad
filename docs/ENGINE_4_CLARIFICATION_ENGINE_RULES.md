@@ -141,6 +141,8 @@ The Clarification Engine **never communicates directly with Engine 1.**
 
 ## Receiving rules
 
+**Preserve evidence provenance.** Source Type, Source ID, Evidence Reference, Timestamp, Confidence and Corroborated. **No origin may be merged into an anonymous fact.** A fact asserted only by a human and corroborated by nothing is a legitimate reason to raise a clarification — never a fact to rely on.
+
 The Clarification Engine **must** preserve:
 
 1. Evidence references.

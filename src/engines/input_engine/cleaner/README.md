@@ -14,7 +14,7 @@ Owns document preprocessing — the physical quality of the artifact: deskewing,
 
 ## Input
 
-The raw artifact exactly as received: photo, camera capture, image upload, PDF, scan, handwritten note, or other digital file — including poor-quality human inputs.
+The raw artifact exactly as received: photo, camera capture, image upload, PDF, scan, handwritten note, Excel file, email content, structured metadata, or other digital file — including poor-quality human inputs. Also the **optional Human Business Description**.
 
 ## Output
 
@@ -41,6 +41,8 @@ It alters presentation only. It cannot discard content it judges irrelevant, red
 No other component may override this result — not a sibling sub-engine, and not the parent Input Engine, which assembles outputs but never overrides them. See [`docs/ENGINE_1_INPUT_ENGINE_RULES.md` §3A](../../../../docs/ENGINE_1_INPUT_ENGINE_RULES.md#3a-decision-authority).
 
 ## Failure Behaviour
+
+**A provided source passes through untouched.** A Human Business Description has no image to deskew and no encoding to repair; any transformation would be a rewrite, which is forbidden.
 
 **If processing may damage information: preserve the original input and mark uncertainty.**
 

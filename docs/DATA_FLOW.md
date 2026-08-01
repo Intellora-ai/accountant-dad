@@ -29,7 +29,7 @@ Every arrow carries exactly one named artifact. An engine may only consume the a
 | # | From → To | Artifact | Contains |
 |---|---|---|---|
 | 0 | *external* → **Input** | **Raw Artifact** | The document as received: scan, photograph, PDF, digital file. |
-| 1 | **Input** → **Understanding** | **Document Evidence Object** | Document ID · source references · the **Structured Document** (extracted text, detected fields, document structure, tables, field values, field locations) · the **Confidence Report** (confidence scores, uncertainty markers, reliability information, risky fields). |
+| 1 | **Input** → **Understanding** | **Document Evidence Object** | Document ID · source references · the **Structured Document** (extracted text, detected fields, document structure, tables, field values, field locations) · the **Human Business Context** (optional, verbatim user text with source, timestamp and evidence reference) · the **Confidence Report** (confidence scores, uncertainty markers, reliability information, risky fields). |
 | 2 | **Understanding** → **Accounting** | **Business Understanding Object** | The **Transaction Story** (the assembled narrative) · **Supporting Understanding Data** (the six sub-engine Results) · **Identified Unknowns** · **Confidence Assessment**. What happened, in business terms only. Every fact traced to its evidence; every gap named; every conflict preserved. No accounting vocabulary. |
 | 3 | **Accounting** → **Clarification** *or* **Validation** | **Accounting Decision** | Decision ID · **Decision Status** · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts. |
 | 4 | **Clarification** → **Validation** | **Clarification Request** | Clarification ID · Related Decision ID · **Related Artifact Version** · missing information · detected conflicts · required clarification · reason it is required · affected decision · priority · supporting evidence references · Clarification Confidence · status. |
@@ -47,13 +47,17 @@ The Input Engine's output has one name. `Structured Document` and `Confidence Re
 Document Evidence Object
 ├── Document ID
 ├── Source references
-├── Structured Document ── extracted text · detected fields · document structure ·
-│                          tables · field values · field locations
-└── Confidence Report ──── confidence scores · uncertainty markers ·
-                           reliability information · risky fields
+├── Structured Document ──── extracted text · detected fields · document structure ·
+│                            tables · field values · field locations     [EXTRACTED]
+├── Human Business Context ─ original user text · source = Human ·
+│                            timestamp · evidence reference   [PROVIDED, optional]
+└── Confidence Report ────── confidence scores · uncertainty markers ·
+                             reliability information · risky fields
 ```
 
 A downstream engine that consumes one part names that part — *"the Confidence Report within the Document Evidence Object"* — and never treats it as a separate artifact on its own arrow.
+
+**Human Business Context** is present only when the user supplied a plain-English description. It is **optional**, and the system must work correctly without one. It stays **independent** from extracted document evidence: the two are separate, linked entries, and **Engine 1 never merges them into a single fact**. See §12.
 
 **Document ID exists only for identity, traceability, and lifecycle tracking. It carries no accounting meaning and must never influence accounting decisions.**
 
@@ -498,3 +502,76 @@ Staleness is **structural, not noticed**. No engine has to spot it, remember it,
 ### Audit
 
 **Every version is retained.** Superseded versions are never deleted. The version chain *is* the audit trail — it records not only what the system concluded, but what it concluded before, and what changed the answer.
+
+---
+
+## 12. Evidence Provenance
+
+**Every fact carries its origin, permanently.** The Input Engine establishes the provenance envelope; every downstream engine preserves it.
+
+### Every fact records
+
+| Attribute | Meaning |
+|---|---|
+| **Source Type** | `Document` · `Human` · `Structured Metadata` |
+| **Source ID** | Which source it came from |
+| **Evidence Reference** | Where within that source |
+| **Timestamp** | When it entered the system |
+| **Confidence** | Extraction confidence for documents; **capture confidence** for provided sources |
+| **Corroborated** | Whether another source supports it |
+
+> **No engine may merge these origins into a single anonymous fact.**
+
+### The three source types
+
+| Source Type | Read or asserted | Examples |
+|---|---|---|
+| **Document** | Read off an artifact — **extracted** | Invoice fields, table rows, scanned values, handwriting |
+| **Human** | Asserted by a person — **provided** | The optional Human Business Description |
+| **Structured Metadata** | Supplied by a system — **provided** | Upload metadata, file attributes, source identifiers |
+
+The dividing line is **extracted versus provided**. Something read off an artifact can be checked against that artifact. Something asserted cannot — it can only be corroborated by something else.
+
+### A human note is evidence, not truth
+
+> **The description may never be treated as confirmed fact.**
+
+It may supply intent, explanation, business context or missing narrative. It must **never automatically override** documents, receipts, invoices, bank statements or any other evidence. Conflicts between a note and other evidence **remain visible** and are handled by later engines.
+
+### Capture confidence is not truth confidence
+
+```text
+User typed:          "Advance paid to supplier."
+
+Capture confidence:  100%       the system stored exactly what was typed
+Truth confidence:    unknown    until supported by other evidence
+```
+
+> **Human notes contribute context, not certainty.**
+>
+> **A human note must never increase Evidence Reliability simply because it exists.**
+
+It can improve understanding once **corroborated**; it can never independently raise confidence. The same holds for structured metadata — capturing a field perfectly says nothing about whether its content is correct.
+
+### Corroboration
+
+The **Corroborated** attribute is assessed by the **first engine able to assess it**, and recorded in **that engine's own artifact**.
+
+The Input Engine records `Corroborated: not assessed`, honestly — establishing that *"advance paid to supplier"* and a document's payment field mean the same thing is **interpretation**, which Engine 1 is forbidden from performing. It is never written back into the Document Evidence Object, which is immutable and owned upstream (§6). In practice the Understanding Engine makes the assessment, in the Business Understanding Object.
+
+### Provenance travels the whole pipeline
+
+```text
+Document Evidence Object → Business Understanding Object → Accounting Decision
+    → Clarification Request → Validation Verdict → audit history
+```
+
+Complete provenance from input to execution. At every stage, for every fact, the system can answer: **where did this come from, how reliable was the capture, and does anything else support it?**
+
+### What this protects
+
+Without it, a claim and an observation become indistinguishable one stage after they enter.
+
+- **A user's assertion could silently become a posted entry.** "Advance payment to supplier" is a claim; if it loses its origin it reads as an established fact by the time it reaches the Accounting Engine.
+- **Corroboration could not be reasoned about.** An engine cannot ask "is this supported by anything else?" if it cannot tell how many independent sources a fact has.
+- **The audit trail would end at the wrong place.** A trail that reaches "the system decided" and not "the user said, uncorroborated" cannot be defended.

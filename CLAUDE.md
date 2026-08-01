@@ -37,7 +37,7 @@ Read before doing anything in this repository:
 
 | Artifact | Owner | Components — never used as the artifact's name |
 |---|---|---|
-| **Document Evidence Object** | Input Engine | Document ID · Source references · Structured Document · Confidence Report |
+| **Document Evidence Object** | Input Engine | Document ID · Source references · Structured Document · **Human Business Context** *(optional)* · Confidence Report |
 | **Business Understanding Object** | Understanding Engine | Transaction Story · Supporting Understanding Data · Identified Unknowns · Confidence Assessment |
 | **Accounting Decision** | Accounting Engine | Decision ID · Decision Status · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts — **name final** |
 | **Clarification Request** | Clarification Engine | Clarification ID · Related Decision ID · Related Artifact Version · missing information · detected conflicts · required clarification · reason · affected decision · priority · supporting evidence references · Clarification Confidence · status |
@@ -55,6 +55,10 @@ Read before doing anything in this repository:
 **Artifacts are versioned, never edited.** Every artifact carries an Artifact ID, a Version and its Parent Artifact Version(s). A version is immutable once created — **correction means a new version, never an edit** — and only the owning engine may create one. Superseded versions are never deleted; the version chain is the audit trail. A downstream artifact whose parent version is no longer current is **stale**, detectable structurally. See [`docs/DATA_FLOW.md` §11](docs/DATA_FLOW.md#11-artifact-versioning).
 
 **Knowledge is shared; authority is not.** The **Knowledge Brain** ([`src/brain/`](src/brain/)) provides standards, rules, guidance, terminology, references and historical patterns to every engine on identical terms. **Advisory, never binding** — any engine may ignore it, recording why. It may never return a decision, recommendation, approval, ledger, rate or instruction, and owns no decisions, artifacts, confidence or workflow. **Knowledge flows into engines. Decision authority never leaves engines.**
+
+**Evidence carries its origin, permanently.** Every fact records **Source Type** (`Document` · `Human` · `Structured Metadata`), **Source ID**, **Evidence Reference**, **Timestamp**, **Confidence** and **Corroborated**. **No engine may merge these origins into a single anonymous fact.** See [`docs/DATA_FLOW.md` §12](docs/DATA_FLOW.md#12-evidence-provenance).
+
+**A human note is evidence, not truth.** The optional Human Business Description may supply intent, explanation or missing narrative. It may **never** be treated as confirmed fact, never automatically override document evidence, and **never be rewritten** — it is stored verbatim. Capture confidence measures how faithfully it was stored, never whether it is true, and **a human note may never raise Evidence Reliability simply by existing.**
 
 **Names are stable; responsibilities are not.** Sub-engine identities are part of the system contract and are never renamed once other engines reference them. Where a responsibility has changed, the component's README states why its name owns its present job. Engine 4 carries three such cases.
 

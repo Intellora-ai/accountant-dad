@@ -49,11 +49,24 @@ The **Input Engine itself** combines those four outputs into the Document Eviden
 
 `cleaner`, `reader` and `parser` emit **signals**; only `confidence` turns signals into scores. No component — parent included — may raise or lower a confidence value. No sub-engine overrides another.
 
+### Ingesting a provided source
+
+A Human Business Description enters through the **same evidence ingestion path** as every other source. **No sub-engine is added for it** — the extraction stages simply pass it through.
+
+| Sub-engine | With a provided source |
+|---|---|
+| [`cleaner`](cleaner/) | Passes it through untouched — no image to deskew, no encoding to repair |
+| [`reader`](reader/) | Passes it through untouched — already text, nothing to extract |
+| [`parser`](parser/) | Imposes no structure — it is narrative, not fields |
+| [`confidence`](confidence/) | Scores **capture fidelity**, never truth |
+
 Full detail: [`docs/ENGINE_1_INPUT_ENGINE_RULES.md` §3A](../../../docs/ENGINE_1_INPUT_ENGINE_RULES.md#3a-decision-authority).
 
 ## Input
 
-Photos · camera photo capture · images and image uploads · PDFs · scanned invoices · handwritten accounting notes · poor-quality human inputs · receipts · bills · supporting accounting documents.
+Photos · camera photo capture · images and image uploads · PDFs · scanned invoices · handwritten accounting notes · poor-quality human inputs · receipts · bills · supporting accounting documents · **Excel files** · **email content** · **structured metadata** · an **optional Human Business Description** in plain English.
+
+**The description is optional. The system must work correctly when none is provided.**
 
 Poor quality is a normal operating condition, not an exception. What varies is the confidence attached to what is read — never whether the artifact is accepted.
 
@@ -67,21 +80,33 @@ One artifact: the **Document Evidence Object**.
 Document Evidence Object
 ├── Document ID
 ├── Source references
-├── Structured Document ── extracted text · detected fields · document structure ·
-│                          tables · field values · field locations
-└── Confidence Report ──── confidence scores · uncertainty markers ·
-                           reliability information · risky fields
+├── Structured Document ──── extracted text · detected fields · document structure ·
+│                            tables · field values · field locations   [EXTRACTED]
+├── Human Business Context ─ original user text · source = Human ·
+│                            timestamp · evidence reference  [PROVIDED, optional]
+└── Confidence Report ────── confidence scores · uncertainty markers ·
+                             reliability information · risky fields
 ```
+
+**A human note is evidence, not truth.** Human Business Context stays independent from extracted evidence — separate, linked entries. **Engine 1 never merges the two into a single fact.**
+
+### Evidence provenance
+
+Every fact carries **Source Type** (`Document` · `Human` · `Structured Metadata`) · **Source ID** · **Evidence Reference** · **Timestamp** · **Confidence** · **Corroborated**. **No engine may merge these origins into a single anonymous fact.**
+
+Confidence for a provided source is **capture fidelity**, never truth. Engine 1 records `Corroborated: not assessed` — it cannot assess it, because corroboration is interpretation.
 
 Every extracted value preserves **where it came from**, **how reliable it is**, and **whether uncertainty exists**.
 
 **Document ID exists only for identity, traceability, and lifecycle tracking. It carries no accounting meaning and must never influence accounting decisions.**
 
-`Document Evidence Object` is the artifact's only name. `Structured Document` and `Confidence Report` name its components, never the artifact itself.
+`Document Evidence Object` is the artifact's only name. `Structured Document`, `Human Business Context` and `Confidence Report` name its components, never the artifact itself.
 
 ## Boundary
 
 **MUST NEVER:** decide transaction type · decide accounting treatment · select ledger accounts · create journal entries · apply tax rules · understand business intent · ask accounting questions · fill missing information by guessing · modify original financial values.
+
+**Concerning the human description:** never convert it into fact · never override document evidence · never remove conflicting evidence · never hide contradictions · **never increase confidence because the user wrote something** · **never rewrite the user's wording**.
 
 Cannot correct, complete or "improve" content it believes is wrong — it reports low confidence instead. Cannot discard content it judges irrelevant. Cannot consult company master data, prior transactions, or any downstream engine.
 

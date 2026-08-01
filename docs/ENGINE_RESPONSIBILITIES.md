@@ -29,6 +29,7 @@ Turn a raw artifact into clean, readable, structured data with a confidence scor
 - Extraction of everything written on it, including layout position.
 - Structuring that extraction into fields, tables and line-item rows.
 - The honest measurement of how much the extraction can be trusted, field by field.
+- **Collection and preservation of every input evidence source** — uploaded documents, scanned images, PDFs, spreadsheets, emails, structured metadata, and the optional human business description. Every source is treated as evidence; **no source automatically becomes truth.**
 - **Internal assembly of its four sub-engines' outputs into the Document Evidence Object**, and assignment of the Document ID.
 
 Sub-engines: `cleaner` · `reader` · `parser` · `confidence`
@@ -36,13 +37,15 @@ Sub-engines: `cleaner` · `reader` · `parser` · `confidence`
 > **Scope of the assembly responsibility.** The Input Engine owns the internal assembly of outputs from its four sub-engines into the Document Evidence Object. It does **not** own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, workflow control, or overriding sub-engine outputs. No assembler sub-engine exists, and none may be added.
 
 ### Inputs
-- A raw artifact as received: photo, camera photo capture, image upload, PDF, scanned invoice, handwritten accounting note, receipt, bill, or other supporting accounting document.
+- A raw artifact as received: photo, camera photo capture, image upload, PDF, scanned invoice, handwritten accounting note, receipt, bill, or other supporting accounting document — plus **Excel files, email content and structured metadata**.
+- An **optional Human Business Description** in plain English. It is optional, and **the system must work correctly when none is provided**.
 - Poor-quality human inputs are a normal operating condition, not an exception. What varies is the confidence attached to what is read, never whether the artifact is accepted.
 - Nothing else. The Input Engine has no knowledge of the company, its books, or its history.
 
 ### Outputs
-- **Document Evidence Object** — the engine's single output artifact, containing the Document ID, source references, and two components:
+- **Document Evidence Object** — the engine's single output artifact, containing the Document ID, source references, and three components:
   - **Structured Document** — extracted text, detected fields, document structure, tables, field values and field locations.
+  - **Human Business Context** *(optional)* — the original user text verbatim, source = Human, timestamp, evidence reference. Independent from extracted evidence; **never merged with it**.
   - **Confidence Report** — confidence scores, uncertainty markers, reliability information and risky fields.
 
 Every extracted value preserves where it came from, how reliable it is, and whether uncertainty exists. **Document ID exists only for identity, traceability, and lifecycle tracking; it carries no accounting meaning and must never influence accounting decisions.**
@@ -57,6 +60,9 @@ Full specification: [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RUL
 - Cannot ask accounting questions.
 - Cannot discard content it judges irrelevant.
 - Cannot consult company master data, prior transactions, or any downstream engine.
+- **Concerning the human description:** cannot convert it into fact, override document evidence, remove conflicting evidence, hide contradictions, **increase confidence because the user wrote something**, or **rewrite the user's wording**.
+
+> **A human note is evidence, not truth.**
 
 > **Input Engine provides evidence. Understanding Engine creates interpretation. The boundary between observation and reasoning must never be crossed.**
 
@@ -79,7 +85,7 @@ Turn structured data into a factual business story — who, what, when, how much
 Sub-engines: `transaction_understanding` · `party_understanding` · `item_understanding` · `payment_understanding` · `timeline_understanding` · `business_context` · `story_builder`
 
 ### Inputs
-- The **Document Evidence Object**, from the Input Engine.
+- The **Document Evidence Object**, from the Input Engine — including the **Human Business Context** when one was provided.
 
 ### Outputs
 - **Business Understanding Object** — the engine's single output artifact, containing four components:
@@ -99,6 +105,7 @@ Full specification: [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](ENGINE_2_UNDERSTA
 - Cannot invent facts to fill a gap — an absent fact is recorded as absent.
 - Cannot re-read or re-extract the artifact; if the extraction is inadequate it says so, it does not go back to the source.
 - Cannot use accounting vocabulary to describe business events.
+- **Cannot assume the human description is automatically correct.** It may use it while interpreting the business event; it may never treat it as confirmed fact, let it override document evidence, or merge it into extracted evidence.
 
 ---
 

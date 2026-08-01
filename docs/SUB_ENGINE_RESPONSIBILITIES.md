@@ -30,13 +30,13 @@
 
 **Responsibility.** Owns the physical quality of the artifact — deskewing, rotation, denoising, cropping, contrast, and normalisation of file format and character encoding.
 
-**Input.** The raw artifact exactly as received: photo, camera capture, image upload, PDF, scan, handwritten note, or other digital file — including poor-quality human inputs.
+**Input.** The raw artifact exactly as received: photo, camera capture, image upload, PDF, scan, handwritten note, Excel file, email content, structured metadata, or other digital file — including poor-quality human inputs. Also the **optional Human Business Description**, which it passes through untouched.
 
 **Output.** Cleaned document representation · quality issues detected · preservation status.
 
 **Boundary.** Cannot interpret the meaning of anything on the artifact. Cannot discard content it judges irrelevant, redundant or illegible. Cannot change numbers, correct accounting information, or alter original meaning — it alters presentation only.
 
-**Failure Behaviour.** If processing may damage information, preserve the original input and mark uncertainty. The original artifact is never discarded, so a damaging transformation is always recoverable. Preservation status records whether the cleaned representation or the original is the safer basis for reading. Detected quality issues are reported as evidence for `confidence`, never repaired by guesswork.
+**Failure Behaviour.** A **provided source passes through untouched** — a Human Business Description has no image to deskew and no encoding to repair, and any transformation would be a rewrite. If processing may damage information, preserve the original input and mark uncertainty. The original artifact is never discarded, so a damaging transformation is always recoverable. Preservation status records whether the cleaned representation or the original is the safer basis for reading. Detected quality issues are reported as evidence for `confidence`, never repaired by guesswork.
 
 ---
 
@@ -52,7 +52,7 @@
 
 **Boundary.** Cannot assign meaning to what it extracts — it may extract `27AAECS1234F1Z5`, it may not conclude that this is a GSTIN. Cannot understand transaction meaning, fix accounting mistakes, guess unclear words, or infer missing business information. Cannot reorder or restructure the text.
 
-**Failure Behaviour.** Return extracted information with confidence levels and uncertainty. An unclear character or word is emitted as unclear, with its confidence, never resolved by guessing. A region that could not be read at all is reported as unread, not omitted silently. Source locations are emitted even for low-confidence extractions — that is what makes a later human check possible.
+**Failure Behaviour.** A **provided source passes through untouched** — a typed note is already text, and reading it would mean interpreting it. Return extracted information with confidence levels and uncertainty. An unclear character or word is emitted as unclear, with its confidence, never resolved by guessing. A region that could not be read at all is reported as unread, not omitted silently. Source locations are emitted even for low-confidence extractions — that is what makes a later human check possible.
 
 ---
 
@@ -68,7 +68,7 @@
 
 **Boundary.** Cannot decide business meaning — it may identify a field labelled "Supplier", it may not conclude that party is a supplier for accounting purposes. Cannot decide debit or credit, choose ledger accounts, apply accounting rules, or create transaction meaning. Cannot compute, derive or infer a value that is not written. Cannot fill a field that is absent.
 
-**Failure Behaviour.** Unknown fields remain unknown; never fabricate values. A field that is absent is recorded in missing field information as absent — not defaulted, not estimated, not omitted. "Absent", "zero" and "unreadable" are three different states and must remain distinguishable. Field mappings retain the source reference for every mapped value, so a wrong mapping can be traced.
+**Failure Behaviour.** A **provided source receives no structure** — a Human Business Description is narrative, not fields, and structuring it would begin interpreting it. Unknown fields remain unknown; never fabricate values. A field that is absent is recorded in missing field information as absent — not defaulted, not estimated, not omitted. "Absent", "zero" and "unreadable" are three different states and must remain distinguishable. Field mappings retain the source reference for every mapped value, so a wrong mapping can be traced.
 
 ---
 
@@ -84,7 +84,7 @@
 
 **Boundary.** Cannot re-read, re-parse or correct anything. Cannot increase confidence without evidence, hide uncertainty, or make accounting decisions. Cannot reject a document or halt the pipeline. Cannot use business plausibility as evidence — it measures extraction quality, not whether the content makes commercial sense.
 
-**Failure Behaviour.** Reduce confidence and explain the uncertainty. Where reliability cannot be established, confidence goes down — never up, and never to a default "good enough" value. Every uncertainty marker carries a reason; a bare score cannot become a good question downstream. Uncertainty is never suppressed because it would delay processing.
+**Failure Behaviour.** For a **provided source it scores capture fidelity** — how faithfully the input was stored — never whether the statement is true; a human note may never raise Evidence Reliability simply by existing. Reduce confidence and explain the uncertainty. Where reliability cannot be established, confidence goes down — never up, and never to a default "good enough" value. Every uncertainty marker carries a reason; a bare score cannot become a good question downstream. Uncertainty is never suppressed because it would delay processing.
 
 ---
 
@@ -102,7 +102,7 @@
 
 **Responsibility.** Owns the base event — identification of what kind of event occurred: a purchase, a sale, a return, an expense, a receipt, a payment, a transfer, a credit or debit note.
 
-**Input.** The Document Evidence Object.
+**Input.** The Document Evidence Object, including the Human Business Context when one was provided.
 
 **Output.** **Transaction Understanding Result** — identified event · supporting evidence references · confidence level · unknown information · conflicts detected.
 
@@ -713,6 +713,35 @@ Two engines may not own the same concept name, which is why Accounting's output 
 | Accounting `accounting_rules` | *"This event belongs to this accounting period."* |
 
 An invoice dated 31 March and paid 10 April raises the question of March closing versus April. That is an accounting decision, not a timeline fact — which is why `timeline_understanding` is forbidden from answering it and `accounting_rules` owns accounting period treatment.
+
+## Evidence origin — extracted versus provided
+
+Every fact carries a **Source Type**, and the distinction survives the whole pipeline.
+
+| Source Type | Read or asserted | Examples | Checkable against |
+|---|---|---|---|
+| **Document** | Read off an artifact — *extracted* | Invoice fields, table rows, handwriting | The artifact itself |
+| **Human** | Asserted by a person — *provided* | The optional Human Business Description | Nothing — only corroboration |
+| **Structured Metadata** | Supplied by a system — *provided* | Upload metadata, file attributes | Nothing — only corroboration |
+
+**No engine may merge these origins into a single anonymous fact.** Something read off an artifact can be re-checked against it; something asserted cannot. See [`DATA_FLOW.md` §12](DATA_FLOW.md#12-evidence-provenance).
+
+## Capture confidence versus truth confidence
+
+| For | Confidence measures |
+|---|---|
+| Extracted evidence | How reliably it was **read** |
+| Provided evidence | How faithfully it was **captured** |
+
+Neither measures whether the content is **true**.
+
+```text
+User typed:          "Advance paid to supplier."
+Capture confidence:  100%      the system stored exactly what was typed
+Truth confidence:    unknown   until supported by other evidence
+```
+
+**A human note must never increase Evidence Reliability simply because it exists.** It can improve understanding once corroborated; it can never independently raise confidence.
 
 ## Three places gaps are named
 

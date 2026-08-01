@@ -62,6 +62,7 @@ The second is a decision wearing knowledge's clothing. The Brain may state what 
 
 The Brain **may never**:
 
+- **Rewrite the Human Business Description.** It may use a user's plain-English note to improve interpretation; it may never restate, tidy, summarise or normalise it, and never treat it as confirmed fact.
 - Create clarification requests.
 - Approve clarification.
 - Make accounting decisions.

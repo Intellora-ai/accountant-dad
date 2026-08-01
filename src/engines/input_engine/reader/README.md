@@ -42,6 +42,8 @@ No other component may override this result — not a sibling sub-engine, and no
 
 ## Failure Behaviour
 
+**A provided source passes through untouched.** A typed note is already text — there is nothing to extract from it, and reading it would mean interpreting it.
+
 **Return extracted information with confidence levels and uncertainty.**
 
 - An unclear character or word is emitted as unclear, with its confidence — never resolved by guessing.

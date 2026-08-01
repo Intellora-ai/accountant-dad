@@ -125,14 +125,54 @@ The last is the one most easily lost in implementation. The parent assembles wha
 - Receipts.
 - Bills.
 - Supporting accounting documents.
+- **Excel files.**
+- **Email content.**
+- **Structured metadata.**
+- **Optional Human Business Description** — plain English, supplied by the user.
 
 Poor quality is a normal operating condition, not an exception. A blurred phone photograph of a handwritten note is a valid input; what varies is the confidence attached to what is read from it, never whether it is accepted.
+
+**The Human Business Description is optional. The system must work correctly when none is provided.** Nothing downstream may require one, and its absence is not a gap to be clarified.
 
 ## Every input must preserve
 
 - **Original source** — the artifact as received, unmodified.
 - **Original information** — nothing dropped, nothing corrected.
 - **Document identity** — the artifact is identifiable throughout its lifecycle.
+
+---
+
+# 4A. Evidence Rules — the Human Business Description
+
+> **A human note is evidence, not truth.**
+
+## What it may contain
+
+- Business purpose.
+- Transaction intent.
+- Operational context.
+- Relationships.
+- Additional explanation.
+
+```text
+"Bought laptops for the design team."
+"Advance payment to supplier."
+"This payment settles Invoice 481."
+```
+
+Each of these supplies narrative a document cannot: *why* the transaction exists, *what* it relates to, *how* it connects to something else.
+
+## What it may never be
+
+> **The description may never be treated as confirmed fact.**
+
+It may supply intent, explanation, business context or missing narrative. It must **never automatically override** documents, receipts, invoices, bank statements or any other evidence.
+
+Conflicts between the note and other evidence **remain visible** and are handled by later engines. Engine 1 records both, marks neither correct, and passes both forward.
+
+## Every source is evidence; no source is truth
+
+The Input Engine treats a typed sentence, a scanned invoice and a metadata field identically in one respect: each is recorded as **an evidence item with an origin**, and none of them becomes truth by being recorded.
 
 ---
 
@@ -147,7 +187,7 @@ Document Evidence Object
 │
 ├── Source references
 │
-├── Structured Document
+├── Structured Document                 ← extracted evidence
 │   ├── Extracted text
 │   ├── Detected fields
 │   ├── Document structure
@@ -155,12 +195,26 @@ Document Evidence Object
 │   ├── Field values
 │   └── Field locations
 │
+├── Human Business Context              ← provided evidence, optional
+│   ├── Original user text              verbatim, never rewritten
+│   ├── Source = Human
+│   ├── Timestamp
+│   └── Evidence reference
+│
 └── Confidence Report
     ├── Confidence scores
     ├── Uncertainty markers
     ├── Reliability information
     └── Risky fields
 ```
+
+## Human Business Context
+
+Present only when the user supplied a description. **It remains independent from extracted document evidence.**
+
+> **Engine 1 never merges the two into a single fact.**
+
+The two live as **separate, linked entries**: linked because they describe the same transaction, separate because one was read off an artifact and the other was asserted by a person. Merging them would destroy the only signal that distinguishes an observation from a claim.
 
 ## The traceability rule
 
@@ -182,7 +236,56 @@ It is assigned by the Input Engine at intake. It is not an invoice number, not a
 
 ## Naming
 
-`Document Evidence Object` is the artifact's **only** name. `Structured Document` and `Confidence Report` name its two components and are never used as the name of the artifact itself. No engine may create an alternative name, and no duplicate representation may exist.
+`Document Evidence Object` is the artifact's **only** name. `Structured Document`, `Human Business Context` and `Confidence Report` name its components and are never used as the name of the artifact itself. No engine may create an alternative name, and no duplicate representation may exist.
+
+---
+
+# 5A. Evidence Provenance
+
+**Every fact carries its origin, permanently.** Engine 1 establishes the provenance envelope; every downstream engine preserves it.
+
+| Attribute | Meaning |
+|---|---|
+| **Source Type** | `Document` · `Human` · `Structured Metadata` |
+| **Source ID** | Which source it came from |
+| **Evidence Reference** | Where within that source |
+| **Timestamp** | When it entered the system |
+| **Confidence** | Extraction confidence for documents; **capture confidence** for provided sources |
+| **Corroborated** | Whether another source supports it |
+
+> **No engine may merge these origins into a single anonymous fact.**
+
+## Capture confidence is not truth confidence
+
+For a provided source, confidence measures **how faithfully the input was captured** — not whether the statement is true.
+
+```text
+User typed:          "Advance paid to supplier."
+
+Capture confidence:  100%       the system stored exactly what was typed
+Truth confidence:    unknown    until supported by other evidence
+```
+
+> **Human notes contribute context, not certainty.**
+>
+> **A human note must never increase Evidence Reliability simply because it exists.**
+
+It can improve understanding once **corroborated**. It can never independently raise confidence. The same holds for structured metadata: capturing a field perfectly says nothing about whether its content is correct.
+
+## Corroboration
+
+Engine 1 records `Corroborated: not assessed` — honestly, because **it cannot assess it.** Establishing that *"advance paid to supplier"* and a document's payment field mean the same thing is **interpretation**, which this engine is forbidden from performing.
+
+The attribute is assessed by the first engine able to assess it and recorded in **that engine's own artifact** — never written back into the Document Evidence Object, which is immutable and owned here. In practice that is the Understanding Engine.
+
+## Where provenance travels
+
+```text
+Document Evidence Object → Business Understanding Object → Accounting Decision
+    → Clarification Request → Validation Verdict → audit history
+```
+
+Complete provenance from input to execution. See [`DATA_FLOW.md` §12](DATA_FLOW.md#12-evidence-provenance).
 
 ---
 
@@ -200,11 +303,24 @@ The Input Engine **MUST NEVER**:
 8. Fill missing information by guessing.
 9. Modify original financial values.
 
+## Concerning the Human Business Description, it must never
+
+10. Convert the description into fact.
+11. Override document evidence.
+12. Remove conflicting evidence.
+13. Hide contradictions.
+14. **Increase confidence because the user wrote something.**
+15. **Rewrite the user's wording.**
+
+The last is absolute: the text is stored **verbatim**. Not tidied, not corrected, not summarised, not normalised. A rewritten note is no longer the user's evidence — it is the system's paraphrase of it, and no downstream engine could tell the difference.
+
 ## The invention prohibition
 
 **When information is unclear, the system must report uncertainty. It must never invent information.**
 
 This is the single most important rule in the engine. An invented value is indistinguishable downstream from an observed one, and the entire trustworthiness of the system rests on that distinction holding.
+
+A human note is the sharpest test of it. A user's claim is not an observation, and the moment the two become indistinguishable the system has invented a fact without noticing.
 
 ## Observation versus reasoning
 
@@ -248,6 +364,19 @@ Input Engine
 ```
 
 The four sub-engines are specialised workers. The parent engine is the boundary at which their individual observations become one artifact. **No new assembler sub-engine is created**, and none is needed — architecture expands by making responsibilities clearer, not by adding components.
+
+## Ingesting a provided source
+
+A Human Business Description enters through the **same evidence ingestion path** as every other source. **No sub-engine is added for it.** A typed English note needs no OCR and no document parsing, so the extraction stages simply pass it through:
+
+| Sub-engine | With a provided source |
+|---|---|
+| `cleaner` | **Passes it through untouched.** There is no image to deskew, no encoding to repair. Any transformation would be a rewrite. |
+| `reader` | **Passes it through untouched.** The text is already text; there is nothing to extract from it. |
+| `parser` | **Imposes no structure on it.** It is narrative, not fields — and structuring it would begin interpreting it. |
+| `confidence` | **Scores capture fidelity** — how faithfully the input was stored. Never whether it is true. |
+
+Engine 1 records it as a **first-class evidence item** with its own origin, timestamp, source type and traceability. The Document Evidence Object then holds extracted document evidence and human-provided evidence as **separate, linked entries** — never merged.
 
 ## Sub-engine output contracts
 
@@ -309,6 +438,7 @@ Cannot:
 
 **If processing may damage information: preserve the original input and mark uncertainty.**
 
+- **A provided source passes through untouched.** A Human Business Description has no image to deskew and no encoding to repair; any transformation would be a rewrite, which is forbidden.
 - The original artifact is never discarded, so a damaging transformation is always recoverable.
 - Preservation status records whether the cleaned representation or the original is the safer basis for reading.
 - Detected quality issues are reported as evidence for the Confidence sub-engine, never repaired by guesswork.
@@ -357,6 +487,7 @@ Cannot:
 
 **Return extracted information with confidence levels and uncertainty.**
 
+- **A provided source passes through untouched.** A typed note is already text; there is nothing to extract from it, and reading it would mean interpreting it.
 - An unclear character or word is emitted as unclear, with its confidence, never resolved by guessing.
 - A region that could not be read at all is reported as unread, not omitted silently.
 - Source locations are emitted even for low-confidence extractions — that is what makes a later human check possible.
@@ -415,6 +546,7 @@ Cannot:
 
 **Unknown fields remain unknown. Never fabricate values.**
 
+- **A provided source receives no structure.** A Human Business Description is narrative, not fields. Imposing structure on it would begin interpreting it, which belongs to the Understanding Engine.
 - A field that is absent is recorded in missing field information as absent — not defaulted, not estimated, not omitted.
 - "Absent", "zero" and "unreadable" are three different states and must remain distinguishable.
 - Field mappings retain the source reference for every mapped value, so a wrong mapping can be traced.
@@ -471,6 +603,7 @@ Cannot:
 
 **Reduce confidence and explain the uncertainty.**
 
+- **For a provided source, it scores capture fidelity** — how faithfully the input was stored — never whether the statement is true. A human note may never raise Evidence Reliability simply by existing.
 - Where reliability cannot be established, confidence goes down — never up, and never to a default "good enough" value.
 - Every uncertainty marker carries a reason. A bare score cannot become a good question downstream.
 - Uncertainty is never suppressed because it would delay processing.

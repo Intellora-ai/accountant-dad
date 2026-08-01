@@ -134,6 +134,8 @@ The contract governing this boundary is [`COMMUNICATION_RULES_UNDERSTANDING_ENGI
 
 ## Receiving rules
 
+**Preserve evidence provenance.** Source Type (`Document` · `Human` · `Structured Metadata`), Source ID, Evidence Reference, Timestamp, Confidence and Corroborated travel with every fact. **No origin may be merged into an anonymous fact**, and a fact asserted only by a human and corroborated by nothing is never treated as established.
+
 The Accounting Engine **must**:
 
 1. Preserve evidence references.

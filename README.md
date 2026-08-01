@@ -31,6 +31,7 @@ What exists is the thing that has to exist first: an unambiguous statement of wh
 | **Engine 4 — Clarification Engine** specification lock | ✅ **Locked** |
 | Communication architecture — ownership, authority, boundary contracts | ✅ **Locked** |
 | Artifact versioning · Knowledge Brain | ✅ **Locked** |
+| Evidence provenance · optional human business context | ✅ **Locked** |
 | Engines 5–6 specification locks | Not yet started |
 
 ### Phase 1 does **not** include

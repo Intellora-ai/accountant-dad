@@ -52,6 +52,8 @@ No other component may override this result — not a sibling sub-engine, and no
 
 ## Failure Behaviour
 
+**For a provided source it scores capture fidelity** — how faithfully the input was stored — never whether the statement is true. *User typed "Advance paid to supplier": capture confidence 100%, truth confidence unknown.* **A human note may never raise Evidence Reliability simply by existing.**
+
 **Reduce confidence and explain the uncertainty.**
 
 - Where reliability cannot be established, confidence goes down — never up, and never to a default "good enough" value.

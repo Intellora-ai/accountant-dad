@@ -33,8 +33,11 @@ The Document Evidence Object carries:
 - **Source locations** — where on the artifact each value came from.
 - **Confidence scores** — how reliable each extraction is.
 - **Uncertainty markers** — where doubt exists, and why.
+- **Human Business Context** *(optional)* — the user's plain-English description, verbatim, with source, timestamp and evidence reference.
 
 Plus the **Document ID** and **source references** that make the artifact identifiable and traceable throughout its lifecycle.
+
+**Every fact carries its provenance** — Source Type (`Document` · `Human` · `Structured Metadata`), Source ID, Evidence Reference, Timestamp, Confidence and Corroborated. See [`DATA_FLOW.md` §12](DATA_FLOW.md#12-evidence-provenance).
 
 Full structure: [`ENGINE_1_INPUT_ENGINE_RULES.md` §5](ENGINE_1_INPUT_ENGINE_RULES.md#5-output-contract).
 
@@ -70,6 +73,9 @@ If a sentence in the output could be **wrong about the business** rather than **
 | "Extracted `27AAECS1234F1Z5` at top right." | "GSTIN is 27AAECS1234F1Z5." |
 | "Amount field contains `19,800.00`." | "Total payable is ₹19,800." |
 | "No field matching a payment reference was detected." | "This was an unpaid credit purchase." |
+| "The user wrote: *This payment settles Invoice 481.*" | "This payment settles Invoice 481." |
+
+The last row is the one this engine most easily gets wrong. Recording **that a user said something** is an observation. Recording **what they said as true** is an interpretation — and once the quotation marks are gone, nothing downstream can tell which happened.
 
 ---
 
@@ -139,14 +145,14 @@ Every engine boundary must define all nine items ([`DATA_FLOW.md` §8](DATA_FLOW
 
 | # | Item | Definition |
 |---|---|---|
-| 1 | **Input artifact** | Raw artifact — photo, camera capture, image upload, PDF, scan, handwritten note, receipt, bill, or other supporting accounting document. |
-| 2 | **Output artifact** | **Document Evidence Object.** |
+| 1 | **Input artifact** | Raw artifact — photo, camera capture, image upload, PDF, scan, handwritten note, Excel file, email content, structured metadata, receipt, bill, or other supporting accounting document — plus an **optional Human Business Description**. |
+| 2 | **Output artifact** | **Document Evidence Object** — including the optional **Human Business Context** when the user supplied one. |
 | 3 | **Artifact creator** | The Input Engine (parent), assembling its four sub-engines' outputs and assigning the Document ID. |
 | 4 | **Artifact owner** | The **Input Engine**, permanently. |
 | 5 | **Allowed transformation** | The Understanding Engine may **read**, **analyze** and **reference** the Document Evidence Object, and produce its own artifact from it. |
 | 6 | **Forbidden transformation** | It may **not** modify, rewrite, delete, remove uncertainty from, or change confidence in the Document Evidence Object. Artifacts are immutable after creation. |
 | 7 | **Decision authority** | Input decides extraction method, extraction confidence and document structure. Understanding decides business event interpretation, entity relationships and the business story. Neither may make the other's decision. |
-| 8 | **Uncertainty movement** | Confidence scores, uncertainty markers, reliability information and risky fields cross intact. Understanding confidence may never exceed the evidence reliability it received. Uncertainty is only ever described more precisely — never removed. |
+| 8 | **Uncertainty movement** | Confidence scores, uncertainty markers, reliability information and risky fields cross intact. **Evidence provenance crosses intact** — Source Type, Source ID, Evidence Reference, Timestamp, Confidence and Corroborated travel with every fact, and the receiver may never merge origins into an anonymous fact. A human note is evidence, not truth: it may never be treated as confirmed fact and never raises Evidence Reliability by existing. Understanding confidence may never exceed the evidence reliability it received. Uncertainty is only ever described more precisely — never removed. |
 | 9 | **Failure movement** | The Input Engine does not halt the pipeline. Unreadable regions, damaged artifacts and failed extractions cross the boundary **as low confidence and named uncertainty**, not as errors. A Validation finding that the data are unsound returns to Input — or to Clarification, if a human can supply what is missing ([`DATA_FLOW.md` §4.4](DATA_FLOW.md#44-validation-returns-work-it-never-passes-it-on)). |
 
 ## Engine 2 receiving rules

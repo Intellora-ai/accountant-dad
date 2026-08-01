@@ -129,12 +129,17 @@ Created and **owned** by the Input Engine. Full structure: [`ENGINE_1_INPUT_ENGI
 Document Evidence Object
 ├── Document ID
 ├── Source References
-├── Structured Document
+├── Structured Document                 [EXTRACTED]
 │   ├── Extracted Text
 │   ├── Detected Fields
 │   ├── Tables
 │   ├── Field Values
 │   └── Field Locations
+├── Human Business Context              [PROVIDED, optional]
+│   ├── Original User Text              verbatim
+│   ├── Source = Human
+│   ├── Timestamp
+│   └── Evidence Reference
 └── Confidence Report
     ├── Confidence Scores
     ├── Reliability Information
@@ -144,6 +149,20 @@ Document Evidence Object
 
 The contract governing this boundary is [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md). **The sending engine owns the contract of what leaves it.** This document references it; it does not restate it.
 
+## The Human Business Context
+
+When the user supplied a plain-English description, it arrives inside the Document Evidence Object as **provided evidence** — separate from, and never merged with, extracted document evidence.
+
+**This engine may use it while interpreting the business event.** It may **never assume it is automatically correct.**
+
+- It may never override document evidence.
+- It may never be treated as confirmed fact.
+- Where it contradicts a document, `story_builder` records the **conflict**, exactly as it would between any two Results — it does not pick a side.
+- `business_context` may read it as a **business purpose indicator**, never as a conclusion.
+- It may not raise confidence on its own. A fact asserted only by a human, and corroborated by nothing, stays uncorroborated.
+
+**Corroboration is assessed here.** The Input Engine records `Corroborated: not assessed`, because establishing that *"advance paid to supplier"* and a document's payment field mean the same thing is interpretation — this engine's work. The assessment is recorded in the **Business Understanding Object**, never written back into the immutable Document Evidence Object.
+
 ## Receiving rules
 
 The Understanding Engine must:
@@ -152,6 +171,7 @@ The Understanding Engine must:
 2. **Preserve uncertainty** — every uncertainty marker received travels forward.
 3. **Trace understanding back to evidence** — every fact produced here points to the evidence that produced it.
 4. **Never modify source evidence** — the Document Evidence Object is read-only to this engine, permanently.
+5. **Preserve evidence provenance** — Source Type, Source ID, Evidence Reference, Timestamp, Confidence and Corroborated travel with every fact. **No origin may be merged into an anonymous fact.**
 
 ## What the Input Engine sends, and what it never sends
 
