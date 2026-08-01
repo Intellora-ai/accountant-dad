@@ -213,34 +213,54 @@ Full specification: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](ENGINE_4_CLARIFIC
 
 ## 5. Validation Engine
 
+> **Specification locked.** Deep authority: [`ENGINE_5_VALIDATION_ENGINE_RULES.md`](ENGINE_5_VALIDATION_ENGINE_RULES.md).
+
 ### Mission
-Judge whether the decision is safe to post — correctness, tax, data integrity, duplicates, risk.
+Protect system correctness. Prevent incorrect entries, unsupported decisions, hidden assumptions and the execution of uncertain accounting.
+
+> **Is the complete reasoning chain sufficiently correct, complete, traceable and safe for execution?**
+
+Everything before it attempts to understand, reason and clarify. **This engine attempts to prove them wrong.**
 
 ### Owns
-- Whether the entry is accounting-correct: balanced, correctly signed, posted to appropriate heads, consistent with the rules invoked.
+- Whether required artifacts exist, are complete, version-correct and structurally valid.
+- Whether the entry is accounting-correct: correctly signed, posted to appropriate heads, consistent with the rules invoked.
 - Whether the tax treatment is compliant and internally consistent.
-- Whether the underlying data are sound: complete, in range, reconciling, referencing masters that exist.
-- Whether this transaction has already been recorded.
+- Whether this business event has already been recorded — **economic** duplication.
 - What posting this would expose the business to.
-- The single verdict that results, and the naming of who must act on a rejection.
+- **Whether execution is legally permitted** — closed periods, statutory locks, authorisation limits.
+- The single Validation Decision that results, and the naming of the engine responsible for each finding.
+- Validation confidence · validation traceability · validation completeness.
 
-Sub-engines: `accounting_validation` · `tax_validation` · `data_validation` · `duplicate_detection` · `risk_assessment` · `validation_decision`
+Sub-engines: `data_validation` · `accounting_validation` · `tax_validation` · `duplicate_detection` · `risk_assessment` · `validation_decision`
+
+**Only `data_validation` may stop the pipeline.** Once artifacts exist, all four validators run — a decision with an accounting error *and* a tax error reports both.
 
 ### Inputs
-- Accounting Decision — original or updated after clarification.
-- Supporting evidence: the Business Understanding Object, the Confidence Report within the Document Evidence Object, and prior posted transactions.
+- **Accounting Decision** — the primary artifact to validate; original or a new version issued after clarification.
+- **Clarification Request** — whether unresolved uncertainty blocks execution.
+- **Reference only:** Business Understanding Object · Document Evidence Object · Company Context · Knowledge Brain.
+
+Boundary contracts: [`COMMUNICATION_RULES_ACCOUNTING_ENGINE.md`](COMMUNICATION_RULES_ACCOUNTING_ENGINE.md) · [`COMMUNICATION_RULES_CLARIFICATION_ENGINE.md`](COMMUNICATION_RULES_CLARIFICATION_ENGINE.md).
 
 ### Outputs
-- **Validation Verdict** — approve, reject, or flag for human attention.
-- **Findings** — every issue detected, with severity and the stage responsible for it.
+- **Validation Decision** — Validation ID · Transaction ID · Related Decision ID · Related Artifact Version · Validation Status · findings · errors · warnings · risks · failed validation rules · supporting evidence references · Validation Confidence · reasoning · timestamp.
+- **Validation Status:** `Approved` · `Approved With Warning` · `Clarification Required` · `Rejected`.
+- **Severity:** `Critical` blocks execution · `High` · `Medium` · `Low`, non-blocking but permanently recorded.
+
+`Approved With Warning` means *correct, but a human should look before it posts*. `Clarification Required` means *the reasoning is incomplete*. **The two are never interchangeable.**
 
 ### Cannot Do
-- Cannot create a decision, or any part of one.
-- Cannot amend, correct or "fix up" a decision it is judging — a defect is reported, not repaired.
+- Cannot create accounting entries, or any part of a decision.
+- Cannot modify accounting decisions, business understanding, evidence or clarification requests. **Validation never rewrites history.**
+- **Cannot repair what it detects** — a defect is reported, never fixed.
 - Cannot recompute ledgers, entries or tax; it judges what it was given.
-- Cannot post to Tally.
-- Cannot ask the human questions — a case needing questions is returned to the Clarification Engine.
-- Cannot pass a decision forward with an unresolved finding.
+- Cannot invent facts or confidence · remove assumptions · hide uncertainty · resolve conflicts.
+- Cannot generate clarification or ask users — a case needing questions returns to the Clarification Engine.
+- Cannot post, execute journals, or bypass any engine.
+- Cannot approve while a Critical finding stands, or return a failure without naming the responsible engine.
+
+**Failure behaviour:** never simply *"Validation failed."* Always what failed, why, the **responsible engine**, the affected artifact, blocking severity, and the recommended next step.
 
 ---
 

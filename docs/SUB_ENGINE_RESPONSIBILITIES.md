@@ -501,17 +501,23 @@
 
 # 5. Validation Engine
 
+> **Specification locked.** Deep authority: [`ENGINE_5_VALIDATION_ENGINE_RULES.md`](ENGINE_5_VALIDATION_ENGINE_RULES.md) · [`COMMUNICATION_RULES_VALIDATION_INTERNAL.md`](COMMUNICATION_RULES_VALIDATION_INTERNAL.md).
+>
+> **Only `data_validation` may stop the pipeline.** Once artifacts exist, all four validators run — a transaction with an accounting error *and* a tax error reports both.
+
 ## 5.1 `accounting_validation`
 
 **Purpose.** A decision must be checked by something that did not make it.
 
-**Responsibility.** Owns the judgement of whether the entry is accounting-correct — balanced, correctly signed, posted to appropriate heads, and consistent with the rules its own reasoning invoked.
+**Responsibility.** Owns **accounting validation** — whether the entry is accounting-correct: correctly signed, posted to appropriate heads, and consistent with the rules its own reasoning invoked. Engine 3's `journal_intelligence` guarantees mathematical balance only; **balance ≠ correctness**, and a balanced journal on the wrong ledger fails here.
 
-**Input.** The Accounting Decision, including its stated reasoning and rulings.
+**Input.** The Accounting Decision, including its stated reasoning and rulings · the Data Validation Result.
 
-**Output.** An accounting verdict with findings: each defect, its severity, and where in the decision it sits.
+**Output.** The **Accounting Validation Result** — accounting findings · failed accounting rules · journal correctness · ledger correctness · confidence.
 
-**Boundary.** Cannot fix, rewrite or adjust the entry. Cannot substitute its own preferred treatment for a defensible one. Cannot judge tax treatment — that is `tax_validation`.
+**Boundary.** Can validate, compare against accounting rules, report failures. Cannot redesign journals · select ledgers · rewrite accounting · fix, adjust or repair the entry. Cannot substitute its own preferred treatment for a defensible one. Cannot judge tax treatment — that is `tax_validation`.
+
+**Failure Behaviour.** Every accounting failure remains visible. **Never repair accounting** — a defect is reported with its severity and location, never corrected.
 
 ---
 
@@ -519,13 +525,15 @@
 
 **Purpose.** Tax errors are the ones that come back years later.
 
-**Responsibility.** Owns the judgement of whether the tax treatment is compliant and internally consistent — rate against classification, place of supply against parties, ITC eligibility against the stated basis, TDS against applicability.
+**Responsibility.** Owns **tax validation** — whether the tax treatment is compliant and internally consistent: rate against classification, place of supply against parties, ITC eligibility against the stated basis, TDS against applicability.
 
-**Input.** The tax treatment and tax lines from the decision, the party and item facts, and the company's tax profile.
+**Input.** The Accounting Decision — its tax treatment and tax lines, the party and item facts, the company's tax profile · the Data Validation Result.
 
-**Output.** A tax verdict with findings.
+**Output.** The **Tax Validation Result** — GST findings · tax inconsistencies · missing tax information · confidence.
 
-**Boundary.** Cannot recompute or change a tax amount. Cannot select a different treatment. Cannot file or report anything.
+**Boundary.** Can validate, compare tax treatment, report. Cannot calculate new tax · rewrite tax treatment · select a different treatment · file or report anything.
+
+**Failure Behaviour.** Unknown tax treatment remains unknown. **Never invent tax interpretation** — where the basis for a treatment is absent, that absence is the finding.
 
 ---
 
@@ -533,13 +541,15 @@
 
 **Purpose.** A perfectly reasoned entry built on broken data is still broken.
 
-**Responsibility.** Owns the judgement of whether the underlying data are sound — required fields present, dates within permissible range and sequence, totals reconciling to their lines, and every referenced master actually existing.
+**Responsibility.** Owns **data validation** — whether every required input artifact exists, is complete, internally consistent, version-correct and structurally valid: required fields present, dates in range and sequence, totals reconciling to their lines, every referenced master existing. **Owns the closed-period gate** — see Permission validation, below.
 
-**Input.** The Accounting Decision, the Business Understanding Object, the Confidence Report within the Document Evidence Object, and the company's master data.
+**Input.** The Accounting Decision · the Clarification Request · reference artifacts: Business Understanding Object, Document Evidence Object, Company Context.
 
-**Output.** A data verdict with findings.
+**Output.** The **Data Validation Result** — completeness · missing artifacts · version compatibility · traceability status · confidence.
 
-**Boundary.** Cannot correct, complete or normalise any data. Cannot judge whether the accounting treatment is right. Cannot lower a requirement because the data cannot meet it.
+**Boundary.** Can verify, inspect, compare, report. Cannot edit artifacts · create artifacts · infer missing information · modify accounting · correct, complete or normalise any data. Cannot judge whether the accounting treatment is right. Cannot lower a requirement because the data cannot meet it.
+
+**Failure Behaviour.** If required data is missing, report **every** missing component and stop further validation. **This is the only sub-engine permitted to short-circuit** — there is nothing to validate against absent artifacts.
 
 ---
 
@@ -547,13 +557,15 @@
 
 **Purpose.** The same invoice posted twice is a real and common loss.
 
-**Responsibility.** Owns the judgement of whether this transaction has already been recorded — by document identity, by party and amount and date, or by economic equivalence.
+**Responsibility.** Owns **economic duplicate detection** — whether this is the same business event by accounting effect, even if entered differently. The Input Engine already *screened* for artifact identity and recorded a fact; **screening is not deciding** ([`SYSTEM_INVARIANTS.md` INV-7](SYSTEM_INVARIANTS.md#inv-7--screening-is-not-deciding)). The judgement is made here.
 
-**Input.** The Accounting Decision and Business Understanding Object, and previously posted transactions and audit records.
+**Input.** The Accounting Decision · transaction identifiers · history references — previously posted transactions and audit records.
 
-**Output.** A duplicate verdict with any matches found and the strength of each match.
+**Output.** The **Duplicate Detection Result** — duplicate probability · duplicate evidence · duplicate confidence.
 
-**Boundary.** Cannot delete, merge, reverse or amend any existing record. Cannot decide what to do about a duplicate — it reports the match; `validation_decision` decides.
+**Boundary.** Can compare, search, detect. Cannot delete, merge, reverse or amend any record · **ignore duplicates** · decide what to do about one — it reports the match; `validation_decision` decides.
+
+**Failure Behaviour.** If uncertain, flag possible duplicate. **Never silently allow duplication.** A legitimate near-duplicate — a monthly retainer at the same amount from the same vendor — is reported with its match strength, not suppressed.
 
 ---
 
@@ -561,13 +573,17 @@
 
 **Purpose.** Some entries are correct and still should not be posted unattended.
 
-**Responsibility.** Owns the judgement of what *posting this* would expose the business to — compliance exposure, materiality, reversibility, and audit visibility.
+**Responsibility.** Owns the **Risk Assessment** — what *posting this* would expose the business to: compliance exposure, materiality, reversibility, audit visibility. Distinct from Engine 3's **Accounting Risk Analysis**, which rates the reasoning rather than the consequences.
 
-**Input.** The Accounting Decision, the risk profile produced by the Accounting Engine's `risk_analysis`, and the findings of the other validators.
+**Input.** All previous validation results, plus the Accounting Risk Analysis produced by the Accounting Engine's `risk_analysis`.
 
-**Output.** A posting-risk rating with the exposures that drive it.
+**Output.** The **Risk Assessment** — risk level · severity · affected areas · confidence · recommendation.
 
-**Boundary.** Cannot re-derive the decision's internal risk — it consumes `risk_analysis` rather than repeating it. Cannot reason about accounting treatment. Cannot block posting itself; it rates, `validation_decision` decides.
+**Boundary.** Can classify, score, prioritise. Cannot approve execution · reject execution · rewrite previous outputs · re-derive the decision's internal risk — it consumes `risk_analysis` rather than repeating it. Cannot reason about accounting treatment. **It rates; `validation_decision` decides.**
+
+**Failure Behaviour.** **Unknown risk defaults to higher severity.** An unassessed risk is never a zero risk.
+
+**Its output path.** This sub-engine cannot approve or reject. Its recommendation is what `validation_decision` converts into **Approved With Warning** — the status for a decision that is correct but whose consequences warrant a human. Without that status this sub-engine has no output route.
 
 ---
 
@@ -575,13 +591,25 @@
 
 **Purpose.** Five opinions must become one answer.
 
-**Responsibility.** Owns the single verdict — approve, reject, or flag for human attention — and the naming of the stage that must act on any rejection.
+**Responsibility.** Owns the **Validation Decision** — the single status, and the naming of the engine responsible for every finding.
 
-**Input.** The verdicts and findings of all five preceding validators.
+**Input.** All Validation Results — Data, Accounting, Tax, Duplicate Detection, Risk Assessment.
 
-**Output.** The **Validation Verdict**: the outcome, every finding that drove it, and for a rejection, the stage responsible.
+**Output.** The **Validation Decision** — Validation ID · Transaction ID · Related Decision ID · Related Artifact Version · Validation Status · findings · errors · warnings · risks · failed validation rules · supporting evidence references · Validation Confidence · reasoning · timestamp.
 
-**Boundary.** Cannot create or amend a decision. Cannot post. Cannot approve a decision with an unresolved finding. Cannot return a rejection without naming the stage that must handle it. Cannot ask the human questions — a case needing questions returns to the Clarification Engine.
+**Validation Status.** `Approved` · `Approved With Warning` · `Clarification Required` · `Rejected`. **The last two are not interchangeable** — the first of them says the reasoning is sound and the consequences warrant a human; the second says the reasoning is incomplete.
+
+**Boundary.** Can assemble, report, publish. Cannot override sub-engine outputs · **hide failures** · remove uncertainty · create accounting decisions · amend a decision · post · approve while a Critical finding stands · return a rejection without naming the responsible engine · ask the human questions — a case needing questions returns to the Clarification Engine. It **creates** the artifact but does not **own** it — the Validation Engine does.
+
+**Failure Behaviour.** Every blocking issue must appear inside the Validation Decision. **No approval exists while a Critical finding remains**, and every rejection names the responsible engine and the recommended next step.
+
+---
+
+## Permission validation
+
+> **The Accounting Engine decides the correct accounting treatment. The Validation Engine decides whether execution is legally permitted.**
+
+A closed accounting period, a statutory lock or an exceeded authorisation limit is a **Critical** finding in `data_validation`, raised **before execution begins**. Execution must never discover that posting was impossible — [`SYSTEM_INVARIANTS.md` INV-8](SYSTEM_INVARIANTS.md#inv-8--permission-to-execute-is-decided-before-execution).
 
 ---
 

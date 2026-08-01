@@ -212,10 +212,15 @@ It also cannot:
 - Substitute its own preferred treatment for one that is defensible.
 - Post to Tally.
 - Ask the human questions. A case needing questions returns to the Clarification Engine.
-- Approve a decision that still carries an unresolved finding.
-- Return a rejection without naming the stage that must act on it.
+- Approve a decision that still carries an unresolved **Critical** finding.
+- Return a failure without naming the **responsible engine** and the recommended next step.
+- Generate clarification, resolve one, or change a Clarification Request's priority or status.
+- Hide, downgrade or drop a finding — **every failed validation rule remains visible**, at every severity.
+- Raise confidence. Validation evaluates the confidence that arrived; it never creates any.
 
-**Per sub-engine:** `accounting_validation` judges the entry, never rewrites it. `tax_validation` judges tax, never recomputes it. `data_validation` judges data, never corrects or normalises it, and never lowers a requirement the data cannot meet. `duplicate_detection` reports matches, never deletes, merges or reverses, and never decides what to do about a duplicate. `risk_assessment` rates exposure, never re-derives the decision's internal risk and never blocks by itself. `validation_decision` issues one verdict, never creates or amends a decision.
+**Per sub-engine:** `data_validation` judges data and owns the **closed-period gate**, never corrects or normalises anything and never lowers a requirement the data cannot meet — it is the **only** sub-engine permitted to stop the pipeline. `accounting_validation` judges the entry, never rewrites it. `tax_validation` judges tax, never recomputes it and never invents an interpretation. `duplicate_detection` judges **economic** duplication, never deletes, merges or reverses, and never decides what to do about a duplicate. `risk_assessment` rates exposure, never re-derives the decision's internal risk and never blocks by itself. `validation_decision` issues one Validation Decision, never creates or amends a decision and never hides a failure.
+
+**Once artifacts exist, all four validators run.** No validator is skipped because another failed — a transaction with an accounting error *and* a tax error reports both.
 
 ---
 

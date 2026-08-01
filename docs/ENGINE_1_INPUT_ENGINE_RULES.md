@@ -300,7 +300,7 @@ The attribute is assessed by the first engine able to assess it and recorded in 
 
 ```text
 Document Evidence Object → Business Understanding Object → Accounting Decision
-    → Clarification Request → Validation Verdict → audit history
+    → Clarification Request → Validation Decision → audit history
 ```
 
 Complete provenance from input to execution. See [`DATA_FLOW.md` §12](DATA_FLOW.md#12-evidence-provenance).

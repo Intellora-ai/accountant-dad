@@ -35,7 +35,7 @@ The system is divided into six engines. **Each engine is one cognitive stage, no
 | 2 | **Understanding Engine** | *What happened in the business?* |
 | 3 | **Accounting Engine** | *How should it be recorded?* |
 | 4 | **Clarification Engine** | *What do we still need to ask a human?* |
-| 5 | **Validation Engine** | *Is this safe to post?* |
+| 5 | **Validation Engine** | *Is the reasoning chain correct, complete, traceable and safe to execute?* |
 | 6 | **Tally Engine** | *Put it in the books, and record that we did.* |
 
 ### Why this split exists
@@ -86,21 +86,21 @@ AI Accountant
 │   └── decision_output ..................... one assembled decision
 │
 ├── 4. Clarification Engine ................. What must we ask a human?
-│   ├── understanding ....................... comprehend the case and its doubts
-│   ├── uncertainty_detection ............... which uncertainties actually block us
 │   ├── missing_information ................. what facts are absent, and who has them
-│   ├── question_generator .................. the fewest, clearest questions
-│   ├── answer_understanding ................ what the human actually answered
-│   ├── decision_updater .................... carry answers back into the decision
-│   └── stop_decision ....................... when to stop asking
+│   ├── uncertainty_detection ............... which uncertainties actually block us
+│   ├── understanding ....................... conflict identification
+│   ├── stop_decision ....................... is clarification necessary at all
+│   ├── answer_understanding ................ clarification priority
+│   ├── question_generator .................. the Clarification Request itself
+│   └── decision_updater .................... clarification lifecycle tracking
 │
 ├── 5. Validation Engine .................... Is this safe to post?
+│   ├── data_validation ..................... are the data sound — the only gate
 │   ├── accounting_validation ............... is the entry accounting-correct
 │   ├── tax_validation ...................... is the tax treatment compliant
-│   ├── data_validation ..................... are the underlying data sound
-│   ├── duplicate_detection ................. have we recorded this already
+│   ├── duplicate_detection ................. same business event, already recorded?
 │   ├── risk_assessment ..................... what posting this would expose us to
-│   └── validation_decision ................. approve, reject, or flag
+│   └── validation_decision ................. the final Validation Decision
 │
 └── 6. Tally Engine ......................... Put it in the books.
     ├── voucher_translator .................. decision → Tally voucher
@@ -170,7 +170,7 @@ Per-sub-engine detail: [SUB_ENGINE_RESPONSIBILITIES.md](SUB_ENGINE_RESPONSIBILIT
 2. The **Understanding Engine** converts that evidence into a **Business Understanding Object** — the parties, the goods, the money, the dates, the context, assembled into one narrative with no accounting vocabulary in it, alongside every gap it found and every conflict it refused to resolve.
 3. The **Accounting Engine** converts that understanding, together with company context, into an **Accounting Decision**: the ledgers, the double entry, the tax treatment and the accounting period — together with the assumptions it rested on, the risks it carries, the doubts it could not resolve, and a status saying plainly whether it is complete.
 4. The **Clarification Engine** detects what would prevent that decision being completed safely — what is missing, what is uncertain, what contradicts what — and emits a **Clarification Request** saying what is required, why it matters and how urgent it is. It resolves nothing and asks no one: a later system layer delivers the request, and any answer re-enters at Engine 1, 2 or 3, which emits a **new artifact version**.
-5. The **Validation Engine** independently judges the decision — accounting correctness, tax compliance, data soundness, duplication, posting risk — reading both the Accounting Decision and the Clarification Request, and returns one verdict: approve, reject, or flag.
+5. The **Validation Engine** independently judges the decision — accounting correctness, tax compliance, data soundness, duplication, posting risk — reading both the Accounting Decision and the Clarification Request, and returns one **Validation Decision**: `Approved`, `Approved With Warning`, `Clarification Required` or `Rejected`, with every finding naming the engine responsible for it.
 6. Only an approved decision reaches the **Tally Engine**, which translates it to a voucher, posts it exactly once, reads what Tally actually said, classifies any failure, and writes an immutable audit record.
 
 Artifact-by-artifact detail, including the conditional paths and the return rule: [DATA_FLOW.md](DATA_FLOW.md).

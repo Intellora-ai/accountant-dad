@@ -17,6 +17,8 @@
 
 # Engine 5 — Validation Engine
 
+> **Locked.** [`ENGINE_5_VALIDATION_ENGINE_RULES.md`](ENGINE_5_VALIDATION_ENGINE_RULES.md). Every row below is honoured, added or explicitly revised by that specification.
+
 ## Commitments made by Engines 1–4
 
 | # | Commitment | Made in | Status |
@@ -25,13 +27,13 @@
 | 2 | Validation receives **both** the Accounting Decision and the Clarification Request | Engine 3 §11, Engine 4 §13 | Honoured |
 | 3 | `risk_assessment` owns the name **Risk Assessment** — Accounting deliberately uses *Accounting Risk Analysis* to avoid collision | Engine 3 §8.7, Ownership Collisions | Honoured |
 | 4 | Validation judges whether the entry **balances** — *"Balance ≠ correctness"* delegates the check here | Engine 3 §8.6 | Honoured |
-| 5 | A rejection **names the stage responsible** | `DATA_FLOW` §4.4 routing table | Honoured |
+| 5 | A rejection **names the stage responsible** | `DATA_FLOW` §4.4 routing table | Honoured — strengthened to *responsible engine* on **every** finding |
 | 6 | Validation **cannot amend or repair** — a defect is reported, never fixed | Engine 3, `SYSTEM_BOUNDARIES` §5 | Honoured |
 | 7 | Validation **cannot ask the user** — a case needing questions returns to Clarification | `SYSTEM_BOUNDARIES` §5 | Honoured |
 | 8 | Validation **cannot approve with an unresolved finding** | `SYSTEM_BOUNDARIES` §5 | Honoured |
-| 9 | The **closed-period gate** belongs to Validation — execution must never discover posting was impossible | INV-8 | **Added** — absent from the issued spec |
-| 10 | **Economic** duplicate judgement belongs to Validation; **identity** screening to Input | INV-7 | **Added** — absent from the issued spec |
-| 11 | Every artifact carries a **Transaction ID** | INV-3 | **Added** — absent from the issued spec |
+| 9 | The **closed-period gate** belongs to Validation — execution must never discover posting was impossible | INV-8 | **Added** — owned by `data_validation` |
+| 10 | **Economic** duplicate judgement belongs to Validation; **identity** screening to Input | INV-7 | **Added** — `duplicate_detection` owns the judgement |
+| 11 | Every artifact carries a **Transaction ID** | INV-3 | **Added** — carried by the Validation Decision |
 
 ## Conflicts resolved before locking
 
@@ -91,3 +93,6 @@
 | `Transaction Story` as artifact name | Superseded by **Business Understanding Object**; survives as its narrative component | Engine 2 lock |
 | `src/brain/` role | Defined as the **Knowledge Brain** | Engine 4 lock |
 | Clarification lifecycle states | `Created/Waiting/Information Received/Obsolete/Closed` → **`Open/Answered/Superseded/Cancelled/Resolved`** | Phase 0 |
+| `Validation Verdict` as artifact name | Superseded by **Validation Decision**; the old name survives nowhere | Engine 5 lock |
+| Validation statuses | `approve / reject / flag` → **`Approved` · `Approved With Warning` · `Clarification Required` · `Rejected`** | Engine 5 lock |
+| Validation internal flow | `data_validation` gates; the other four validators always run | Engine 5 lock |

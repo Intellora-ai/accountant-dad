@@ -40,5 +40,5 @@ The asymmetry is deliberate: an unnecessary question costs time, a missed one co
 
 ## Future Notes
 
-- This is the gate for the whole engine. A verdict of *unnecessary* means no Clarification Request exists and the Accounting Decision goes to Validation alone.
+- This is the gate for the whole engine. A finding of *unnecessary* means no Clarification Request exists and the Accounting Decision goes to Validation alone.
 - Most transactions should stop here. That is the design working, not the engine failing to find anything.

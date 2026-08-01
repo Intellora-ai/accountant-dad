@@ -734,7 +734,7 @@ The **same immutable artifact** crosses both. It is not copied, forked or altere
 |---|---|---|
 | **Artifact** | Accounting Decision | Accounting Decision |
 | **Creator / Owner** | `decision_output` / Accounting Engine | `decision_output` / Accounting Engine |
-| **Allowed** | Read, analyze, reference; identify blockers; request information | Read, analyze, reference; produce a verdict |
+| **Allowed** | Read, analyze, reference; identify blockers; request information | Read, analyze, reference; produce a Validation Decision |
 | **Forbidden** | Change treatment, rewrite the decision, remove uncertainty | Amend, correct or repair it — a defect is reported, never fixed |
 
 **Engine 3 does not ask questions.** Engine 4 detects what blocks the decision and emits a Clarification Request; Validation receives **both** artifacts, since it cannot validate a Clarification Request alone. This engine does not approve its own decision.

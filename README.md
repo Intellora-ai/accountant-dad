@@ -33,7 +33,8 @@ What exists is the thing that has to exist first: an unambiguous statement of wh
 | Artifact versioning · Knowledge Brain | ✅ **Locked** |
 | Evidence provenance · optional human business context | ✅ **Locked** |
 | **Phase 0** — invariants, transaction identity, Application Layer, correction model | ✅ **Locked** |
-| Engines 5–6 specification locks | Not yet started |
+| **Engine 5 — Validation Engine** specification lock | ✅ **Locked** |
+| Engine 6 — Execution Engine specification lock | Not yet started |
 
 ### Phase 1 does **not** include
 
@@ -111,6 +112,9 @@ docs/
   COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md .. inside Engine 3 — LOCKED
   ENGINE_4_CLARIFICATION_ENGINE_RULES.md ...... Engine 4 specification — LOCKED
   COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md inside Engine 4 — LOCKED
+  COMMUNICATION_RULES_CLARIFICATION_ENGINE.md . Engine 4 → Engine 5 boundary — LOCKED
+  ENGINE_5_VALIDATION_ENGINE_RULES.md ......... Engine 5 specification — LOCKED
+  COMMUNICATION_RULES_VALIDATION_INTERNAL.md .. inside Engine 5 — LOCKED
 
 src/
   engines/       6 engines, 39 sub-engines — each a folder with a README
@@ -138,6 +142,7 @@ Every engine and sub-engine folder holds exactly one `README.md` stating its **p
 5. [`docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) — the second engine, in full
 6. [`docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md`](docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md) — the third engine, in full
 7. [`docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md) — the fourth engine, in full
+8. [`docs/ENGINE_5_VALIDATION_ENGINE_RULES.md`](docs/ENGINE_5_VALIDATION_ENGINE_RULES.md) — the fifth engine, in full
 
 ---
 

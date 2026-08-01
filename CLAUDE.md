@@ -35,6 +35,9 @@ Read before doing anything in this repository:
 13. [`docs/COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md`](docs/COMMUNICATION_RULES_ACCOUNTING_INTERNAL.md) — inside Engine 3
 14. [`docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md) — Engine 4: Clarification Engine
 15. [`docs/COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md`](docs/COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md) — inside Engine 4
+16. [`docs/COMMUNICATION_RULES_CLARIFICATION_ENGINE.md`](docs/COMMUNICATION_RULES_CLARIFICATION_ENGINE.md) — Engine 4 → Engine 5 boundary
+17. [`docs/ENGINE_5_VALIDATION_ENGINE_RULES.md`](docs/ENGINE_5_VALIDATION_ENGINE_RULES.md) — Engine 5: Validation Engine
+18. [`docs/COMMUNICATION_RULES_VALIDATION_INTERNAL.md`](docs/COMMUNICATION_RULES_VALIDATION_INTERNAL.md) — inside Engine 5
 
 **Precedence hierarchy.** `System Invariants › Locked Architecture Decisions › Engine Specifications › Communication Contracts › READMEs`. **Locks win** — a newer specification never silently changes locked architecture; it is revised instead. Before locking any engine, produce a **Forward Dependency Inventory** of every promise already made about it, and resolve conflicts *before* writing, never during propagation.
 
@@ -48,6 +51,7 @@ Read before doing anything in this repository:
 | **Business Understanding Object** | Understanding Engine | Transaction Story · Supporting Understanding Data · Identified Unknowns · Confidence Assessment |
 | **Accounting Decision** | Accounting Engine | Decision ID · Decision Status · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts — **name final** |
 | **Clarification Request** | Clarification Engine | Clarification ID · Related Decision ID · Related Artifact Version · missing information · detected conflicts · required clarification · reason · affected decision · priority · supporting evidence references · Clarification Confidence · status |
+| **Validation Decision** | Validation Engine | Validation ID · Transaction ID · Related Decision ID · Related Artifact Version · Validation Status · validation findings · errors · warnings · risks · failed validation rules · supporting evidence references · Validation Confidence · validation reasoning · timestamp |
 
 **Artifact ownership.** Every artifact has exactly one owner: the engine that creates it. Artifacts are **immutable after creation**. Other engines may read, analyze and reference; they may never modify, rewrite, delete, remove uncertainty, or change confidence. New information produces a **new version authored by the owner**, never an edit in place. See [`docs/DATA_FLOW.md` §6–8](docs/DATA_FLOW.md#6-artifact-ownership).
 
@@ -72,6 +76,8 @@ Read before doing anything in this repository:
 **Reasoning is separate from workflow.** Orchestration belongs to the **Application Layer** ([`src/services/`](src/services/)), never to an engine. It owns no decision, artifact, confidence or reasoning. **Engine failure is not an artifact** — an engine that cannot complete produces nothing, never a partial artifact.
 
 **A correction is a new Accounting Decision under the same Transaction ID.** Execution never edits history.
+
+**Validation only validates.** It may read, analyze and reference every upstream artifact; it may never repair one. A defect is **reported**, never fixed. **Every failed validation rule remains visible** and every finding names the **responsible engine** — never simply *"Validation failed."* Four statuses: `Approved` · `Approved With Warning` · `Clarification Required` · `Rejected`. **Permission to execute is decided before execution** — a closed period is a Critical finding in `data_validation`, not a discovery made by Engine 6.
 
 **Names are stable; responsibilities are not.** Sub-engine identities are part of the system contract and are never renamed once other engines reference them. Where a responsibility has changed, the component's README states why its name owns its present job. Engine 4 carries three such cases.
 

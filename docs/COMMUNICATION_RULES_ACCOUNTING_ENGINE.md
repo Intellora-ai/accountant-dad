@@ -60,7 +60,7 @@ All nine items, per [`DATA_FLOW.md` §8](DATA_FLOW.md#8-boundary-contract-requir
 | 2 | **Output artifact** | **Accounting Decision** — the primary artifact to validate. |
 | 3 | **Artifact creator** | `decision_output`. |
 | 4 | **Artifact owner** | The **Accounting Engine**, permanently. |
-| 5 | **Allowed transformation** | The Validation Engine may **read**, **analyze** and **reference** it, and produce its own artifact — the verdict. |
+| 5 | **Allowed transformation** | The Validation Engine may **read**, **analyze** and **reference** it, and produce its own artifact — the **Validation Decision**. |
 | 6 | **Forbidden transformation** | It may **not** amend, correct or repair the decision. A defect is **reported**, never fixed. It may not recompute ledgers, entries or tax. |
 | 7 | **Decision authority** | Accounting decides treatment. Validation decides accept, reject or request correction. **Validation never creates accounting decisions; Accounting never approves its own.** |
 | 8 | **Uncertainty movement** | Assumptions, risks, doubts and Decision Confidence cross intact. Validation Confidence may never exceed Decision Confidence. |
@@ -126,7 +126,7 @@ Every communication contract in this system carries this block unchanged:
 > The receiving engine **may** consume, analyze, and produce its own artifact.
 > The receiving engine **may not** rewrite upstream artifacts, change upstream decisions, or remove uncertainty.
 
-If the Clarification Engine believes the treatment is wrong, it records that as a conflict in **its own** artifact. If the Validation Engine believes it is wrong, it records that as a finding in **its own** verdict. Neither edits the decision to match.
+If the Clarification Engine believes the treatment is wrong, it records that as a conflict in **its own** artifact. If the Validation Engine believes it is wrong, it records that as a finding in **its own** Validation Decision. Neither edits the decision to match.
 
 ---
 

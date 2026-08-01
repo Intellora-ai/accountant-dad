@@ -40,8 +40,8 @@ Every arrow carries exactly one named artifact. An engine may only consume the a
 | 4 | **Clarification** → **Validation** | **Clarification Request** | Clarification ID · Related Decision ID · **Related Artifact Version** · missing information · detected conflicts · required clarification · reason it is required · affected decision · priority · supporting evidence references · Clarification Confidence · status. |
 | 4x | **Clarification** → *external actor* | *(the same Clarification Request)* | Delivered by a later system layer to a user, accountant or external system. **Engine 4 never asks anyone directly.** |
 | 4y | *external actor* → **Input / Understanding / Accounting** | **Clarification Answer** | New information re-entering through the normal pipeline. It never returns to Engine 4; the responsible upstream engine emits a **new artifact version**. |
-| 5 | **Validation** → **Tally** *or* back | **Validation Verdict** | Approve, reject, or flag — with every finding that drove it and, for a rejection, the stage responsible. |
-| 6 | **Validation** → **Tally** | **Approved Accounting Decision** | The decision, and the verdict approving it. Nothing unapproved crosses this arrow. |
+| 5 | **Validation** → **Tally** *or* back | **Validation Decision** | Validation ID · Transaction ID · Related Decision ID · Related Artifact Version · **Validation Status** (`Approved` · `Approved With Warning` · `Clarification Required` · `Rejected`) · findings · errors · warnings · risks · failed validation rules · supporting evidence references · Validation Confidence · reasoning · timestamp. Every finding names the **responsible engine**. |
+| 6 | **Validation** → **Tally** | **Approved Accounting Decision** | The decision, and the Validation Decision approving it. Nothing unapproved crosses this arrow. |
 | 7 | **Tally** → *external* | **Posting Result** + **Audit Record** | Posted, rejected or partial, with Tally's identifiers; and the permanent, append-only record of the attempt. |
 
 ### 2.1 Document Evidence Object
@@ -261,7 +261,7 @@ Full state machine: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md` §7](ENGINE_4_CLAR
 
 ### 4.4 Validation returns work; it never passes it on
 
-A rejection does not move forward and is never quietly dropped. `validation_decision` must name the stage responsible:
+A rejection does not move forward and is never quietly dropped. **Every finding names the responsible engine** — never simply *"Validation failed."*
 
 | Finding | Returns to |
 |---|---|
@@ -271,7 +271,7 @@ A rejection does not move forward and is never quietly dropped. `validation_deci
 | The defect is a material uncertainty a human could resolve | **Clarification** |
 | A duplicate was found | **Clarification** — a human decides |
 
-A **flag** is distinct from a rejection: the decision is not defective, but posting it unattended is judged unsafe. It goes to a human, not back to a stage.
+**`Approved With Warning` is distinct from a rejection:** the decision is not defective, but posting it unattended is judged unsafe. It goes forward *with human attention*, not back to a stage. **`Clarification Required` is distinct from both:** the reasoning is incomplete, and the clarification loop must close before Validation runs again.
 
 ---
 
@@ -280,7 +280,7 @@ A **flag** is distinct from a rejection: the decision is not defective, but post
 These hold for every transaction, without exception.
 
 1. **One direction.** Work moves forward only. **No artifact ever moves backward, and no engine ever mutates an upstream artifact.** The only backward movement in the system is a *return* — Validation returning a rejection to a named stage, which is a routing instruction, not an artifact edit. New information re-enters at Engine 1, 2 or 3 as a **new artifact version**, never as a patch.
-2. **No skipping.** No stage may be bypassed. A decision cannot reach Tally without a Validation Verdict approving it, however obvious it appears.
+2. **No skipping.** No stage may be bypassed. A decision cannot reach Tally without a Validation Decision approving it, however obvious it appears.
 3. **No reaching back.** An engine consumes only the artifact handed to it. The Accounting Engine reasons from the Business Understanding Object, never from the Document Evidence Object or the raw artifact. The Tally Engine acts on the Approved Decision, never on the understanding.
 4. **No reaching sideways.** No engine writes into another engine's output. Every artifact has exactly one producing engine.
 5. **Doubt travels.** Doubts, risks and low-confidence markers are carried forward with the artifact at every stage. They are never dropped because a later stage found them inconvenient.
@@ -351,7 +351,7 @@ This is why the clarification loop runs *outside* Engine 4 (§4.2): an answer do
 | **Understanding** | Business event interpretation · entity relationships · business story | Debit/credit · journal · ledger · tax · accounting treatment |
 | **Accounting** | Accounting treatment recommendation | Validation approval · execution |
 | **Clarification** | Questions required to remove uncertainty · when enough information exists | Accounting answers without evidence |
-| **Validation** | Accept · reject · request correction | Creating accounting decisions |
+| **Validation** | Data soundness · accounting correctness · tax correctness · economic duplication · execution risk · **execution permission** · the Validation Decision | Creating or repairing accounting decisions · generating clarification · asking users · posting |
 | **Tally** | Execution result | Accounting reasoning |
 
 Authority is also divided *within* an engine. See each locked engine specification for its internal authority table — [Engine 1](ENGINE_1_INPUT_ENGINE_RULES.md) · [Engine 2](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md).
@@ -394,8 +394,9 @@ Every communication contract carries this, unchanged:
 | Accounting → Clarification | [`COMMUNICATION_RULES_ACCOUNTING_ENGINE.md` §2](COMMUNICATION_RULES_ACCOUNTING_ENGINE.md#2-boundary-contract--accounting--clarification) | Locked |
 | Accounting → Validation | [`COMMUNICATION_RULES_ACCOUNTING_ENGINE.md` §3](COMMUNICATION_RULES_ACCOUNTING_ENGINE.md#3-boundary-contract--accounting--validation) | Locked |
 | Clarification, internal | [`COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md`](COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md) | Locked |
-| Clarification → Validation | — | Placeholder until Engine 5 |
-| Validation → Tally | — | Placeholder until Engine 5 |
+| Clarification → Validation | [`COMMUNICATION_RULES_CLARIFICATION_ENGINE.md`](COMMUNICATION_RULES_CLARIFICATION_ENGINE.md) | Locked |
+| Validation, internal | [`COMMUNICATION_RULES_VALIDATION_INTERNAL.md`](COMMUNICATION_RULES_VALIDATION_INTERNAL.md) | Locked |
+| Validation → Tally | — | Placeholder until Engine 6 |
 
 **One contract per boundary.** The sending engine owns the contract of what leaves it; the receiving engine references it. No duplicate communication documents.
 
@@ -440,7 +441,7 @@ Confidence is **layered, not merged.** Each engine measures confidence about its
 | Input | Evidence confidence | Was information extracted correctly? |
 | Understanding | Understanding confidence | Was the business event understood correctly? |
 | Accounting | Decision confidence | Is the accounting treatment likely correct? |
-| Validation | Validation confidence | Is this safe to approve? *(declared; specified with Engine 5)* |
+| Validation | Validation confidence | Is execution safe? |
 
 > **Confidence can only decrease downstream unless new evidence is introduced.**
 
@@ -568,7 +569,7 @@ The Input Engine records `Corroborated: not assessed`, honestly — establishing
 
 ```text
 Document Evidence Object → Business Understanding Object → Accounting Decision
-    → Clarification Request → Validation Verdict → audit history
+    → Clarification Request → Validation Decision → audit history
 ```
 
 Complete provenance from input to execution. At every stage, for every fact, the system can answer: **where did this come from, how reliable was the capture, and does anything else support it?**

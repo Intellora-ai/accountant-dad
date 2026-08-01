@@ -14,11 +14,11 @@ Every arrow in [`docs/DATA_FLOW.md`](../../docs/DATA_FLOW.md) carries exactly on
 
 The artifacts named in [`docs/DATA_FLOW.md`](../../docs/DATA_FLOW.md):
 
-Document Evidence Object · Business Understanding Object · Accounting Decision · Clarification Request · Validation Verdict · Approved Accounting Decision · Posting Result · Classified Error · Audit Record
+Document Evidence Object · Business Understanding Object · Accounting Decision · Clarification Request · Validation Decision · Approved Accounting Decision · Posting Result · Classified Error · Audit Record
 
 **Every artifact also carries** an Artifact ID, a Version, and its Parent Artifact Version(s) — the universal versioning rule in [`docs/DATA_FLOW.md` §11](../../docs/DATA_FLOW.md#11-artifact-versioning). A version is immutable once created; correction means a new version, never an edit.
 
-Two of these wrap named components. Those components are shapes *within* an artifact, never artifacts in their own right — there is exactly one name for what crosses each arrow.
+Several of these wrap named components. Those components are shapes *within* an artifact, never artifacts in their own right — there is exactly one name for what crosses each arrow.
 
 | Artifact | Components |
 |---|---|
@@ -26,10 +26,11 @@ Two of these wrap named components. Those components are shapes *within* an arti
 | **Business Understanding Object** | **Transaction Story** · **Supporting Understanding Data** (the six Understanding Results) · **Identified Unknowns** · **Confidence Assessment** |
 | **Accounting Decision** | Decision ID · **Decision Status** · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts |
 | **Clarification Request** | Clarification ID · Related Decision ID · **Related Artifact Version** · missing information · detected conflicts · required clarification · reason · affected decision · priority · supporting evidence references · Clarification Confidence · status |
+| **Validation Decision** | Validation ID · **Transaction ID** · Related Decision ID · Related Artifact Version · **Validation Status** · validation findings · errors · warnings · risks · failed validation rules · supporting evidence references · Validation Confidence · validation reasoning · timestamp |
 
-**IDENTITY ≠ INTELLIGENCE.** `Document ID` and `Decision ID` are identifiers only — identity, traceability, lifecycle tracking, audit history. Neither may be shaped into anything a downstream engine could reason from.
+**IDENTITY ≠ INTELLIGENCE.** `Document ID`, `Decision ID`, `Clarification ID`, `Validation ID` and `Transaction ID` are identifiers only — identity, traceability, lifecycle tracking, audit history. Neither may be shaped into anything a downstream engine could reason from.
 
-**Internal artifacts do not belong here.** The **Accounting Treatment Result** never crosses an engine boundary; it is Engine 3's internal combination of the Ledger Recommendation, Tax Treatment Recommendation and Accounting Period Treatment.
+**Internal artifacts do not belong here.** The **Accounting Treatment Result** never crosses an engine boundary; it is Engine 3's internal combination of the Ledger Recommendation, Tax Treatment Recommendation and Accounting Period Treatment. Nor do Engine 5's five internal Results — Data Validation, Accounting Validation, Tax Validation, Duplicate Detection and Risk Assessment — which feed `validation_decision` and stop there.
 
 ## What must not belong here
 

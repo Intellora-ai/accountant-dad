@@ -1,6 +1,6 @@
 # accounting_validation
 
-> Sub-engine of the **Validation Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md).
+> Sub-engine of the **Validation Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md). Deep spec: [`docs/ENGINE_5_VALIDATION_ENGINE_RULES.md`](../../../../docs/ENGINE_5_VALIDATION_ENGINE_RULES.md#102-accounting_validation).
 >
 > **Phase 1 placeholder — no implementation.**
 
@@ -10,19 +10,35 @@ A decision must be checked by something that did not make it.
 
 ## Responsibility
 
-Owns the judgement of whether the entry is accounting-correct — balanced, correctly signed, posted to appropriate heads, and consistent with the rules its own reasoning invoked.
+Owns **accounting validation** — whether the entry is accounting-correct: correctly signed, posted to appropriate heads, and consistent with the rules its own reasoning invoked.
+
+### Balance ≠ correctness
+
+Engine 3's [`journal_intelligence`](../../accounting_engine/journal_intelligence/) guarantees **internal mathematical balance only**. This sub-engine judges whether the entry is **accounting-correct**.
+
+```text
+Wrong ledger + balanced journal = still wrong
+```
+
+A balanced journal on the wrong ledger fails here.
 
 ## Input
 
-The Accounting Decision, including its stated reasoning and rulings.
+The Accounting Decision, including its stated reasoning and rulings · the Data Validation Result.
 
 ## Output
 
-An accounting verdict with findings: each defect, its severity, and where in the decision it sits.
+The **Accounting Validation Result** — accounting findings · failed accounting rules · journal correctness · ledger correctness · confidence. Each defect carries its severity and where in the decision it sits.
 
 ## Boundary
 
-Cannot fix, rewrite or adjust the entry. Cannot substitute its own preferred treatment for a defensible one. Cannot judge tax treatment — that is [`tax_validation`](../tax_validation/).
+**Can:** validate · compare against accounting rules · report failures.
+
+**Cannot:** redesign journals · select ledgers · rewrite accounting · fix, adjust or repair the entry. Cannot substitute its own preferred treatment for a defensible one. Cannot judge tax treatment — that is [`tax_validation`](../tax_validation/).
+
+## Failure Behaviour
+
+**Every accounting failure remains visible. Never repair accounting.** A defect is reported with its severity and location, never corrected.
 
 ## Future Notes
 
