@@ -27,7 +27,7 @@ Sub-engines:
 
 ## Input
 
-Accounting Decision — original or updated after clarification — with supporting evidence: Transaction Story, the Confidence Report within the Document Evidence Object, and prior posted transactions.
+Accounting Decision — original or updated after clarification — with supporting evidence: the Business Understanding Object, the Confidence Report within the Document Evidence Object, and prior posted transactions.
 
 ## Output
 

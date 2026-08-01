@@ -12,9 +12,14 @@ Every arrow in [`docs/DATA_FLOW.md`](../../docs/DATA_FLOW.md) carries exactly on
 
 The artifacts named in [`docs/DATA_FLOW.md`](../../docs/DATA_FLOW.md):
 
-Document Evidence Object · Transaction Story · Accounting Decision · Question Set · Resolved Facts · Clarification Outcome · Validation Verdict · Approved Accounting Decision · Posting Result · Classified Error · Audit Record
+Document Evidence Object · Business Understanding Object · Accounting Decision · Question Set · Resolved Facts · Clarification Outcome · Validation Verdict · Approved Accounting Decision · Posting Result · Classified Error · Audit Record
 
-The **Document Evidence Object** contains the **Structured Document** and the **Confidence Report** as components. Those two are shapes *within* an artifact, never artifacts in their own right — there is only one name for what crosses the Input → Understanding arrow.
+Two of these wrap named components. Those components are shapes *within* an artifact, never artifacts in their own right — there is exactly one name for what crosses each arrow.
+
+| Artifact | Components |
+|---|---|
+| **Document Evidence Object** | Document ID · Source references · **Structured Document** · **Confidence Report** |
+| **Business Understanding Object** | **Transaction Story** · **Supporting Understanding Data** (the six Understanding Results) · **Identified Unknowns** · **Confidence Assessment** |
 
 ## What must not belong here
 

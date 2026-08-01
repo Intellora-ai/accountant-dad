@@ -14,7 +14,7 @@ Owns construction of the entry itself — which accounts are debited, which cred
 
 ## Input
 
-Ledger selection from [`ledger_intelligence`](../ledger_intelligence/), the applicable rulings, tax lines from [`tax_intelligence`](../tax_intelligence/), and the Transaction Story's amounts.
+Ledger selection from [`ledger_intelligence`](../ledger_intelligence/), the applicable rulings, tax lines from [`tax_intelligence`](../tax_intelligence/), and the amounts in the Business Understanding Object.
 
 ## Output
 

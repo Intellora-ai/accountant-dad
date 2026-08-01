@@ -50,7 +50,7 @@ It also cannot:
 
 **The invention prohibition.** When information is unclear, the system must **report uncertainty**. It must **never invent information**. An invented value is indistinguishable downstream from an observed one, and the trustworthiness of the whole system rests on that distinction holding.
 
-**Assembly ownership.** The Input Engine owns the internal assembly of its four sub-engines' outputs into the Document Evidence Object, and assigns the Document ID. It does **not** own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, or workflow control. No assembler sub-engine exists, and none may be added. **Document ID carries no accounting meaning and must never influence accounting decisions.**
+**Assembly ownership.** The Input Engine owns the internal assembly of its four sub-engines' outputs into the Document Evidence Object, and assigns the Document ID. It does **not** own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, workflow control, or overriding sub-engine outputs. No assembler sub-engine exists, and none may be added. **Document ID carries no accounting meaning and must never influence accounting decisions.**
 
 **Per sub-engine:** `cleaner` alters presentation, never values — and preserves the original where processing may damage information. `reader` extracts, never interprets, and never guesses an unclear word. `parser` structures, never infers or computes a value that is not written — unknown fields remain unknown. `confidence` measures, never re-reads or corrects, never raises confidence without evidence, and never hides uncertainty.
 
@@ -62,19 +62,40 @@ The Input Engine extracts what exists. The Understanding Engine determines what 
 
 ## 2. Understanding Engine
 
-**Understanding Engine cannot choose ledgers or tax treatment.**
+> **Specification locked.** Deeper authority: [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md).
+
+**The Understanding Engine establishes what happened. It does not decide how it is recorded.**
+
+It **MUST NEVER**:
+
+1. Create journal entries.
+2. Choose ledgers.
+3. Decide debit/credit.
+4. Apply tax rules.
+5. Post to Tally.
+6. Modify evidence.
+7. **Convert uncertainty into certainty.**
 
 It also cannot:
 
 - Select accounts, groups or voucher types.
 - Determine tax applicability, rates, place of supply or credit eligibility.
-- Produce a journal entry, or any debit or credit.
 - Invent a fact to fill a gap. An absent fact is recorded as absent.
-- Resolve a contradiction by choosing a side. The contradiction travels with the story.
 - Re-read or re-extract the artifact. If the extraction is inadequate, it says so.
 - Describe business events in accounting vocabulary.
+- Ask the user questions, request documents, or resolve uncertainty itself.
 
-**Per sub-engine:** `transaction_understanding` names the business event, never the voucher type. `party_understanding` identifies parties, never their ledgers, and never merges two parties it believes identical. `item_understanding` describes what moved, never its tax rate or accounting head. `payment_understanding` describes money movement, never the cash or bank account, and never infers payment from silence. `timeline_understanding` records dates, never the accounting period or cut-off. `business_context` owns operating reality, never accounting configuration. `story_builder` assembles, never adds a fact no sub-engine produced.
+**The uncertainty prohibition.** Rule 7 is the one this engine exists to protect. Understanding is where a system is most tempted to tidy up — to pick the likelier reading, to round away a discrepancy, to let a coherent story paper over a gap. Uncertainty entering this engine leaves it. It may be *described* more precisely; it is never *removed*. **Low confidence never becomes certainty.**
+
+**The conflict prohibition.** Conflicts are preserved. **Never silently choose one answer.** Where evidence disagrees, the engine returns known facts, conflicting facts, confidence and unknowns — never a resolution. Conflicts belong to the Understanding Engine; no other engine may settle one by editing this engine's artifact.
+
+**Confidence Propagation Rule.** `Understanding Confidence ≤ Evidence Reliability`. A confident interpretation of an unreliable reading is not understanding; it is invention with a score attached.
+
+**Assembly ownership.** `story_builder` **creates** the Business Understanding Object; the **Understanding Engine owns** it. Story Builder does not become an independent owner. The parent engine does not orchestrate the system, route workflows, make accounting decisions, or override sub-engine outputs.
+
+**Per sub-engine:** `transaction_understanding` names the business event, never the voucher type. `party_understanding` identifies parties, never their ledgers, and never merges two parties it believes identical. `item_understanding` describes what moved, never asset, expense or inventory, and never its tax rate. `payment_understanding` describes money movement, never the cash or bank account, and never infers payment from silence. `timeline_understanding` records dates, never the accounting period or cut-off. `business_context` records purpose *indicators*, never concluded intent, and never accounting configuration. `story_builder` assembles, never adds a fact no sub-engine produced, never resolves a conflict, never removes an unknown, and never increases confidence.
+
+> **Input Engine provides evidence. Understanding Engine creates interpretation. Accounting Engine decides treatment.**
 
 ---
 
@@ -87,7 +108,7 @@ It also cannot:
 
 - Communicate with Tally in any way, for any reason.
 - Approve its own decision, or declare it correct, safe or final.
-- Read the raw artifact or the Document Evidence Object. It reasons from the Transaction Story only.
+- Read the raw artifact or the Document Evidence Object. It reasons from the Business Understanding Object only.
 - Resolve its own doubt by guessing, defaulting, or selecting the most common treatment.
 - Suppress a doubt or a risk because it is inconvenient, or because it would delay posting.
 - Validate itself. Correctness is judged by the Validation Engine.

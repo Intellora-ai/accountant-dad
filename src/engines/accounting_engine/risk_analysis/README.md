@@ -14,7 +14,7 @@ Owns assessment of how risky *the decision this engine just made* is — how agg
 
 ## Input
 
-The assembled components of the decision, the rulings behind them, and the Transaction Story.
+The assembled components of the decision, the rulings behind them, and the Business Understanding Object.
 
 ## Output
 

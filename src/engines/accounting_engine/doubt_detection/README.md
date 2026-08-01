@@ -14,7 +14,7 @@ Owns identification of every point at which the accounting decision is uncertain
 
 ## Input
 
-The decision components, the rulings, the Transaction Story's marked gaps, and the Confidence Report within the Document Evidence Object.
+The decision components, the rulings, the Identified Unknowns in the Business Understanding Object, and the Confidence Report within the Document Evidence Object.
 
 ## Output
 

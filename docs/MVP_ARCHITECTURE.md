@@ -127,7 +127,7 @@ Per-sub-engine detail: [SUB_ENGINE_RESPONSIBILITIES.md](SUB_ENGINE_RESPONSIBILIT
    ┌───────────────────┐
    │  2. UNDERSTANDING │  establishes what happened
    └───────────────────┘
-             │  Transaction Story
+             │  Business Understanding Object
              ▼
    ┌───────────────────┐
    │  3. ACCOUNTING    │◄──────────────┐  decides treatment,
@@ -158,8 +158,8 @@ Per-sub-engine detail: [SUB_ENGINE_RESPONSIBILITIES.md](SUB_ENGINE_RESPONSIBILIT
 ### The flow in words
 
 1. A raw artifact enters — a photo, a scan, a PDF, a handwritten note. The **Input Engine** makes it readable, extracts it, structures it, and scores how much of that extraction can be trusted, emitting one **Document Evidence Object**.
-2. The **Understanding Engine** converts that evidence into a *business story* — the parties, the goods, the money, the dates, the context — with no accounting vocabulary in it.
-3. The **Accounting Engine** converts the story into an *accounting decision*: the ledgers, the double entry, the tax treatment — together with the risks it carries and the doubts it could not resolve.
+2. The **Understanding Engine** converts that evidence into a **Business Understanding Object** — the parties, the goods, the money, the dates, the context, assembled into one narrative with no accounting vocabulary in it, alongside every gap it found and every conflict it refused to resolve.
+3. The **Accounting Engine** converts that understanding into an *accounting decision*: the ledgers, the double entry, the tax treatment — together with the risks it carries and the doubts it could not resolve.
 4. If those doubts are material, the **Clarification Engine** turns them into human questions, interprets the answers, and returns the resolved facts so the decision is remade under the Accounting Engine's authority. It also decides when to stop asking.
 5. The **Validation Engine** independently judges the decision — accounting correctness, tax compliance, data soundness, duplication, posting risk — and returns one verdict: approve, reject, or flag.
 6. Only an approved decision reaches the **Tally Engine**, which translates it to a voucher, posts it exactly once, reads what Tally actually said, classifies any failure, and writes an immutable audit record.

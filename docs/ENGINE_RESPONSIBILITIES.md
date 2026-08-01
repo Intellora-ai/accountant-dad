@@ -33,7 +33,7 @@ Turn a raw artifact into clean, readable, structured data with a confidence scor
 
 Sub-engines: `cleaner` · `reader` · `parser` · `confidence`
 
-> **Scope of the assembly responsibility.** The Input Engine owns the internal assembly of outputs from its four sub-engines into the Document Evidence Object. It does **not** own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, or workflow control. No assembler sub-engine exists, and none may be added.
+> **Scope of the assembly responsibility.** The Input Engine owns the internal assembly of outputs from its four sub-engines into the Document Evidence Object. It does **not** own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, workflow control, or overriding sub-engine outputs. No assembler sub-engine exists, and none may be added.
 
 ### Inputs
 - A raw artifact as received: photo, camera photo capture, image upload, PDF, scanned invoice, handwritten accounting note, receipt, bill, or other supporting accounting document.
@@ -82,7 +82,15 @@ Sub-engines: `transaction_understanding` · `party_understanding` · `item_under
 - The **Document Evidence Object**, from the Input Engine.
 
 ### Outputs
-- **Transaction Story** — a complete, accounting-free description of what happened, with every fact traceable to the document or explicitly marked absent.
+- **Business Understanding Object** — the engine's single output artifact, containing four components:
+  - **Transaction Story** — the final assembled narrative of what happened, in business terms only.
+  - **Supporting Understanding Data** — the six sub-engine Results the story was built from.
+  - **Identified Unknowns** — every gap, named.
+  - **Confidence Assessment** — evidence confidence, understanding confidence, missing information, detected conflicts.
+
+Every fact traces to the evidence that produced it; every gap is named; every conflict is preserved. `story_builder` **creates** the artifact; the **Understanding Engine owns** it.
+
+Full specification: [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md).
 
 ### Cannot Do
 - Cannot select ledgers, accounts or voucher types.
@@ -113,7 +121,7 @@ Turn the business story into an accounting decision, plus its doubts and risks.
 Sub-engines: `transaction_analyzer` · `accounting_rules` · `ledger_intelligence` · `journal_intelligence` · `tax_intelligence` · `company_understanding` · `risk_analysis` · `doubt_detection` · `decision_output`
 
 ### Inputs
-- Transaction Story, from the Understanding Engine.
+- The **Business Understanding Object**, from the Understanding Engine.
 - Resolved Facts, when the Clarification Engine returns answers.
 
 ### Outputs
@@ -123,7 +131,7 @@ Sub-engines: `transaction_analyzer` · `accounting_rules` · `ledger_intelligenc
 - Cannot post to Tally, or communicate with Tally in any way.
 - Cannot ask the user a question directly.
 - Cannot approve its own decision, or declare it safe.
-- Cannot read the raw artifact or the Document Evidence Object — it reasons from the Transaction Story only.
+- Cannot read the raw artifact or the Document Evidence Object — it reasons from the Business Understanding Object only.
 - Cannot resolve its own doubt by guessing, defaulting, or picking the most common treatment.
 - Cannot validate itself; correctness is judged by the Validation Engine.
 
@@ -147,7 +155,7 @@ Sub-engines: `understanding` · `uncertainty_detection` · `missing_information`
 
 ### Inputs
 - Accounting Decision, including its doubts and risks.
-- The Confidence Report within the Document Evidence Object, and the Transaction Story, as evidence of where uncertainty originated.
+- The Confidence Report within the Document Evidence Object, and the Business Understanding Object, as evidence of where uncertainty originated.
 - The human's answers.
 
 ### Outputs
@@ -182,7 +190,7 @@ Sub-engines: `accounting_validation` · `tax_validation` · `data_validation` ·
 
 ### Inputs
 - Accounting Decision — original or updated after clarification.
-- Supporting evidence: Transaction Story, the Confidence Report within the Document Evidence Object, and prior posted transactions.
+- Supporting evidence: the Business Understanding Object, the Confidence Report within the Document Evidence Object, and prior posted transactions.
 
 ### Outputs
 - **Validation Verdict** — approve, reject, or flag for human attention.

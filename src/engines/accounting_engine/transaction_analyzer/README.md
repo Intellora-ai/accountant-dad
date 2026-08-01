@@ -14,7 +14,7 @@ Owns determination of the economic substance of the transaction in accounting te
 
 ## Input
 
-The Transaction Story.
+The Business Understanding Object.
 
 ## Output
 
@@ -22,7 +22,7 @@ An accounting characterisation of the event: substance, event class, and the asp
 
 ## Boundary
 
-Cannot select specific ledgers or write any entry. Cannot read the Document Evidence Object or the raw artifact. Cannot re-derive business facts — it consumes the story as given.
+Cannot select specific ledgers or write any entry. Cannot read the Document Evidence Object or the raw artifact. Cannot re-derive business facts — it consumes the understanding as given.
 
 ## Future Notes
 

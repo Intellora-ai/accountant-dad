@@ -30,6 +30,16 @@ The cleaned document representation from [`cleaner`](../cleaner/).
 
 It may extract `27AAECS1234F1Z5`; it may not conclude that this is a GSTIN. It cannot reorder or restructure the text.
 
+## Decision Authority
+
+**Owns.** Extraction observations.
+
+**Determines.** Detected characters, regions and tables · extraction confidence signals.
+
+**Cannot.** Understand meaning.
+
+No other component may override this result — not a sibling sub-engine, and not the parent Input Engine, which assembles outputs but never overrides them. See [`docs/ENGINE_1_INPUT_ENGINE_RULES.md` §3A](../../../../docs/ENGINE_1_INPUT_ENGINE_RULES.md#3a-decision-authority).
+
 ## Failure Behaviour
 
 **Return extracted information with confidence levels and uncertainty.**

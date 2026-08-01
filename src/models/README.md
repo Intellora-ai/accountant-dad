@@ -18,7 +18,7 @@ Shared representations of concepts that more than one engine must speak about in
 
 ## Relationship to [`schemas/`](../schemas/)
 
-`schemas/` describes the shape of the **artifacts that cross between engines** — the Transaction Story, the Accounting Decision, the Validation Verdict. `models/` describes the **domain concepts** those artifacts are built from.
+`schemas/` describes the shape of the **artifacts that cross between engines** — the Business Understanding Object, the Accounting Decision, the Validation Verdict. `models/` describes the **domain concepts** those artifacts are built from.
 
 The boundary between the two must be drawn deliberately when implementation begins. Until then: **stop and ask** rather than assuming.
 

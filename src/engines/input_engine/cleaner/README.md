@@ -30,6 +30,16 @@ The raw artifact exactly as received: photo, camera capture, image upload, PDF, 
 
 It alters presentation only. It cannot discard content it judges irrelevant, redundant or illegible.
 
+## Decision Authority
+
+**Owns.** Document preprocessing actions.
+
+**Determines.** Allowed transformations · whether preprocessing introduced risk.
+
+**Cannot.** Interpret information.
+
+No other component may override this result — not a sibling sub-engine, and not the parent Input Engine, which assembles outputs but never overrides them. See [`docs/ENGINE_1_INPUT_ENGINE_RULES.md` §3A](../../../../docs/ENGINE_1_INPUT_ENGINE_RULES.md#3a-decision-authority).
+
 ## Failure Behaviour
 
 **If processing may damage information: preserve the original input and mark uncertainty.**

@@ -31,9 +31,25 @@ Sub-engines and their output contracts:
 
 The **Input Engine itself** combines those four outputs into the Document Evidence Object and assigns the Document ID.
 
-> The Input Engine owns the internal assembly of outputs from its four sub-engines into the Document Evidence Object. It does **not** own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, or workflow control.
+> The Input Engine owns the internal assembly of outputs from its four sub-engines into the Document Evidence Object. It does **not** own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, workflow control, or overriding sub-engine outputs.
 
 **No assembler sub-engine exists, and none may be added.** Architecture expands by making responsibilities clearer, not by adding components.
+
+### Decision authority
+
+> **The Input Engine controls only input-processing decisions. No engine outside the Input Engine can modify its decisions.**
+
+| Component | Owns | Determines | Cannot |
+|---|---|---|---|
+| [`cleaner`](cleaner/) | Document preprocessing actions | Allowed transformations · whether preprocessing introduced risk | Interpret information |
+| [`reader`](reader/) | Extraction observations | Detected characters, regions and tables · extraction confidence signals | Understand meaning |
+| [`parser`](parser/) | Evidence structuring | Field mapping · detected relationships between extracted values · missing fields | Infer missing information |
+| [`confidence`](confidence/) | Reliability estimation | Confidence scores · uncertainty markers · risky extraction areas | Hide uncertainty · change extracted facts |
+| **Input Engine (parent)** | Assembly into the Document Evidence Object · creation of the Document ID · evidence preservation | — | Orchestrate the system · route workflows · perform business reasoning · make accounting decisions · **override sub-engine outputs** |
+
+`cleaner`, `reader` and `parser` emit **signals**; only `confidence` turns signals into scores. No component — parent included — may raise or lower a confidence value. No sub-engine overrides another.
+
+Full detail: [`docs/ENGINE_1_INPUT_ENGINE_RULES.md` §3A](../../../docs/ENGINE_1_INPUT_ENGINE_RULES.md#3a-decision-authority).
 
 ## Input
 

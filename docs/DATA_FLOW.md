@@ -30,7 +30,7 @@ Every arrow carries exactly one named artifact. An engine may only consume the a
 |---|---|---|---|
 | 0 | *external* → **Input** | **Raw Artifact** | The document as received: scan, photograph, PDF, digital file. |
 | 1 | **Input** → **Understanding** | **Document Evidence Object** | Document ID · source references · the **Structured Document** (extracted text, detected fields, document structure, tables, field values, field locations) · the **Confidence Report** (confidence scores, uncertainty markers, reliability information, risky fields). |
-| 2 | **Understanding** → **Accounting** | **Transaction Story** | What happened, in business terms only: parties and roles, items, money movement, dates, business context. Every fact traced to its source; every gap explicitly marked absent. No accounting vocabulary. |
+| 2 | **Understanding** → **Accounting** | **Business Understanding Object** | The **Transaction Story** (the assembled narrative) · **Supporting Understanding Data** (the six sub-engine Results) · **Identified Unknowns** · **Confidence Assessment**. What happened, in business terms only. Every fact traced to its evidence; every gap named; every conflict preserved. No accounting vocabulary. |
 | 3 | **Accounting** → **Clarification** *or* **Validation** | **Accounting Decision** | Ledger selection, the balanced journal entry, tax treatment, the reasoning behind each, the risk profile of the decision, and the unresolved doubts. |
 | 4a | **Clarification** → *human* | **Question Set** | The minimal set of questions, what each resolves, and the form of answer expected. |
 | 4b | *human* → **Clarification** | **Answers** | The human's replies, as given. |
@@ -61,6 +61,27 @@ A downstream engine that consumes one part names that part — *"the Confidence 
 
 Full contract: [`ENGINE_1_INPUT_ENGINE_RULES.md` §5](ENGINE_1_INPUT_ENGINE_RULES.md#5-output-contract).
 
+### 2.2 Business Understanding Object
+
+The Understanding Engine's output has one name. `Transaction Story` is its narrative **component**, never the name of the artifact itself.
+
+```text
+Business Understanding Object
+├── Transaction Story ................. the final assembled narrative
+├── Supporting Understanding Data ..... the six sub-engine Results
+│   └── Transaction · Party · Item · Payment · Timeline · Business Context
+├── Identified Unknowns ............... every gap, named
+└── Confidence Assessment ............. evidence confidence · understanding
+                                        confidence · missing information ·
+                                        detected conflicts
+```
+
+**Transaction Story is not an independent understanding component.** It is the final assembled narrative created by `story_builder` from the six Results. The Results are the evidence *for* the story and travel alongside it, so a downstream engine may read the narrative or the underlying records.
+
+**Creator and owner differ here.** `story_builder` **creates** the artifact; the **Understanding Engine owns** it. Story Builder does not become an independent owner.
+
+Full contract: [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md` §5](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md#5-output-contract).
+
 ---
 
 ## 3. The Flow in Full
@@ -80,7 +101,7 @@ Full contract: [`ENGINE_1_INPUT_ENGINE_RULES.md` §5](ENGINE_1_INPUT_ENGINE_RULE
                     │ UNDERSTANDING      │
                     └────────────────────┘
                                │
-                       Transaction Story
+                 Business Understanding Object
                                │
                                ▼
                 ┌──────────────────────────┐
@@ -172,9 +193,114 @@ These hold for every transaction, without exception.
 
 1. **One direction.** Work moves forward only. The single backward path in the system is a *return* — Validation returning a rejection to a named stage, or Clarification returning Resolved Facts to Accounting. A return is always explicit and always names its target.
 2. **No skipping.** No stage may be bypassed. A decision cannot reach Tally without a Validation Verdict approving it, however obvious it appears.
-3. **No reaching back.** An engine consumes only the artifact handed to it. The Accounting Engine reasons from the Transaction Story, never from the Document Evidence Object or the raw artifact. The Tally Engine acts on the Approved Decision, never on the story.
+3. **No reaching back.** An engine consumes only the artifact handed to it. The Accounting Engine reasons from the Business Understanding Object, never from the Document Evidence Object or the raw artifact. The Tally Engine acts on the Approved Decision, never on the understanding.
 4. **No reaching sideways.** No engine writes into another engine's output. Every artifact has exactly one producing engine.
 5. **Doubt travels.** Doubts, risks and low-confidence markers are carried forward with the artifact at every stage. They are never dropped because a later stage found them inconvenient.
 6. **Gaps stay gaps.** A fact that is absent is marked absent and remains absent until a human supplies it. No stage fills a gap by inference, default or convention.
 7. **Approval precedes execution.** Nothing reaches Tally that the Validation Engine has not approved.
 8. **Every attempt is recorded.** Posting attempts, successes, partials and failures are all written to the audit record. Failure is not less loggable than success.
+
+---
+
+## 6. Artifact Ownership
+
+> **Every artifact has exactly one owner. The engine that creates an artifact owns that artifact permanently.**
+>
+> **Artifacts are immutable after creation.**
+
+### What ownership means
+
+The owner engine controls:
+
+- **Creation** — only the owner may produce the artifact.
+- **Versioning** — only the owner may produce a new version of it.
+- **Integrity** — the owner is answerable for the artifact being internally sound.
+- **Meaning** — the owner defines what the artifact asserts.
+
+| Other engines **may** | Other engines **may NOT** |
+|---|---|
+| Read | Modify |
+| Analyze | Rewrite |
+| Reference | Delete |
+| | Remove uncertainty |
+| | Change confidence |
+
+### Worked example
+
+The Input Engine creates the **Document Evidence Object**, and therefore owns it permanently.
+
+- ✓ The Understanding Engine reads it.
+- ✗ The Understanding Engine edits it.
+- ✗ The Accounting Engine edits it.
+- ✗ The Validation Engine edits it.
+
+### Creator and owner are not always the same component
+
+An artifact is **created** by a sub-engine but **owned** by its engine. Story Builder creates the Business Understanding Object; the **Understanding Engine** owns it. Story Builder does not become an independent owner.
+
+### Versioning, not mutation
+
+New information never rewrites an existing artifact. The **owning engine** creates an updated version; previous versions remain unchanged.
+
+```text
+Business Understanding Object → missing information detected → Clarification Engine
+    → new information collected → Understanding Engine creates updated version
+```
+
+This generalises a commitment the system already had: `decision_updater` returns **Resolved Facts** to the Accounting Engine, which *remakes* the decision — it never patches it in place (§4.3).
+
+---
+
+## 7. Decision Authority
+
+> **Authority belongs only to the engine responsible for that decision.**
+>
+> No engine may make, override, or silently substitute a decision that belongs to another.
+
+| Engine | Owns decisions | Cannot decide |
+|---|---|---|
+| **Input** | Extraction method · extraction confidence · document structure | Business meaning · accounting treatment · tax · ledger |
+| **Understanding** | Business event interpretation · entity relationships · business story | Debit/credit · journal · ledger · tax · accounting treatment |
+| **Accounting** | Accounting treatment recommendation | Validation approval · execution |
+| **Clarification** | Questions required to remove uncertainty · when enough information exists | Accounting answers without evidence |
+| **Validation** | Accept · reject · request correction | Creating accounting decisions |
+| **Tally** | Execution result | Accounting reasoning |
+
+Authority is also divided *within* an engine. See each locked engine specification for its internal authority table — [Engine 1](ENGINE_1_INPUT_ENGINE_RULES.md) · [Engine 2](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md).
+
+---
+
+## 8. Boundary Contract Requirement
+
+Every engine boundary **must** define all nine:
+
+1. **Input artifact** — what is received.
+2. **Output artifact** — what is produced.
+3. **Artifact creator** — which component builds it.
+4. **Artifact owner** — which engine owns it permanently.
+5. **Allowed transformation** — what the receiver may do.
+6. **Forbidden transformation** — what the receiver may never do.
+7. **Decision authority** — who decides what, on each side.
+8. **Uncertainty movement** — how doubt, gaps and confidence travel across the boundary.
+9. **Failure movement** — where a failure goes and who must handle it.
+
+Items 3 and 4 are separate because creator and owner differ: a sub-engine creates, an engine owns.
+
+### The standard decision-authority block
+
+Every communication contract carries this, unchanged:
+
+> **The sending engine owns the meaning of its artifact.**
+>
+> The receiving engine **may** consume, analyze, and produce its own artifact.
+> The receiving engine **may not** rewrite upstream artifacts, change upstream decisions, or remove uncertainty.
+
+### Contracts
+
+| Boundary | Contract | Status |
+|---|---|---|
+| Input → Understanding | [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md) | Locked |
+| Understanding, internal | [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md) | Locked |
+| Understanding → Accounting | — | Placeholder until Engine 3 |
+
+**One contract per boundary.** The sending engine owns the contract of what leaves it; the receiving engine references it. No duplicate communication documents.

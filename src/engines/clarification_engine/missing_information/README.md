@@ -14,7 +14,7 @@ Owns determination of exactly which facts are absent, and who or what could supp
 
 ## Input
 
-Ranked material uncertainties, the Transaction Story's marked gaps, and the company accounting profile.
+Ranked material uncertainties, the Identified Unknowns in the Business Understanding Object, and the company accounting profile.
 
 ## Output
 

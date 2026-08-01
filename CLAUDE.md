@@ -21,11 +21,25 @@ Read before doing anything in this repository:
 **Locked engine specifications**
 
 6. [`docs/ENGINE_1_INPUT_ENGINE_RULES.md`](docs/ENGINE_1_INPUT_ENGINE_RULES.md) — Engine 1: Input Engine
-7. [`docs/COMMUNICATION_RULES_INPUT_ENGINE.md`](docs/COMMUNICATION_RULES_INPUT_ENGINE.md) — Engine 1 → Engine 2 contract
+7. [`docs/COMMUNICATION_RULES_INPUT_ENGINE.md`](docs/COMMUNICATION_RULES_INPUT_ENGINE.md) — Engine 1 → Engine 2 boundary
+8. [`docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) — Engine 2: Understanding Engine
+9. [`docs/COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](docs/COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md) — inside Engine 2
 
 **Precedence.** `SUB_ENGINE_RESPONSIBILITIES.md` is canonical for the system-wide map. A locked engine specification is the deeper authority for that engine's allowed and forbidden actions, output contracts and failure behaviour. Where they overlap they must agree — a disagreement is a defect to fix, not a choice to make.
 
-**Artifact naming.** The Input Engine's output has exactly one name: **Document Evidence Object**. `Structured Document` and `Confidence Report` are its components, never the artifact's name. No engine may create alternative names, and no duplicate representation may exist.
+**Artifact naming.** One name per artifact. No engine may create alternative names, and no duplicate representation may exist.
+
+| Artifact | Owner | Components — never used as the artifact's name |
+|---|---|---|
+| **Document Evidence Object** | Input Engine | Document ID · Source references · Structured Document · Confidence Report |
+| **Business Understanding Object** | Understanding Engine | Transaction Story · Supporting Understanding Data · Identified Unknowns · Confidence Assessment |
+| **Accounting Decision** | Accounting Engine | *Name is not final — it is set when Engine 3 is specified. Do not rename it before then.* |
+
+**Artifact ownership.** Every artifact has exactly one owner: the engine that creates it. Artifacts are **immutable after creation**. Other engines may read, analyze and reference; they may never modify, rewrite, delete, remove uncertainty, or change confidence. New information produces a **new version authored by the owner**, never an edit in place. See [`docs/DATA_FLOW.md` §6–8](docs/DATA_FLOW.md#6-artifact-ownership).
+
+**Decision authority.** Authority belongs only to the engine responsible for that decision, and no parent engine may override its own sub-engines' outputs. Per-engine table in [`docs/DATA_FLOW.md` §7](docs/DATA_FLOW.md#7-decision-authority); internal tables in each locked engine specification.
+
+**One contract per boundary.** The sending engine owns the contract of what leaves it; the receiving engine references it. No duplicate communication documents.
 
 ---
 

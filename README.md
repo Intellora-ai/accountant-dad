@@ -26,7 +26,9 @@ What exists is the thing that has to exist first: an unambiguous statement of wh
 |---|---|
 | Architecture foundation — 6 engines, 39 sub-engines, system-wide docs | ✅ Complete |
 | **Engine 1 — Input Engine** specification lock | ✅ **Locked** |
-| Engines 2–6 specification locks | Not yet started |
+| **Engine 2 — Understanding Engine** specification lock | ✅ **Locked** |
+| Communication architecture — ownership, authority, boundary contracts | ✅ **Locked** |
+| Engines 3–6 specification locks | Not yet started |
 
 ### Phase 1 does **not** include
 
@@ -91,8 +93,10 @@ docs/
   DATA_FLOW.md ................... what artifact crosses each arrow
   SYSTEM_BOUNDARIES.md ........... forbidden behaviour, as absolutes
 
-  ENGINE_1_INPUT_ENGINE_RULES.md ....... Engine 1 specification — LOCKED
-  COMMUNICATION_RULES_INPUT_ENGINE.md .. how Engine 1 talks to Engine 2 — LOCKED
+  ENGINE_1_INPUT_ENGINE_RULES.md .............. Engine 1 specification — LOCKED
+  COMMUNICATION_RULES_INPUT_ENGINE.md ......... Engine 1 → Engine 2 boundary — LOCKED
+  ENGINE_2_UNDERSTANDING_ENGINE_RULES.md ...... Engine 2 specification — LOCKED
+  COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md  inside Engine 2 — LOCKED
 
 src/
   engines/       6 engines, 39 sub-engines — each a folder with a README
@@ -116,6 +120,7 @@ Every engine and sub-engine folder holds exactly one `README.md` stating its **p
 2. [`docs/DATA_FLOW.md`](docs/DATA_FLOW.md) — how information moves
 3. [`docs/SYSTEM_BOUNDARIES.md`](docs/SYSTEM_BOUNDARIES.md) — what nothing may do
 4. [`docs/ENGINE_1_INPUT_ENGINE_RULES.md`](docs/ENGINE_1_INPUT_ENGINE_RULES.md) — the first engine, in full
+5. [`docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) — the second engine, in full
 
 ---
 

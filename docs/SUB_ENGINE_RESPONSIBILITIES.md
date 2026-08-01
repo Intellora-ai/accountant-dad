@@ -9,7 +9,8 @@
 > | Engine | Specification | Status |
 > |---|---|---|
 > | 1. Input | [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RULES.md) · [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md) | **Locked** |
-> | 2–6 | — | Not yet specified |
+> | 2. Understanding | [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md) | **Locked** |
+> | 3–6 | — | Not yet specified |
 >
 > Each sub-engine owns exactly one problem. No two entries in this document claim the same problem — see §"Ownership Collisions" at the end for the pairs that look alike and how they are separated.
 
@@ -19,7 +20,7 @@
 
 > **Specification locked.** Deeper authority: [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RULES.md).
 >
-> **Engine-level assembly.** The four sub-engines below produce four parts. The **Input Engine itself** combines them into the **Document Evidence Object** and assigns the Document ID. It owns the internal assembly of its own sub-engines' outputs and nothing more — not system-wide orchestration, engine routing, downstream reasoning, accounting decisions, or workflow control. **No assembler sub-engine exists, and none may be added.**
+> **Engine-level assembly.** The four sub-engines below produce four parts. The **Input Engine itself** combines them into the **Document Evidence Object** and assigns the Document ID. It owns the internal assembly of its own sub-engines' outputs and nothing more — not system-wide orchestration, engine routing, downstream reasoning, accounting decisions, workflow control, or overriding sub-engine outputs. **No assembler sub-engine exists, and none may be added.**
 
 ## 1.1 `cleaner`
 
@@ -87,17 +88,25 @@
 
 # 2. Understanding Engine
 
+> **Specification locked.** Deeper authority: [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md) · [`COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md`](COMMUNICATION_RULES_UNDERSTANDING_INTERNAL.md).
+>
+> **Not a flat pipeline.** `transaction_understanding` establishes the base event; `party`, `item`, `payment` and `timeline` enrich it; `business_context` requires the preceding understanding; `story_builder` assembles last.
+>
+> **Engine-level ownership.** `story_builder` **creates** the **Business Understanding Object**; the **Understanding Engine owns** it. Story Builder does not become an independent owner. Every Result below carries confidence, unknowns and evidence references — none may omit them.
+
 ## 2.1 `transaction_understanding`
 
 **Purpose.** Before anything else can be understood, the kind of business event must be established.
 
-**Responsibility.** Owns identification of what kind of event occurred — a purchase, a sale, a return, an expense, a receipt, a payment, a transfer, a credit or debit note.
+**Responsibility.** Owns the base event — identification of what kind of event occurred: a purchase, a sale, a return, an expense, a receipt, a payment, a transfer, a credit or debit note.
 
 **Input.** The Document Evidence Object.
 
-**Output.** The transaction's nature in business terms, with the evidence supporting it.
+**Output.** **Transaction Understanding Result** — identified event · supporting evidence references · confidence level · unknown information · conflicts detected.
 
-**Boundary.** Cannot map the event to a voucher type or accounting classification — that is the Accounting Engine's. Cannot decide the event type by what would be convenient to post.
+**Boundary.** Cannot decide accounting treatment. Cannot map the event to a voucher type or accounting classification — that is the Accounting Engine's. Cannot decide the event type by what would be convenient to post.
+
+**Failure Behaviour.** Where the event kind cannot be established, the Result says so. An ambiguous document produces an ambiguous Result carried forward — never a confident guess. The ambiguity is recorded in unknown information, with the competing readings preserved as conflicts detected.
 
 ---
 
@@ -105,13 +114,15 @@
 
 **Purpose.** A transaction is between people; who they are and what role they played is a fact about the event.
 
-**Responsibility.** Owns identification of every party to the transaction, the role each played (buyer, seller, consignee, agent), and their identifying details as stated on the document.
+**Responsibility.** Owns entity identification — every party to the transaction, the role each played (buyer, seller, consignee, agent), the relationships between them, and their identifying details as stated on the document.
 
-**Input.** The Document Evidence Object, and the transaction nature from `transaction_understanding`.
+**Input.** The Document Evidence Object, and the Transaction Understanding Result.
 
-**Output.** Party facts: identities, roles, and stated registration or contact details.
+**Output.** **Party Understanding Result** — identified entities · relationships · supporting evidence · confidence · unknown parties.
 
-**Boundary.** Cannot select, create or match a ledger account for any party. Cannot decide a party's accounting group. Cannot merge two parties it believes to be the same entity — it reports the similarity as a fact.
+**Boundary.** Cannot classify accounting ledgers, or select, create or match a ledger account for any party. Cannot decide a party's accounting group. Cannot merge two parties it believes to be the same entity — it reports the similarity as a fact.
+
+**Failure Behaviour.** An unidentifiable party is recorded in unknown parties, not omitted and not guessed. Where the document does not make clear which party is the business itself, that is an unknown — never assumed from position on the page.
 
 ---
 
@@ -119,13 +130,15 @@
 
 **Purpose.** What actually moved determines much of the treatment downstream.
 
-**Responsibility.** Owns identification of the goods or services in the transaction — descriptions, quantities, units, rates, line values, and any stated classification codes.
+**Responsibility.** Owns what moved — the goods or services in the transaction: descriptions, quantities, units, rates, line values, and any stated classification codes.
 
-**Input.** The Document Evidence Object, and the transaction nature.
+**Input.** The Document Evidence Object, and the Transaction Understanding Result.
 
-**Output.** Item facts: one structured record per line, plus stated totals.
+**Output.** **Item Understanding Result** — identified goods/services · descriptions · evidence references · confidence · unknown item details.
 
-**Boundary.** Cannot classify items into accounting heads. Cannot determine tax rates from item descriptions or codes. Cannot recompute a line value the document states, nor supply one it omits.
+**Boundary.** Cannot decide **asset**, **expense** or **inventory**. Cannot classify items into accounting heads. Cannot determine tax rates from item descriptions or codes. Cannot recompute a line value the document states, nor supply one it omits.
+
+**Failure Behaviour.** Where a line's stated value disagrees with quantity × rate, both are reported and the disagreement is recorded as a conflict; choosing between them is not this component's call. Missing item detail is recorded in unknown item details.
 
 ---
 
@@ -133,13 +146,15 @@
 
 **Purpose.** Whether and how money moved is a separate fact from what was supplied.
 
-**Responsibility.** Owns identification of how consideration moved or was promised — cash, bank, cheque, UPI or credit; paid, unpaid or part-paid; the terms and any instrument references stated.
+**Responsibility.** Owns money movement — how consideration moved or was promised: cash, bank, cheque, UPI or credit; paid, unpaid or part-paid; the terms, amount relationships and any instrument references stated.
 
-**Input.** The Document Evidence Object, and the transaction nature.
+**Input.** The Document Evidence Object, and the Transaction Understanding Result.
 
-**Output.** Payment facts: mode, status, amounts, terms, and instrument references.
+**Output.** **Payment Understanding Result** — payment method · payment references · amount relationships · confidence · unknown payment details.
 
-**Boundary.** Cannot select a cash or bank ledger, or any account. Cannot infer payment from silence — an unstated payment status is recorded as unstated. Cannot reconcile against bank records.
+**Boundary.** Cannot create cash or bank entries, or select any account. Cannot infer payment from silence. Cannot reconcile against bank records.
+
+**Failure Behaviour.** An unstated payment status is recorded as unstated — never assumed to be credit, never assumed to be paid. It is one of the most frequent legitimate sources of a question later, and marking it absent is what makes that question possible. Part-payment without amounts is an unknown, not a flag.
 
 ---
 
@@ -147,13 +162,15 @@
 
 **Purpose.** Accounting is periodic; when each thing happened is load-bearing.
 
-**Responsibility.** Owns identification of every date and sequence in the transaction — document date, supply or service date, receipt date, due date — and their order relative to one another.
+**Responsibility.** Owns when — every date and sequence in the transaction: document date, supply or service date, receipt date, due date, and their order relative to one another.
 
-**Input.** The Document Evidence Object, and the transaction nature.
+**Input.** The Document Evidence Object, and the Transaction Understanding Result.
 
-**Output.** Timeline facts: each date, what it dates, and the resulting sequence of events.
+**Output.** **Timeline Understanding Result** — dates · event sequence · time relationships · confidence · missing dates.
 
-**Boundary.** Cannot decide the accounting period a transaction belongs to, or apply any cut-off rule. Cannot assume a missing date equals the document date. Cannot resolve a contradictory date sequence by choosing one — it reports the contradiction.
+**Boundary.** Cannot decide accounting period treatment, or apply any cut-off rule. Cannot assume a missing date equals the document date. Cannot resolve a contradictory date sequence by choosing one.
+
+**Failure Behaviour.** Missing dates are recorded in missing dates. A contradictory sequence is recorded as a conflict and carried forward unresolved. Where a date format is genuinely ambiguous, the ambiguity travels rather than being silently normalised.
 
 ---
 
@@ -161,13 +178,15 @@
 
 **Purpose.** The same document means different things at different businesses; the transaction must be situated in this one's reality.
 
-**Responsibility.** Owns the contextual, non-accounting facts that situate the transaction — whether the party is recurring, whether the pattern is normal for this business, which location or branch is involved, what this business actually does.
+**Responsibility.** Owns operating context — whether the party is recurring, whether the pattern is normal for this business, which location or branch is involved, what this business actually does, and observed indicators of why this transaction exists in its operations.
 
-**Input.** The Document Evidence Object, the outputs of the other Understanding sub-engines, and the business's own operating history.
+**Input.** The Document Evidence Object, the preceding five Results, and the business's own operating history.
 
-**Output.** Contextual facts: recurrence, normality, location, and trade-pattern observations.
+**Output.** **Business Context Result** — context clues · business purpose indicators · supporting evidence · confidence · unknown context.
 
-**Boundary.** Cannot read or apply the company's accounting configuration — chart of accounts, ledger masters, registration status and accounting policy belong to the Accounting Engine's `company_understanding`. Cannot conclude a treatment because "this is how it is usually posted."
+**Boundary.** Cannot apply accounting rules. Cannot read or apply the company's accounting configuration — chart of accounts, ledger masters, registration status and accounting policy belong to the Accounting Engine's `company_understanding`. Cannot conclude a treatment because "this is how it is usually posted." **Cannot conclude intent** — it produces indicators, never a determination of why someone acted.
+
+**Failure Behaviour.** Absent context is recorded in unknown context. Purpose indicators are always presented as indicators with their supporting evidence — never promoted to a conclusion, and never used to fill a gap another sub-engine left. Recurrence is a strong signal and a dangerous one: it is offered as context for a decision, never as a substitute for making one.
 
 ---
 
@@ -175,13 +194,15 @@
 
 **Purpose.** The Accounting Engine must receive one coherent account of events, not six fragments.
 
-**Responsibility.** Owns assembly of every Understanding output into a single **Transaction Story**, checked for internal contradiction, with each fact traced to its source and each gap explicitly marked absent.
+**Responsibility.** Owns assembly — combining the six Results into the **Business Understanding Object**, and creating the **Transaction Story** component from them.
 
-**Input.** The outputs of all six preceding Understanding sub-engines, plus the Confidence Report within the Document Evidence Object.
+**Input.** All six preceding sub-engine Results, plus the Confidence Report within the Document Evidence Object.
 
-**Output.** The **Transaction Story** — the sole artifact handed to the Accounting Engine.
+**Output.** The **Business Understanding Object** — Transaction Story · Supporting Understanding Data (the six Results, unaltered) · Identified Unknowns · Confidence Assessment. The sole artifact handed to the Accounting Engine.
 
-**Boundary.** Cannot add a fact no sub-engine produced. Cannot resolve a contradiction between sub-engines by choosing a side — the contradiction travels with the story. Cannot use accounting vocabulary. Cannot omit a fact because it appears unimportant.
+**Boundary.** Can combine outputs, organize information, create the Transaction Story component, and create the artifact. **Cannot** change source observations · override sub-engine results · **resolve conflicts** · **choose the "correct" interpretation when evidence disagrees** · **remove unknowns** · **increase confidence** · create accounting conclusions · add a fact no sub-engine produced · use accounting vocabulary. It **creates** the artifact but does not **own** it — the Understanding Engine does.
+
+**Failure Behaviour.** Where the Results disagree, the narrative reports the disagreement rather than selecting a reading — a story containing an unresolved conflict is the correct output, not a failure. Unknowns are carried into Identified Unknowns intact. Where the six Results cannot be made into a coherent narrative at all, that incoherence is itself reported, with the Results preserved unchanged beneath it.
 
 ---
 
@@ -193,11 +214,11 @@
 
 **Responsibility.** Owns determination of the economic substance of the transaction in accounting terms — what was acquired or disposed of, what obligation arose or was discharged, and which accounting event class it belongs to.
 
-**Input.** The Transaction Story.
+**Input.** The Business Understanding Object.
 
 **Output.** An accounting characterisation of the event: substance, event class, and the aspects requiring treatment.
 
-**Boundary.** Cannot select specific ledgers or write any entry. Cannot read the Document Evidence Object or the raw artifact. Cannot re-derive business facts — it consumes the story as given.
+**Boundary.** Cannot select specific ledgers or write any entry. Cannot read the Document Evidence Object or the raw artifact. Cannot re-derive business facts — it consumes the understanding as given.
 
 ---
 
@@ -235,7 +256,7 @@
 
 **Responsibility.** Owns construction of the entry itself — which accounts are debited, which credited, in what amounts — and the guarantee that it balances.
 
-**Input.** Ledger selection from `ledger_intelligence`, the applicable rulings, tax lines from `tax_intelligence`, and the Transaction Story's amounts.
+**Input.** Ledger selection from `ledger_intelligence`, the applicable rulings, tax lines from `tax_intelligence`, and the amounts in the Business Understanding Object.
 
 **Output.** The journal entry: a balanced, system-neutral set of debit and credit lines.
 
@@ -277,7 +298,7 @@
 
 **Responsibility.** Owns assessment of how risky *the decision this engine just made* is — how aggressive the treatment is, how thin its basis, how unusual the amount or pattern, how much it depends on a contested reading.
 
-**Input.** The assembled components of the decision, the rulings behind them, and the Transaction Story.
+**Input.** The assembled components of the decision, the rulings behind them, and the Business Understanding Object.
 
 **Output.** A risk profile of the decision: each risk, its source, and its severity.
 
@@ -291,7 +312,7 @@
 
 **Responsibility.** Owns identification of every point at which the accounting decision is uncertain, and the precise statement of what fact would remove each doubt.
 
-**Input.** The decision components, the rulings, the Transaction Story's marked gaps, and the Confidence Report within the Document Evidence Object.
+**Input.** The decision components, the rulings, the Identified Unknowns in the Business Understanding Object, and the Confidence Report within the Document Evidence Object.
 
 **Output.** Structured doubts: what is uncertain, why, and the specific fact that would resolve it.
 
@@ -321,7 +342,7 @@
 
 **Responsibility.** Owns comprehension of the accounting decision and its attached doubts — what was decided, on what basis, and what the doubts actually concern — in terms a human can be spoken to about.
 
-**Input.** The Accounting Decision, including its doubts and risks, plus the Transaction Story for context.
+**Input.** The Accounting Decision, including its doubts and risks, plus the Business Understanding Object for context.
 
 **Output.** An internal case understanding: the decision restated in plain terms, with each doubt located in it.
 
@@ -335,7 +356,7 @@
 
 **Responsibility.** Owns the judgement of which uncertainties *across the whole case* — extraction confidence, story gaps, accounting doubts — are material enough to block posting, and their relative priority.
 
-**Input.** The case understanding, the accounting doubts, the marked gaps in the Transaction Story, and the Confidence Report within the Document Evidence Object.
+**Input.** The case understanding, the accounting doubts, the Identified Unknowns in the Business Understanding Object, and the Confidence Report within the Document Evidence Object.
 
 **Output.** Ranked material uncertainties, each with the reason it blocks posting.
 
@@ -349,7 +370,7 @@
 
 **Responsibility.** Owns determination of exactly which facts are absent, and who or what could supply each — the user, the source document, a party, or company master data.
 
-**Input.** Ranked material uncertainties, the Transaction Story's marked gaps, and the company accounting profile.
+**Input.** Ranked material uncertainties, the Identified Unknowns in the Business Understanding Object, and the company accounting profile.
 
 **Output.** A missing-fact list: each absent fact, why it is needed, and its likely source.
 
@@ -449,7 +470,7 @@
 
 **Responsibility.** Owns the judgement of whether the underlying data are sound — required fields present, dates within permissible range and sequence, totals reconciling to their lines, and every referenced master actually existing.
 
-**Input.** The Accounting Decision, the Transaction Story, the Confidence Report within the Document Evidence Object, and the company's master data.
+**Input.** The Accounting Decision, the Business Understanding Object, the Confidence Report within the Document Evidence Object, and the company's master data.
 
 **Output.** A data verdict with findings.
 
@@ -463,7 +484,7 @@
 
 **Responsibility.** Owns the judgement of whether this transaction has already been recorded — by document identity, by party and amount and date, or by economic equivalence.
 
-**Input.** The Accounting Decision and Transaction Story, and previously posted transactions and audit records.
+**Input.** The Accounting Decision and Business Understanding Object, and previously posted transactions and audit records.
 
 **Output.** A duplicate verdict with any matches found and the strength of each match.
 
@@ -595,3 +616,14 @@ Four pairs of sub-engines have similar names and adjacent concerns. Each pair is
 | Accounting `risk_analysis` **vs** Validation `risk_assessment` | `risk_analysis` looks **inward**: how risky is the decision I just made — how aggressive, how thin its basis. `risk_assessment` looks **outward**: what would posting this expose the business to — compliance, materiality, reversibility. It consumes `risk_analysis` rather than repeating it. |
 | Accounting `doubt_detection` **vs** Clarification `uncertainty_detection` | `doubt_detection` **produces** doubt, from accounting reasoning only, and names the fact that would resolve each. `uncertainty_detection` **triages** uncertainty across the whole case — extraction, story and accounting — and judges which are material enough to block posting. Production versus materiality. |
 | Accounting `ledger_intelligence` **vs** `journal_intelligence` | `ledger_intelligence` decides **which accounts**. `journal_intelligence` decides **which side and how much**. Neither does the other's job; `journal_intelligence` consumes the account selection as given. |
+
+## Two confidence artifacts
+
+The system carries confidence in two places. They measure different things and neither replaces the other — both travel.
+
+| Artifact | Owner | Measures | Bounded by |
+|---|---|---|---|
+| **Confidence Report** — within the Document Evidence Object | Input Engine | Confidence in the **extraction**: was this read correctly? | — |
+| **Confidence Assessment** — within the Business Understanding Object | Understanding Engine | Confidence in the **understanding**: does the evidence support this interpretation? | The Confidence Report |
+
+The binding constraint is the **Confidence Propagation Rule**: `Understanding Confidence ≤ Evidence Reliability`. A confident interpretation of an unreliable reading is not understanding — see [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md` §11](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md#11-understanding-confidence-model).

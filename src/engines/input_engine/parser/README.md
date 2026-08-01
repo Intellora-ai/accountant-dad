@@ -43,6 +43,16 @@ Payment Reference:
 
 It may identify a field labelled "Supplier"; it may not conclude that party is a supplier for accounting purposes. It cannot compute, derive or infer a value that is not written.
 
+## Decision Authority
+
+**Owns.** Evidence structuring.
+
+**Determines.** Field mapping · detected relationships between extracted values · missing fields.
+
+**Cannot.** Infer missing information.
+
+No other component may override this result — not a sibling sub-engine, and not the parent Input Engine, which assembles outputs but never overrides them. See [`docs/ENGINE_1_INPUT_ENGINE_RULES.md` §3A](../../../../docs/ENGINE_1_INPUT_ENGINE_RULES.md#3a-decision-authority).
+
 ## Failure Behaviour
 
 **Unknown fields remain unknown. Never fabricate values.**

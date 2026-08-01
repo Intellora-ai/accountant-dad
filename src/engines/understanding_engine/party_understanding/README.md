@@ -1,6 +1,6 @@
 # party_understanding
 
-> Sub-engine of the **Understanding Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md).
+> Sub-engine of the **Understanding Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md). Deep spec: [`docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](../../../../docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md#82-party-understanding).
 >
 > **Phase 1 placeholder — no implementation.**
 
@@ -10,19 +10,35 @@ A transaction is between people; who they are and what role they played is a fac
 
 ## Responsibility
 
-Owns identification of every party to the transaction, the role each played (buyer, seller, consignee, agent), and their identifying details as stated on the document.
+Owns **entity identification** — every party to the transaction, the role each played (buyer, seller, consignee, agent), the relationships between them, and their identifying details as stated on the document.
 
 ## Input
 
-The Document Evidence Object, and the transaction nature from [`transaction_understanding`](../transaction_understanding/).
+The **Document Evidence Object**, and the **Transaction Understanding Result**.
 
 ## Output
 
-Party facts: identities, roles, and stated registration or contact details.
+**Party Understanding Result** — identified entities · relationships · supporting evidence · confidence · unknown parties.
 
 ## Boundary
 
-Cannot select, create or match a ledger account for any party. Cannot decide a party's accounting group. Cannot merge two parties it believes to be the same entity — it reports the similarity as a fact.
+**Can:** identify every party and role · record identifying details as stated · record relationships between entities · report that two parties resemble one another.
+
+**Cannot:** classify accounting ledgers, or select, create or match a ledger account for any party · decide a party's accounting group · merge two parties it believes to be the same entity.
+
+## Decision Authority
+
+**Owns.** Entity identification.
+
+**Determines.** Who was involved, what role each played, and the relationships between them.
+
+**Cannot.** Classify accounting ledgers.
+
+No other component may override this Result.
+
+## Failure Behaviour
+
+An unidentifiable party is recorded in unknown parties — not omitted, not guessed. Where the document does not make clear which party is the business itself, that is an unknown, never assumed from position on the page.
 
 ## Future Notes
 

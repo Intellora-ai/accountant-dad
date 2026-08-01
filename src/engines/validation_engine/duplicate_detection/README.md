@@ -14,7 +14,7 @@ Owns the judgement of whether this transaction has already been recorded — by 
 
 ## Input
 
-The Accounting Decision and Transaction Story, and previously posted transactions and audit records.
+The Accounting Decision and Business Understanding Object, and previously posted transactions and audit records.
 
 ## Output
 

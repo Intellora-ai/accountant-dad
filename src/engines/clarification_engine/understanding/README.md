@@ -14,7 +14,7 @@ Owns comprehension of the accounting decision and its attached doubts — what w
 
 ## Input
 
-The Accounting Decision, including its doubts and risks, plus the Transaction Story for context.
+The Accounting Decision, including its doubts and risks, plus the Business Understanding Object for context.
 
 ## Output
 

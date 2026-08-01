@@ -40,6 +40,16 @@ Date confidence:    65%
 
 It cannot re-read, re-parse or correct anything, and cannot reject a document or halt the pipeline. It measures extraction quality, never whether the content makes commercial sense.
 
+## Decision Authority
+
+**Owns.** Reliability estimation.
+
+**Determines.** Confidence scores · uncertainty markers · risky extraction areas.
+
+**Cannot.** Hide uncertainty · change extracted facts.
+
+No other component may override this result — not a sibling sub-engine, and not the parent Input Engine, which assembles outputs but never overrides them. See [`docs/ENGINE_1_INPUT_ENGINE_RULES.md` §3A](../../../../docs/ENGINE_1_INPUT_ENGINE_RULES.md#3a-decision-authority).
+
 ## Failure Behaviour
 
 **Reduce confidence and explain the uncertainty.**

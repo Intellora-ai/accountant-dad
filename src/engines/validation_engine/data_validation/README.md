@@ -14,7 +14,7 @@ Owns the judgement of whether the underlying data are sound — required fields 
 
 ## Input
 
-The Accounting Decision, the Transaction Story, the Confidence Report within the Document Evidence Object, and the company's master data.
+The Accounting Decision, the Business Understanding Object, the Confidence Report within the Document Evidence Object, and the company's master data.
 
 ## Output
 

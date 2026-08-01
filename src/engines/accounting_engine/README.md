@@ -30,7 +30,7 @@ Sub-engines:
 
 ## Input
 
-Transaction Story, from the Understanding Engine. Resolved Facts, when the Clarification Engine returns answers.
+The Business Understanding Object, from the Understanding Engine. Resolved Facts, when the Clarification Engine returns answers.
 
 ## Output
 
@@ -38,7 +38,7 @@ Transaction Story, from the Understanding Engine. Resolved Facts, when the Clari
 
 ## Boundary
 
-**Cannot post to Tally, and cannot question the user directly.** Cannot approve its own decision or declare it safe. Cannot read the raw artifact or the Document Evidence Object — it reasons from the Transaction Story only. Cannot resolve its own doubt by guessing, defaulting, or picking the most common treatment.
+**Cannot post to Tally, and cannot question the user directly.** Cannot approve its own decision or declare it safe. Cannot read the raw artifact or the Document Evidence Object — it reasons from the Business Understanding Object only. Cannot resolve its own doubt by guessing, defaulting, or picking the most common treatment.
 
 ## Future Notes
 

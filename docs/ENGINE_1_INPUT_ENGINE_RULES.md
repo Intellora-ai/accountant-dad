@@ -69,9 +69,45 @@ An extraction that is structured but untraceable, or confident but wrong, has fa
 
 > **The Input Engine owns the internal assembly of outputs from its four sub-engines into the Document Evidence Object.**
 >
-> **It does not own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, or workflow control.**
+> **It does not own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, workflow control, or overriding sub-engine outputs.**
 
 Assembly means one thing only: the four parts its own sub-engines produced become one artifact at the engine boundary. Nothing broader is implied and nothing broader is permitted.
+
+---
+
+# 3A. Decision Authority
+
+> **The Input Engine controls only input-processing decisions.**
+>
+> **No engine outside the Input Engine can modify its decisions.**
+
+Authority is divided internally. Each component decides within its own domain and nowhere else.
+
+| Component | Owns | Determines | Cannot |
+|---|---|---|---|
+| **Cleaner** | Document preprocessing actions | Allowed transformations · whether preprocessing introduced risk | Interpret information |
+| **Reader** | Extraction observations | Detected characters, regions and tables · extraction confidence signals | Understand meaning |
+| **Parser** | Evidence structuring | Field mapping · detected relationships between extracted values · missing fields | Infer missing information |
+| **Confidence** | Reliability estimation | Confidence scores · uncertainty markers · risky extraction areas | Hide uncertainty · change extracted facts |
+| **Input Engine (parent)** | Assembly of all sub-engine outputs into the Document Evidence Object · creation of the Document ID · evidence preservation | — | See below |
+
+## The parent Input Engine does NOT
+
+- Orchestrate the entire system.
+- Route workflows.
+- Perform business reasoning.
+- Make accounting decisions.
+- **Override sub-engine outputs.**
+
+The last is the one most easily lost in implementation. The parent assembles what its sub-engines produced; it does not correct, second-guess, or improve any of it. A parent that may overrule `confidence` can quietly raise a score, and the honesty of the whole artifact goes with it.
+
+## Confidence has a single authority
+
+`cleaner`, `reader` and `parser` emit **signals**. Only `confidence` turns signals into scores. No other component — parent included — may raise or lower a confidence value.
+
+## No sub-engine overrides another
+
+`confidence` reads the outputs of `cleaner`, `reader` and `parser`; it cannot correct them. `parser` consumes `reader`'s extraction; it cannot re-read it. Each result stands as its author produced it.
 
 ---
 
