@@ -28,7 +28,7 @@ Sub-engines:
 
 ## Input
 
-Accounting Decision with its doubts and risks; Confidence Report and Transaction Story as evidence of where uncertainty originated; the human's answers.
+Accounting Decision with its doubts and risks; the Confidence Report within the Document Evidence Object and the Transaction Story as evidence of where uncertainty originated; the human's answers.
 
 ## Output
 

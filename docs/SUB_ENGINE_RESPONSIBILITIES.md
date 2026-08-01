@@ -4,11 +4,22 @@
 >
 > 39 sub-engines. Five fixed headings each: **Purpose · Responsibility · Input · Output · Boundary.**
 >
+> Sub-engines belonging to an engine whose specification has been **locked** carry a sixth heading, **Failure Behaviour**. Engines 2–6 gain it as their specifications land. For those engines, the locked specification is the deeper authority on allowed and forbidden actions, output contracts and failure behaviour; this document remains canonical for the system-wide map. Where they overlap they must agree.
+>
+> | Engine | Specification | Status |
+> |---|---|---|
+> | 1. Input | [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RULES.md) · [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md) | **Locked** |
+> | 2–6 | — | Not yet specified |
+>
 > Each sub-engine owns exactly one problem. No two entries in this document claim the same problem — see §"Ownership Collisions" at the end for the pairs that look alike and how they are separated.
 
 ---
 
 # 1. Input Engine
+
+> **Specification locked.** Deeper authority: [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RULES.md).
+>
+> **Engine-level assembly.** The four sub-engines below produce four parts. The **Input Engine itself** combines them into the **Document Evidence Object** and assigns the Document ID. It owns the internal assembly of its own sub-engines' outputs and nothing more — not system-wide orchestration, engine routing, downstream reasoning, accounting decisions, or workflow control. **No assembler sub-engine exists, and none may be added.**
 
 ## 1.1 `cleaner`
 
@@ -16,11 +27,13 @@
 
 **Responsibility.** Owns the physical quality of the artifact — deskewing, rotation, denoising, cropping, contrast, and normalisation of file format and character encoding.
 
-**Input.** The raw artifact exactly as received: scan, photograph, PDF, or digital file.
+**Input.** The raw artifact exactly as received: photo, camera capture, image upload, PDF, scan, handwritten note, or other digital file — including poor-quality human inputs.
 
-**Output.** A normalised artifact, ready to be read, plus a record of every transformation applied.
+**Output.** Cleaned document representation · quality issues detected · preservation status.
 
-**Boundary.** Cannot interpret the meaning of anything on the artifact. Cannot discard content it judges irrelevant, redundant or illegible. Cannot alter values — only presentation.
+**Boundary.** Cannot interpret the meaning of anything on the artifact. Cannot discard content it judges irrelevant, redundant or illegible. Cannot change numbers, correct accounting information, or alter original meaning — it alters presentation only.
+
+**Failure Behaviour.** If processing may damage information, preserve the original input and mark uncertainty. The original artifact is never discarded, so a damaging transformation is always recoverable. Preservation status records whether the cleaned representation or the original is the safer basis for reading. Detected quality issues are reported as evidence for `confidence`, never repaired by guesswork.
 
 ---
 
@@ -28,13 +41,15 @@
 
 **Purpose.** Somebody must actually get the characters off the page.
 
-**Responsibility.** Owns extraction of everything written on the normalised artifact, together with where on the page each piece of text sits.
+**Responsibility.** Owns extraction of everything written on the cleaned document representation — printed text and handwriting alike — together with where on the page each piece of text sits.
 
-**Input.** The normalised artifact from `cleaner`.
+**Input.** The cleaned document representation from `cleaner`.
 
-**Output.** Raw extracted text with layout and positional information, and per-region extraction quality signals.
+**Output.** Raw extracted information (text, numbers, dates, names, tables, handwriting output) · source locations · extraction confidence.
 
-**Boundary.** Cannot assign meaning to what it extracts — it may extract `27AAECS1234F1Z5`, it may not conclude that this is a GSTIN. Cannot correct suspected extraction errors. Cannot reorder or restructure the text.
+**Boundary.** Cannot assign meaning to what it extracts — it may extract `27AAECS1234F1Z5`, it may not conclude that this is a GSTIN. Cannot understand transaction meaning, fix accounting mistakes, guess unclear words, or infer missing business information. Cannot reorder or restructure the text.
+
+**Failure Behaviour.** Return extracted information with confidence levels and uncertainty. An unclear character or word is emitted as unclear, with its confidence, never resolved by guessing. A region that could not be read at all is reported as unread, not omitted silently. Source locations are emitted even for low-confidence extractions — that is what makes a later human check possible.
 
 ---
 
@@ -42,13 +57,15 @@
 
 **Purpose.** Loose text is not usable; the document's own structure must be recovered.
 
-**Responsibility.** Owns the conversion of extracted text into structure — fields, key–value pairs, tables, and line-item rows — faithful to how the document is laid out.
+**Responsibility.** Owns the conversion of extracted information into structure — fields, key–value pairs, tables, and line-item rows — faithful to how the document is laid out.
 
-**Input.** Raw extracted text with layout information from `reader`.
+**Input.** Raw extracted information with source locations from `reader`.
 
-**Output.** A **Structured Document**: the artifact's contents as named fields, tables and rows.
+**Output.** Structured fields · field mappings · missing field information. Together these form the **Structured Document**, a component of the Document Evidence Object.
 
-**Boundary.** Cannot decide business meaning — it may identify a field labelled "Supplier", it may not conclude that party is a supplier for accounting purposes. Cannot compute, derive or infer a value that is not written. Cannot fill a field that is absent.
+**Boundary.** Cannot decide business meaning — it may identify a field labelled "Supplier", it may not conclude that party is a supplier for accounting purposes. Cannot decide debit or credit, choose ledger accounts, apply accounting rules, or create transaction meaning. Cannot compute, derive or infer a value that is not written. Cannot fill a field that is absent.
+
+**Failure Behaviour.** Unknown fields remain unknown; never fabricate values. A field that is absent is recorded in missing field information as absent — not defaulted, not estimated, not omitted. "Absent", "zero" and "unreadable" are three different states and must remain distinguishable. Field mappings retain the source reference for every mapped value, so a wrong mapping can be traced.
 
 ---
 
@@ -56,13 +73,15 @@
 
 **Purpose.** Every downstream engine needs to know how much of this extraction to trust.
 
-**Responsibility.** Owns the honest measurement of extraction trustworthiness, per field and overall, and the identification of the specific regions that are weak.
+**Responsibility.** Owns the honest measurement of extraction trustworthiness, per field and overall, and the identification of the specific regions and fields that are weak.
 
-**Input.** Signals from `cleaner`, `reader` and `parser`, plus the Structured Document.
+**Input.** The outputs of `cleaner`, `reader` and `parser`.
 
-**Output.** A **Confidence Report**: per-field and overall trust scores, and a list of low-confidence regions with the reason for each.
+**Output.** Confidence scores · uncertainty markers · reliability assessment. Together these form the **Confidence Report**, a component of the Document Evidence Object.
 
-**Boundary.** Cannot re-read, re-parse or correct anything. Cannot reject a document or halt the pipeline. Cannot use business plausibility as evidence — it measures extraction quality, not whether the content makes commercial sense.
+**Boundary.** Cannot re-read, re-parse or correct anything. Cannot increase confidence without evidence, hide uncertainty, or make accounting decisions. Cannot reject a document or halt the pipeline. Cannot use business plausibility as evidence — it measures extraction quality, not whether the content makes commercial sense.
+
+**Failure Behaviour.** Reduce confidence and explain the uncertainty. Where reliability cannot be established, confidence goes down — never up, and never to a default "good enough" value. Every uncertainty marker carries a reason; a bare score cannot become a good question downstream. Uncertainty is never suppressed because it would delay processing.
 
 ---
 
@@ -74,7 +93,7 @@
 
 **Responsibility.** Owns identification of what kind of event occurred — a purchase, a sale, a return, an expense, a receipt, a payment, a transfer, a credit or debit note.
 
-**Input.** Structured Document and Confidence Report.
+**Input.** The Document Evidence Object.
 
 **Output.** The transaction's nature in business terms, with the evidence supporting it.
 
@@ -88,7 +107,7 @@
 
 **Responsibility.** Owns identification of every party to the transaction, the role each played (buyer, seller, consignee, agent), and their identifying details as stated on the document.
 
-**Input.** Structured Document, Confidence Report, and the transaction nature from `transaction_understanding`.
+**Input.** The Document Evidence Object, and the transaction nature from `transaction_understanding`.
 
 **Output.** Party facts: identities, roles, and stated registration or contact details.
 
@@ -102,7 +121,7 @@
 
 **Responsibility.** Owns identification of the goods or services in the transaction — descriptions, quantities, units, rates, line values, and any stated classification codes.
 
-**Input.** Structured Document, Confidence Report, and the transaction nature.
+**Input.** The Document Evidence Object, and the transaction nature.
 
 **Output.** Item facts: one structured record per line, plus stated totals.
 
@@ -116,7 +135,7 @@
 
 **Responsibility.** Owns identification of how consideration moved or was promised — cash, bank, cheque, UPI or credit; paid, unpaid or part-paid; the terms and any instrument references stated.
 
-**Input.** Structured Document, Confidence Report, and the transaction nature.
+**Input.** The Document Evidence Object, and the transaction nature.
 
 **Output.** Payment facts: mode, status, amounts, terms, and instrument references.
 
@@ -130,7 +149,7 @@
 
 **Responsibility.** Owns identification of every date and sequence in the transaction — document date, supply or service date, receipt date, due date — and their order relative to one another.
 
-**Input.** Structured Document, Confidence Report, and the transaction nature.
+**Input.** The Document Evidence Object, and the transaction nature.
 
 **Output.** Timeline facts: each date, what it dates, and the resulting sequence of events.
 
@@ -144,7 +163,7 @@
 
 **Responsibility.** Owns the contextual, non-accounting facts that situate the transaction — whether the party is recurring, whether the pattern is normal for this business, which location or branch is involved, what this business actually does.
 
-**Input.** Structured Document, the outputs of the other Understanding sub-engines, and the business's own operating history.
+**Input.** The Document Evidence Object, the outputs of the other Understanding sub-engines, and the business's own operating history.
 
 **Output.** Contextual facts: recurrence, normality, location, and trade-pattern observations.
 
@@ -158,7 +177,7 @@
 
 **Responsibility.** Owns assembly of every Understanding output into a single **Transaction Story**, checked for internal contradiction, with each fact traced to its source and each gap explicitly marked absent.
 
-**Input.** The outputs of all six preceding Understanding sub-engines, plus the Confidence Report.
+**Input.** The outputs of all six preceding Understanding sub-engines, plus the Confidence Report within the Document Evidence Object.
 
 **Output.** The **Transaction Story** — the sole artifact handed to the Accounting Engine.
 
@@ -178,7 +197,7 @@
 
 **Output.** An accounting characterisation of the event: substance, event class, and the aspects requiring treatment.
 
-**Boundary.** Cannot select specific ledgers or write any entry. Cannot read the Structured Document or the raw artifact. Cannot re-derive business facts — it consumes the story as given.
+**Boundary.** Cannot select specific ledgers or write any entry. Cannot read the Document Evidence Object or the raw artifact. Cannot re-derive business facts — it consumes the story as given.
 
 ---
 
@@ -272,7 +291,7 @@
 
 **Responsibility.** Owns identification of every point at which the accounting decision is uncertain, and the precise statement of what fact would remove each doubt.
 
-**Input.** The decision components, the rulings, the Transaction Story's marked gaps, and the Confidence Report.
+**Input.** The decision components, the rulings, the Transaction Story's marked gaps, and the Confidence Report within the Document Evidence Object.
 
 **Output.** Structured doubts: what is uncertain, why, and the specific fact that would resolve it.
 
@@ -316,7 +335,7 @@
 
 **Responsibility.** Owns the judgement of which uncertainties *across the whole case* — extraction confidence, story gaps, accounting doubts — are material enough to block posting, and their relative priority.
 
-**Input.** The case understanding, the accounting doubts, the marked gaps in the Transaction Story, and the Confidence Report.
+**Input.** The case understanding, the accounting doubts, the marked gaps in the Transaction Story, and the Confidence Report within the Document Evidence Object.
 
 **Output.** Ranked material uncertainties, each with the reason it blocks posting.
 
@@ -430,7 +449,7 @@
 
 **Responsibility.** Owns the judgement of whether the underlying data are sound — required fields present, dates within permissible range and sequence, totals reconciling to their lines, and every referenced master actually existing.
 
-**Input.** The Accounting Decision, the Transaction Story, the Confidence Report, and the company's master data.
+**Input.** The Accounting Decision, the Transaction Story, the Confidence Report within the Document Evidence Object, and the company's master data.
 
 **Output.** A data verdict with findings.
 

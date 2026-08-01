@@ -14,7 +14,7 @@ Owns the contextual, non-accounting facts that situate the transaction — wheth
 
 ## Input
 
-Structured Document, the outputs of the other Understanding sub-engines, and the business's own operating history.
+The Document Evidence Object, the outputs of the other Understanding sub-engines, and the business's own operating history.
 
 ## Output
 

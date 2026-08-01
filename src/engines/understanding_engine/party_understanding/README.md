@@ -14,7 +14,7 @@ Owns identification of every party to the transaction, the role each played (buy
 
 ## Input
 
-Structured Document, Confidence Report, and the transaction nature from [`transaction_understanding`](../transaction_understanding/).
+The Document Evidence Object, and the transaction nature from [`transaction_understanding`](../transaction_understanding/).
 
 ## Output
 

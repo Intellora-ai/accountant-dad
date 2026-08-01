@@ -1,28 +1,55 @@
 # parser
 
-> Sub-engine of the **Input Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md).
+> Sub-engine of the **Input Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md). Deep spec: [`docs/ENGINE_1_INPUT_ENGINE_RULES.md`](../../../../docs/ENGINE_1_INPUT_ENGINE_RULES.md#83-parser).
 >
 > **Phase 1 placeholder — no implementation.**
 
 ## Purpose
 
-Loose text is not usable; the document's own structure must be recovered.
+Loose text is not usable; the document's own structure must be recovered. Convert extracted information into structured evidence.
 
 ## Responsibility
 
-Owns the conversion of extracted text into structure — fields, key–value pairs, tables, and line-item rows — faithful to how the document is laid out.
+Owns organization of extracted information — fields, key–value pairs, tables, and line-item rows — faithful to how the document is laid out.
 
 ## Input
 
-Raw extracted text with layout information from [`reader`](../reader/).
+Raw extracted information with source locations from [`reader`](../reader/).
 
 ## Output
 
-The **Structured Document**: the artifact's contents as named fields, tables and rows.
+- Structured fields.
+- Field mappings.
+- Missing field information.
+
+Together these form the **Structured Document**, a component of the Document Evidence Object.
+
+Example shape:
+
+```text
+Vendor:
+Amount:
+Date:
+Invoice Number:
+Items:
+Payment Reference:
+```
 
 ## Boundary
 
-Cannot decide business meaning — it may identify a field labelled "Supplier", it may not conclude that party is a supplier for accounting purposes. Cannot compute, derive or infer a value that is not written. Cannot fill a field that is absent.
+**Can:** map extracted information into fields · identify relationships between fields · preserve source references.
+
+**Cannot:** decide debit or credit · choose ledger accounts · apply accounting rules · create transaction meaning.
+
+It may identify a field labelled "Supplier"; it may not conclude that party is a supplier for accounting purposes. It cannot compute, derive or infer a value that is not written.
+
+## Failure Behaviour
+
+**Unknown fields remain unknown. Never fabricate values.**
+
+- A field that is absent is recorded in missing field information as absent — not defaulted, not estimated, not omitted.
+- "Absent", "zero" and "unreadable" are three different states and must remain distinguishable.
+- Field mappings retain the source reference for every mapped value, so a wrong mapping can be traced.
 
 ## Future Notes
 

@@ -16,11 +16,17 @@ Intended for accounting practices and business accounts functions working on Ind
 
 ---
 
-## ⚠️ Current status: Phase 1 — architecture foundation
+## ⚠️ Current status: specification
 
 **There is no code in this repository. That is the point of this phase.**
 
 What exists is the thing that has to exist first: an unambiguous statement of what each part of the system owns, and what it is forbidden to do.
+
+| Phase | State |
+|---|---|
+| Architecture foundation — 6 engines, 39 sub-engines, system-wide docs | ✅ Complete |
+| **Engine 1 — Input Engine** specification lock | ✅ **Locked** |
+| Engines 2–6 specification locks | Not yet started |
 
 ### Phase 1 does **not** include
 
@@ -85,6 +91,9 @@ docs/
   DATA_FLOW.md ................... what artifact crosses each arrow
   SYSTEM_BOUNDARIES.md ........... forbidden behaviour, as absolutes
 
+  ENGINE_1_INPUT_ENGINE_RULES.md ....... Engine 1 specification — LOCKED
+  COMMUNICATION_RULES_INPUT_ENGINE.md .. how Engine 1 talks to Engine 2 — LOCKED
+
 src/
   engines/       6 engines, 39 sub-engines — each a folder with a README
   brain/         reserved — role not yet defined
@@ -106,6 +115,7 @@ Every engine and sub-engine folder holds exactly one `README.md` stating its **p
 1. [`docs/MVP_ARCHITECTURE.md`](docs/MVP_ARCHITECTURE.md) — what the system is
 2. [`docs/DATA_FLOW.md`](docs/DATA_FLOW.md) — how information moves
 3. [`docs/SYSTEM_BOUNDARIES.md`](docs/SYSTEM_BOUNDARIES.md) — what nothing may do
+4. [`docs/ENGINE_1_INPUT_ENGINE_RULES.md`](docs/ENGINE_1_INPUT_ENGINE_RULES.md) — the first engine, in full
 
 ---
 

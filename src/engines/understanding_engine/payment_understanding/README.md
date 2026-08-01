@@ -14,7 +14,7 @@ Owns identification of how consideration moved or was promised — cash, bank, c
 
 ## Input
 
-Structured Document, Confidence Report, and the transaction nature.
+The Document Evidence Object, and the transaction nature.
 
 ## Output
 

@@ -29,7 +29,7 @@ Every arrow carries exactly one named artifact. An engine may only consume the a
 | # | From → To | Artifact | Contains |
 |---|---|---|---|
 | 0 | *external* → **Input** | **Raw Artifact** | The document as received: scan, photograph, PDF, digital file. |
-| 1 | **Input** → **Understanding** | **Structured Document** + **Confidence Report** | The document's contents as fields, tables and line-item rows; per-field and overall trust scores with the weak regions named. |
+| 1 | **Input** → **Understanding** | **Document Evidence Object** | Document ID · source references · the **Structured Document** (extracted text, detected fields, document structure, tables, field values, field locations) · the **Confidence Report** (confidence scores, uncertainty markers, reliability information, risky fields). |
 | 2 | **Understanding** → **Accounting** | **Transaction Story** | What happened, in business terms only: parties and roles, items, money movement, dates, business context. Every fact traced to its source; every gap explicitly marked absent. No accounting vocabulary. |
 | 3 | **Accounting** → **Clarification** *or* **Validation** | **Accounting Decision** | Ledger selection, the balanced journal entry, tax treatment, the reasoning behind each, the risk profile of the decision, and the unresolved doubts. |
 | 4a | **Clarification** → *human* | **Question Set** | The minimal set of questions, what each resolves, and the form of answer expected. |
@@ -40,6 +40,26 @@ Every arrow carries exactly one named artifact. An engine may only consume the a
 | 5 | **Validation** → **Tally** *or* back | **Validation Verdict** | Approve, reject, or flag — with every finding that drove it and, for a rejection, the stage responsible. |
 | 6 | **Validation** → **Tally** | **Approved Accounting Decision** | The decision, and the verdict approving it. Nothing unapproved crosses this arrow. |
 | 7 | **Tally** → *external* | **Posting Result** + **Audit Record** | Posted, rejected or partial, with Tally's identifiers; and the permanent, append-only record of the attempt. |
+
+### 2.1 Document Evidence Object
+
+The Input Engine's output has one name. `Structured Document` and `Confidence Report` are its two **components**, never the name of the artifact itself. No engine may create an alternative name, and no duplicate representation may exist.
+
+```text
+Document Evidence Object
+├── Document ID
+├── Source references
+├── Structured Document ── extracted text · detected fields · document structure ·
+│                          tables · field values · field locations
+└── Confidence Report ──── confidence scores · uncertainty markers ·
+                           reliability information · risky fields
+```
+
+A downstream engine that consumes one part names that part — *"the Confidence Report within the Document Evidence Object"* — and never treats it as a separate artifact on its own arrow.
+
+**Document ID exists only for identity, traceability, and lifecycle tracking. It carries no accounting meaning and must never influence accounting decisions.**
+
+Full contract: [`ENGINE_1_INPUT_ENGINE_RULES.md` §5](ENGINE_1_INPUT_ENGINE_RULES.md#5-output-contract).
 
 ---
 
@@ -53,7 +73,7 @@ Every arrow carries exactly one named artifact. An engine may only consume the a
                     │   INPUT ENGINE     │
                     └────────────────────┘
                                │
-              Structured Document + Confidence Report
+                    Document Evidence Object
                                │
                                ▼
                     ┌────────────────────┐
@@ -152,7 +172,7 @@ These hold for every transaction, without exception.
 
 1. **One direction.** Work moves forward only. The single backward path in the system is a *return* — Validation returning a rejection to a named stage, or Clarification returning Resolved Facts to Accounting. A return is always explicit and always names its target.
 2. **No skipping.** No stage may be bypassed. A decision cannot reach Tally without a Validation Verdict approving it, however obvious it appears.
-3. **No reaching back.** An engine consumes only the artifact handed to it. The Accounting Engine reasons from the Transaction Story, never from the Structured Document or the raw artifact. The Tally Engine acts on the Approved Decision, never on the story.
+3. **No reaching back.** An engine consumes only the artifact handed to it. The Accounting Engine reasons from the Transaction Story, never from the Document Evidence Object or the raw artifact. The Tally Engine acts on the Approved Decision, never on the story.
 4. **No reaching sideways.** No engine writes into another engine's output. Every artifact has exactly one producing engine.
 5. **Doubt travels.** Doubts, risks and low-confidence markers are carried forward with the artifact at every stage. They are never dropped because a later stage found them inconvenient.
 6. **Gaps stay gaps.** A fact that is absent is marked absent and remains absent until a human supplies it. No stage fills a gap by inference, default or convention.

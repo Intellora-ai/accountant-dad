@@ -23,7 +23,21 @@ Remove any one prohibition and the corresponding property disappears, no matter 
 
 ## 1. Input Engine
 
-**Input Engine cannot make accounting decisions.**
+> **Specification locked.** Deeper authority: [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RULES.md) · [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md).
+
+**The Input Engine observes and structures information. It does not interpret transactions, make accounting decisions, or apply accounting rules.**
+
+It **MUST NEVER**:
+
+1. Decide transaction type.
+2. Decide accounting treatment.
+3. Select ledger accounts.
+4. Create journal entries.
+5. Apply tax rules.
+6. Understand business intent.
+7. Ask accounting questions.
+8. Fill missing information by guessing.
+9. Modify original financial values.
 
 It also cannot:
 
@@ -32,8 +46,17 @@ It also cannot:
 - Discard content it judges irrelevant, redundant or illegible.
 - Consult company master data, prior transactions, or any downstream engine.
 - Reject a document or halt the pipeline. It reports quality; others decide.
+- Send anything but evidence. Conclusions are forbidden on the wire — see [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md) Rule 1.
 
-**Per sub-engine:** `cleaner` alters presentation, never values. `reader` extracts, never interprets. `parser` structures, never infers or computes a value that is not written. `confidence` measures, never re-reads or corrects — and measures extraction quality, never commercial plausibility.
+**The invention prohibition.** When information is unclear, the system must **report uncertainty**. It must **never invent information**. An invented value is indistinguishable downstream from an observed one, and the trustworthiness of the whole system rests on that distinction holding.
+
+**Assembly ownership.** The Input Engine owns the internal assembly of its four sub-engines' outputs into the Document Evidence Object, and assigns the Document ID. It does **not** own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, or workflow control. No assembler sub-engine exists, and none may be added. **Document ID carries no accounting meaning and must never influence accounting decisions.**
+
+**Per sub-engine:** `cleaner` alters presentation, never values — and preserves the original where processing may damage information. `reader` extracts, never interprets, and never guesses an unclear word. `parser` structures, never infers or computes a value that is not written — unknown fields remain unknown. `confidence` measures, never re-reads or corrects, never raises confidence without evidence, and never hides uncertainty.
+
+> **Input Engine provides evidence. Understanding Engine creates interpretation. The boundary between observation and reasoning must never be crossed.**
+
+The Input Engine extracts what exists. The Understanding Engine determines what it means.
 
 ---
 
@@ -64,7 +87,7 @@ It also cannot:
 
 - Communicate with Tally in any way, for any reason.
 - Approve its own decision, or declare it correct, safe or final.
-- Read the raw artifact or the Structured Document. It reasons from the Transaction Story only.
+- Read the raw artifact or the Document Evidence Object. It reasons from the Transaction Story only.
 - Resolve its own doubt by guessing, defaulting, or selecting the most common treatment.
 - Suppress a doubt or a risk because it is inconvenient, or because it would delay posting.
 - Validate itself. Correctness is judged by the Validation Engine.

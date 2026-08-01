@@ -28,7 +28,7 @@ Sub-engines:
 
 ## Input
 
-Structured Document and Confidence Report, from the Input Engine.
+The **Document Evidence Object**, from the Input Engine.
 
 ## Output
 

@@ -14,7 +14,7 @@ Owns identification of what kind of event occurred — a purchase, a sale, a ret
 
 ## Input
 
-Structured Document and Confidence Report.
+The Document Evidence Object.
 
 ## Output
 

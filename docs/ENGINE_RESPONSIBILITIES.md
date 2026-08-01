@@ -29,23 +29,36 @@ Turn a raw artifact into clean, readable, structured data with a confidence scor
 - Extraction of everything written on it, including layout position.
 - Structuring that extraction into fields, tables and line-item rows.
 - The honest measurement of how much the extraction can be trusted, field by field.
+- **Internal assembly of its four sub-engines' outputs into the Document Evidence Object**, and assignment of the Document ID.
 
 Sub-engines: `cleaner` · `reader` · `parser` · `confidence`
 
+> **Scope of the assembly responsibility.** The Input Engine owns the internal assembly of outputs from its four sub-engines into the Document Evidence Object. It does **not** own system-wide orchestration, engine routing, downstream reasoning, accounting decisions, or workflow control. No assembler sub-engine exists, and none may be added.
+
 ### Inputs
-- A raw artifact as received: scan, photograph, PDF, or digital file.
+- A raw artifact as received: photo, camera photo capture, image upload, PDF, scanned invoice, handwritten accounting note, receipt, bill, or other supporting accounting document.
+- Poor-quality human inputs are a normal operating condition, not an exception. What varies is the confidence attached to what is read, never whether the artifact is accepted.
 - Nothing else. The Input Engine has no knowledge of the company, its books, or its history.
 
 ### Outputs
-- **Structured Document** — the artifact's contents as fields, tables and rows, faithful to what is written.
-- **Confidence Report** — per-field and overall trust scores, plus the specific regions that are weak.
+- **Document Evidence Object** — the engine's single output artifact, containing the Document ID, source references, and two components:
+  - **Structured Document** — extracted text, detected fields, document structure, tables, field values and field locations.
+  - **Confidence Report** — confidence scores, uncertainty markers, reliability information and risky fields.
+
+Every extracted value preserves where it came from, how reliable it is, and whether uncertainty exists. **Document ID exists only for identity, traceability, and lifecycle tracking; it carries no accounting meaning and must never influence accounting decisions.**
+
+Full specification: [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RULES.md) · [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md).
 
 ### Cannot Do
-- Cannot make accounting decisions of any kind.
-- Cannot interpret business meaning — it may extract a name, it may not conclude the name is a supplier.
+- Cannot make accounting decisions of any kind — cannot decide transaction type, decide accounting treatment, select ledger accounts, create journal entries, or apply tax rules.
+- Cannot interpret business meaning or understand business intent — it may extract a name, it may not conclude the name is a supplier.
 - Cannot correct, complete or "improve" content it believes is wrong. It reports low confidence instead.
+- Cannot fill missing information by guessing, and cannot modify original financial values.
+- Cannot ask accounting questions.
 - Cannot discard content it judges irrelevant.
 - Cannot consult company master data, prior transactions, or any downstream engine.
+
+> **Input Engine provides evidence. Understanding Engine creates interpretation. The boundary between observation and reasoning must never be crossed.**
 
 ---
 
@@ -66,7 +79,7 @@ Turn structured data into a factual business story — who, what, when, how much
 Sub-engines: `transaction_understanding` · `party_understanding` · `item_understanding` · `payment_understanding` · `timeline_understanding` · `business_context` · `story_builder`
 
 ### Inputs
-- Structured Document and Confidence Report, from the Input Engine.
+- The **Document Evidence Object**, from the Input Engine.
 
 ### Outputs
 - **Transaction Story** — a complete, accounting-free description of what happened, with every fact traceable to the document or explicitly marked absent.
@@ -110,7 +123,7 @@ Sub-engines: `transaction_analyzer` · `accounting_rules` · `ledger_intelligenc
 - Cannot post to Tally, or communicate with Tally in any way.
 - Cannot ask the user a question directly.
 - Cannot approve its own decision, or declare it safe.
-- Cannot read the raw artifact or the Structured Document — it reasons from the Transaction Story only.
+- Cannot read the raw artifact or the Document Evidence Object — it reasons from the Transaction Story only.
 - Cannot resolve its own doubt by guessing, defaulting, or picking the most common treatment.
 - Cannot validate itself; correctness is judged by the Validation Engine.
 
@@ -134,7 +147,7 @@ Sub-engines: `understanding` · `uncertainty_detection` · `missing_information`
 
 ### Inputs
 - Accounting Decision, including its doubts and risks.
-- Confidence Report and Transaction Story, as evidence of where uncertainty originated.
+- The Confidence Report within the Document Evidence Object, and the Transaction Story, as evidence of where uncertainty originated.
 - The human's answers.
 
 ### Outputs
@@ -169,7 +182,7 @@ Sub-engines: `accounting_validation` · `tax_validation` · `data_validation` ·
 
 ### Inputs
 - Accounting Decision — original or updated after clarification.
-- Supporting evidence: Transaction Story, Confidence Report, prior posted transactions.
+- Supporting evidence: Transaction Story, the Confidence Report within the Document Evidence Object, and prior posted transactions.
 
 ### Outputs
 - **Validation Verdict** — approve, reject, or flag for human attention.

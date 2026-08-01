@@ -14,7 +14,7 @@ Owns the judgement of which uncertainties *across the whole case* — extraction
 
 ## Input
 
-The case understanding, the accounting doubts, the marked gaps in the Transaction Story, and the Confidence Report.
+The case understanding, the accounting doubts, the marked gaps in the Transaction Story, and the Confidence Report within the Document Evidence Object.
 
 ## Output
 

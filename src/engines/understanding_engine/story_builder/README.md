@@ -14,7 +14,7 @@ Owns assembly of every Understanding output into a single **Transaction Story**,
 
 ## Input
 
-The outputs of all six preceding Understanding sub-engines, plus the Confidence Report.
+The outputs of all six preceding Understanding sub-engines, plus the Confidence Report within the Document Evidence Object.
 
 ## Output
 

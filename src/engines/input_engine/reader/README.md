@@ -1,30 +1,44 @@
 # reader
 
-> Sub-engine of the **Input Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md).
+> Sub-engine of the **Input Engine**. Canonical definition: [`docs/SUB_ENGINE_RESPONSIBILITIES.md`](../../../../docs/SUB_ENGINE_RESPONSIBILITIES.md). Deep spec: [`docs/ENGINE_1_INPUT_ENGINE_RULES.md`](../../../../docs/ENGINE_1_INPUT_ENGINE_RULES.md#82-reader).
 >
 > **Phase 1 placeholder — no implementation.**
 
 ## Purpose
 
-Somebody must actually get the characters off the page.
+Somebody must actually get the characters off the page. Extract visible information from documents.
 
 ## Responsibility
 
-Owns extraction of everything written on the normalised artifact, together with where on the page each piece of text sits.
+Owns reading and recognition — extraction of everything written on the cleaned document representation, printed text and handwriting alike, together with where on the page each piece of text sits.
 
 ## Input
 
-The normalised artifact from [`cleaner`](../cleaner/).
+The cleaned document representation from [`cleaner`](../cleaner/).
 
 ## Output
 
-Raw extracted text with layout and positional information, and per-region extraction quality signals.
+- Raw extracted information — text, numbers, dates, names, tables, handwriting output.
+- Source locations.
+- Extraction confidence.
 
 ## Boundary
 
-Cannot assign meaning to what it extracts — it may extract `27AAECS1234F1Z5`, it may not conclude that this is a GSTIN. Cannot correct suspected extraction errors. Cannot reorder or restructure the text.
+**Can:** detect visible characters · extract printed text · extract handwriting · identify document regions.
+
+**Cannot:** understand transaction meaning · fix accounting mistakes · guess unclear words · infer missing business information.
+
+It may extract `27AAECS1234F1Z5`; it may not conclude that this is a GSTIN. It cannot reorder or restructure the text.
+
+## Failure Behaviour
+
+**Return extracted information with confidence levels and uncertainty.**
+
+- An unclear character or word is emitted as unclear, with its confidence — never resolved by guessing.
+- A region that could not be read at all is reported as unread, not omitted silently.
+- Source locations are emitted even for low-confidence extractions; that is what makes a later human check possible.
 
 ## Future Notes
 
-- Digital-native files (a PDF with a text layer) and scans are different extraction problems with very different confidence characteristics; both paths end at the same output shape.
-- Positional information is not optional — [`parser`](../parser/) cannot recover table structure without it.
+- Digital-native files (a PDF with a text layer), scans, and handwriting are three different extraction problems with very different confidence characteristics; all three end at the same output shape.
+- Source locations are not optional — [`parser`](../parser/) cannot recover table structure without them.

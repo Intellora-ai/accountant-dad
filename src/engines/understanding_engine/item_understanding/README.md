@@ -14,7 +14,7 @@ Owns identification of the goods or services in the transaction — descriptions
 
 ## Input
 
-Structured Document, Confidence Report, and the transaction nature.
+The Document Evidence Object, and the transaction nature.
 
 ## Output
 

@@ -14,7 +14,7 @@ Owns identification of every date and sequence in the transaction — document d
 
 ## Input
 
-Structured Document, Confidence Report, and the transaction nature.
+The Document Evidence Object, and the transaction nature.
 
 ## Output
 
