@@ -1,5 +1,8 @@
 # Communication Rules — Understanding Engine
 
+> **Precedence level 4 — Communication Contracts.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > How the Understanding Engine communicates with the Accounting Engine.
 >
 > Companion to [`ENGINE_2_UNDERSTANDING_ENGINE_RULES.md`](ENGINE_2_UNDERSTANDING_ENGINE_RULES.md). **Specification only — no implementation.**

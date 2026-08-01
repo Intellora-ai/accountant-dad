@@ -1,5 +1,8 @@
 # Engine 2 — Understanding Engine: Specification Lock
 
+> **Precedence level 3 — Engine Specifications.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > **Status: LOCKED.** This is the permanent engineering specification for the Understanding Engine. Future implementation must follow it.
 >
 > **Specification only — no implementation.** No code, no libraries, no AI models, no LLM pipelines, no OCR, no APIs, no databases, no dependencies.
@@ -148,6 +151,20 @@ Document Evidence Object
 ```
 
 The contract governing this boundary is [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md). **The sending engine owns the contract of what leaves it.** This document references it; it does not restate it.
+
+## Many documents, one business event
+
+The Understanding Engine receives **all Document Evidence Objects sharing one Transaction ID** — not one.
+
+```text
+Invoice · Delivery Note · Bank Statement · Purchase Order · Email
+        ↓  (all sharing one Transaction ID)
+Business Understanding Object
+```
+
+**Extraction is document-centric. Understanding is transaction-centric.** This engine owns **evidence aggregation**: `story_builder` reconciles sources across documents exactly as it reconciles the six Results, preserving every conflict between them. A fact stated on the invoice and contradicted by the bank line is a conflict, not a choice.
+
+See [`SYSTEM_INVARIANTS.md` INV-3](SYSTEM_INVARIANTS.md#inv-3--transaction-identity-is-separate-from-artifact-identity).
 
 ## The Human Business Context
 

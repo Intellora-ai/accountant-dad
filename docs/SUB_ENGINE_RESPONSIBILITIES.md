@@ -1,5 +1,8 @@
 # Sub-Engine Responsibilities
 
+> **Precedence level 2 — Locked Architecture Decisions.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > **This document is canonical.** Every `src/engines/*/*/README.md` mirrors the entry below; where they disagree, this document wins.
 >
 > 39 sub-engines. Five fixed headings each: **Purpose · Responsibility · Input · Output · Boundary.**
@@ -484,7 +487,7 @@
 
 **Responsibility.** Owns clarification lifecycle, clarification status and clarification history.
 
-**Name and responsibility.** It is the component that knows the relationship between a clarification and the **state of the decision**. Phase 1 it carried answers back so the decision could be remade; it now links each clarification to the decision version it was raised against and marks it obsolete when a newer version supersedes it. Version-and-state tracking in both eras.
+**Name and responsibility.** It is the component that knows the relationship between a clarification and the **state of the decision**. Phase 1 it carried answers back so the decision could be remade; it now links each clarification to the decision version it was raised against and marks it superseded when a newer version overtakes it. Version-and-state tracking in both eras.
 
 **Input.** The Clarification Request.
 

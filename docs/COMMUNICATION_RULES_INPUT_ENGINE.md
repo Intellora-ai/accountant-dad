@@ -1,5 +1,8 @@
 # Communication Rules — Input Engine
 
+> **Precedence level 4 — Communication Contracts.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > How the Input Engine communicates with the rest of the system.
 >
 > Companion to [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RULES.md). **Specification only — no implementation.**

@@ -1,5 +1,8 @@
 # Engine 3 — Accounting Engine: Specification Lock
 
+> **Precedence level 3 — Engine Specifications.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > **Status: LOCKED.** This is the permanent engineering specification for the Accounting Engine. Future implementation must follow it.
 >
 > **Specification only — no implementation.** No code, no libraries, no accounting logic, no tax engines, no Tally connection, no databases, no AI models, no dependencies.
@@ -226,7 +229,22 @@ Clarification / Validation / Tally read only
 
 The artifact is immutable after creation. New information produces a new version authored by its owner, never an edit in place — [`DATA_FLOW.md` §6](DATA_FLOW.md#6-artifact-ownership).
 
-## 5.4 Naming
+## 5.4 Correction
+
+> **A correction is a new Accounting Decision referencing the original Transaction ID.**
+
+```text
+Wrong Entry → New Business Understanding → New Accounting Decision (new version)
+    → Reverse Entry → Validation → New Execution Result
+```
+
+The **Transaction ID stays the same** — a wrong tax rate on a laptop purchase is still that purchase. What changes is a new **version** of this artifact and a new Execution Result, both under the original identity.
+
+Nothing new is required of this engine. The discovery that an entry was wrong arrives as **new evidence at Engine 1**, which is already how all new information enters, and **a reversal is a journal entry** this engine already knows how to produce.
+
+See [`SYSTEM_INVARIANTS.md` INV-5](SYSTEM_INVARIANTS.md#inv-5--history-is-never-modified).
+
+## 5.5 Naming
 
 `Accounting Decision` is the artifact's **only** name — final, as fixed by this contract. No engine may create an alternative name, and no duplicate representation may exist.
 

@@ -1,5 +1,8 @@
 # Data Flow
 
+> **Precedence level 2 — Locked Architecture Decisions.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > How information moves through the system, what artifact crosses each arrow, and what happens when a stage refuses to pass work forward.
 
 ---
@@ -26,11 +29,13 @@ Tally Execution
 
 Every arrow carries exactly one named artifact. An engine may only consume the artifact handed to it — never the internals of the engine that produced it, and never an artifact from further upstream unless it is listed here.
 
+**Every artifact carries an Artifact ID, a Version, its Parent Artifact Version(s), and exactly one Transaction ID** — see [`SYSTEM_INVARIANTS.md` INV-3](SYSTEM_INVARIANTS.md#inv-3--transaction-identity-is-separate-from-artifact-identity) and [INV-5](SYSTEM_INVARIANTS.md#inv-5--history-is-never-modified). The tables below list what is *distinctive* to each artifact; the identity envelope is universal and not repeated.
+
 | # | From → To | Artifact | Contains |
 |---|---|---|---|
 | 0 | *external* → **Input** | **Raw Artifact** | The document as received: scan, photograph, PDF, digital file. |
 | 1 | **Input** → **Understanding** | **Document Evidence Object** | Document ID · source references · the **Structured Document** (extracted text, detected fields, document structure, tables, field values, field locations) · the **Human Business Context** (optional, verbatim user text with source, timestamp and evidence reference) · the **Confidence Report** (confidence scores, uncertainty markers, reliability information, risky fields). |
-| 2 | **Understanding** → **Accounting** | **Business Understanding Object** | The **Transaction Story** (the assembled narrative) · **Supporting Understanding Data** (the six sub-engine Results) · **Identified Unknowns** · **Confidence Assessment**. What happened, in business terms only. Every fact traced to its evidence; every gap named; every conflict preserved. No accounting vocabulary. |
+| 2 | **Understanding** → **Accounting** | **Business Understanding Object** *(one, built from **all** Document Evidence Objects sharing its Transaction ID)* | The **Transaction Story** (the assembled narrative) · **Supporting Understanding Data** (the six sub-engine Results) · **Identified Unknowns** · **Confidence Assessment**. What happened, in business terms only. Every fact traced to its evidence; every gap named; every conflict preserved. No accounting vocabulary. |
 | 3 | **Accounting** → **Clarification** *or* **Validation** | **Accounting Decision** | Decision ID · **Decision Status** · accounting treatment · ledger classification · debit entries · credit entries · journal structure · tax treatment · accounting assumptions · risk indicators · decision confidence · supporting reasoning · unresolved doubts. |
 | 4 | **Clarification** → **Validation** | **Clarification Request** | Clarification ID · Related Decision ID · **Related Artifact Version** · missing information · detected conflicts · required clarification · reason it is required · affected decision · priority · supporting evidence references · Clarification Confidence · status. |
 | 4x | **Clarification** → *external actor* | *(the same Clarification Request)* | Delivered by a later system layer to a user, accountant or external system. **Engine 4 never asks anyone directly.** |
@@ -130,11 +135,11 @@ Clarification Request
 ├── Priority                         Critical | High | Medium | Low
 ├── Supporting Evidence References
 ├── Clarification Confidence
-└── Status                           Created | Waiting for Information |
-                                     Information Received | Obsolete | Closed
+└── Status                           Open | Answered | Superseded |
+                                     Cancelled | Resolved
 ```
 
-**Related Artifact Version** is the universal versioning rule (§11) applied at this boundary. A request raised against decision `v3` is **Obsolete** the moment `v4` exists — it must never be answered against a decision that has since been rebuilt.
+**Related Artifact Version** is the universal versioning rule (§11) applied at this boundary. A request raised against decision `v3` is **Superseded** the moment `v4` exists — it must never be answered against a decision that has since been rebuilt.
 
 **Creator and owner differ here.** `question_generator` **creates** the artifact; the **Clarification Engine owns** it, along with Clarification Status and Clarification History.
 
@@ -248,9 +253,9 @@ New information enters through the **normal pipeline**. This preserves artifact 
 
 ### 4.3 Clarification tracks status; it never resolves
 
-`decision_updater` owns the Clarification Status lifecycle: **Created → Waiting for Information → Information Received → Closed**, with **Obsolete** reachable from any state. Both `Closed` and `Obsolete` are terminal.
+`decision_updater` owns the Clarification Status lifecycle: **Open → Answered → Resolved**, with **Superseded** and **Cancelled** reachable from any state. All three are terminal.
 
-Engine 4 owns **every transition** but no **resolution**. A request is closed only when a new artifact version no longer carries the uncertainty that caused it; it becomes obsolete when a newer version supersedes the one it was raised against. **Obsolete ≠ Closed** — collapsing the two would hide that a question went unanswered.
+Engine 4 owns **every transition** but no **resolution**. A request is closed only when a new artifact version no longer carries the uncertainty that caused it; it becomes superseded when a newer version overtakes the one it was raised against. **Superseded ≠ Resolved** — collapsing the two would hide that a question went unanswered.
 
 Full state machine: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md` §7](ENGINE_4_CLARIFICATION_ENGINE_RULES.md#7-clarification-lifecycle).
 
@@ -490,14 +495,14 @@ Raw Artifact
   └─ Document Evidence Object      v2
        └─ Business Understanding Object  v2
             └─ Accounting Decision       v2
-                                             ↑ Clarification Request v1 is now Obsolete
+                                             ↑ Clarification Request v1 is now Superseded
 ```
 
 ### Stale detection
 
 A downstream artifact is **stale** when a parent version it was derived from is no longer current.
 
-Staleness is **structural, not noticed**. No engine has to spot it, remember it, or be told: the version chain makes it computable. This is what lets the Clarification Engine mark a request `Obsolete` without any engine reporting back to it.
+Staleness is **structural, not noticed**. No engine has to spot it, remember it, or be told: the version chain makes it computable. This is what lets the Clarification Engine mark a request `Superseded` without any engine reporting back to it.
 
 ### Audit
 
@@ -575,3 +580,93 @@ Without it, a claim and an observation become indistinguishable one stage after 
 - **A user's assertion could silently become a posted entry.** "Advance payment to supplier" is a claim; if it loses its origin it reads as an established fact by the time it reaches the Accounting Engine.
 - **Corroboration could not be reasoned about.** An engine cannot ask "is this supported by anything else?" if it cannot tell how many independent sources a fact has.
 - **The audit trail would end at the wrong place.** A trail that reaches "the system decided" and not "the user said, uncorroborated" cannot be defended.
+
+---
+
+## 13. Transaction Identity
+
+> **One immutable Transaction ID per business event.** See [`SYSTEM_INVARIANTS.md` INV-3](SYSTEM_INVARIANTS.md#inv-3--transaction-identity-is-separate-from-artifact-identity).
+
+| Concept | Identifies | Scope |
+|---|---|---|
+| **Artifact ID** | One artifact | One artifact |
+| **Parent Artifact Version** | Versions of the same artifact | One artifact's history |
+| **Transaction ID** | **One business event** | **The entire lifecycle** |
+
+Generated **exactly once**, when a business event is first recognised. It never changes. Every artifact references **exactly one**.
+
+```text
+Document Evidence Object ─┐
+Document Evidence Object ─┤  all sharing one Transaction ID
+Document Evidence Object ─┘
+            ↓
+Business Understanding Object → Accounting Decision → Clarification Request
+            → Validation Decision → Execution Result
+```
+
+**The Application Layer creates it.** Engines consume it; they never create or modify it.
+
+### Many documents, one business event
+
+**Extraction is document-centric. Understanding is transaction-centric.** The Document Evidence Object is never redesigned to hold several documents — instead, **many Document Evidence Objects may contribute to one Business Understanding Object**, and the Understanding Engine owns that aggregation.
+
+An invoice, a delivery note, a bank statement line and an email approval are four artifacts and one business event.
+
+---
+
+## 14. The Application Layer
+
+> **Workflow orchestration belongs to the Application Layer, not the Cognitive Architecture.** See [`SYSTEM_INVARIANTS.md` INV-4](SYSTEM_INVARIANTS.md#inv-4--reasoning-is-separate-from-workflow).
+
+**Engines are reasoning stages. They never own workflow. Workflow never becomes another engine.**
+
+| The Application Layer owns | It never owns |
+|---|---|
+| Creating the Transaction ID · starting engines · routing artifacts · lifecycle · retrying engine execution · coordinating state transitions · deciding a transaction is complete | Any decision · any artifact · any confidence · any reasoning · any authority-table row |
+
+Defined in [`src/services/`](../src/services/).
+
+### Transaction state machine
+
+```text
+Input → Understanding → Accounting → Clarification → Validation → Execution → Completed
+                                                                            ↘ Failed
+```
+
+- Each Transaction ID is in **exactly one state** at any moment.
+- **Transitions are atomic.**
+- **Parallel transactions are allowed. Parallel states for one transaction are prohibited.**
+- `Completed` is **not permanently terminal** — a correction returns the transaction to an active state under the same Transaction ID (§15).
+
+Distinct from Clarification Status, owned by the Clarification Engine: transaction state is *workflow*; clarification status is *an artifact's* lifecycle.
+
+### Engine failure is not an artifact
+
+**Business failures belong to sub-engines. Runtime failures belong to the Application Layer.**
+
+When an engine cannot complete:
+
+- **Never fabricate outputs.**
+- **Never continue with partial reasoning.**
+- Preserve completed artifacts.
+- Record the runtime failure.
+- Allow safe restart **from the last completed artifact**.
+
+A half-built artifact is more dangerous than none.
+
+---
+
+## 15. Correction
+
+> **A correction is a new Accounting Decision referencing the original Transaction ID.**
+
+```text
+Wrong Entry → New Business Understanding → New Accounting Decision (new version)
+    → Reverse Entry → Validation → New Execution Result
+```
+
+The **Transaction ID stays the same.** A wrong tax rate on a laptop purchase is still that purchase; reversing and reposting does not make it a different business event. What changes is a new **version** of the decision and a new Execution Result, both under the original identity.
+
+Nothing new is required: the discovery that an entry was wrong arrives as **new evidence at Engine 1** — already how all new information enters — and a reversal *is* a journal entry the Accounting Engine already knows how to produce.
+
+**Execution never edits history.**

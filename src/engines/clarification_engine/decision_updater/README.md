@@ -16,7 +16,7 @@ Owns **clarification lifecycle · clarification status · clarification history*
 
 ## Name and responsibility
 
-It is the component that knows the relationship between a clarification and the **state of the decision**. In Phase 1 it carried answers back so the decision could be remade; it now links each clarification to the decision version it was raised against, and marks it obsolete when a newer version supersedes it. Version-and-state tracking in both eras.
+It is the component that knows the relationship between a clarification and the **state of the decision**. In Phase 1 it carried answers back so the decision could be remade; it now links each clarification to the decision version it was raised against, and marks it superseded when a newer version overtakes it. Version-and-state tracking in both eras.
 
 ## Input
 
@@ -35,20 +35,22 @@ The **Clarification Request**.
 ### The lifecycle
 
 ```text
-Created ──► Waiting for Information ──► Information Received ──► Closed
-   │                  │                          │
-   └──────────────────┴──────────────────────────┴──────► Obsolete
+Open ──► Answered ──► Resolved
+  │           │
+  ├───────────┴──────► Superseded      a newer artifact version supersedes it
+  └──────────────────► Cancelled       withdrawn before resolution
 ```
 
 | State | Trigger |
 |---|---|
-| **Created** | `question_generator` assembled the Request |
-| **Waiting for Information** | Request handed to the external actor |
-| **Information Received** | External actor supplied a Clarification Answer — **recorded, never interpreted** |
-| **Obsolete** | An upstream engine emitted a version newer than Related Artifact Version |
-| **Closed** | A new artifact version no longer carries the uncertainty that caused the request |
+| **Open** | `question_generator` assembled the Request |
+| **Open** *(emitted)* | Request handed to the external actor |
+| **Answered** | External actor supplied a Clarification Answer — **recorded, never interpreted** |
+| **Superseded** | An upstream engine emitted a version newer than Related Artifact Version |
+| **Resolved** | A new artifact version no longer carries the uncertainty that caused the request |
+| **Cancelled** | The uncertainty ceased to block, or the transaction was abandoned |
 
-`Closed` and `Obsolete` are terminal; `Obsolete` is reachable from any state. Nothing goes from `Created` straight to `Closed` — closure requires a new artifact version.
+`Resolved`, `Superseded` and `Cancelled` are terminal; `Superseded` and `Cancelled` are reachable from any state. Nothing goes from `Open` straight to `Resolved` — resolution requires a new artifact version.
 
 **It owns every transition but no resolution.** Resolution is an upstream engine emitting a new artifact version. Owning the status is not owning the outcome.
 
@@ -58,5 +60,5 @@ Created ──► Waiting for Information ──► Information Received ──�
 
 ## Future Notes
 
-- **Obsolete ≠ Closed.** Collapsing the two would hide that a question went unanswered — the most valuable signal this component produces.
+- **Superseded ≠ Resolved.** Collapsing the two would hide that a question went unanswered — the most valuable signal this component produces.
 - Staleness is structural, not noticed: the version chain makes it computable, so no engine has to report back for a request to become obsolete.

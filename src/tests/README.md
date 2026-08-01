@@ -1,29 +1,27 @@
 # tests
 
-> **Reserved directory. Phase 1 placeholder — no implementation.**
+> **Defined as of Phase 0.** **Phase 1 placeholder — no implementation.**
 
 ## Purpose
 
-Verification.
+**Verification that the system obeys its own architecture.**
 
 ## What will belong here
 
-Tests for the engines and their boundaries, once implementation begins.
+| Kind | Verifies |
+|---|---|
+| **Golden architecture tests** | The repository structure matches the specification — engine and sub-engine counts, no additions, no renames |
+| **Repository invariants** | Each of the thirteen invariants in [`docs/SYSTEM_INVARIANTS.md`](../../docs/SYSTEM_INVARIANTS.md), stated as a checkable assertion |
+| **Simulation tests** | A transaction traversing the pipeline, asserting ownership, provenance and confidence rules hold at every boundary |
+| **Specification verification** | Documents do not contradict each other — naming, ownership, precedence |
 
-## What is most worth testing
+## Why invariants must be executable
 
-The boundaries. Correct outputs are the easy half; the properties that make this system trustworthy are all prohibitions, and prohibitions are what erode silently:
+An invariant expressed only in prose will be violated silently within a month of coding.
 
-- The Input Engine made no accounting decision.
-- The Understanding Engine's story contains no accounting vocabulary.
-- The Accounting Engine reached Tally never, and the user never.
-- A doubt was never resolved by a default.
-- The Validation Engine amended nothing it judged.
-- Nothing reached Tally without an approving verdict.
-- The Tally Engine supplied no missing value.
-- No audit record was altered, and no failure went unlogged.
+*"No engine may merge origins into a single anonymous fact"* is a rule; it needs an assertion. *"Confidence is recalculated whenever evidence changes"* needs one too. **The specification's authority evaporates the moment code exists unless the invariants can fail a test.**
 
-Each of these corresponds to a "cannot" in [`docs/SYSTEM_BOUNDARIES.md`](../../docs/SYSTEM_BOUNDARIES.md).
+Every invariant in `SYSTEM_INVARIANTS.md` gets a corresponding check here. **No invariant without verification** is a requirement of the Final Consistency Pass.
 
 ## Status
 

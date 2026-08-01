@@ -1,6 +1,8 @@
 # schemas
 
-> **Reserved directory. Phase 1 placeholder — no implementation.**
+> **Defined as of Phase 0.** Governed by [`docs/SYSTEM_INVARIANTS.md` INV-6](../../docs/SYSTEM_INVARIANTS.md#inv-6--every-canonical-artifact-has-a-specification-level-schema) — **schemas are architecture, not implementation.**
+>
+> **Phase 1 placeholder — no implementation.** Written after Engines 5 and 6 are locked, when every artifact exists. Canonical models live alongside these in [`../models/`](../models/).
 
 ## Purpose
 

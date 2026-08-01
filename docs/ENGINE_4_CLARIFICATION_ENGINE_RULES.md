@@ -1,5 +1,8 @@
 # Engine 4 — Clarification Engine: Specification Lock
 
+> **Precedence level 3 — Engine Specifications.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > **Status: LOCKED.** This is the permanent engineering specification for the Clarification Engine.
 >
 > **Specification only — no implementation.** No code, no Python files, no databases, no APIs, no AI implementation, no user interface, no external integrations.
@@ -192,7 +195,7 @@ Clarification Request
 
 ## Related Artifact Version
 
-A clarification request is always raised **against a specific version** of the Accounting Decision. Recording that version is what makes a stale request detectable: if the decision has since been rebuilt, the request is **Obsolete** and must not be answered against the newer version. See [`DATA_FLOW.md` §11](DATA_FLOW.md#11-artifact-versioning).
+A clarification request is always raised **against a specific version** of the Accounting Decision. Recording that version is what makes a stale request detectable: if the decision has since been rebuilt, the request is **Superseded** and must not be answered against the newer version. See [`DATA_FLOW.md` §11](DATA_FLOW.md#11-artifact-versioning).
 
 ## Clarification ID
 
@@ -255,25 +258,27 @@ The Clarification Engine owns **every** transition, because it owns Clarificatio
 
 | State | Entered when | Trigger | Transition owner |
 |---|---|---|---|
-| **Created** | `question_generator` assembles the Request | `stop_decision` returned *clarification required* | Clarification Engine |
-| **Waiting for Information** | The Request is emitted | Request handed to the external actor | Clarification Engine |
-| **Information Received** | An answer arrives in the system | External actor supplies a Clarification Answer | Clarification Engine — **records it, never interprets it** |
-| **Obsolete** | A newer artifact version supersedes the one asked about | Upstream engine emits a version newer than Related Artifact Version | Clarification Engine |
-| **Closed** | The uncertainty is gone | A new artifact version no longer carries the uncertainty that caused the request | Clarification Engine |
+| **Open** | `question_generator` assembles the Request | `stop_decision` returned *clarification required* | Clarification Engine |
+| **Open** *(emitted)* | The Request is handed to the external actor | Request delivered | Clarification Engine |
+| **Answered** | An answer arrives in the system | External actor supplies a Clarification Answer | Clarification Engine — **records it, never interprets it** |
+| **Superseded** | A newer artifact version supersedes the one asked about | Upstream engine emits a version newer than Related Artifact Version | Clarification Engine |
+| **Resolved** | The uncertainty is gone | A new artifact version no longer carries the uncertainty that caused the request | Clarification Engine |
+| **Cancelled** | The request is withdrawn before resolution | The uncertainty ceased to block, or the transaction was abandoned | Clarification Engine |
 
 ## Permitted transitions
 
 ```text
-Created ──► Waiting for Information ──► Information Received ──► Closed
-   │                  │                          │
-   └──────────────────┴──────────────────────────┴──────► Obsolete
+Open ──► Answered ──► Resolved
+  │           │
+  ├───────────┴──────► Superseded      a newer artifact version supersedes it
+  └──────────────────► Cancelled       withdrawn before resolution
 ```
 
-- `Closed` and `Obsolete` are **terminal**.
-- `Obsolete` may be entered from **any** state.
-- Nothing may go from `Created` straight to `Closed` — closure requires a new artifact version.
+- `Resolved`, `Superseded` and `Cancelled` are **terminal**.
+- `Superseded` and `Cancelled` may be entered from **any** state.
+- Nothing may go from `Open` straight to `Resolved` — resolution requires a new artifact version.
 
-**Obsolete ≠ Closed.** Obsolete means the request was superseded before it was answered. Closed means the uncertainty no longer exists. Collapsing the two would hide the fact that a question went unanswered.
+**Superseded ≠ Resolved.** Superseded means the request was overtaken before it was answered. Resolved means the uncertainty no longer exists. Collapsing the two would hide the fact that a question went unanswered.
 
 `decision_updater` records every transition with its timestamp, its trigger, and the related artifact versions. **No hidden lifecycle.**
 
@@ -371,7 +376,7 @@ Three of these names were coined in Phase 1 for a clarification loop that ran *i
 | **`stop_decision`** | Clarification necessity | Clarification Necessity Result | It was always the go/no-go gate on the clarification path. Phase 1: *is questioning complete?* Now: *is clarification required at all?* Both are one binary judgement about whether clarification runs. |
 | **`answer_understanding`** | Clarification prioritisation | Clarification Priority Result | Priority is a judgement about **answers**. Nothing can be ranked without understanding how much the answer to each would change the decision. Phase 1 it reasoned about answers received; it now reasons about the weight of answers not yet received. It is the answer-centric component in both eras. |
 | **`question_generator`** | Clarification building | Clarification Request | It formulates what is asked. The Clarification Request *is* what Phase 1 called the Question Set, in structured form — what is missing, why it matters, what is needed. Generating the question is generating the request. |
-| **`decision_updater`** | Clarification tracking | Clarification Status Result | It is the component that knows the relationship between a clarification and the **state of the decision**. Phase 1 it carried answers back so the decision could be remade; it now links each clarification to the decision version it was raised against and marks it obsolete when a newer version supersedes it. Version-and-state tracking in both eras. |
+| **`decision_updater`** | Clarification tracking | Clarification Status Result | It is the component that knows the relationship between a clarification and the **state of the decision**. Phase 1 it carried answers back so the decision could be remade; it now links each clarification to the decision version it was raised against and marks it superseded when a newer version overtakes it. Version-and-state tracking in both eras. |
 
 Every Result carries **confidence** and **evidence references**. No Result may omit them.
 
@@ -562,7 +567,7 @@ Track the lifecycle of every clarification request.
 Clarification lifecycle · clarification status · clarification history.
 
 ### Name and responsibility
-It is the component that knows the relationship between a clarification and the **state of the decision**. In Phase 1 it carried answers back so the decision could be remade; it now links each clarification to the decision version it was raised against, and marks it obsolete when a newer version supersedes it. Version-and-state tracking in both eras.
+It is the component that knows the relationship between a clarification and the **state of the decision**. In Phase 1 it carried answers back so the decision could be remade; it now links each clarification to the decision version it was raised against, and marks it superseded when a newer version overtakes it. Version-and-state tracking in both eras.
 
 ### Receives
 The Clarification Request.

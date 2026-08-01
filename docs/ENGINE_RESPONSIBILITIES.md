@@ -1,5 +1,8 @@
 # Engine Responsibilities
 
+> **Precedence level 2 — Locked Architecture Decisions.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > One section per engine. Five fixed headings each: **Mission · Owns · Inputs · Outputs · Cannot Do.**
 >
 > "Cannot Do" is not advice. It is a prohibition. See [SYSTEM_BOUNDARIES.md](SYSTEM_BOUNDARIES.md).

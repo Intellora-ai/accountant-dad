@@ -1,5 +1,8 @@
 # Engine 1 — Input Engine: Specification Lock
 
+> **Precedence level 3 — Engine Specifications.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > **Status: LOCKED.** This is the permanent engineering specification for the Input Engine. Future implementation must follow it.
 >
 > **Specification only — no implementation.** No code, no libraries, no OCR, computer vision or handwriting systems, no pipelines, no dependencies.
@@ -169,6 +172,21 @@ Each of these supplies narrative a document cannot: *why* the transaction exists
 It may supply intent, explanation, business context or missing narrative. It must **never automatically override** documents, receipts, invoices, bank statements or any other evidence.
 
 Conflicts between the note and other evidence **remain visible** and are handled by later engines. Engine 1 records both, marks neither correct, and passes both forward.
+
+## Duplicate screening — screening is not deciding
+
+The Input Engine performs a **cheap identity screen** on every artifact: same uploaded file · same hash · same document number · same filename.
+
+The result is recorded as **a fact with provenance** — never a rejection, never a decision.
+
+| | Input Engine — **screens** | Validation Engine — **decides** |
+|---|---|---|
+| Question | Have I seen this **artifact**? | Is this the same **economic transaction**? |
+| Basis | File identity, hash, document number, filename | Same accounting effect · same invoice entered differently |
+| Output | A fact with provenance | A judgement |
+| Purpose | Prevent unnecessary processing | Prevent double-posting |
+
+The Input Engine never rejects a duplicate and never decides one exists in the accounting sense. See [`SYSTEM_INVARIANTS.md` INV-7](SYSTEM_INVARIANTS.md#inv-7--screening-is-not-deciding).
 
 ## Every source is evidence; no source is truth
 

@@ -1,27 +1,31 @@
 # models
 
-> **Reserved directory. Phase 1 placeholder — no implementation.**
+> **Defined as of Phase 0.** **Phase 1 placeholder — no implementation.**
 
 ## Purpose
 
-Internal representations of the domain concepts the system reasons about — a party, an item, a ledger, an entry, a doubt.
+**Canonical domain models and schemas** — the shape of every artifact and every domain concept the system reasons about.
+
+Governed by [`docs/SYSTEM_INVARIANTS.md` INV-6](../../docs/SYSTEM_INVARIANTS.md#inv-6--every-canonical-artifact-has-a-specification-level-schema): **schemas are architecture, not implementation.**
 
 ## What will belong here
 
-Shared representations of concepts that more than one engine must speak about in the same terms.
+- The **canonical artifacts**: Document Evidence Object · Business Understanding Object · Accounting Decision · Clarification Request · Validation Decision · Execution Result.
+- The **identity envelope** every artifact carries: Artifact ID · Version · Parent Artifact Version(s) · Transaction ID.
+- The **provenance envelope** every fact carries: Source Type · Source ID · Evidence Reference · Timestamp · Confidence · Corroborated.
+- Domain concepts more than one engine must speak about in the same terms.
+
+Each schema defines: identity fields · required fields · optional fields · relationships · ownership · versioning · Transaction ID reference · evidence references · confidence representation.
+
+**No database decisions. No programming language. Only canonical structure.**
+
+> **Two independent engineers must build identical artifacts from the specification.**
 
 ## What must not belong here
 
-- Business logic of any kind. A representation carries no judgement.
-- Anything that decides, validates or posts.
-- Representations belonging to one engine alone — those are that engine's internal concern.
-
-## Relationship to [`schemas/`](../schemas/)
-
-`schemas/` describes the shape of the **artifacts that cross between engines** — the Business Understanding Object, the Accounting Decision, the Validation Verdict. `models/` describes the **domain concepts** those artifacts are built from.
-
-The boundary between the two must be drawn deliberately when implementation begins. Until then: **stop and ask** rather than assuming.
+- Business logic of any kind. A model carries no judgement.
+- Shapes internal to a single engine.
 
 ## Status
 
-Empty by design.
+Empty by design. Written after Engines 5 and 6 are locked, when every artifact exists.

@@ -10,6 +10,11 @@ This applies to every engine, every sub-engine, every boundary and every artifac
 
 Read before doing anything in this repository:
 
+**Highest authority**
+
+0. [`docs/SYSTEM_INVARIANTS.md`](docs/SYSTEM_INVARIANTS.md) — **the 13 invariants. Every other document is subordinate.**
+0b. [`docs/FORWARD_DEPENDENCY_INVENTORY.md`](docs/FORWARD_DEPENDENCY_INVENTORY.md) — required before locking any engine.
+
 **System-wide**
 
 1. [`docs/MVP_ARCHITECTURE.md`](docs/MVP_ARCHITECTURE.md)
@@ -31,6 +36,8 @@ Read before doing anything in this repository:
 14. [`docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md) — Engine 4: Clarification Engine
 15. [`docs/COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md`](docs/COMMUNICATION_RULES_CLARIFICATION_INTERNAL.md) — inside Engine 4
 
+**Precedence hierarchy.** `System Invariants › Locked Architecture Decisions › Engine Specifications › Communication Contracts › READMEs`. **Locks win** — a newer specification never silently changes locked architecture; it is revised instead. Before locking any engine, produce a **Forward Dependency Inventory** of every promise already made about it, and resolve conflicts *before* writing, never during propagation.
+
 **Precedence.** `SUB_ENGINE_RESPONSIBILITIES.md` is canonical for the system-wide map. A locked engine specification is the deeper authority for that engine's allowed and forbidden actions, output contracts and failure behaviour. Where they overlap they must agree — a disagreement is a defect to fix, not a choice to make.
 
 **Artifact naming.** One name per artifact. No engine may create alternative names, and no duplicate representation may exist.
@@ -48,7 +55,7 @@ Read before doing anything in this repository:
 
 **IDENTITY ≠ INTELLIGENCE.** **IDs identify objects. They do not influence reasoning.** Document ID, Decision ID, Transaction ID, User ID and any future identifier exist only for identity, traceability, lifecycle tracking and audit history. None may influence ledger selection, journal creation, tax treatment, validation outcome, confidence, or any future decision. See [`docs/DATA_FLOW.md` §9](docs/DATA_FLOW.md#9-identity--intelligence).
 
-**Confidence only decreases.** **Confidence can only decrease downstream unless new evidence is introduced.** Later engines may maintain, reduce or request clarification — never raise. Evidence → Understanding → Decision → Validation. See [`docs/DATA_FLOW.md` §10](docs/DATA_FLOW.md#10-confidence-across-engines).
+**Confidence changes only when evidence changes.** Confidence is **recalculated** whenever evidence changes and may increase, decrease or stay the same given the complete evidence set. Corroboration raises it only through added **independent** evidential support — never through agreement itself, and never because an engine reasoned harder. See [`docs/SYSTEM_INVARIANTS.md` INV-2](docs/SYSTEM_INVARIANTS.md#inv-2--confidence-changes-only-when-evidence-changes).
 
 **One contract per boundary.** The sending engine owns the contract of what leaves it; the receiving engine references it. No duplicate communication documents.
 
@@ -59,6 +66,12 @@ Read before doing anything in this repository:
 **Evidence carries its origin, permanently.** Every fact records **Source Type** (`Document` · `Human` · `Structured Metadata`), **Source ID**, **Evidence Reference**, **Timestamp**, **Confidence** and **Corroborated**. **No engine may merge these origins into a single anonymous fact.** See [`docs/DATA_FLOW.md` §12](docs/DATA_FLOW.md#12-evidence-provenance).
 
 **A human note is evidence, not truth.** The optional Human Business Description may supply intent, explanation or missing narrative. It may **never** be treated as confirmed fact, never automatically override document evidence, and **never be rewritten** — it is stored verbatim. Capture confidence measures how faithfully it was stored, never whether it is true, and **a human note may never raise Evidence Reliability simply by existing.**
+
+**Transaction identity is separate from artifact identity.** One immutable **Transaction ID** per business event, created once by the **Application Layer**, referenced by exactly one from every artifact. **Many Document Evidence Objects may contribute to one Business Understanding Object** — extraction is document-centric, understanding is transaction-centric.
+
+**Reasoning is separate from workflow.** Orchestration belongs to the **Application Layer** ([`src/services/`](src/services/)), never to an engine. It owns no decision, artifact, confidence or reasoning. **Engine failure is not an artifact** — an engine that cannot complete produces nothing, never a partial artifact.
+
+**A correction is a new Accounting Decision under the same Transaction ID.** Execution never edits history.
 
 **Names are stable; responsibilities are not.** Sub-engine identities are part of the system contract and are never renamed once other engines reference them. Where a responsibility has changed, the component's README states why its name owns its present job. Engine 4 carries three such cases.
 

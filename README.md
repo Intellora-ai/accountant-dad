@@ -32,6 +32,7 @@ What exists is the thing that has to exist first: an unambiguous statement of wh
 | Communication architecture — ownership, authority, boundary contracts | ✅ **Locked** |
 | Artifact versioning · Knowledge Brain | ✅ **Locked** |
 | Evidence provenance · optional human business context | ✅ **Locked** |
+| **Phase 0** — invariants, transaction identity, Application Layer, correction model | ✅ **Locked** |
 | Engines 5–6 specification locks | Not yet started |
 
 ### Phase 1 does **not** include
@@ -81,7 +82,7 @@ Validation
 Tally Execution
 ```
 
-Work moves forward only. The two backward paths are explicit returns: Clarification returning resolved facts to Accounting, and Validation returning a rejection to a **named** stage. Nothing reaches Tally that Validation has not approved.
+Work moves forward only. **No artifact ever moves backward and no engine mutates an upstream artifact.** New information re-enters at Engine 1, 2 or 3 as a **new artifact version**; a Validation rejection returns to a **named** stage as a routing instruction, not an edit. Nothing reaches Tally that Validation has not approved.
 
 Artifact by artifact: [`docs/DATA_FLOW.md`](docs/DATA_FLOW.md).
 
@@ -91,6 +92,9 @@ Artifact by artifact: [`docs/DATA_FLOW.md`](docs/DATA_FLOW.md).
 
 ```text
 docs/
+  SYSTEM_INVARIANTS.md ........... the 13 invariants — HIGHEST AUTHORITY
+  FORWARD_DEPENDENCY_INVENTORY.md  promises made about engines not yet locked
+
   MVP_ARCHITECTURE.md ............ mission, the six engines, the full semantic tree
   ENGINE_RESPONSIBILITIES.md ..... per engine: mission, owns, inputs, outputs, cannot do
   SUB_ENGINE_RESPONSIBILITIES.md . per sub-engine: purpose, responsibility, in, out, boundary
@@ -111,11 +115,11 @@ docs/
 src/
   engines/       6 engines, 39 sub-engines — each a folder with a README
   brain/         the Knowledge Brain — shared knowledge, never decisions
-  rules/         reserved — declarative accounting and tax rule content
-  models/        reserved — internal representations of domain concepts
-  schemas/       reserved — the shape of artifacts passed between engines
-  services/      reserved — shared infrastructure concerns
-  tests/         reserved — verification
+  services/      the Application Layer — workflow, never reasoning
+  rules/         shared business rules and accounting standards, versioned
+  models/        canonical domain models and artifact schemas
+  schemas/       the shape of artifacts passed between engines
+  tests/         golden architecture tests · invariants · simulation
 
 CLAUDE.md        architecture, coding and assistant rules (placeholder)
 ```
@@ -126,7 +130,8 @@ Every engine and sub-engine folder holds exactly one `README.md` stating its **p
 
 ## Where to start reading
 
-1. [`docs/MVP_ARCHITECTURE.md`](docs/MVP_ARCHITECTURE.md) — what the system is
+1. [`docs/SYSTEM_INVARIANTS.md`](docs/SYSTEM_INVARIANTS.md) — **the rules everything else obeys**
+2. [`docs/MVP_ARCHITECTURE.md`](docs/MVP_ARCHITECTURE.md) — what the system is
 2. [`docs/DATA_FLOW.md`](docs/DATA_FLOW.md) — how information moves
 3. [`docs/SYSTEM_BOUNDARIES.md`](docs/SYSTEM_BOUNDARIES.md) — what nothing may do
 4. [`docs/ENGINE_1_INPUT_ENGINE_RULES.md`](docs/ENGINE_1_INPUT_ENGINE_RULES.md) — the first engine, in full

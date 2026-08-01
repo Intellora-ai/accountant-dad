@@ -83,8 +83,8 @@ Clarification Request
 ├── Priority                         Critical | High | Medium | Low
 ├── Supporting Evidence References
 ├── Clarification Confidence
-└── Status                           Created | Waiting for Information |
-                                     Information Received | Obsolete | Closed
+└── Status                           Open | Answered | Superseded |
+                                     Cancelled | Resolved
 ```
 
 `question_generator` **creates** it; the **Clarification Engine owns** it, with Clarification Status and Clarification History.

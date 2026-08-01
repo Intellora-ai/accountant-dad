@@ -51,5 +51,5 @@ It does not become an independent owner. Assembly is not permission to edit.
 
 ## Future Notes
 
-- **Related Artifact Version** is what makes a stale request detectable. A request raised against decision `v3` is obsolete the moment `v4` exists.
+- **Related Artifact Version** is what makes a stale request detectable. A request raised against decision `v3` is superseded the moment `v4` exists.
 - Two consumers read this artifact — the external actor who must act on it, and the Validation Engine, which reads it to learn whether unresolved uncertainty exists. Design it for both.

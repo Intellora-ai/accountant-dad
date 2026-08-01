@@ -1,5 +1,8 @@
 # Communication Rules — Clarification Engine, Internal
 
+> **Precedence level 4 — Communication Contracts.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > How the seven Clarification sub-engines communicate with one another.
 >
 > Companion to [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md`](ENGINE_4_CLARIFICATION_ENGINE_RULES.md). **Specification only — no implementation.**
@@ -143,12 +146,14 @@ A Clarification Request carrying an unresolved conflict is **correct output**, n
 | State | Trigger |
 |---|---|
 | **Created** | `question_generator` assembles the Request after `stop_decision` returned *clarification required* |
-| **Waiting for Information** | Request handed to the external actor |
-| **Information Received** | External actor supplies a Clarification Answer — **recorded, never interpreted** |
-| **Obsolete** | An upstream engine emits a version newer than Related Artifact Version |
-| **Closed** | A new artifact version no longer carries the uncertainty that caused the request |
+| **Open** *(emitted)* | Request handed to the external actor |
+| **Answered** | External actor supplies a Clarification Answer — **recorded, never interpreted** |
+| **Superseded** | An upstream engine emits a version newer than Related Artifact Version |
+| **Cancelled** | The uncertainty ceased to block, or the transaction was abandoned |
+| **Resolved** | A new artifact version no longer carries the uncertainty that caused the request |
+| **Cancelled** | The uncertainty ceased to block, or the transaction was abandoned |
 
-`Obsolete` may be entered from any state; `Closed` and `Obsolete` are terminal. **Engine 4 owns every transition but no resolution** — resolution is an upstream engine emitting a new artifact version. Full state machine: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md` §7](ENGINE_4_CLARIFICATION_ENGINE_RULES.md#7-clarification-lifecycle).
+`Superseded` and `Cancelled` may be entered from any state; `Resolved`, `Superseded` and `Cancelled` are terminal. **Engine 4 owns every transition but no resolution** — resolution is an upstream engine emitting a new artifact version. Full state machine: [`ENGINE_4_CLARIFICATION_ENGINE_RULES.md` §7](ENGINE_4_CLARIFICATION_ENGINE_RULES.md#7-clarification-lifecycle).
 
 ---
 

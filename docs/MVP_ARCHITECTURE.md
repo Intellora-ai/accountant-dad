@@ -1,5 +1,8 @@
 # MVP Architecture
 
+> **Precedence level 2 — Locked Architecture Decisions.** Subordinate to [`SYSTEM_INVARIANTS.md`](SYSTEM_INVARIANTS.md). Where this document contradicts an invariant, this document is wrong.
+
+
 > Status: **Phase 1 — architecture foundation only.** No implementation exists. This document defines the system; it does not describe running software.
 
 ---
