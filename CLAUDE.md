@@ -470,6 +470,7 @@ Then the 10 gates:
 
 16. `docs/MVP_IMPLEMENTATION_BLUEPRINT.md` — the six questions
 17. `docs/MVP_BUILD_VERIFY_FIX.md` — the loop
+18. `docs/PHASE_0_CI_GATES.md` — **the current phase. Nothing else is built until it is green.**
 
 **Verified means CI.** A local pass is not a result (Law 44).
 

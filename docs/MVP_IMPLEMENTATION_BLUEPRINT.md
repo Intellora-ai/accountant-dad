@@ -52,7 +52,7 @@ Python 3.12 · immutable JSON artifacts on disk · Pydantic · pytest · GitHub 
 >
 > Reason: a result exists only if CI produced it (Law 44). **Code written before the gates cannot be verified**, so it cannot be called done, so it accumulates as unverified work — the exact debt this whole framework exists to prevent.
 >
-> **P0 is the gates. It comes before everything, including the golden set.**
+> **P0 is the gates. It comes before everything, including the golden set.** Full phase specification: [`PHASE_0_CI_GATES.md`](PHASE_0_CI_GATES.md).
 
 ```
 P0  GitHub CI gates             no product    NOTHING IS BUILT UNTIL THIS IS GREEN
