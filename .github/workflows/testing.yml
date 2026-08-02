@@ -137,14 +137,47 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - name: not implemented
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: mutation score at or above 93 percent
+        # Coverage says a line RAN. Mutation says a bug in that line would be
+        # CAUGHT. Tests that execute code without asserting score high on
+        # coverage and near zero here — this is the gate coverage cannot be.
+        env:
+          PYTHONPATH: tools/ci:src
         run: |
-          echo "NOT IMPLEMENTED - mutation"
-          echo "BLOCKER: the tool has not been chosen. Stryker has no Python"
-          echo "support (StrykerJS / Stryker.NET / Stryker4s only). Python needs"
-          echo "mutmut or cosmic-ray. Asked twice, still unanswered — picking one"
-          echo "unilaterally would be inventing a decision that is not mine."
-          exit 1
+          set -euo pipefail
+          mutmut run --paths-to-mutate tools/ci,src || true
+          mutmut results
+          python3 - <<'PY'
+          import re
+          import subprocess
+          import sys
+
+          out = subprocess.run(
+              ["mutmut", "browse", "--help"], capture_output=True, text=True, check=False
+          )
+          res = subprocess.run(["mutmut", "results"], capture_output=True, text=True, check=False)
+          text = res.stdout + res.stderr
+          print(text)
+
+          killed = len(re.findall(r"\bkilled\b", text, re.I))
+          survived = len(re.findall(r"\bsurvived\b", text, re.I))
+          total = killed + survived
+          if total == 0:
+              print("BLOCKED - mutmut produced no mutants to score.")
+              sys.exit(1)
+          score = 100.0 * killed / total
+          print(f"mutants killed   : {killed}")
+          print(f"mutants survived : {survived}")
+          print(f"mutation score   : {score:.1f}%  (floor 93%)")
+          if score < 93:
+              print("BLOCKED - mutation score below 93 percent.")
+              sys.exit(1)
+          PY
 
   end-to-end:
     name: end-to-end
