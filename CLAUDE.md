@@ -505,12 +505,45 @@ Full text of each in `docs/`. This section is the index, not the authority.
 | MVP Blueprint · Build→Verify→Fix | ✅ **Written** |
 | **Sign-off** — 6 definitions, 6 finish conditions, absolute floor | ⬜ **BLOCKING everything** |
 | **Ground truth** — 25 documents, 2 accountants, frozen ceiling | ❌ **None exists** |
-| **CI workflow** | ❌ **None.** Until it exists, no result can be produced. |
-| **Enforcement** | ❌ **None.** Every rule is still prose. |
-| **Code** | ❌ **None.** |
+| **CI workflow** | ✅ **Exists.** Six workflows, 23 independent Check Runs |
+| **Merge gate** | ✅ **Exists and is PROVEN** — 11 attacks, 11 blocks (`docs/CI_S2_EVIDENCE.md`) |
+| **Branch protection** | ✅ Ruleset `20249495` — deletions blocked, force-push blocked, PR required, bypass list empty |
+| **Enforcement** | ⚠️ **Partial.** The machinery is proven; individual gates are promoted to *required* one at a time, only after each is proven |
+| **Product code** | ❌ **None.** No engine, no artifact, no accounting logic |
 
-**⛔ BUILD FREEZE — no product code is written until the GitHub CI gates exist and are green.**
+### The gate lifecycle — how a gate becomes binding
+
+```
+implement  →  prove it passes on correct code
+           →  prove it FAILS on deliberately broken code
+           →  merge
+           →  add ONLY that gate to the required status checks
+           →  lock permanently
+```
+
+**An unproven gate is never promoted. A promoted gate is never weakened.**
+
+Every required check is pinned to `integration_id: 15368` (GitHub Actions). This is not
+decoration — a forged Commit Status naming a required check was accepted by the API during
+S2 case 11, and only the pin kept the pull request blocked.
+
+### ⛔ BUILD FREEZE — still in force, narrowly amended
+
+**No engine, no accounting logic, no AI, no Tally integration, no product functionality
+and no domain implementation is written until its gates are green.**
+
+**Amendment 1 — CI scaffolding exemption.** Approved 2026-08-03.
+
+| | |
+|---|---|
+| **Old rule** | No product code of any kind before the CI gates are green |
+| **New rule** | The *minimum* scaffolding needed to make a CI gate execute real code is permitted: `pyproject.toml`, package structure, `tools/ci/*`, minimal imports required by lint/typecheck/tests/coverage/build, lockfiles and CI configuration |
+| **Why** | The original rule was circular. Gates cannot be green without something to run against, and nothing could be written until they were green |
+| **What failed** | Phase 4 could not start. `build` had nothing to build, `unit tests` had no tests, `coverage` had nothing to measure |
+| **Trade-off** | Gained: gates that execute real code instead of placeholders. Lost: the repository is no longer literally empty, so "no code exists" is no longer a defence against unverified work |
+| **Guarded by** | The exemption list is exhaustive. Six engines, accounting logic, AI, Tally and domain implementation remain frozen. `conformance`, `golden dataset`, `negative controls`, `adversarial tests`, `integration tests` and `performance` stay red, with blockers documented, until their infrastructure exists |
+| **Approved** | The user, 2026-08-03 |
 
 **Next: Phase 1 — Human Ceiling and Golden Set. No product code is written in it.**
 
-**By Law 52 and Law 54, no accuracy claim about this system is currently provable — therefore none may be made.**
+**By Law 52 and Law 54, no accuracy claim about this system is currently provable — therefore none may be made.** CI now proves that the *pipeline* is enforced. It proves nothing about accounting correctness.

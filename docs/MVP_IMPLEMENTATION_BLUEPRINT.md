@@ -105,7 +105,7 @@ Per phase. Not *"it works"* — the number, from CI.
 | 25 documents | ⬜ Not collected | Blocks P1 |
 | **The 6 definitions** | ⬜ **Awaiting sign-off** | **Law 54 — blocks everything** |
 | **The 9 finish conditions + absolute floor** | ⬜ **Awaiting sign-off** | **Law 52 — blocks everything** |
-| **GitHub Actions workflow** | ⬜ **Not built** | **⛔ BLOCKS ALL BUILDING.** Not just results — no product code is written until the gates are green. |
+| **GitHub Actions workflow** | ✅ **Built** | Six workflows, 23 Check Runs, merge gate proven against 11 attacks (`CI_S2_EVIDENCE.md`). Build freeze narrowly amended for CI scaffolding only — see `CLAUDE.md` §P Amendment 1. |
 | Held-out sealing mechanism | ⬜ Not built | Blocks P1 — must be structural, not disciplinary |
 | Strong baseline implementation | ⬜ Not built | Blocks P4 — the AI gets no credit until it beats this |
 | Test Tally company | ⬜ Not created | Blocks P4 |

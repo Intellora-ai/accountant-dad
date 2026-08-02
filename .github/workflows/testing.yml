@@ -17,11 +17,48 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - name: not implemented
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: pytest, 100 percent passing
+        # Seed derived from the commit, not chosen: random ORDER catches
+        # order-dependent tests, a fixed seed keeps the run reproducible.
+        # xfail_strict is set in pyproject, so an xfail that unexpectedly
+        # passes is a failure rather than a quiet green.
+        env:
+          PYTHONPATH: tools/ci:src
         run: |
-          echo "NOT IMPLEMENTED - unit tests"
-          exit 1
+          set -euo pipefail
+          SEED=$(git rev-parse HEAD | head -c 8 | python3 -c "import sys; print(int(sys.stdin.read(), 16) % 4294967295)")
+          echo "randomly-seed derived from commit: $SEED"
+          pytest -p randomly --randomly-seed="$SEED"
+      - name: skip markers are a ratchet
+        # Anti-gaming. Marking a failing test `skip` or `xfail` is the cheapest
+        # way to turn this gate green. Counted in the SOURCE, which is where the
+        # gaming happens, and floored against the base branch rather than a
+        # number written here.
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          count_markers() { grep -rEoh '@pytest\.mark\.(skip|skipif|xfail)' "$1" 2>/dev/null | wc -l | tr -d ' '; }
+          HEAD_SKIPS=$(count_markers tests)
+          git fetch --quiet origin "$BASE_REF"
+          rm -rf /tmp/base-tests && mkdir -p /tmp/base-tests
+          if git ls-tree -r --name-only "origin/$BASE_REF" tests >/dev/null 2>&1; then
+            git archive "origin/$BASE_REF" tests 2>/dev/null | tar -x -C /tmp/base-tests || true
+          fi
+          BASE_SKIPS=$(count_markers /tmp/base-tests)
+          echo "skip/xfail markers on base branch : $BASE_SKIPS"
+          echo "skip/xfail markers on this ref    : $HEAD_SKIPS"
+          [ "$HEAD_SKIPS" -le "$BASE_SKIPS" ] || {
+            echo "BLOCKED - skip/xfail markers increased. Fix the test, do not skip it."
+            exit 1; }
+          echo "no new skip markers"
 
   integration-tests:
     name: integration tests
@@ -36,6 +73,10 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - integration tests"
+          echo "BLOCKER: requires the six engines and a reachable test Tally."
+          echo "Neither exists. MVP_BUILD_VERIFY_FIX.md and ADVERSARIAL_TESTING.md"
+          echo "forbid substituting a mock, and a GitHub-hosted Linux runner"
+          echo "cannot reach Tally on a private LAN. Blocked on infrastructure."
           exit 1
 
   coverage:
@@ -48,10 +89,39 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - name: not implemented
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: branch coverage at or above 93 percent
+        env:
+          PYTHONPATH: tools/ci:src
         run: |
-          echo "NOT IMPLEMENTED - coverage"
-          exit 1
+          set -euo pipefail
+          coverage run -m pytest -p no:randomly -q
+          coverage report --fail-under=93 --show-missing
+      - name: no coverage exclusions
+        # Anti-gaming. `# pragma: no cover` and exclude_lines are how a coverage
+        # number gets manufactured. There are none, and there must stay none.
+        run: |
+          set -euo pipefail
+          if grep -rn --include='*.py' 'pragma: no cover' src tools tests; then
+            echo "BLOCKED - coverage exclusion found. Cover the code instead."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import pathlib
+          import sys
+          import tomllib
+
+          cfg = tomllib.loads(pathlib.Path("pyproject.toml").read_text())
+          excluded = cfg["tool"]["coverage"]["report"]["exclude_lines"]
+          if excluded:
+              print(f"BLOCKED - exclude_lines is not empty: {excluded}")
+              sys.exit(1)
+          print("no coverage exclusions")
+          PY
 
   mutation:
     name: mutation
@@ -66,6 +136,10 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - mutation"
+          echo "BLOCKER: the tool has not been chosen. Stryker has no Python"
+          echo "support (StrykerJS / Stryker.NET / Stryker4s only). Python needs"
+          echo "mutmut or cosmic-ray. Asked twice, still unanswered — picking one"
+          echo "unilaterally would be inventing a decision that is not mine."
           exit 1
 
   end-to-end:
@@ -81,4 +155,7 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - end-to-end"
+          echo "BLOCKER: MVP_IMPLEMENTATION_BLUEPRINT.md line 41 declares"
+          echo "'CLI, no UI'. Playwright drives a browser; there is nothing to"
+          echo "drive and the blueprint says there will not be in this build."
           exit 1

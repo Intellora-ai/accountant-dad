@@ -14,14 +14,18 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - name: not implemented
-        run: |
-          echo "NOT IMPLEMENTED - codeql"
-          exit 1
+      - uses: github/codeql-action/init@18420e3271f74589575af831a523c833acda327f # codeql-bundle-v2.26.2
+        with:
+          languages: python
+          queries: security-extended
+      - uses: github/codeql-action/analyze@18420e3271f74589575af831a523c833acda327f # codeql-bundle-v2.26.2
+        with:
+          category: /language:python
 
   semgrep:
     name: semgrep
@@ -36,6 +40,12 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - semgrep"
+          echo "BLOCKER: a determinism problem with no approved answer."
+          echo "--config=p/python pulls rules live from the registry, so the"
+          echo "same commit can score differently on two runs. The fix is to"
+          echo "vendor a rule set into the repository - but authoring rules"
+          echo "means inventing checks nobody specified. Needs a decision:"
+          echo "vendor a named upstream rule set, or pin a registry version."
           exit 1
 
   secret-scan:
@@ -47,11 +57,15 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          # Full history. A secret committed and later .gitignore'd is still in
+          # the history, and scanning only the diff would miss it entirely.
+          fetch-depth: 0
           persist-credentials: false
-      - name: not implemented
-        run: |
-          echo "NOT IMPLEMENTED - secret scan"
-          exit 1
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
+          GITLEAKS_ENABLE_SUMMARY: 'true'
 
   dependency-scan:
     name: dependency scan
@@ -63,7 +77,28 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - name: not implemented
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install pip-audit
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: audit the CI toolchain
+        # This gate is INTENTIONALLY non-deterministic, and that is correct.
+        # The advisory database changes daily, so a dependency that was safe
+        # yesterday and vulnerable today SHOULD turn the build red. The database
+        # is never cached for the same reason.
+        run: pip-audit --strict --requirement requirements-ci.txt
+      - name: audit the package's own dependencies
         run: |
-          echo "NOT IMPLEMENTED - dependency scan"
-          exit 1
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib
+          import tomllib
+
+          cfg = tomllib.loads(pathlib.Path("pyproject.toml").read_text())
+          deps = cfg["project"]["dependencies"]
+          print(f"declared runtime dependencies: {len(deps)}")
+          for dep in deps:
+              print(f"  {dep}")
+          PY
+          pip-audit --strict --progress-spinner off .

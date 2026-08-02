@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "accountant-dad"
+version = "0.0.0"
+description = "CI scaffolding only. No engine, no accounting logic, no AI, no Tally."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/accountant_dad"]
+
+# ── lint ──────────────────────────────────────────────────────────────────
+# The enabled rule set is a RATCHET. Rules may be added, never removed.
+# Removing one is a silent reduction in coverage and is treated as a defect.
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # import order
+    "N",         # naming
+    "UP",        # pyupgrade
+    "B",         # bugbear
+    "A",         # builtin shadowing
+    "C4",        # comprehensions
+    "PIE",       # misc lints
+    "RET",       # return consistency
+    "SIM",       # simplify
+    "ARG",       # unused arguments
+    "PTH",       # pathlib over os.path
+    "PL",        # pylint
+    "RUF",       # ruff-specific
+    "S",         # bandit security
+    "PGH",       # blanket noqa / type-ignore BANNED
+]
+# A bare `# noqa` is itself a violation (PGH004). Suppressions must name a code.
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # assert is the point of a test
+
+# ── typecheck ─────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+disallow_any_explicit = true
+disallow_untyped_defs = true
+no_implicit_reexport = true
+warn_unreachable = true
+
+# ── tests ─────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+xfail_strict = true
+addopts = "--strict-markers --strict-config"
+
+# ── coverage ──────────────────────────────────────────────────────────────
+[tool.coverage.run]
+branch = true
+source = ["src", "tools/ci"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+# Every exclusion is a hole. There are none.
+exclude_lines = []
