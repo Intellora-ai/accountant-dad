@@ -18,10 +18,24 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - name: not implemented
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install build tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: build sdist and wheel
+        run: python3 -m build --outdir dist .
+      - name: packaging metadata must be clean
+        # --strict turns packaging WARNINGS into failures. A missing description
+        # or a bad long_description is a packaging defect, not a nit.
+        run: python3 -m twine check --strict dist/*
+      - name: install into a clean environment and import it
+        # The real assertion. A package that builds but ships no modules passes
+        # every earlier step and fails here.
         run: |
-          echo "NOT IMPLEMENTED - build"
-          exit 1
+          python3 -m venv /tmp/fresh
+          /tmp/fresh/bin/pip install --quiet --no-index --find-links dist accountant-dad
+          /tmp/fresh/bin/python -c "import accountant_dad; print(accountant_dad.__version__)"
 
   typecheck:
     name: typecheck
@@ -33,10 +47,25 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - name: not implemented
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: mypy strict, zero errors
+        # --no-incremental --cache-dir=/dev/null: a cached mypy run is not
+        # reproducible. Determinism costs a few seconds here.
+        env:
+          PYTHONPATH: tools/ci:src
+        run: mypy --no-incremental --cache-dir=/dev/null src tools/ci tests
+      - name: no bare type-ignore escape hatches
+        # Anti-gaming. `# type: ignore` without a code silences everything.
         run: |
-          echo "NOT IMPLEMENTED - typecheck"
-          exit 1
+          if grep -rn --include='*.py' -E '#\s*type:\s*ignore\s*$' src tools tests; then
+            echo "BLOCKED - bare '# type: ignore' found. Name the error code."
+            exit 1
+          fi
+          echo "no bare type-ignore"
 
   lint:
     name: lint
@@ -47,11 +76,63 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - name: not implemented
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: ruff, zero violations
+        # --no-fix so the gate reports rather than silently rewriting code.
+        run: ruff check --no-fix --output-format=concise .
+      - name: formatting is not a matter of opinion
+        run: ruff format --check .
+      - name: enabled rule set is a ratchet
+        # Anti-gaming. Narrowing `select` in pyproject.toml is how a lint gate
+        # gets quietly defeated. The rule set may only grow.
+        #
+        # The floor is DERIVED from the base branch, never a number written here
+        # — the same mechanism the merge gate uses for gates themselves.
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
         run: |
-          echo "NOT IMPLEMENTED - lint"
-          exit 1
+          set -euo pipefail
+          git fetch --quiet origin "$BASE_REF"
+          # The base branch may predate pyproject.toml. Absent means an empty
+          # rule set, so every rule reads as an addition rather than a crash.
+          if git cat-file -e "origin/$BASE_REF:pyproject.toml" 2>/dev/null; then
+            git show "origin/$BASE_REF:pyproject.toml" > /tmp/base-pyproject.toml
+          else
+            echo "" > /tmp/base-pyproject.toml
+            echo "note: base branch has no pyproject.toml; treating rule set as empty"
+          fi
+          python3 - <<'PY'
+          import pathlib
+          import sys
+          import tomllib
+
+          def rules(path: str) -> set[str]:
+              cfg = tomllib.loads(pathlib.Path(path).read_text())
+              try:
+                  return set(cfg["tool"]["ruff"]["lint"]["select"])
+              except KeyError:
+                  return set()
+
+          base = rules("/tmp/base-pyproject.toml")
+          head = rules("pyproject.toml")
+          print(f"rule groups on base branch : {len(base)}")
+          print(f"rule groups on this ref    : {len(head)}")
+          for added in sorted(head - base):
+              print(f"  ADDED   {added}")
+          removed = sorted(base - head)
+          if removed:
+              print("BLOCKED - the lint rule set shrank. It may only grow.")
+              for name in removed:
+                  print(f"  REMOVED {name}")
+              sys.exit(1)
+          print("no lint rule removed")
+          PY
 
   docker-build:
     name: docker build
@@ -66,4 +147,8 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - docker build"
+          echo "BLOCKER: no Dockerfile exists and no locked document specifies a"
+          echo "deployment target. This is the only gate with no basis in any"
+          echo "architecture document. Needs a decision on whether the MVP ships"
+          echo "as a container before it can be implemented."
           exit 1

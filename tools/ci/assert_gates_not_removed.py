@@ -18,12 +18,15 @@ import sys
 
 from expected_checks import check_names
 
+_EXPECTED_ARGV = 3
 
-def main() -> int:
-    if len(sys.argv) != 3:
+
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv if argv is None else argv
+    if len(args) != _EXPECTED_ARGV:
         raise SystemExit("usage: assert_gates_not_removed.py <base-dir> <head-dir>")
 
-    base_dir, head_dir = sys.argv[1], sys.argv[2]
+    base_dir, head_dir = args[1], args[2]
     expected = check_names(base_dir)
     declared = check_names(head_dir)
 
