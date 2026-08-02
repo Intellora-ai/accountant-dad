@@ -176,6 +176,10 @@ These must be defined and made measurable before any build depends on them.
 6. **Seek DISCONFIRMING evidence, not confirming.** When you decide or verify, ask *"what would prove me WRONG?"* and go look for it. Confirmation bias is the default failure mode — a decision you only tried to support, or a test you only tried to pass, is unproven.
 7. **One task at a time.** Found another problem? Record it, don't fix it:
    `Found: <issue> · Impact: <impact> · Not changed: out of current scope`
+8. **NEVER remove, simplify, defer or weaken anything the user specified.** Propose it in one line and **wait for an answer** — never act on it in the same turn.
+   **Adding rigour is within scope when hardening is requested. Subtracting anything is not.**
+   This holds even when the removal is defensible on cost, statistical or complexity grounds. **The user is paying the cost and owns the trade-off.** Applies to specs, laws, thresholds, metrics, phases and any numbered requirement.
+9. **Report what you changed, exactly.** Every response that modified something lists what was added, what was altered and what was removed. A change the user has to discover is a change made without consent.
 
 ---
 
@@ -505,6 +509,8 @@ Full text of each in `docs/`. This section is the index, not the authority.
 | **Enforcement** | ❌ **None.** Every rule is still prose. |
 | **Code** | ❌ **None.** |
 
-**Next: Phase 1 — Human Ceiling and Golden Set. No code is written in it.**
+**⛔ BUILD FREEZE — no product code is written until the GitHub CI gates exist and are green.**
+
+**Next: Phase 0 — GitHub CI gates.** Then Phase 1 — Human Ceiling and Golden Set. **Neither writes product code.**
 
 **By Law 52 and Law 54, no accuracy claim about this system is currently provable — therefore none may be made.**

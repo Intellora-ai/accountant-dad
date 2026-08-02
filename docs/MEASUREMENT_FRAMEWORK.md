@@ -266,11 +266,29 @@ accuracy(top confidence tercile) − accuracy(bottom tercile)  ≥  0.30
 | Separation ≥ 0.30 | Confidence carries information — may be used for ordering |
 | **Separation < 0.30** | **Confidence is REJECTED.** It gates nothing. Every document implying it can is corrected. |
 
-**No document, message, log line or interface may present confidence as a probability until separation passes and calibration is measured at N ≥ 100.** Doing so is a false statement under Law 54.
+**No document, message, log line or interface may present confidence as a probability until separation passes and the calibration curve is measured.** Doing so is a false statement under Law 54.
 
 A confidence value that does not separate right from wrong is decoration — and decoration shaped like a measurement is **worse than nothing, because it manufactures trust.**
 
-**Calibration curves are deferred until N ≥ 100.** Below that they cannot be computed honestly, and the separation test carries all the weight. *(Deliberate simplification — one strong test instead of two weak ones.)*
+### Calibration — measured at every phase, reported with its sample size
+
+**The curve is computed and published from Phase 4 onward**, at whatever N exists.
+
+Bucket every decision by stated confidence. Measure actual correctness per bucket. Plot.
+
+| Curve | Verdict | Required action |
+|---|---|---|
+| **Diagonal** — 0.9 bucket right ~90% | Confidence is a **probability** | May be used as one, once N ≥ 100 |
+| **Monotonic, not diagonal** — higher bucket, higher accuracy, wrong absolute values | A valid **ranking** | Ordering only; never state a percentage |
+| **Flat** — every bucket the same | **Confidence is noise** | **Say so publicly. Correct every document implying otherwise.** Under Law 54 it is a false statement. |
+
+**Below N = 100 the curve is reported as indicative, with its sample size stated on the plot**, and it may not support a probability claim. It is still computed, still published, and still watched — a curve that goes flat between phases is a signal worth catching early, and waiting for N=100 to look would mean discovering it late.
+
+**The two tests do different jobs.** Separation is the **gate** — pass it or confidence controls nothing. Calibration is the **shape** — it says what kind of thing confidence is. Neither replaces the other.
+
+### The obligation on a flat curve
+
+If the curve is flat, the honest response is not to quietly stop using confidence. It is to **state the finding, correct the documents, and decide whether confidence is worth keeping at all.** A number that predicts nothing but is still displayed is worse than no number.
 
 ### The six layers
 

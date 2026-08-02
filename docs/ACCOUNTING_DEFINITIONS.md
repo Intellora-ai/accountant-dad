@@ -100,9 +100,24 @@ The delay exists because an accountant who read the document an hour ago is not 
 
 This is the sharpest of the six because it tests the only property that matters: **does the story carry enough to decide.** A beautifully written story that omits payment terms fails.
 
-### Deferred at MVP scale
+### Scored every phase from P4
 
-**This metric is defined but not scored during the MVP.** It costs a full extra accountant session — the scarcest resource in the project — for a number the isolated/contributed gap already points to. It is scored **only if that gap names Engine 2 as the bottleneck.**
+**This metric is measured, not deferred.** The second accountant session is budgeted into every phase from Phase 4 onward.
+
+```
+REQUIRED:  understanding correctness ≥ 80% of the frozen ceiling
+```
+
+**It is not redundant with the isolated/contributed gap.** The gap tells you Engine 2 *lost accuracy*. This tells you **what** it lost — a story can score badly for two entirely different reasons:
+
+| Failure | What the gap shows | What this shows |
+|---|---|---|
+| Story is wrong | Engine 3 underperforms downstream | Accountant reaches a **different** treatment |
+| Story is **incomplete** | Engine 3 underperforms downstream | Accountant **cannot reach any** treatment |
+
+The gap cannot distinguish those, and the fix is different for each. **Wrong needs Engine 2's reasoning corrected; incomplete needs its output contract widened.**
+
+It is also the only metric that tests the architecture's central bet — that a business story can carry an accounting decision without the document. **If that bet is wrong, the six-engine split is wrong**, and nothing else in the measurement suite would tell you.
 
 **Owner:** Engine 2.
 
@@ -154,7 +169,23 @@ Magnitude is a **three-band ordinal**, never a currency figure:
 
 A rupee figure would be a fabricated number (**Law 24**). Three bands can be assigned honestly.
 
-**The accountant's band is recorded per golden document and compared — but not gated on.** At N=16, gating on a three-band ordinal measures noise.
+### Risk is a gate, not a note
+
+**The accountant assigns a band to every golden document. The system's band is compared to it, and the comparison gates.**
+
+```
+band agreement = documents where the system's band matches the accountant's
+
+REQUIRED:  ≥ 80% band agreement
+           AND zero cases where the system rated a
+           statutory/irreversible item as reversible-in-period
+```
+
+The second condition has **no threshold**. Under-rating an irreversible consequence is the risk failure that matters — it is the one that lets something unrecoverable through a gate designed to catch it. Over-rating is tolerable and reported separately.
+
+**A risk model nobody gates on is decoration.** The band exists to change what the system does; if it never blocks anything, it is not a risk model, it is a label.
+
+At N = 16 the agreement figure is noisy and is **reported with its sample size** — but the statutory-under-rating condition is a count, not a rate, and one occurrence fails it regardless of N.
 
 ---
 

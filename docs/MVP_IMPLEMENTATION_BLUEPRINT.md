@@ -12,7 +12,7 @@
 
 **One real business document → one correct accounting entry in Tally — and evidence, produced in CI and survived an attack, that it was correct.**
 
-### The finish line — six conditions, all required
+### The finish line — nine conditions, all required
 
 | # | Condition | Threshold |
 |---|---|---|
@@ -22,6 +22,9 @@
 | **4** | **Margin over the STRONG baseline** | **≥ 0.30 absolute** |
 | **5** | **Negative controls refused** | **9 of 9**, including 7 hard negatives |
 | **6** | **Poison caught** | **yes** — one miss fails the build |
+| **7** | **Understanding** — accountant reaches the same treatment from the story alone | **≥ 80% of the frozen ceiling** |
+| **8** | **Risk band agreement** | **≥ 80%**, and **zero** statutory items under-rated as reversible |
+| **9** | **Calibration curve** — measured and published, with its sample size | **not flat** |
 
 **Conditions 1 and 2 are dual on purpose.** A relative target alone is gameable: worse labelers lower the ceiling, which lowers the bar. **The frozen ceiling plus an absolute floor closes that.**
 
@@ -37,19 +40,28 @@ Documents the system cannot answer must produce a **Clarification Request**, not
 
 Python 3.12 · immutable JSON artifacts on disk · Pydantic · pytest · GitHub Actions · **test Tally company only** · CLI, no UI.
 
-> ⚠️ **AWAITING SIGN-OFF** — the six conditions (Law 52) and the six definitions (Law 54).
+> ⚠️ **AWAITING SIGN-OFF** — the nine conditions (Law 52) and the six definitions (Law 54).
 
 ---
 
 ## 2. In what order?
 
+> ## ⛔ BUILD FREEZE
+>
+> **No engine, no artifact, no schema and no pipeline code is written until the GitHub CI gates exist and are green on an empty repository.**
+>
+> Reason: a result exists only if CI produced it (Law 44). **Code written before the gates cannot be verified**, so it cannot be called done, so it accumulates as unverified work — the exact debt this whole framework exists to prevent.
+>
+> **P0 is the gates. It comes before everything, including the golden set.**
+
 ```
+P0  GitHub CI gates             no product    NOTHING IS BUILT UNTIL THIS IS GREEN
 P1  Ceiling + Golden Set        no code       the measuring stick AND its ceiling
 P2  Artifacts + Conformance     no AI         the enforcement layer
 P3  Walking Skeleton            stubs         proves the pipeline
 P4  Vertical Slice              real          ONE correct entry, worst of 3
 P5  The Full Set                widen         the finish line
-P6  Confidence + Hardening      measure       does confidence separate
+P6  Confidence + Hardening      measure       separation, calibration, cost
 ```
 
 ### Why this order
@@ -60,6 +72,7 @@ Building six engines to completion and testing at the end means discovering at P
 
 | Phase | Why it must precede the next |
 |---|---|
+| **P0** | **A result exists only if CI produced it.** Code written before the gates exist cannot be verified, cannot be called done, and accumulates as unverified work. The gates are cheap and they are the precondition for the word *done* meaning anything. |
 | **P1** | Without ground truth **and its frozen ceiling**, nothing is measurable and Law 52 forbids building it. A system beating a ceiling never measured is a claim about nothing. |
 | **P2** | Needs no ground truth and no AI — free, runs on every commit, and surfaces contradictions between locked documents |
 | **P3** | Proves the pipeline separately from the reasoning. When P4 is wrong you already know the plumbing is not the cause. |
@@ -75,14 +88,15 @@ Per phase. Not *"it works"* — the number, from CI.
 
 | Phase | Done when |
 |---|---|
+| **P0** | Workflow runs on push and PR · typecheck · lint · test · conformance stages present and green on an empty repo · **a deliberately failing test turns the workflow red** (an untested gate is not a gate) · run URL recorded · branch protection requires green to merge |
 | **P1** | 25 documents collected and frozen · **2 qualified labelers** · 4 stages each · **ceiling frozen and hashed** · intra-rater measured · held-out sealed by construction · protocol written · 6 definitions + 6 conditions signed off |
 | **P2** | Every `MUST NEVER` is a predicate or on the review-only list with an expiry · **ID ablation test passes** · malformed artifact rejected **by the correct predicate** · CI green |
 | **P3** | End to end on 1 hardcoded document in CI · all artifacts valid · conformance green · Transaction ID intact · audit complete · **no accuracy claim permitted at this phase** |
 | **P4** | **1 correct entry, worst of 3**, blind-verified, in test Tally · posted exactly once on 3 submissions · **9/9 negatives** · both baselines recorded · pre-registered · **CI run URL recorded** |
 | **P5** | **≥ 80% of frozen ceiling AND ≥ absolute floor, worst of 3, held-out** · **0 wrong in 10 safety runs** · **margin ≥ 0.30 over strong baseline** · **spread ≤ 2** · isolated + contributed per engine · 19/19 attacks · poison caught |
-| **P6** | Confidence **separation ≥ 0.30** or confidence formally rejected and every document corrected · cost bounds met (60s, ₹5) · drift canary clean |
+| **P6** | Confidence **separation ≥ 0.30** or confidence formally rejected and every document corrected · **calibration curve published and not flat** · **understanding ≥ 80% of ceiling** · **risk band agreement ≥ 80% with zero statutory under-ratings** · cost bounds met (60s, ₹5) · drift canary clean |
 
-**The build is finished when all six conditions in §1 hold simultaneously, on a pre-registered, non-void, CI-produced run.**
+**The build is finished when all nine conditions in §1 hold simultaneously, on a pre-registered, non-void, CI-produced run.**
 
 ---
 
@@ -93,8 +107,8 @@ Per phase. Not *"it works"* — the number, from CI.
 | **Two qualified accountants' time** | ⬜ Not secured | **Hardest dependency in the project — and it is people, not technology.** Without both there is no ceiling, and without a frozen ceiling no number means anything. |
 | 25 documents | ⬜ Not collected | Blocks P1 |
 | **The 6 definitions** | ⬜ **Awaiting sign-off** | **Law 54 — blocks everything** |
-| **The 6 finish conditions + absolute floor** | ⬜ **Awaiting sign-off** | **Law 52 — blocks everything** |
-| GitHub Actions workflow | ⬜ Not built | **Blocks every result** — a local run is not a result |
+| **The 9 finish conditions + absolute floor** | ⬜ **Awaiting sign-off** | **Law 52 — blocks everything** |
+| **GitHub Actions workflow** | ⬜ **Not built** | **⛔ BLOCKS ALL BUILDING.** Not just results — no product code is written until the gates are green. |
 | Held-out sealing mechanism | ⬜ Not built | Blocks P1 — must be structural, not disciplinary |
 | Strong baseline implementation | ⬜ Not built | Blocks P4 — the AI gets no credit until it beats this |
 | Test Tally company | ⬜ Not created | Blocks P4 |
@@ -129,6 +143,9 @@ Per phase. Not *"it works"* — the number, from CI.
 | A locked document is wrong | Conformance can't express a rule, or two contradict | **Amendment (§M), never a code workaround. The doc wins.** |
 | **System ≈ strong baseline** | P5 | **The AI is doing nothing a lookup table doesn't.** Stop and rethink the approach — do not tune. |
 | Confidence separation < 0.30 | P6 | **Confidence rejected. It gates nothing. Every document implying otherwise is corrected.** |
+| **Calibration curve flat** | P4 onward | **Confidence is noise.** Say so publicly, correct every document, decide whether to keep it at all. |
+| **Understanding below 80% of ceiling** | P4 onward | The story does not carry the decision. **If it is *incomplete* rather than *wrong*, Engine 2's output contract is too narrow — that is an amendment, not a tuning problem.** |
+| **A statutory item rated reversible** | Any | **Fails condition 8 regardless of the agreement rate.** One occurrence. Root-cause to the class. |
 | Provider drift detected | Any run | Comparisons across the boundary marked **incomparable**. Re-baseline. |
 | **A wrong entry posts** | Any | **Build fails.** Root-cause to the class. Permanent trap test in CI. Re-run from P4. |
 | **Poison posts** | Any | **Build fails**, regardless of every other number |
@@ -143,10 +160,14 @@ Per phase. Not *"it works"* — the number, from CI.
 
 ## 6. What is the next phase?
 
-> **Phase 1 — Human Ceiling and Golden Set.**
+> **Phase 0 — GitHub CI gates.**
 
-**Blocked on:** sign-off of the 6 definitions, the 6 conditions and the absolute floor — and **two** accountants' time.
+**Nothing is built until they are green.** No engine, no schema, no artifact, no pipeline.
 
-**No code is written in Phase 1.**
+P0 is small: a workflow that runs on push and PR, stages for typecheck, lint, test and conformance, and **proof that it goes red** — a gate nobody has watched fail is not a gate.
+
+**Phase 1 — Human Ceiling and Golden Set — follows**, and is separately blocked on sign-off of the 6 definitions, the 9 conditions and the absolute floor, plus **two** accountants' time. Phase 1 writes no code either.
+
+The first two phases of this project produce **no product whatsoever**. That is deliberate. One builds the thing that can say *no*, the other builds the thing that can say *wrong*.
 
 The first real output of this project is not software. It is **a number describing how often two qualified humans agree** — and if that number is low, it is the most important thing anyone will learn this year.
