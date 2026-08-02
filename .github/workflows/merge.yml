@@ -1,0 +1,73 @@
+name: merge
+
+permissions:
+  contents: read
+
+on:
+  push:
+  pull_request:
+
+env:
+  # ─────────────────────────────────────────────────────────────────────────
+  # THE configurable constant. How long the merge gate waits for every other
+  # gate to finish before declaring the pipeline hung.
+  #
+  # Change this one value. No logic anywhere depends on its magnitude.
+  #
+  # The job's timeout-minutes below MUST stay greater than this, or the runner
+  # kills the job before the poll can report its own timeout.
+  # ─────────────────────────────────────────────────────────────────────────
+  MERGE_GATE_POLL_TIMEOUT_MINUTES: "30"
+  MERGE_GATE_POLL_INTERVAL_SECONDS: "30"
+
+jobs:
+  merge-gate:
+    name: merge gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      checks: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: install yaml parser
+        run: python3 -m pip install --disable-pip-version-check --quiet pyyaml==6.0.2
+
+      - name: materialise base-branch workflows
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/base-workflows
+          git fetch --quiet origin "$BASE_REF"
+          git ls-tree --name-only "origin/$BASE_REF" .github/workflows/ | while read -r f; do
+            git show "origin/$BASE_REF:$f" > "/tmp/base-workflows/$(basename "$f")"
+          done
+          echo "base ref: $BASE_REF"
+          ls -1 /tmp/base-workflows
+
+      - name: no gate may be removed
+        env:
+          PYTHONPATH: tools/ci
+        run: |
+          set -euo pipefail
+          python3 tools/ci/assert_gates_not_removed.py \
+            /tmp/base-workflows .github/workflows
+
+      - name: every gate must succeed
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MERGE_GATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          MERGE_GATE_WORKFLOWS_DIR: .github/workflows
+          PYTHONPATH: tools/ci
+        run: |
+          set -euo pipefail
+          python3 tools/ci/poll_checks.py
