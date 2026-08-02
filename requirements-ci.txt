@@ -15,6 +15,5 @@ pytest==9.0.3
 pytest-randomly==4.0.1
 PyYAML==6.0.2
 ruff==0.14.5
-semgrep==1.145.0
 twine==6.2.0
 types-PyYAML==6.0.12.20250915
