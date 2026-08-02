@@ -30,7 +30,7 @@
 **Law 44.** Verification happens in **GitHub CI**. A local pass is not verification — it is exploration.
 
 > **⛔ BUILD FREEZE — no product code until the gates are green.**
-> An unverifiable commit cannot be called done, so it accumulates as unverified work. **P0 builds the gates. Everything else waits.**
+> An unverifiable commit cannot be called done, so it accumulates as unverified work.
 
 ---
 
@@ -153,7 +153,6 @@ Do not confirm your code works. **Try to prove it WRONG.** Separate pass, separa
 
 | Phase | What "verify" means |
 |---|---|
-| **P0** | **A deliberately failing test must turn the workflow red.** A gate nobody has watched fail is not a gate — it is a badge. |
 | **P1** | No code. Two accountants confirm the labels; **the ceiling is computed and frozen**; intra-rater measured; a second person reads the protocol. |
 | **P2** | CI green. Conformance green + **ID ablation passes** + malformed artifact rejected **by the correct predicate**, not merely rejected. Review-only list published with expiries. |
 | **P3** | End to end on 1 hardcoded document, **in CI**. **No accuracy claim is possible or permitted at this phase.** |

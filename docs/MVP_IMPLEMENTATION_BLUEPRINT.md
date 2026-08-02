@@ -52,10 +52,9 @@ Python 3.12 · immutable JSON artifacts on disk · Pydantic · pytest · GitHub 
 >
 > Reason: a result exists only if CI produced it (Law 44). **Code written before the gates cannot be verified**, so it cannot be called done, so it accumulates as unverified work — the exact debt this whole framework exists to prevent.
 >
-> **P0 is the gates. It comes before everything, including the golden set.** Full phase specification: [`PHASE_0_CI_GATES.md`](PHASE_0_CI_GATES.md).
+> **The gates are a prerequisite, not a phase.** They are satisfied before P1 begins.
 
 ```
-P0  GitHub CI gates             no product    NOTHING IS BUILT UNTIL THIS IS GREEN
 P1  Ceiling + Golden Set        no code       the measuring stick AND its ceiling
 P2  Artifacts + Conformance     no AI         the enforcement layer
 P3  Walking Skeleton            stubs         proves the pipeline
@@ -72,7 +71,6 @@ Building six engines to completion and testing at the end means discovering at P
 
 | Phase | Why it must precede the next |
 |---|---|
-| **P0** | **A result exists only if CI produced it.** Code written before the gates exist cannot be verified, cannot be called done, and accumulates as unverified work. The gates are cheap and they are the precondition for the word *done* meaning anything. |
 | **P1** | Without ground truth **and its frozen ceiling**, nothing is measurable and Law 52 forbids building it. A system beating a ceiling never measured is a claim about nothing. |
 | **P2** | Needs no ground truth and no AI — free, runs on every commit, and surfaces contradictions between locked documents |
 | **P3** | Proves the pipeline separately from the reasoning. When P4 is wrong you already know the plumbing is not the cause. |
@@ -88,7 +86,6 @@ Per phase. Not *"it works"* — the number, from CI.
 
 | Phase | Done when |
 |---|---|
-| **P0** | Workflow runs on push and PR · typecheck · lint · test · conformance stages present and green on an empty repo · **a deliberately failing test turns the workflow red** (an untested gate is not a gate) · run URL recorded · branch protection requires green to merge |
 | **P1** | 25 documents collected and frozen · **2 qualified labelers** · 4 stages each · **ceiling frozen and hashed** · intra-rater measured · held-out sealed by construction · protocol written · 6 definitions + 6 conditions signed off |
 | **P2** | Every `MUST NEVER` is a predicate or on the review-only list with an expiry · **ID ablation test passes** · malformed artifact rejected **by the correct predicate** · CI green |
 | **P3** | End to end on 1 hardcoded document in CI · all artifacts valid · conformance green · Transaction ID intact · audit complete · **no accuracy claim permitted at this phase** |
@@ -160,14 +157,12 @@ Per phase. Not *"it works"* — the number, from CI.
 
 ## 6. What is the next phase?
 
-> **Phase 0 — GitHub CI gates.**
+> **Phase 1 — Human Ceiling and Golden Set.**
 
-**Nothing is built until they are green.** No engine, no schema, no artifact, no pipeline.
+**Blocked on:** sign-off of the 6 definitions, the 9 conditions and the absolute floor — and **two** accountants' time. Also blocked by the build freeze above: **the GitHub CI gates must exist first.**
 
-P0 is small: a workflow that runs on push and PR, stages for typecheck, lint, test and conformance, and **proof that it goes red** — a gate nobody has watched fail is not a gate.
+**No code is written in Phase 1.**
 
-**Phase 1 — Human Ceiling and Golden Set — follows**, and is separately blocked on sign-off of the 6 definitions, the 9 conditions and the absolute floor, plus **two** accountants' time. Phase 1 writes no code either.
-
-The first two phases of this project produce **no product whatsoever**. That is deliberate. One builds the thing that can say *no*, the other builds the thing that can say *wrong*.
+The first real output of this project is not software. It is **a number describing how often two qualified humans agree** — and if that number is low, it is the most important thing anyone will learn this year.
 
 The first real output of this project is not software. It is **a number describing how often two qualified humans agree** — and if that number is low, it is the most important thing anyone will learn this year.

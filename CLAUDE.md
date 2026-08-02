@@ -470,7 +470,6 @@ Then the 10 gates:
 
 16. `docs/MVP_IMPLEMENTATION_BLUEPRINT.md` — the six questions
 17. `docs/MVP_BUILD_VERIFY_FIX.md` — the loop
-18. `docs/PHASE_0_CI_GATES.md` — **the current phase. Nothing else is built until it is green.**
 
 **Verified means CI.** A local pass is not a result (Law 44).
 
@@ -512,6 +511,6 @@ Full text of each in `docs/`. This section is the index, not the authority.
 
 **⛔ BUILD FREEZE — no product code is written until the GitHub CI gates exist and are green.**
 
-**Next: Phase 0 — GitHub CI gates.** Then Phase 1 — Human Ceiling and Golden Set. **Neither writes product code.**
+**Next: Phase 1 — Human Ceiling and Golden Set. No product code is written in it.**
 
 **By Law 52 and Law 54, no accuracy claim about this system is currently provable — therefore none may be made.**
