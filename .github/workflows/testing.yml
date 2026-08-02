@@ -45,7 +45,11 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          count_markers() { grep -rEoh '@pytest\.mark\.(skip|skipif|xfail)' "$1" 2>/dev/null | wc -l | tr -d ' '; }
+          # grep exits 1 when there are no matches, which under pipefail would
+          # fail the job. No skip markers is the GOOD case, so tolerate it.
+          count_markers() {
+            { grep -rEoh '@pytest\.mark\.(skip|skipif|xfail)' "$1" 2>/dev/null || true; } | wc -l | tr -d ' '
+          }
           HEAD_SKIPS=$(count_markers tests)
           git fetch --quiet origin "$BASE_REF"
           rm -rf /tmp/base-tests && mkdir -p /tmp/base-tests

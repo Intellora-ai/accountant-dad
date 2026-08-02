@@ -99,7 +99,14 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --quiet origin "$BASE_REF"
-          git show "origin/$BASE_REF:pyproject.toml" > /tmp/base-pyproject.toml
+          # The base branch may predate pyproject.toml. Absent means an empty
+          # rule set, so every rule reads as an addition rather than a crash.
+          if git cat-file -e "origin/$BASE_REF:pyproject.toml" 2>/dev/null; then
+            git show "origin/$BASE_REF:pyproject.toml" > /tmp/base-pyproject.toml
+          else
+            echo "" > /tmp/base-pyproject.toml
+            echo "note: base branch has no pyproject.toml; treating rule set as empty"
+          fi
           python3 - <<'PY'
           import pathlib
           import sys
@@ -107,7 +114,10 @@ jobs:
 
           def rules(path: str) -> set[str]:
               cfg = tomllib.loads(pathlib.Path(path).read_text())
-              return set(cfg["tool"]["ruff"]["lint"]["select"])
+              try:
+                  return set(cfg["tool"]["ruff"]["lint"]["select"])
+              except KeyError:
+                  return set()
 
           base = rules("/tmp/base-pyproject.toml")
           head = rules("pyproject.toml")
