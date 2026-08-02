@@ -1,0 +1,18 @@
+name: s2-ghost
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+jobs:
+  s2-ghost:
+    name: s2 ghost gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: never triggered
+        run: exit 0

@@ -17,7 +17,7 @@ env:
   # The job's timeout-minutes below MUST stay greater than this, or the runner
   # kills the job before the poll can report its own timeout.
   # ─────────────────────────────────────────────────────────────────────────
-  MERGE_GATE_POLL_TIMEOUT_MINUTES: "30"
+  MERGE_GATE_POLL_TIMEOUT_MINUTES: "2"
   MERGE_GATE_POLL_INTERVAL_SECONDS: "30"
 
 jobs:
