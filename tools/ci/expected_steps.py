@@ -11,7 +11,6 @@ enforces the word that was previously only prose.
 
 from __future__ import annotations
 
-import glob
 import sys
 from pathlib import Path
 
