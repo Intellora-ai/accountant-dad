@@ -81,7 +81,7 @@
 41. Always design systems that improve with every user interaction.
 42. Never build features that don't improve user outcomes or platform capability.
 43. Always make every production failure reproducible.
-44. Never accept "works on my machine" as verification.
+44. Never accept "works on my machine" as verification. **Concretely: a result exists only if GitHub CI produced it. A local pass is exploration, not evidence, and is never reported as "tested" or "verified." Every number carries its CI run URL.**
 45. Always automate repetitive work once proven stable.
 46. Never manually repeat work that can be safely automated.
 47. Always measure system health continuously.
@@ -453,6 +453,22 @@ Then the 10 gates:
 8. `docs/ENGINE_1_INPUT_ENGINE_RULES.md` … `docs/ENGINE_6_EXECUTION_ENGINE_RULES.md`
 9. `docs/COMMUNICATION_RULES_*.md` — ten boundary and internal contracts
 
+**Measurement — read before making any claim about how well anything works**
+
+10. `docs/ACCOUNTING_DEFINITIONS.md` — Correct · Safe · Understanding · Risk · Doubt · Uncertainty, each with its measurement (Law 54)
+11. `docs/MEASUREMENT_FRAMEWORK.md` — **how a number is obtained and what it may claim** (Law 52)
+12. `docs/GOLDEN_DATASET.md` — the 25 documents, two labelers, the frozen ceiling
+13. `docs/EVALUATION_PROTOCOL.md` — the eleven-step run, executable preconditions, void conditions
+14. `docs/ADVERSARIAL_TESTING.md` — 19 attacks, the rotating poison test
+15. `docs/PHASE_REPORT_TEMPLATE.md` — what every phase must report
+
+**Current build**
+
+16. `docs/MVP_IMPLEMENTATION_BLUEPRINT.md` — the six questions
+17. `docs/MVP_BUILD_VERIFY_FIX.md` — the loop
+
+**Verified means CI.** A local pass is not a result (Law 44).
+
 **Precedence:** `System Invariants › Locked Architecture Decisions › Engine Specifications › Communication Contracts › READMEs`. **Locks win.**
 
 ### The architecture is the source of truth. Ask before changing it.
@@ -481,9 +497,14 @@ Full text of each in `docs/`. This section is the index, not the authority.
 |---|---|
 | Six-engine architecture | ✅ **Locked** — `a47271d` |
 | 23 documents · 39 sub-engines · 10 contracts | ✅ Complete |
-| **Enforcement** | ❌ **None.** Every rule is prose. |
+| Measurement framework · definitions · dataset spec | ✅ **Written** — awaiting sign-off |
+| MVP Blueprint · Build→Verify→Fix | ✅ **Written** |
+| **Sign-off** — 6 definitions, 6 finish conditions, absolute floor | ⬜ **BLOCKING everything** |
+| **Ground truth** — 25 documents, 2 accountants, frozen ceiling | ❌ **None exists** |
+| **CI workflow** | ❌ **None.** Until it exists, no result can be produced. |
+| **Enforcement** | ❌ **None.** Every rule is still prose. |
 | **Code** | ❌ **None.** |
-| **Measurement** | ❌ **None.** No ground truth exists. |
-| MVP Implementation Blueprint | ⬜ Next |
+
+**Next: Phase 1 — Human Ceiling and Golden Set. No code is written in it.**
 
 **By Law 52 and Law 54, no accuracy claim about this system is currently provable — therefore none may be made.**
