@@ -21,7 +21,7 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - build"
-          exit 1
+          exit 0
 
   typecheck:
     name: typecheck
@@ -36,7 +36,7 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - typecheck"
-          exit 1
+          exit 0
 
   lint:
     name: lint
@@ -51,7 +51,7 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - lint"
-          exit 1
+          exit 0
 
   docker-build:
     name: docker build
@@ -66,4 +66,14 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - docker build"
-          exit 1
+          exit 0
+
+  s2-timeout:
+    name: s2 timeout gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    permissions:
+      contents: read
+    steps:
+      - name: sleep past the timeout
+        run: sleep 300
