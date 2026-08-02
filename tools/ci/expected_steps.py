@@ -42,6 +42,9 @@ def step_names(workflows_dir: str) -> set[str]:
             check = job.get("name", job_id)
             if not isinstance(check, str):
                 raise SystemExit(f"{path}: job {job_id!r} has a non-string name")
+            if check == MERGE_GATE_CHECK_NAME:
+                # The merge gate cannot wait on its own steps.
+                continue
             steps = job.get("steps")
             if not isinstance(steps, list):
                 continue
@@ -55,8 +58,13 @@ def step_names(workflows_dir: str) -> set[str]:
     return pairs
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != _EXPECTED_ARGV:
+def cli(argv: list[str] | None = None) -> None:
+    args = sys.argv if argv is None else argv
+    if len(args) != _EXPECTED_ARGV:
         raise SystemExit("usage: expected_steps.py <workflows-dir>")
-    for pair in sorted(step_names(sys.argv[1])):
+    for pair in sorted(step_names(args[1])):
         print(pair)
+
+
+if __name__ == "__main__":
+    cli()

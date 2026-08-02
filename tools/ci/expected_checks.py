@@ -51,8 +51,13 @@ def check_names(workflows_dir: str) -> set[str]:
     return names
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != _EXPECTED_ARGV:
+def cli(argv: list[str] | None = None) -> None:
+    args = sys.argv if argv is None else argv
+    if len(args) != _EXPECTED_ARGV:
         raise SystemExit("usage: expected_checks.py <workflows-dir>")
-    for name in sorted(check_names(sys.argv[1])):
+    for name in sorted(check_names(args[1])):
         print(name)
+
+
+if __name__ == "__main__":
+    cli()

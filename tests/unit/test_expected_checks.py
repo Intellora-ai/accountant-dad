@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from expected_checks import MERGE_GATE_CHECK_NAME, check_names
+from expected_checks import MERGE_GATE_CHECK_NAME, check_names, cli
 
 WORKFLOW = """\
 name: probe
@@ -105,3 +105,14 @@ def test_non_string_job_name_is_rejected(tmp_path: Path) -> None:
     write(tmp_path, "a.yml", "name: p\non:\n  push:\njobs:\n  j:\n    name: 123\n")
     with pytest.raises(SystemExit):
         check_names(str(tmp_path))
+
+
+def test_cli_prints_every_check(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    write(tmp_path, "a.yml", WORKFLOW)
+    cli(["expected_checks.py", str(tmp_path)])
+    assert "gate alpha" in capsys.readouterr().out
+
+
+def test_cli_rejects_wrong_argument_count() -> None:
+    with pytest.raises(SystemExit):
+        cli(["expected_checks.py"])
