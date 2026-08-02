@@ -1,0 +1,84 @@
+name: testing
+
+permissions:
+  contents: read
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-tests:
+    name: unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: not implemented
+        run: |
+          echo "NOT IMPLEMENTED - unit tests"
+          exit 1
+
+  integration-tests:
+    name: integration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: not implemented
+        run: |
+          echo "NOT IMPLEMENTED - integration tests"
+          exit 1
+
+  coverage:
+    name: coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: not implemented
+        run: |
+          echo "NOT IMPLEMENTED - coverage"
+          exit 1
+
+  mutation:
+    name: mutation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: not implemented
+        run: |
+          echo "NOT IMPLEMENTED - mutation"
+          exit 1
+
+  end-to-end:
+    name: end-to-end
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: not implemented
+        run: |
+          echo "NOT IMPLEMENTED - end-to-end"
+          exit 1

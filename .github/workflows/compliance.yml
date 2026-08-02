@@ -1,0 +1,84 @@
+name: compliance
+
+permissions:
+  contents: read
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  license-scan:
+    name: license scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: not implemented
+        run: |
+          echo "NOT IMPLEMENTED - license scan"
+          exit 1
+
+  conformance:
+    name: conformance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: not implemented
+        run: |
+          echo "NOT IMPLEMENTED - conformance"
+          exit 1
+
+  negative-controls:
+    name: negative controls
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: not implemented
+        run: |
+          echo "NOT IMPLEMENTED - negative controls"
+          exit 1
+
+  golden-dataset:
+    name: golden dataset
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: not implemented
+        run: |
+          echo "NOT IMPLEMENTED - golden dataset"
+          exit 1
+
+  adversarial-tests:
+    name: adversarial tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: not implemented
+        run: |
+          echo "NOT IMPLEMENTED - adversarial tests"
+          exit 1
