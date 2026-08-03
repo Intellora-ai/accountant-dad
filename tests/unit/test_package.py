@@ -29,6 +29,10 @@ PERMITTED_MODULES = {
     "confidence",  # artifact schemas — the one Confidence representation
     "knowledge_contract",  # Brain interface contract — P2 (BLUEPRINT §2 line 84)
     "ablation",  # the ID ablation harness — P2 (BLUEPRINT §2 line 135, INV-9)
+    # Amendment 2 "Permitted now — exhaustive", remaining three categories.
+    "ingestion",  # document-ingestion tooling
+    "sealing",  # held-out sealing mechanism
+    "baseline",  # strong baseline
     # The six canonical artifacts of DATA_FLOW.md §2, one module each.
     "evidence",  # Document Evidence Object          — Engine 1
     "understanding",  # Business Understanding Object — Engine 2

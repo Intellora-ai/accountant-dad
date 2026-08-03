@@ -54,15 +54,12 @@ import random
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TypeVar
 
 from pydantic import BaseModel
 
 from accountant_dad.identity import ArtifactId, TransactionId
 
 DEFAULT_TRIALS = 8
-
-T = TypeVar("T", bound=BaseModel)
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,7 +107,7 @@ def _substitute(value: object, rng: random.Random, seen: dict[uuid.UUID, uuid.UU
     return value
 
 
-def substitute_identifiers(artifact: T, *, seed: int) -> T:
+def substitute_identifiers[M: BaseModel](artifact: M, *, seed: int) -> M:
     """Return a copy of `artifact` with every identifier replaced, nothing else."""
     result, _ = _substituted_with_map(artifact, seed)
     if not isinstance(result, type(artifact)):
@@ -147,9 +144,9 @@ def _remap(value: object, mapping: dict[uuid.UUID, uuid.UUID]) -> object:
     return value
 
 
-def ablate(
-    artifact: T,
-    derive: Callable[[T], object],
+def ablate[M: BaseModel](
+    artifact: M,
+    derive: Callable[[M], object],
     *,
     seed: int,
     trials: int = DEFAULT_TRIALS,

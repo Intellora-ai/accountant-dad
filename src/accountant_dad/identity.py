@@ -44,7 +44,12 @@ FIRST_VERSION = 1
 #: exactly how a gap in a lineage becomes invisible.
 Version = int
 
-VersionField = Annotated[int, Field(ge=FIRST_VERSION)]
+#: `strict=True` so `"3"` is REFUSED, not coerced to 3. Pydantic's lax mode
+#: would accept the string, which means a malformed payload silently becomes a
+#: valid version inside an immutable, auditable artifact. Law 23 - external
+#: input is untrusted, and coercion is how untrusted input stops looking
+#: untrusted.
+VersionField = Annotated[int, Field(ge=FIRST_VERSION, strict=True)]
 
 
 @dataclass(frozen=True, slots=True)
