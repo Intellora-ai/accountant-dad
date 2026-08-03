@@ -29,8 +29,13 @@
 
 **Law 44.** Verification happens in **GitHub CI**. A local pass is not verification — it is exploration.
 
-> **⛔ BUILD FREEZE — no product code until the gates are green.**
+> **⛔ BUILD FREEZE — in force, scoped by Amendment 2.**
 > An unverifiable commit cannot be called done, so it accumulates as unverified work.
+>
+> The blanket form of this rule — *no product code until the gates are green* — was
+> unsatisfiable: nine gates `exit 1` by design until the thing they test exists.
+> `CLAUDE.md` §P **Amendment 2** replaced it. **`CLAUDE.md` §P is the single authority
+> on what is permitted; this line is a pointer, never a second copy.**
 
 ---
 
