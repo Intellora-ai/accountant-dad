@@ -34,6 +34,15 @@ jobs:
         # every earlier step and fails here.
         run: |
           python3 -m venv /tmp/fresh
+          # The ONLY network access in this step, and it happens before the
+          # install, never during it. The package now declares a real runtime
+          # dependency, and `--no-index` below cannot fetch one. Downloading it
+          # into `dist` first keeps the install itself completely offline.
+          # `pip download` resolves the whole closure, so this one pinned line
+          # brings pydantic_core, annotated-types, typing-extensions and
+          # typing-inspection with it - all wheels, no sdists, so nothing is
+          # compiled at install time.
+          /tmp/fresh/bin/pip download --quiet --dest dist pydantic==2.12.3
           /tmp/fresh/bin/pip install --quiet --no-index --find-links dist accountant-dad
           /tmp/fresh/bin/python -c "import accountant_dad; print(accountant_dad.__version__)"
 
