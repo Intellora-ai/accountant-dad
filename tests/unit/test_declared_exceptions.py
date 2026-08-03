@@ -123,6 +123,24 @@ def test_a_declared_name_with_no_matching_job_is_blocked(tmp_path: Path) -> None
     assert assert_cannot_execute(_workflows(tmp_path, _EXIT_ONE), ghost) == BLOCKED
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        "- just\n- a\n- list\n",  # top level is not a mapping
+        "name: p\non:\n  push:\n",  # no jobs mapping at all
+        "jobs:\n  p:\n",  # jobs exists, but the job itself is null
+    ],
+)
+def test_a_malformed_workflow_never_satisfies_a_declared_gate(
+    tmp_path: Path, body: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # These shapes are skipped rather than raising — an unrelated malformed file
+    # must not crash the scan. Skipping must not become quiet acceptance: the
+    # declared gate is then unaccounted for, and unaccounted must mean BLOCKED.
+    assert assert_cannot_execute(_workflows(tmp_path, body), _DECL) == BLOCKED
+    assert "no job in" in capsys.readouterr().out
+
+
 # ── the shrink-only ratchet ──────────────────────────────────────────────────
 
 
