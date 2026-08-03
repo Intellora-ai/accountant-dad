@@ -35,7 +35,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Annotated
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 FIRST_VERSION = 1
 
@@ -76,9 +76,15 @@ class ArtifactId:
 class ParentVersion(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel's own signature carries Any; the gate stays on
     """Exactly which version of which artifact a later version derived from."""
 
-    # A dict literal, not ConfigDict(...): ConfigDict is a TypedDict carrying
-    # Any, and disallow_any_explicit is on. Same config, no suppression.
-    model_config = {"frozen": True, "extra": "forbid"}
+    # CORRECTION. An earlier version of this comment claimed ConfigDict could
+    # not be used here because it is a TypedDict carrying Any. That was FALSE,
+    # and a 3-line mypy probe falsifies it: ConfigDict(...) raises no
+    # explicit-any. The error is on the `class X(BaseModel)` line and nowhere
+    # else. The false claim propagated - artifacts/evidence.py factored this
+    # literal into `_FROZEN: dict[str, object]` and earned 10 typecheck errors,
+    # because a dict LITERAL checks against the declared TypedDict while a
+    # constant annotated `dict[str, object]` does not.
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     artifact_id: ArtifactId
     version: VersionField
@@ -87,7 +93,7 @@ class ParentVersion(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseMo
 class IdentityEnvelope(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel's own signature carries Any; the gate stays on
     """The four identity fields every canonical artifact carries."""
 
-    model_config = {"frozen": True, "extra": "forbid"}
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     artifact_id: ArtifactId
     version: VersionField
