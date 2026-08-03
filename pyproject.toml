@@ -11,7 +11,10 @@ requires-python = ">=3.12"
 dependencies = []
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/accountant_dad"]
+# DELIBERATE BREAK - proof artifact. Ships tools/ci instead of the package, so
+# the wheel builds and passes twine, installs fine, and `import accountant_dad`
+# fails. mypy/ruff/pytest read src/ via PYTHONPATH and are unaffected.
+packages = ["tools/ci"]
 
 # ── lint ──────────────────────────────────────────────────────────────────
 # The enabled rule set is a RATCHET. Rules may be added, never removed.
