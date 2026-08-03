@@ -29,6 +29,7 @@ PERMITTED_MODULES = {
     "confidence",  # artifact schemas — the one Confidence representation
     "knowledge_contract",  # Brain interface contract — P2 (BLUEPRINT §2 line 84)
     "ablation",  # the ID ablation harness — P2 (BLUEPRINT §2 line 135, INV-9)
+    "conformance",  # conformance predicates — Amendment 2, permitted list
     # Amendment 2 "Permitted now — exhaustive", remaining three categories.
     "ingestion",  # document-ingestion tooling
     "sealing",  # held-out sealing mechanism
