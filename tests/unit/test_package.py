@@ -27,6 +27,15 @@ PERMITTED_MODULES = {
     "__init__",
     "identity",  # artifact schemas — the identity envelope (INV-3, INV-5, INV-9)
     "confidence",  # artifact schemas — the one Confidence representation
+    "knowledge_contract",  # Brain interface contract — P2 (BLUEPRINT §2 line 84)
+    "ablation",  # the ID ablation harness — P2 (BLUEPRINT §2 line 135, INV-9)
+    # The six canonical artifacts of DATA_FLOW.md §2, one module each.
+    "evidence",  # Document Evidence Object          — Engine 1
+    "understanding",  # Business Understanding Object — Engine 2
+    "decision",  # Accounting Decision                — Engine 3
+    "clarification",  # Clarification Request         — Engine 4
+    "validation",  # Validation Decision              — Engine 5
+    "execution",  # Execution Result                  — Engine 6
 }
 
 #: Still frozen by Amendment 2, verbatim: engine reasoning · accounting logic ·
