@@ -577,6 +577,31 @@ and no domain implementation is written until its gates are green.**
 | **Guarded by** | The exemption list is exhaustive. Six engines, accounting logic, AI, Tally and domain implementation remain frozen. `conformance`, `golden dataset`, `negative controls`, `adversarial tests`, `integration tests` and `performance` stay red, with blockers documented, until their infrastructure exists |
 | **Approved** | The user, 2026-08-03 |
 
+**Amendment 2 — Build freeze, scoped release.** Approved 2026-08-03.
+
+| | |
+|---|---|
+| **Doc / section** | `CLAUDE.md` §P build freeze · `MVP_IMPLEMENTATION_BLUEPRINT.md` §2 |
+| **Old rule** | No engine, no artifact, no schema, no pipeline code. Amendment 1 permitted CI scaffolding only |
+| **New rule** | Product code is permitted for P2 and the unblocked infrastructure below, per-component, as each phase is reached. Engine reasoning, accounting logic, tax logic, AI calls and Tally posting remain frozen until their scheduled phase |
+| **Why** | The freeze conditioned release on *"all CI gates green on an empty repository."* Nine gates exit 1 by design and Amendment 1 states they stay red until their infrastructure exists — so the condition was **unsatisfiable by its own terms** |
+| **What failed** | P2 was blocked on sign-off despite not consuming it. Blueprint §2: P2 *"needs no ground truth and no AI."* Its only dependency is the locked architecture, frozen at `a47271d`. Work that had no blocker was stopped for one that does not apply to it |
+| **Trade-off** | Gained: P2, the sealing mechanism, the strong baseline and Tally verification all start now instead of after the ceiling. Lost: *"no code exists"* stops being a defence. From here, unverified work is possible and only the gates prevent it |
+| **Guarded by** | Three, all binding: (1) the permitted list is **exhaustive** — anything not named is frozen; (2) gates promote one at a time via the lifecycle above — passes on correct code, fails on deliberately broken code, then required; (3) no pull request touching `.github/**` or the branch ruleset is merged autonomously |
+| **Approved** | The user, 2026-08-03 |
+
+**Permitted now — exhaustive:**
+
+```
+artifact schemas · conformance predicates · domain models · Application Layer skeleton
+held-out sealing mechanism · strong baseline · CI gate implementations
+document-ingestion tooling
+```
+
+**Still frozen:** engine reasoning · accounting logic · tax logic · AI/LLM calls · Tally posting. **Each unlocks at its scheduled phase, and is asked for before it is written.**
+
+**Unchanged and non-negotiable:** gate count only goes up · never weaken a test to make it pass · no placeholder passing as complete · no accuracy claim before the ceiling exists (Law 52) · never fabricate a number, including a threshold · `.github/**` changes reported line by line, before and after.
+
 **Next: Phase 1 — Human Ceiling and Golden Set. No product code is written in it.**
 
 **By Law 52 and Law 54, no accuracy claim about this system is currently provable — therefore none may be made.** CI now proves that the *pipeline* is enforced. It proves nothing about accounting correctness.
