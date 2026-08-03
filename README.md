@@ -157,3 +157,5 @@ Every engine and sub-engine folder holds exactly one `README.md` stating its **p
 The architecture is the source of truth. Do not add, remove, merge or rename an engine or sub-engine. Do not move a responsibility between components. Do not create folders inside an engine or sub-engine.
 
 **If something in the architecture seems wrong, it may well be — stop and ask.** It gets corrected in the documentation, deliberately, before any code depends on it.
+
+<!-- proof run: merge gate evaluated against a base branch that already carries the enforcement scripts -->
