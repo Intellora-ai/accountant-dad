@@ -26,6 +26,7 @@ import accountant_dad
 PERMITTED_MODULES = {
     "__init__",
     "identity",  # artifact schemas — the identity envelope (INV-3, INV-5, INV-9)
+    "confidence",  # artifact schemas — the one Confidence representation
 }
 
 #: Still frozen by Amendment 2, verbatim: engine reasoning · accounting logic ·
