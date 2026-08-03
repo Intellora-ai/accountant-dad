@@ -46,13 +46,25 @@ Python 3.12 · immutable JSON artifacts on disk · Pydantic · pytest · GitHub 
 
 ## 2. In what order?
 
-> ## ⛔ BUILD FREEZE
+> ## ⛔ BUILD FREEZE — in force, scoped by Amendment 2
 >
-> **No engine, no artifact, no schema and no pipeline code is written until the GitHub CI gates exist and are green on an empty repository.**
+> **Original rule:** *no engine, no artifact, no schema and no pipeline code is written until the GitHub CI gates exist and are green on an empty repository.*
 >
-> Reason: a result exists only if CI produced it (Law 44). **Code written before the gates cannot be verified**, so it cannot be called done, so it accumulates as unverified work — the exact debt this whole framework exists to prevent.
+> **That rule was unsatisfiable by its own terms.** Nine gates `exit 1` by design and stay red until the thing they test exists, so *"all gates green on an empty repository"* could never be reached. `CLAUDE.md` §P **Amendment 2** replaced it, and names this section as amended. This is that amendment applied here — the two documents said different things until now, and a half-applied amendment is a defect, not a choice (§G10).
 >
-> **The gates are a prerequisite, not a phase.** They are satisfied before P1 begins.
+> **Permitted now — exhaustive, copied from `CLAUDE.md` §P:**
+>
+> ```
+> artifact schemas · conformance predicates · domain models · Application Layer skeleton
+> held-out sealing mechanism · strong baseline · CI gate implementations
+> document-ingestion tooling
+> ```
+>
+> **Still frozen:** engine reasoning · accounting logic · tax logic · AI/LLM calls · Tally posting. Each unlocks at its scheduled phase, and is asked for before it is written.
+>
+> Reason the freeze exists at all, unchanged: a result exists only if CI produced it (Law 44). **Code written before the gates cannot be verified**, so it cannot be called done, so it accumulates as unverified work — the exact debt this whole framework exists to prevent.
+>
+> **The gates are still a prerequisite, not a phase.** What changed is *which* gates must be green before a given component may be written: the ones that can actually judge it. A gate with nothing to examine gates nothing, and waiting on it was waiting on nothing.
 
 ```
 P1  Ceiling + Golden Set        no code       the measuring stick AND its ceiling
