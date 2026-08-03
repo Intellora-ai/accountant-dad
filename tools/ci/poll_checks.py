@@ -27,7 +27,10 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 
+from declared_exceptions import Declared
+from declared_exceptions import parse as parse_declared
 from expected_checks import check_names
 
 CONCLUSION_SUCCESS = "success"
@@ -99,6 +102,82 @@ def latest_per_name(runs: list[CheckRun]) -> dict[str, CheckRun]:
     return newest
 
 
+def verdict(
+    expected: set[str],
+    # Mapping, not dict: both are read-only here, and dict is invariant in its
+    # value type, which makes callers pass a needlessly exact shape.
+    declared: Mapping[str, Declared],
+    conclusions: Mapping[str, str | None],
+) -> tuple[int, list[str]]:
+    """Decide the merge gate's outcome. Pure — no network, no environment.
+
+    GitHub reports one bit per check: did it succeed. That cannot distinguish a
+    gate that examined something and rejected it from a gate that had nothing to
+    examine. Conflating them is why this job could never pass, could therefore
+    never be required, and therefore bound nothing.
+
+    Four states, not two:
+
+        red   + declared    EXCUSED  a placeholder, waiting on its subject
+        red   + undeclared  FAILURE  a real gate rejected something. BLOCK.
+        green + declared    STALE    it passes now, so it must stop being
+                                     excused. BLOCK, and name it.
+        green + undeclared  ok
+
+    STALE is the rule that keeps this permanent. Without it the list rots and
+    silently covers a real gate forever.
+
+    Returns (exit code, lines to print).
+    """
+    lines: list[str] = []
+    failures: list[str] = []
+    stale: list[str] = []
+    excused: list[str] = []
+
+    for name in sorted(expected):
+        conclusion = conclusions.get(name)
+        succeeded = conclusion == CONCLUSION_SUCCESS
+        is_declared = name in declared
+
+        if succeeded and not is_declared:
+            lines.append(f"  ok       {name}")
+        elif succeeded and is_declared:
+            stale.append(f"  STALE   {name}")
+        elif is_declared:
+            e = declared[name]
+            excused.append(f"  EXCUSED {name}  [{e.id} · {e.milestone} · {e.owner}] {e.blocker}")
+        else:
+            failures.append(f"  {str(conclusion).upper():7s} {name}")
+
+    lines.extend(excused)
+
+    if failures:
+        lines.append("")
+        lines.append("BLOCKED - a gate that is NOT declared a placeholder did not succeed")
+        lines.extend(failures)
+        lines.append("")
+        lines.append("These gates can run. They ran, and they did not pass.")
+        lines.append("Fix the code. Do not add the name to the declared-exceptions file:")
+        lines.append("that list is shrink-only and adding to it is blocked separately.")
+        return 1, lines
+
+    if stale:
+        lines.append("")
+        lines.append("BLOCKED - a declared placeholder is now PASSING")
+        lines.extend(stale)
+        lines.append("")
+        lines.append("A gate that passes must not stay excused. Delete its line from")
+        lines.append("tools/ci/declared_placeholder_gates.txt. That deletion IS the")
+        lines.append("promotion: a commit, in a diff, reviewable, versioned.")
+        return 1, lines
+
+    lines.append("")
+    lines.append(f"all {len(expected)} gates accounted for")
+    lines.append(f"  {len(expected) - len(excused)} passed")
+    lines.append(f"  {len(excused)} red by declaration, each with a stated blocker")
+    return 0, lines
+
+
 def main() -> int:
     repo = os.environ["GITHUB_REPOSITORY"]
     sha = os.environ["MERGE_GATE_SHA"]
@@ -106,10 +185,30 @@ def main() -> int:
     timeout_minutes = float(os.environ["MERGE_GATE_POLL_TIMEOUT_MINUTES"])
     interval_seconds = float(os.environ["MERGE_GATE_POLL_INTERVAL_SECONDS"])
     workflows_dir = os.environ["MERGE_GATE_WORKFLOWS_DIR"]
+    # The BASE branch's copy. Read from the pull request's checkout, a pull
+    # request could excuse the gate it just broke. os.environ[...] and not
+    # .get(...): a missing path must abort, never default to "nothing is
+    # excused" (which fails everything) or "everything is excused" (worse).
+    declared_path = os.environ["MERGE_GATE_DECLARED_EXCEPTIONS"]
 
     expected = check_names(workflows_dir)
+    declared = parse_declared(declared_path)
+
+    unknown = sorted(set(declared) - expected)
+    if unknown:
+        # A declared name that matches no real check is dead weight at best and
+        # a typo shadowing a live gate at worst. Either way the list is wrong.
+        print("BLOCKED - declared-exceptions names a check that does not exist")
+        for name in unknown:
+            print(f"  UNKNOWN {name}")
+        print()
+        print("Every declared name must match a Check Run name byte for byte.")
+        return 1
+
     print(f"commit           {sha}")
     print(f"gates expected   {len(expected)}")
+    print(f"declared red     {len(declared)}  ({declared_path})")
+    print(f"must be green    {len(expected) - len(declared)}")
     print(f"poll timeout     {timeout_minutes} minutes")
     print(f"poll interval    {interval_seconds} seconds")
     print()
@@ -153,24 +252,11 @@ def main() -> int:
     # Absence is handled by the poll loop above: it only exits once every
     # expected name is present AND completed, otherwise it times out. A gate
     # that never reports therefore fails as a timeout, never as a silent pass.
-    failures: list[str] = []
-    for name in sorted(expected):
-        conclusion = _text(newest[name], "conclusion")
-        if conclusion == CONCLUSION_SUCCESS:
-            print(f"  ok      {name}")
-        else:
-            failures.append(f"  {str(conclusion).upper():7s} {name}")
-
-    if failures:
-        print()
-        print("BLOCKED - not every gate succeeded")
-        for line in failures:
-            print(line)
-        return 1
-
-    print()
-    print(f"all {len(expected)} gates succeeded")
-    return 0
+    conclusions = {name: _text(run, "conclusion") for name, run in newest.items()}
+    code, lines = verdict(expected, declared, conclusions)
+    for line in lines:
+        print(line)
+    return code
 
 
 if __name__ == "__main__":
