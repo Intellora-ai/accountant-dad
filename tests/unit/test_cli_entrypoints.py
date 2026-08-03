@@ -12,6 +12,7 @@ in-process, from the real file. Nothing is stubbed except the HTTP call.
 
 from __future__ import annotations
 
+import json  # DELIBERATE: unused import, ruff F401
 import re
 import runpy
 import sys
