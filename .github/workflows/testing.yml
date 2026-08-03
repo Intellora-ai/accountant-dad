@@ -89,6 +89,11 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      # Required by actions/upload-code-coverage. Without it the upload is
+      # rejected and GitHub's `code_coverage` ruleset rule has no data to
+      # evaluate — which is how that rule ends up blocking every pull request
+      # while appearing to be configured.
+      code-quality: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -105,6 +110,30 @@ jobs:
           set -euo pipefail
           coverage run -m pytest -p no:randomly -q
           coverage report --fail-under=93 --show-missing
+
+      - name: cobertura report for GitHub
+        # GitHub's code coverage API accepts Cobertura XML only. This is a
+        # second FORMAT of the same run above, not a second measurement — the
+        # .coverage data file is already written, so no test re-runs and no
+        # number can differ between the two.
+        env:
+          PYTHONPATH: tools/ci:src
+        run: |
+          set -euo pipefail
+          coverage xml -o coverage.xml
+          test -s coverage.xml
+
+      - name: upload coverage to GitHub
+        # Feeds the `code_coverage` ruleset rule. Skipped on forks, which
+        # cannot be granted code-quality:write — the upload would fail and take
+        # a legitimate pull request down with it.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-code-coverage@1c15be36fc3733ba839b1dd643bd9556e4426dc1 # v1.4.1
+        with:
+          file: coverage.xml
+          language: Python
+          label: code-coverage/pytest
+
       - name: no coverage exclusions
         # Anti-gaming. `# pragma: no cover` and exclude_lines are how a coverage
         # number gets manufactured. There are none, and there must stay none.
