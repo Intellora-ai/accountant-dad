@@ -84,13 +84,28 @@ jobs:
           # Fail loudly if the base copy is missing or empty. A silently absent
           # enforcer is worse than a broken one: the job would go green having
           # checked nothing.
-          for required in assert_gates_not_removed.py expected_checks.py poll_checks.py; do
+          for required in assert_gates_not_removed.py expected_checks.py \
+                          poll_checks.py declared_exceptions.py; do
             if [ ! -s "/tmp/base-tools-ci/$required" ]; then
               echo "FATAL: /tmp/base-tools-ci/$required is missing or empty on origin/$BASE_REF"
               echo "The enforcement scripts could not be materialised from the base branch."
               exit 1
             fi
           done
+
+          # The declared-exceptions list is checked separately, because ABSENT
+          # and EMPTY mean different things for it:
+          #   absent  the base branch predates the mechanism. This is the pull
+          #           request introducing it, and can only happen once.
+          #   empty   the file exists and excuses nothing. Valid, and strict.
+          # Present-but-unreadable is still fatal.
+          if [ ! -e "/tmp/base-tools-ci/declared_placeholder_gates.txt" ]; then
+            echo "BOOTSTRAP: origin/$BASE_REF has no declared_placeholder_gates.txt"
+            echo "The shrink-only ratchet starts at the next pull request."
+          elif [ ! -r "/tmp/base-tools-ci/declared_placeholder_gates.txt" ]; then
+            echo "FATAL: declared_placeholder_gates.txt exists on origin/$BASE_REF but is unreadable"
+            exit 1
+          fi
 
           echo "base ref: $BASE_REF"
           ls -1 /tmp/base-tools-ci
@@ -104,6 +119,36 @@ jobs:
           python3 /tmp/base-tools-ci/assert_gates_not_removed.py \
             /tmp/base-workflows .github/workflows
 
+      - name: declared exceptions may only shrink
+        # ─────────────────────────────────────────────────────────────────
+        # A PULL REQUEST MUST NOT BE ABLE TO EXCUSE THE GATE IT JUST BROKE.
+        #
+        # The script and the BASE list both come from /tmp/base-tools-ci.
+        # The PR's list is passed as the second argument, so this compares
+        # base-vs-head and blocks any ADDITION. Removing a name is promotion
+        # and is always allowed - that deletion IS how a gate becomes binding,
+        # as a commit, in a diff, reviewable, versioned.
+        # ─────────────────────────────────────────────────────────────────
+        env:
+          PYTHONPATH: /tmp/base-tools-ci
+        run: |
+          set -euo pipefail
+          python3 /tmp/base-tools-ci/declared_exceptions.py \
+            /tmp/base-tools-ci/declared_placeholder_gates.txt \
+            tools/ci/declared_placeholder_gates.txt
+
+          # "Cannot execute" is enforced, not promised. Every declared gate's
+          # job must contain exactly one run step ending in `exit 1`. A
+          # "placeholder" that actually runs something could emit a pass, and
+          # this list would then excuse it rather than examine it.
+          #
+          # Judged against the PR's workflows using the PR's list: this asserts
+          # a property of what is being merged. The shrink-only check above
+          # already proved that list cannot have grown.
+          python3 /tmp/base-tools-ci/declared_exceptions.py --cannot-execute \
+            .github/workflows \
+            tools/ci/declared_placeholder_gates.txt
+
       - name: every gate must succeed
         # Script comes from the BASE branch. The workflows directory stays the
         # PR's, deliberately: the step above has already proven the PR declares
@@ -113,6 +158,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           MERGE_GATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           MERGE_GATE_WORKFLOWS_DIR: .github/workflows
+          MERGE_GATE_DECLARED_EXCEPTIONS: /tmp/base-tools-ci/declared_placeholder_gates.txt
           PYTHONPATH: /tmp/base-tools-ci
         run: |
           set -euo pipefail

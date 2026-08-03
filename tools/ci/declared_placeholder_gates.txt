@@ -1,0 +1,94 @@
+# DECLARED PLACEHOLDER GATES
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# WHAT THIS FILE IS
+#
+# The single list of gates that are RED BY DESIGN because they have nothing to
+# examine yet. `merge gate` passes when every red check is on this list and
+# every check NOT on this list is green.
+#
+# It exists to separate two things GitHub cannot tell apart:
+#
+#   a REAL FAILURE     a gate examined something and rejected it
+#   a PLACEHOLDER      a gate has nothing to examine
+#
+# Conflating them forced a choice between "nothing binds" and "nothing merges".
+# Separating them means every real gate binds today.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# AN UNKNOWN PLACEHOLDER IS FORBIDDEN
+#
+# A gate may be red-by-design ONLY if its entry carries all seven:
+#
+#   1. UNIQUE ID              stable, referenceable, never reused
+#   2. DOCUMENTED             this file is the documentation; the blocker field
+#                             must say what is missing, not that something is
+#   3. OWNER                  a real account, not a department
+#   4. BLOCKING REASON        what does not exist yet
+#   5. MILESTONE              the phase that clears it, or DECISION if it waits
+#                             on a person rather than on work
+#   6. CANNOT EXECUTE         enforced, not promised: `declared_exceptions.py`
+#                             asserts the job body is exit-1-only, so a declared
+#                             gate cannot run product code or emit a pass
+#   7. REMOVAL CONDITION      the exact observable event that deletes this line
+#
+# A line missing any field is a parse error. There is no lenient default,
+# because the lenient direction is the one that excuses a real failure.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# THE RULES THAT MAKE THIS SAFE
+#
+#   SHRINK-ONLY   a name may be DELETED, never ADDED. `declared_exceptions.py`
+#                 compares the base branch's copy to the pull request's copy and
+#                 blocks any addition. Deleting a line is how a gate becomes
+#                 binding: a commit, in a diff, reviewable, versioned.
+#
+#   BASE BRANCH   `merge gate` executes the base branch's copy of this file,
+#                 never the pull request's. A pull request cannot excuse itself.
+#
+#   NO STALE      if a gate on this list reports GREEN, `merge gate` FAILS and
+#                 names it. A gate that passes must not stay excused. This is
+#                 what forces the list to shrink instead of quietly rotting.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# WHAT THIS IS NOT
+#
+# NOT a way to silence a failing gate. A gate that CAN run and does not pass is
+# a real failure and must never appear here.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# FORMAT — six fields, pipe separated
+#
+#   <id> | <check name> | <owner> | <milestone> | <removal condition> | <blocker>
+#
+# The check name must match the GitHub Check Run name byte for byte, including
+# the U+00B7 separators in the legacy combined gate.
+#
+# Owner is @Intellora-ai throughout: it is the only account with write access to
+# this repository. Derived from repository permissions, not chosen.
+
+# ── legacy gates (gate.yml) ──────────────────────────────────────────────────
+PH-01 | typecheck · lint · tests · build | @Intellora-ai | NOW | PR #23 merges | implemented on PR #23; this line is dead the moment that lands
+PH-02 | conformance suite | @Intellora-ai | P2 | the six artifact schemas exist and a predicate can evaluate one | no artifact schema exists, so every predicate would pass vacuously
+PH-03 | negative controls 9 of 9 | @Intellora-ai | P1 | the nine control documents are committed AND Engine 1 can refuse them | neither the nine documents nor an engine that could refuse them exists
+
+# ── compliance.yml ───────────────────────────────────────────────────────────
+PH-04 | license scan | @Intellora-ai | DECISION | the owner states which SPDX identifiers are acceptable | the licence allowlist is a policy value; tooling is not the blocker
+PH-05 | conformance | @Intellora-ai | P2 | the six artifact schemas and Transaction ID format exist | nothing to check conformance of
+PH-06 | negative controls | @Intellora-ai | P1 | the nine control documents are committed | the nine hard negative controls have not been collected
+PH-07 | golden dataset | @Intellora-ai | P1 | ceiling.json exists, is hashed, and 25 documents are frozen | no ground truth and no measured human ceiling
+PH-08 | adversarial tests | @Intellora-ai | P5 | the six engines run end to end on one document | the 19 attacks need a reasoning pipeline to attack
+
+# ── performance.yml ──────────────────────────────────────────────────────────
+PH-09 | performance | @Intellora-ai | P4 | one document completes end to end in CI | nothing to time; the 60s and INR 5 bounds already exist and are not the blocker
+
+# ── quality.yml ──────────────────────────────────────────────────────────────
+PH-10 | docker build | @Intellora-ai | DECISION | the owner states whether the MVP ships as a container | no Dockerfile and no locked document naming a deployment target
+
+# ── testing.yml ──────────────────────────────────────────────────────────────
+PH-11 | integration tests | @Intellora-ai | P3 | the walking skeleton runs end to end in CI | requires the six engines and a reachable Tally; neither exists
+PH-12 | mutation | @Intellora-ai | DECISION | the owner names the mutation tool | tool not chosen; Stryker has no Python support, so mutmut or cosmic-ray
+PH-13 | end-to-end | @Intellora-ai | NEVER-IN-MVP | the blueprint is amended to include a UI | blueprint line 41 declares CLI, no UI; Playwright has nothing to drive
+
+# ── security.yml ─────────────────────────────────────────────────────────────
+PH-14 | semgrep | @Intellora-ai | DECISION | the owner names a vendored rule set or a pinned registry version | live registry rules make the same commit score differently on two runs
