@@ -1,0 +1,344 @@
+"""The walking skeleton — the Application Layer running one transaction end to end.
+
+`MVP_IMPLEMENTATION_BLUEPRINT.md:136` — P3 is done when the Application Layer
+*"creates the Transaction ID, runs the state machine and routes every artifact —
+no engine calls another."* This module is that sentence, executed.
+
+IT ROUTES. IT DOES NOT REASON.
+    `DATA_FLOW.md` §14 gives the Application Layer creating the Transaction ID,
+    starting engines, routing artifacts, lifecycle, retrying and coordinating
+    state transitions — and gives it *"any decision · any artifact · any
+    confidence · any reasoning"* in the column of things it never owns.
+
+    So every engine here is called as a function whose output is passed onward
+    unread. This module never inspects a confidence, never compares a status to
+    decide whether something is good, and never edits an artifact in flight
+    (AL-INV-7). The one thing it reads out of an artifact is the Accounting
+    Decision's *status*, because `DATA_FLOW.md:113` says that field exists
+    precisely *"so a downstream engine can ask can this move forward? and get a
+    structured answer rather than infer one from prose."* Reading the field the
+    architecture created for routing is routing; reading the journal would be
+    reasoning.
+
+NO ENGINE CALLS ANOTHER (AL-INV-5).
+    Every artifact passes through here. The six engines are imported by this
+    module and by nothing else, and a test parses each engine's imports off
+    disk to prove none of them imports a sibling. *"Two engines that can call
+    each other can form a cycle nobody declared, and a decision could reach
+    Execution without Validation."*
+
+THE CLARIFICATION CYCLE HAS NO DOCUMENTED BOUND, SO THE CALLER SUPPLIES ONE.
+    `APPLICATION_LAYER.md:223-224` draws `Accounting → Clarification` when a
+    blocking doubt exists and `Clarification → Accounting` because *"Engine 3
+    must re-decide first."* That is a cycle, and no locked document says how
+    many times it may go round.
+
+    With honest P3 stubs the cycle is not hypothetical: the Accounting stub
+    always answers `INCOMPLETE_INFORMATION_REQUIRED`, because deciding anything
+    else would be fabricating a journal. So the skeleton would spin forever.
+
+    `max_clarification_rounds` is therefore REQUIRED with no default, exactly as
+    `AL-INV-14` requires of every configuration value — *"A default retry count
+    is a number nobody chose, silently governing how many times a financial
+    operation is attempted."* Picking one here would also break the standing
+    instruction never to set a number the owner did not give.
+
+    **What happens at the bound is reported, not invented.** No locked document
+    names a state for "asked too many times", and `AL-INV-13` forbids adding
+    one. `ClarificationCycleExhaustedError` is raised and the transaction is
+    left in `Clarification`, where it genuinely is. Moving it to `Failed` would
+    claim a runtime failure that did not occur — `APPLICATION_LAYER.md:229`
+    admits only *"a runtime failure that exhausted retries"* — and moving it
+    onward would skip a stage.
+
+ARTIFACT IDS ARE SUPPLIED HERE AT P3, AND THAT IS TEMPORARY.
+    Every P3 stub takes its own artifact id as a parameter rather than minting
+    one, so that each is a pure function and the suite can assert *same input,
+    equal artifact*. Something has to supply them, and at P3 that is this
+    module.
+
+    `ENGINE_1:95` and `:253` assign intake identity to Engine 1, so P4 must move
+    minting back into the engines. Recorded here rather than left to be
+    discovered, and `mint` is injected so no test depends on randomness.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime
+
+from accountant_dad.artifacts.clarification import ClarificationRequest
+from accountant_dad.artifacts.decision import AccountingDecision, DecisionStatus
+from accountant_dad.artifacts.evidence import DocumentEvidenceObject, DocumentId
+from accountant_dad.artifacts.execution import ExecutionAttemptId, ExecutionId, ExecutionResult
+from accountant_dad.artifacts.understanding import BusinessUnderstandingObject
+
+# `APPROVING_STATUSES` is imported rather than retyped, so this module and the
+# artifact cannot disagree about which statuses go forward (Law 19).
+from accountant_dad.artifacts.validation import APPROVING_STATUSES, ValidationDecision
+from accountant_dad.engines.accounting_engine import stub as accounting
+from accountant_dad.engines.clarification_engine import stub as clarification
+from accountant_dad.engines.input_engine import stub as input_engine
+from accountant_dad.engines.tally_engine import stub as execution_engine
+from accountant_dad.engines.understanding_engine import stub as understanding
+from accountant_dad.engines.validation_engine import stub as validation
+from accountant_dad.identity import ArtifactId, IdentityEnvelope, TransactionId
+from accountant_dad.services.audit import AuditTrail, Transition
+from accountant_dad.services.state import TransactionState
+from accountant_dad.services.store import TransactionStore
+
+
+class ClarificationCycleExhaustedError(Exception):
+    """The Accounting ↔ Clarification cycle hit the caller's bound.
+
+    Deliberately not a state. `AL-INV-13` — *"If a state is not in the locked
+    state machine, it does not exist."* The transaction is left in `Accounting`,
+    which is where it actually is.
+    """
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineConfig:
+    """Every value required, none defaulted (AL-INV-14)."""
+
+    #: How many times `Accounting → Clarification → Accounting` may go round
+    #: before the run gives up. No default: see the module docstring.
+    max_clarification_rounds: int
+
+    def __post_init__(self) -> None:
+        if self.max_clarification_rounds < 1:
+            raise ValueError(
+                "max_clarification_rounds must be at least 1; a bound of zero "
+                "forbids the Clarification stage the state machine draws"
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class Sources:
+    """Every source of entropy the run needs, supplied rather than reached for.
+
+    Not a testing convenience. `AL-INV-12` rests on identical input producing an
+    identical conclusion, and a module calling `uuid4()` or `datetime.now()`
+    cannot offer that — two runs of the same document would differ, and nothing
+    downstream could tell a real difference from a fresh random number.
+    """
+
+    artifact: Callable[[], ArtifactId]
+    execution: Callable[[], ExecutionId]
+    attempt: Callable[[], ExecutionAttemptId]
+    now: Callable[[], datetime]
+
+
+@dataclass(frozen=True, slots=True)
+class RunResult:
+    """What one pass produced. Artifacts in the order they were created."""
+
+    transaction_id: TransactionId
+    final_state: TransactionState
+    evidence: DocumentEvidenceObject
+    understanding: BusinessUnderstandingObject
+    decisions: tuple[AccountingDecision, ...]
+    clarifications: tuple[ClarificationRequest, ...]
+    validation: ValidationDecision | None
+    execution: ExecutionResult | None
+
+    @property
+    def artifacts(self) -> tuple[object, ...]:
+        """Every artifact this run produced, in creation order."""
+        made: list[object] = [self.evidence, self.understanding]
+        made.extend(self.decisions)
+        made.extend(self.clarifications)
+        if self.validation is not None:
+            made.append(self.validation)
+        if self.execution is not None:
+            made.append(self.execution)
+        return tuple(made)
+
+
+class ApplicationLayer:
+    """Creates the Transaction ID, runs the state machine, routes every artifact.
+
+    Every identifier and the clock are injected rather than called, so a run is
+    reproducible
+    and the tests need no clock and no randomness. That is not a testing
+    convenience: `AL-INV-12` rests on identical input producing an identical
+    conclusion, and a module reaching for `uuid4()` or `datetime.now()` cannot
+    offer that.
+    """
+
+    def __init__(
+        self,
+        *,
+        store: TransactionStore,
+        audit: AuditTrail,
+        config: PipelineConfig,
+        sources: Sources,
+    ) -> None:
+        self._store = store
+        self._audit = audit
+        self._config = config
+        self._sources = sources
+
+    # ── identity ──────────────────────────────────────────────────────────
+
+    def start_transaction(self, transaction_id: TransactionId) -> TransactionState:
+        """`APPLICATION_LAYER_API.md:25` — the ONLY way a Transaction ID comes
+        into existence, and `:32` — the postcondition is state `Input`.
+
+        The id is passed in for the same reproducibility reason as `mint`. It is
+        still created here in the sense that matters (AL-INV-1): no engine ever
+        makes one, and nothing reuses one.
+        """
+        state = self._store.create(transaction_id)
+        self._audit.record(
+            transaction_id,
+            Transition(
+                from_state=None,
+                to_state=state,
+                at=self._sources.now(),
+                trigger="start_transaction",
+                engine=None,
+                attempt=1,
+            ),
+        )
+        return state
+
+    def _advance(
+        self, transaction_id: TransactionId, target: TransactionState, *, engine: str, attempt: int
+    ) -> None:
+        """One validated transition, recorded only after it completed (AL-INV-3)."""
+        origin = self._store.state_of(transaction_id)
+        self._store.move(transaction_id, target)
+        self._audit.record(
+            transaction_id,
+            Transition(
+                from_state=origin,
+                to_state=target,
+                at=self._sources.now(),
+                trigger=f"{engine} produced its artifact",
+                engine=engine,
+                attempt=attempt,
+            ),
+        )
+
+    # ── the run ───────────────────────────────────────────────────────────
+
+    def run(
+        self,
+        *,
+        transaction_id: TransactionId,
+        document_id: DocumentId,
+        source_references: tuple[str, ...],
+    ) -> RunResult:
+        """One document, all the way through, artifact by artifact.
+
+        Every engine is called exactly once per stage entry, its output is
+        carried to the next stage by this method, and no engine is given
+        another engine's address (AL-INV-5).
+        """
+        self.start_transaction(transaction_id)
+
+        evidence = input_engine.read(
+            identity=self._envelope(transaction_id),
+            document_id=document_id,
+            source_references=source_references,
+        )
+
+        self._advance(transaction_id, TransactionState.UNDERSTANDING, engine="input", attempt=1)
+        story = understanding.StubUnderstandingEngine().understand(
+            (evidence,), self._sources.artifact()
+        )
+
+        self._advance(
+            transaction_id, TransactionState.ACCOUNTING, engine="understanding", attempt=1
+        )
+
+        decisions: list[AccountingDecision] = []
+        requests: list[ClarificationRequest] = []
+
+        for attempt in range(1, self._config.max_clarification_rounds + 1):
+            decision = accounting.decide(story, self._sources.artifact())
+            decisions.append(decision)
+
+            if decision.decision_status is not DecisionStatus.INCOMPLETE_INFORMATION_REQUIRED:
+                break
+
+            # The status field exists for exactly this question (DATA_FLOW:113).
+            self._advance(
+                transaction_id, TransactionState.CLARIFICATION, engine="accounting", attempt=attempt
+            )
+            requests.append(
+                clarification.emit_clarification_request(
+                    decision,
+                    artifact_id=self._sources.artifact(),
+                    clarification_id=self._sources.artifact(),
+                )
+            )
+            self._advance(
+                transaction_id,
+                TransactionState.ACCOUNTING,
+                engine="clarification",
+                attempt=attempt,
+            )
+        else:
+            raise ClarificationCycleExhaustedError(
+                f"the Accounting-Clarification cycle ran "
+                f"{self._config.max_clarification_rounds} times and the decision is "
+                f"still {DecisionStatus.INCOMPLETE_INFORMATION_REQUIRED.value}. No "
+                "locked document names a state for this, and AL-INV-13 forbids "
+                "inventing one, so the transaction is left in Accounting, which is "
+                "where it is: Clarification handed back and the bound stopped the "
+                "next re-decide."
+            )
+
+        self._advance(transaction_id, TransactionState.VALIDATION, engine="accounting", attempt=1)
+        verdict = validation.validate(
+            decisions[-1],
+            identity=self._envelope(transaction_id),
+            validation_timestamp=self._sources.now(),
+        )
+
+        # An engine's conclusion decides the route; this module does not judge it.
+        if verdict.validation_status not in APPROVING_STATUSES:
+            self._advance(transaction_id, TransactionState.FAILED, engine="validation", attempt=1)
+            return RunResult(
+                transaction_id=transaction_id,
+                final_state=self._store.state_of(transaction_id),
+                evidence=evidence,
+                understanding=story,
+                decisions=tuple(decisions),
+                clarifications=tuple(requests),
+                validation=verdict,
+                execution=None,
+            )
+
+        self._advance(transaction_id, TransactionState.EXECUTION, engine="validation", attempt=1)
+        posted = execution_engine.report_nothing_posted(
+            identity=self._envelope(transaction_id),
+            execution_id=self._sources.execution(),
+            execution_attempt_id=self._sources.attempt(),
+            validation=verdict,
+            execution_timestamp=self._sources.now(),
+        )
+        self._advance(transaction_id, TransactionState.COMPLETED, engine="execution", attempt=1)
+        return RunResult(
+            transaction_id=transaction_id,
+            final_state=self._store.state_of(transaction_id),
+            evidence=evidence,
+            understanding=story,
+            decisions=tuple(decisions),
+            clarifications=tuple(requests),
+            validation=verdict,
+            execution=posted,
+        )
+
+    # ── helpers ───────────────────────────────────────────────────────────
+
+    def _envelope(self, transaction_id: TransactionId) -> IdentityEnvelope:
+        return IdentityEnvelope(
+            artifact_id=self._sources.artifact(),
+            version=1,
+            parent_versions=(),
+            transaction_id=transaction_id,
+        )
