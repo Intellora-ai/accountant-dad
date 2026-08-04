@@ -505,6 +505,24 @@ Then the 10 gates:
 16. `docs/MVP_IMPLEMENTATION_BLUEPRINT.md` — the six questions
 17. `docs/MVP_BUILD_VERIFY_FIX.md` — the loop
 
+### Technology stack — LOCKED, 2026-08-05
+
+`docs/TECHNOLOGY_STACK.md` — the default stack, per engine. One primary tool per
+capability. **No component is replaced without measurable evidence** that another is
+objectively better on accuracy, latency, determinism, maintainability or reliability —
+a number with a unit (Law 52), never a preference.
+
+Two constraints in it are absolute and repeated here because they are easy to erode:
+
+- **Engine 3 uses NO LLM and no AI reasoning.** The engine that decides the entry must
+  be reproducible, inspectable and defensible; a model that reasons differently on two
+  runs is none of those.
+- **Validation MUST be deterministic.** An LLM may EXPLAIN a failure. An LLM never
+  decides correctness.
+
+Listing a tool there is a decision, not an installation. A tool counts as integrated
+only when all twelve checks in that document pass.
+
 **Verified means CI.** A local pass is not a result (Law 44).
 
 **Precedence:** `System Invariants › Locked Architecture Decisions › Engine Specifications › Communication Contracts › READMEs`. **Locks win.**
