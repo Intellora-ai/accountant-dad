@@ -1,0 +1,18 @@
+{
+  "id": "ACC-PRIORPERIOD-ESTIMATE-002",
+  "status": "VERIFIED",
+  "if": [
+    "it is difficult to distinguish whether a change is a change in an accounting POLICY or a change in an accounting ESTIMATE"
+  ],
+  "then": "the change is treated as a change in an accounting ESTIMATE, with appropriate disclosure",
+  "source_section": "AS 5 para 22",
+  "note": "A tie-breaker, not a test — AS 5 supplies a default precisely because the distinction is sometimes undecidable. A system must therefore never report high confidence in a POLICY-change classification merely because the estimate reading was ruled out by difficulty; difficulty resolves the other way.",
+  "evidence": [
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 22",
+      "quote": "policy and a change in an accounting estimate. In such cases, the change is treated as a change in an accounting estimate, with appropriate disclosure.",
+      "extraction_note": "The paragraph opens 'Sometimes,it is difficultto distinguish between achange inanaccounting policy', joined by the extraction at four points. The quote begins at the first unjoined word. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    }
+  ]
+}

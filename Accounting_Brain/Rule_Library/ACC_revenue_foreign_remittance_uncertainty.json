@@ -1,0 +1,14 @@
+{
+  "id": "ACC-REV-FOREIGN-REMITTANCE-001",
+  "status": "VERIFIED",
+  "if": ["the revenue is interest, royalties or dividends from foreign countries",
+         "exchange permission is required",
+         "uncertainty in remittance is anticipated"],
+  "then": "revenue recognition MAY NEED TO BE POSTPONED",
+  "source_section": "AS 9 para 8.5",
+  "note": "AS 9 says 'may need to be postponed', not 'shall be postponed'. This rule therefore does not decide the outcome by itself — it raises the question and requires a judgment on whether the anticipated remittance uncertainty is significant. Route to a human accountant where the documents do not settle it. Both conditions are required: permission needed AND uncertainty anticipated. Permission that is routine and granted is not, on this text, a reason to postpone.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.5",
+     "quote": "When interest, royalties and dividends from foreign countries require exchange permission and uncertainty in remittance is anticipated, revenue recognition may need to be postponed"}
+  ]
+}

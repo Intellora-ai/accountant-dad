@@ -1,0 +1,24 @@
+{
+  "id": "ACC-REV-ROYALTY-001",
+  "status": "VERIFIED",
+  "if": ["the revenue is a royalty, being charges for the use of such assets as know-how, patents, trade marks and copyrights",
+         "no significant uncertainty as to measurability or collectability exists"],
+  "then": "royalties are recognised ON AN ACCRUAL BASIS IN ACCORDANCE WITH THE TERMS OF THE RELEVANT AGREEMENT",
+  "source_section": "AS 9 paras 8.1(ii), 8.3 and 13(ii)",
+  "note": "One override exists and it is substance-based, not preference-based: where, having regard to the substance of the transactions, it is more appropriate to recognise revenue on some other systematic and rational basis, that basis is used instead. 'Systematic and rational' is the standard's wording and is not further defined in it — the alternative basis must be stated and justified, never assumed.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 13(ii)",
+     "quote": "on an accrual basis in accordance with the terms of the relevant agreement"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 13",
+     "quote": "Revenue arising from the use by others of enterprise resources yielding interest, royalties and dividends should only be recognised when no significant uncertainty as to measurability or collectability exists."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.1(ii)",
+     "quote": "royalties—charges for the use of such assets as know-how, patents, trade marks and copyrights"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.3",
+     "quote": "Royalties accrue in accordance",
+     "extraction_note": "The continuation reads 'withthe terms of the relevant agreement and are usually recognised on thatbasis': the PDF extraction joins 'with the' and 'that basis'. The remaining fragments are quoted separately below. The artifact is in the extraction, not in the standard."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.3",
+     "quote": "terms of the relevant agreement and are usually recognised on"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.3",
+     "quote": "unless, having regard to the substance of the transactions, it is more appropriate to recognise revenue on some other systematic and rational basis"}
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "id": "ACC-PRIORPERIOD-ITEMS",
+  "name": "Prior period items",
+  "status": "VERIFIED",
+  "definition": "Prior period items are income or expenses that arise in the current period as a result of ERRORS OR OMISSIONS in the preparation of the financial statements of one or more prior periods. Their nature and amount must be separately disclosed in the statement of profit and loss so their impact on the current profit or loss can be perceived. They are normally included in determining the current period's net profit or loss.",
+  "why_it_exists": "It separates 'the earlier statements were wrong' from 'circumstances changed'. Only the first is a prior period item. For a system that posts corrections, this is the deciding question: an error correction carries a separate-disclosure obligation, and a change in circumstances does not.",
+  "inputs": [
+    "the income or expense arising in the current period",
+    "the cause: an error or omission in preparing a prior period's financial statements, or something else",
+    "the prior period or periods affected"
+  ],
+  "outputs": [
+    "classification as a prior period item, separately disclosed",
+    "or a determination that it is NOT a prior period item"
+  ],
+  "preconditions": [
+    "an item of income or expense has arisen in the current period",
+    "its cause can be traced to the preparation of one or more prior periods' financial statements"
+  ],
+  "rules": [
+    "ACC-PRIORPERIOD-ITEM-001",
+    "ACC-PRIORPERIOD-ITEM-002",
+    "ACC-PRIORPERIOD-ESTIMATE-001"
+  ],
+  "exceptions": [
+    "other adjustments necessitated by circumstances which, though related to prior periods, are determined in the current period, are NOT prior period items",
+    "income or expense recognised on the outcome of a contingency that previously could not be estimated reliably is NOT a prior period item"
+  ],
+  "common_mistakes": [
+    "treating any adjustment that touches a prior period as a prior period item — AS 5 paragraph 16 restricts the term to errors and omissions only",
+    "classifying retrospective wage arrears as a prior period item, which AS 5 paragraph 16 names as the counterexample",
+    "classifying a revised estimate as a prior period item, which AS 5 paragraph 21 explicitly excludes",
+    "burying the correction inside the ordinary line item instead of disclosing its nature and amount separately"
+  ],
+  "dependencies": [
+    "ACC-PRIORPERIOD-EXTRAORDINARY-ITEMS"
+  ],
+  "related_concepts": [
+    "ACC-PRIORPERIOD-ESTIMATE-CHANGE",
+    "ACC-POLICY-CHANGE"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted; only ICAI AS-1 and AS-5 were read for this claim, so no statute is cited"
+  ],
+  "icai_references": [
+    "AS 5, paragraph 4, definition of prior period items",
+    "AS 5, paragraphs 15, 16, 17, 18 and 19"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — AS-1 and AS-5 govern financial-statement policy and period attribution; GST is a separate determination and must not be conflated with it"
+  ],
+  "evidence_required": [
+    "identification of the prior period whose financial statements contained the error or omission",
+    "the nature of the error: a mathematical mistake, a mistake in applying an accounting policy, a misinterpretation of facts, or an oversight",
+    "the amount of the income or expense arising in the current period"
+  ],
+  "confidence_factors": [
+    "weak when it cannot be established whether the prior statements were wrong, or merely based on what was known at the time",
+    "strong when the cause is a mathematical mistake, which is checkable by recomputation rather than by judgement",
+    "weak when a later payment could be either a correction of an omission or a new obligation created retrospectively — AS 5 paragraph 16 treats the wage-arrears form of that as NOT a prior period item"
+  ],
+  "validation_checks": [
+    "the cause is an error or omission in preparing a prior period's financial statements, not a change in circumstances determined in the current period",
+    "the item is not a revision of an accounting estimate",
+    "the nature and the amount are separately disclosed so their impact on the current profit or loss can be perceived",
+    "the item is included in determining the current period's net profit or loss, or shown after that determination — either way its effect on current profit or loss is indicated"
+  ],
+  "examples": [
+    "an expense omitted from last year's statements by oversight, discovered and recognised this year — a prior period item, separately disclosed"
+  ],
+  "counterexamples": [
+    "arrears payable to workers as a result of a retrospective wage revision during the current period — AS 5 paragraph 16 states this is NOT a prior period item, though it relates to prior periods",
+    "income recognised on the outcome of a contingency that previously could not be estimated reliably — AS 5 paragraph 18 states this does not constitute a prior period item"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 4, definition of prior period items",
+      "quote": "Prior period items are income or expenses which arise in the current period",
+      "extraction_note": "The running page header 'Net Profitor Loss for the Period 93' falls between this line and the rest of the definition, so the definition is quoted as two spans. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 4, definition of prior period items",
+      "quote": "as a result of errors or omissions in the preparation of the financial statements of one or more prior periods."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 15",
+      "quote": "The nature and amount of prior period items should be separately disclosed in the statement of profit and loss in a manner that their impact on the current profit or loss can be perceived."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 16",
+      "quote": "as defined in this Statement, refers only to income or expenses which arise in the current period as a result of errors or omissions in the preparation of the financial statements of one or more prior periods.",
+      "extraction_note": "The sentence opens with the term set in typographic single quotation marks. The quote begins after them so the comparison does not turn on a character the extractor may render differently."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 16",
+      "quote": "The term does not include other adjustments necessitated by circumstances, which though related to prior periods, are determined in the current period, e.g., arrears payable to workers as a result of revision of wages with retrospective effect during the current period."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 17",
+      "quote": "Errors in the preparation of the financial statements of one or more prior periods may be discovered in the current period."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 17",
+      "quote": "of mathematical mistakes, mistakes in applying accounting policies, misinterpretation of facts, or oversight.",
+      "extraction_note": "The sentence reads 'Errors may occur as aresult of mathematical mistakes', where the extraction joins 'a' and 'result'. The quote begins after the join. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 18",
+      "quote": "Prior period items are generally infrequent in nature and can be distinguished from changes in accounting estimates. Accounting estimates by their nature are approximations that may need revision as additional information becomes known. For example, income or expense recognised on the outcome of a contingency which previously could not be estimated reliably does not constitute a prior period item."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 19",
+      "quote": "Prior period items are normally included in the determination of net profit or loss for the current period. An alternative approach is to show such items in the statement of profit and loss after determination of current net profit or loss. In either case, the objective is to indicate the effect of such items on the current profit or loss."
+    }
+  ]
+}

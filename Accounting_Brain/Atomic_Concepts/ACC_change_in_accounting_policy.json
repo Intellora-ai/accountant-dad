@@ -1,0 +1,161 @@
+{
+  "id": "ACC-POLICY-CHANGE",
+  "name": "Change in an accounting policy",
+  "status": "VERIFIED",
+  "definition": "A change in accounting policy is a change to the accounting principle, or to the method of applying it, for a class of event or transaction that already occurred and has not changed in substance. It may be made only if required by statute, or for compliance with an accounting standard, or if it would result in a more appropriate presentation. A change with a material effect — in the current period or reasonably expected in later periods — must be disclosed, together with the amount by which each affected item changed, or the fact that the amount is not ascertainable.",
+  "why_it_exists": "Consistency is a fundamental assumption, so a break in it destroys comparability across periods unless it is declared. This concept is the boundary marker for a bookkeeping system: an adjustment classified as a policy change carries a disclosure obligation, and one wrongly classified as a policy change imposes an obligation that does not exist.",
+  "inputs": [
+    "the accounting principle and method applied in the prior period for the class",
+    "the accounting principle and method now to be applied",
+    "the reason for the change: statute, compliance with an accounting standard, or more appropriate presentation",
+    "the amount by which each affected financial statement item changes"
+  ],
+  "outputs": [
+    "a change in accounting policy, with its disclosure and the quantified impact",
+    "or a determination that the change is NOT a change in accounting policy"
+  ],
+  "preconditions": [
+    "the events or transactions concerned do not differ in substance from previously occurring ones",
+    "the events or transactions occurred previously and were not immaterial"
+  ],
+  "rules": [
+    "ACC-POLICY-CHANGE-001",
+    "ACC-POLICY-CHANGE-002"
+  ],
+  "exceptions": [
+    "a change consequent upon adopting an Accounting Standard is accounted for under that standard's own transitional provisions, if any",
+    "adopting a policy for events or transactions that differ in substance from previously occurring ones is NOT a change in accounting policy",
+    "adopting a new policy for events or transactions that did not occur previously, or were immaterial, is NOT a change in accounting policy"
+  ],
+  "common_mistakes": [
+    "classifying a revised estimate as a policy change — AS 5 paragraph 22 sends the ambiguous case the other way, to estimate",
+    "treating the first-ever policy for a genuinely new kind of transaction as a change, when AS 5 paragraph 31(b) says it is not",
+    "disclosing that a policy changed but omitting the amount by which affected items changed, where that amount is ascertainable",
+    "changing a policy because it is preferred, rather than because statute, a standard, or a more appropriate presentation requires it"
+  ],
+  "dependencies": [
+    "ACC-POLICY-NATURE-AND-SELECTION",
+    "ACC-POLICY-FUNDAMENTAL-ASSUMPTIONS"
+  ],
+  "related_concepts": [
+    "ACC-PRIORPERIOD-ESTIMATE-CHANGE",
+    "ACC-PRIORPERIOD-ITEMS",
+    "ACC-POLICY-DISCLOSURE"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted; only ICAI AS-1 and AS-5 were read for this claim, so no statute is cited"
+  ],
+  "icai_references": [
+    "AS 1, paragraphs 22 and 26",
+    "AS 5, paragraphs 28, 29 and 30",
+    "AS 5, paragraphs 31, 32 and 33"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — AS-1 and AS-5 govern financial-statement policy and period attribution; GST is a separate determination and must not be conflated with it"
+  ],
+  "evidence_required": [
+    "the prior period's principle and method for the same class, to establish that a change occurred",
+    "the stated reason for the change, matched against statute, an accounting standard, or more appropriate presentation",
+    "the recomputed amount of each affected item under the new policy, or evidence that it is not ascertainable"
+  ],
+  "confidence_factors": [
+    "weak when the prior-period treatment cannot be observed, since a change cannot be established without it",
+    "weak when the substance of the current events cannot be compared with the substance of previous ones, which decides whether AS 5 paragraph 31(a) applies instead",
+    "AS 5 paragraph 30 defines 'more appropriate presentation' as more relevant or reliable information, which AS 5 does not make measurable"
+  ],
+  "validation_checks": [
+    "the reason recorded for the change is statute, compliance with an accounting standard, or more appropriate presentation — nothing else",
+    "the events or transactions do not differ in substance from previously occurring ones, and did occur previously and were not immaterial",
+    "if the effect is material in the current period, the amount by which each affected item changed is disclosed, or the fact that it is not ascertainable is indicated",
+    "if the effect is immaterial now but reasonably expected to be material later, the fact of the change is disclosed in the period of adoption",
+    "if the change follows adoption of an Accounting Standard, that standard's transitional provisions were applied"
+  ],
+  "examples": [
+    "adopting a different principle because an Accounting Standard now requires it — a change in accounting policy, accounted for under that standard's transitional provisions"
+  ],
+  "counterexamples": [
+    "an employer introducing a formal retirement gratuity scheme in place of ad hoc ex-gratia payments — AS 5 paragraph 31(a) states this is NOT a change in accounting policy, because the events differ in substance"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 28",
+      "quote": "Users need to be able to compare the financial statements of an enterprise over a period of time in order to identify trends in",
+      "extraction_note": "The sentence continues 'itsfinancial position', where the extraction joins 'its' and 'financial'. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 28",
+      "quote": "Therefore, the same accounting policies are normally adopted for similar events or",
+      "extraction_note": "The sentence ends 'transactionsin each period', where the extraction joins 'transactions' and 'in'. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 29",
+      "quote": "of a different accounting policy",
+      "extraction_note": "Paragraph 29 reads 'A change inanaccounting policy shouldbe made only ifthe adoption of a different accounting policy isrequired by statute...'. The extraction joins words at five points, so the paragraph is quoted in three unjoined spans rather than repaired. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 29",
+      "quote": "by statute or for compliance with an accounting standard"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 29",
+      "quote": "result in a more appropriate presentation of the financial statements of the enterprise."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 30",
+      "quote": "A more appropriate presentation of events or transactions in the financial statements occurs when the new accounting policy results in more relevant or reliable information about the financial position, performance or cash flows of the enterprise."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 31",
+      "quote": "The following are not changes in accounting policies"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 31(a)",
+      "quote": "the adoption of an accounting policy for events or transactions that differ in substance from previously occurring events or transactions, e.g., introduction of a formal retirement gratuity scheme by an employer in place of ad hoc ex-gratia payments to employees on retirement; and"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 31(b)",
+      "quote": "of a new accounting policy for events or transactions which did not occur previously or that were immaterial.",
+      "extraction_note": "The clause opens 'theadoption of a new accounting policy', where the extraction joins 'the' and 'adoption'. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 32",
+      "quote": "Any change in an accounting policy which has a material effect should be disclosed. The impact of, and the adjustments resulting from, such change, if material, should be shown in the financial statements of the period in which such change is made, to reflect the effect of such change. Where the effect of such change is not ascertainable, wholly or",
+      "extraction_note": "The sentence continues 'inpart, the fact should be indicated', where the extraction joins 'in' and 'part'. The remainder is quoted separately. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 32",
+      "quote": "the fact should be indicated."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 33",
+      "quote": "A change in accounting policy consequent upon the adoption of an Accounting Standard should be accounted for in accordance with the specific transitional provisions, if any, contained in that Accounting Standard."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 22",
+      "quote": "Any change in an accounting policy which has a material effect should be disclosed. The amount by which any item in the financial statements is affected by such change should also be disclosed to the extent ascertainable. Where such amount is not ascertainable, wholly or in part, the fact should be indicated."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 22",
+      "quote": "If a change is made in the accounting policies which has no material effect on the financial statements for the current period but which is reasonably expected to have a material effect in later periods, the fact of such change should be appropriately disclosed in the period in which the change is adopted."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 26",
+      "quote": "Any change in the accounting policies which has a material effect in the current period or which is reasonably expected to have a material effect in later periods should be disclosed."
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "ACC-PRIORPERIOD-ESTIMATE-003",
+  "status": "VERIFIED",
+  "if": [
+    "a change in an accounting estimate has occurred"
+  ],
+  "then": "its effect is included in determining net profit or loss in the period of the change if the change affects that period only, and in the period of the change AND future periods if it affects both; and it is classified using the SAME classification in the statement of profit and loss as was used previously for the estimate",
+  "source_section": "AS 5 paras 23, 25 and 26",
+  "note": "Forward-only, never backward. Combined with ACC-PRIORPERIOD-ESTIMATE-001, this is the operational difference from a prior period item: an estimate change is recognised now and onward with no restatement, while an error correction is separately disclosed as a prior period item.",
+  "evidence": [
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 23",
+      "quote": "The effect of a change in an accounting estimate should be included in the determination of net profit or loss in:"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 23(a)",
+      "quote": "the period of the change, if the change affects the period only; or"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 23(b)",
+      "quote": "the period of the change and future periods, if the change affects both."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 25",
+      "quote": "an accounting estimate should be classified using the same classification in the statement of profit and loss as was used previously for the estimate.",
+      "extraction_note": "The sentence opens 'The effect of a changein an accounting estimate', joined by the extraction at 'change'+'in'. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 26",
+      "quote": "The effect of a change in an accounting estimate that was previously included as an extraordinary item is reported as an extraordinary item."
+    }
+  ]
+}

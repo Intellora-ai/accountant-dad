@@ -1,0 +1,34 @@
+{
+  "id": "ACC-POLICY-CHANGE-001",
+  "status": "VERIFIED",
+  "if": [
+    "a change is made in an accounting policy",
+    "the change has a material effect in the current period, OR is reasonably expected to have a material effect in later periods"
+  ],
+  "then": "the change MUST be disclosed; where the effect is material in the current period the amount by which each affected item changed is disclosed to the extent ascertainable, and where that amount is not ascertainable wholly or in part, that fact is indicated",
+  "source_section": "AS 1 paras 22 and 26; AS 5 para 32",
+  "note": "AS 1 para 22 adds the timing for the not-yet-material case: where the change has no material effect now but is reasonably expected to have one later, the fact is disclosed in the period the change is ADOPTED, not the period the effect lands. A change with no material effect in either direction attracts no disclosure under this rule.",
+  "evidence": [
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 26",
+      "quote": "Any change in the accounting policies which has a material effect in the current period or which is reasonably expected to have a material effect in later periods should be disclosed."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 22",
+      "quote": "Any change in an accounting policy which has a material effect should be disclosed. The amount by which any item in the financial statements is affected by such change should also be disclosed to the extent ascertainable. Where such amount is not ascertainable, wholly or in part, the fact should be indicated."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 22",
+      "quote": "If a change is made in the accounting policies which has no material effect on the financial statements for the current period but which is reasonably expected to have a material effect in later periods, the fact of such change should be appropriately disclosed in the period in which the change is adopted."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 32",
+      "quote": "Any change in an accounting policy which has a material effect should be disclosed. The impact of, and the adjustments resulting from, such change, if material, should be shown in the financial statements of the period in which such change is made, to reflect the effect of such change. Where the effect of such change is not ascertainable, wholly or",
+      "extraction_note": "The sentence continues 'inpart, the fact should be indicated', joined by the extraction at 'in'+'part'. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "id": "ACC-POLICY-FUNDAMENTAL-ASSUMPTIONS",
+  "name": "Fundamental accounting assumptions — Going Concern, Consistency, Accrual",
+  "status": "VERIFIED",
+  "definition": "Three assumptions underlie the preparation and presentation of financial statements: Going Concern (the enterprise continues in operation for the foreseeable future), Consistency (accounting policies are consistent from one period to another) and Accrual (revenues and costs are recognised as earned or incurred, not as money is received or paid). They are not stated when followed; the departure is what must be disclosed.",
+  "why_it_exists": "These are the silent defaults every other accounting rule is written on top of. Because they are assumed rather than declared, a reader cannot detect a departure from the statements alone — so the standard inverts the disclosure burden: say nothing when they hold, say so when one is broken.",
+  "inputs": [
+    "the enterprise's intention and necessity regarding liquidation or curtailment of operations",
+    "the accounting policies used in the prior period and in this period",
+    "the period in which each revenue was earned and each cost incurred"
+  ],
+  "outputs": [
+    "no disclosure required, when all three assumptions are followed",
+    "a disclosure of the fact, when any one is not followed"
+  ],
+  "preconditions": [
+    "financial statements are being prepared and presented"
+  ],
+  "rules": [
+    "ACC-POLICY-ASSUMPTION-DEPARTURE-001"
+  ],
+  "exceptions": [
+    "UNKNOWN — AS 1 states no exception to the three assumptions; whether another standard overrides one was not extracted"
+  ],
+  "common_mistakes": [
+    "recording a transaction when cash moves rather than when the revenue is earned or the cost incurred, which breaks Accrual",
+    "changing a policy between periods and disclosing nothing, which breaks Consistency silently",
+    "treating the absence of a going-concern note as proof the assumption was tested, when AS 1 requires a note only on departure"
+  ],
+  "dependencies": [],
+  "related_concepts": [
+    "ACC-POLICY-NATURE-AND-SELECTION",
+    "ACC-POLICY-CHANGE",
+    "ACC-POLICY-DISCLOSURE"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted; only ICAI AS-1 and AS-5 were read for this claim, so no statute is cited"
+  ],
+  "icai_references": [
+    "AS 1, paragraphs 9 and 10",
+    "AS 1, paragraph 27"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — AS-1 and AS-5 govern financial-statement policy and period attribution; GST is a separate determination and must not be conflated with it"
+  ],
+  "evidence_required": [
+    "the transaction date and the date performance occurred, to place the item in the correct period under Accrual",
+    "the prior period's policy for the same class of transaction, to test Consistency"
+  ],
+  "confidence_factors": [
+    "weak when a document shows only a payment date and nothing about when the obligation arose",
+    "weak when no prior-period treatment of the same transaction class is available to compare against",
+    "AS 1 gives no threshold for when a going-concern doubt becomes a departure, so that judgement is not machine-decidable from this source"
+  ],
+  "validation_checks": [
+    "the period assigned to an item is the period in which it was earned or incurred, not the period of cash movement",
+    "if the policy applied differs from the prior period's policy, a disclosure of the change exists",
+    "if any of Going Concern, Consistency or Accrual was not followed, the fact is disclosed"
+  ],
+  "examples": [
+    "a cost incurred in March and paid in April is recorded in March — Accrual followed, no disclosure needed"
+  ],
+  "counterexamples": [
+    "an enterprise intending to liquidate still prepares statements on a going-concern basis and says nothing — the assumption is not followed, so the fact must be disclosed"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 9",
+      "quote": "Certain fundamental accounting assumptions underlie the preparation and presentation of financial statements. They are usually not specifically stated because their acceptance and use are assumed. Disclosure is necessary if they are not followed."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 10",
+      "quote": "The following have been generally accepted as fundamental accounting assumptions"
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 10(a) Going Concern",
+      "quote": "The enterprise is normally viewed as a going concern, that is, as continuing in operation for the foreseeable future. It is assumed that the enterprise has neither the intention nor the necessity of liquidation or of curtailing materially the scale of the operations."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 10(b) Consistency",
+      "quote": "It is assumed that accounting policies are consistent from one period to another."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 10(c) Accrual",
+      "quote": "Revenues and costs are accrued, that is, recognised as they are earned or incurred (and not as money is received or paid) and recorded in the financial statements of the periods to which they relate."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 27",
+      "quote": "If the fundamental accounting assumptions, viz. Going Concern, Consistency and Accrual are followed in financial statements, specific disclosure is not required. If a fundamental accounting assumption is not followed, the fact should be disclosed."
+    }
+  ]
+}

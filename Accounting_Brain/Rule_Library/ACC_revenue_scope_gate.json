@@ -1,0 +1,24 @@
+{
+  "id": "ACC-REV-SCOPE-001",
+  "status": "VERIFIED",
+  "if": ["the transaction is revenue arising from construction contracts, OR from hire-purchase or lease agreements, OR from government grants and other similar subsidies, OR is revenue of an insurance company arising from insurance contracts"],
+  "then": "AS 9 DOES NOT DEAL WITH IT. No AS-9 recognition rule may be applied. Answer OUT OF SCOPE and consult the standard that governs it.",
+  "source_section": "AS 9 para 2",
+  "note": "This gate runs BEFORE ACC-REV-GOODS, ACC-REV-SERVICES and ACC-REV-INTEREST-ROYALTY-DIVIDEND, never after. AS 9 para 2 says these are aspects 'to which special considerations apply'. A footnote in the standard directs construction contracts to AS 7; the governing standard for the other three exclusions is NOT stated in AS 9 and has not been verified from any downloaded source in this pass — do not name one from memory.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 2",
+     "quote": "This Statement does not deal with the following aspects of revenue recognition to which special considerations apply"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 2(i)",
+     "quote": "Revenue arising from construction contracts",
+     "extraction_note": "In the extracted text this is immediately followed by ';5', the footnote marker. The quote stops before it. The footnote itself reads 'Refer to AS 7 on ‘Accounting for Construction Contracts’.'"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 footnote 5 to para 2(i)",
+     "quote": "Refer to AS 7 on ‘Accounting for Construction Contracts’."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 2(ii)",
+     "quote": "Revenue arising from hire-purchase, lease agreements"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 2(iii)",
+     "quote": "Revenue arising from government grants and other similar subsidies"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 2(iv)",
+     "quote": "insurance companies arising from insurance contracts",
+     "extraction_note": "The words before read 'Revenueof': the PDF extraction joins 'Revenue of'. The quote resumes after that join."}
+  ]
+}

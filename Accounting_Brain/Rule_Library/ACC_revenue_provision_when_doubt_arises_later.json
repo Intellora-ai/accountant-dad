@@ -1,0 +1,19 @@
+{
+  "id": "ACC-REV-LATER-DOUBT-001",
+  "status": "VERIFIED",
+  "if": ["revenue was already recognised under AS 9",
+         "uncertainty relating to collectability arises SUBSEQUENT to the time of sale or the rendering of the service"],
+  "then": "make a SEPARATE PROVISION to reflect the uncertainty; DO NOT adjust the amount of revenue originally recorded",
+  "source_section": "AS 9 para 9.3",
+  "note": "This is the mirror of ACC-REV-POSTPONE-001 and the two must never be confused. Doubt existing at the time of raising the claim POSTPONES recognition (para 10, para 9.2). Doubt arising after the sale or the rendering of the service LEAVES the revenue alone and creates a provision (para 9.3). The selector is the date the uncertainty arose, not the date it was discovered — where the documents cannot distinguish the two, this is a REQUIRES HUMAN ACCOUNTANT case, not a default to either branch.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 9.3",
+     "quote": "When the uncertainty relating",
+     "extraction_note": "The continuation reads 'tocollectability arises': the PDF extraction joins 'to collectability'. The next quote resumes after that join. The artifact is in the extraction, not in the standard."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 9.3",
+     "quote": "arises subsequent to the time of sale or the rendering of the service,",
+     "extraction_note": "The continuation reads 'itis more appropriate': the PDF extraction joins 'it is'. The next quote resumes after that join."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 9.3",
+     "quote": "more appropriate to make a separate provision to reflect the uncertainty rather than to adjust the amount of revenue originally recorded"}
+  ]
+}

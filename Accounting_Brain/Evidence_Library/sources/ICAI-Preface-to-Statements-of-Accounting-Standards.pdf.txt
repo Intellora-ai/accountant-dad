@@ -1,0 +1,434 @@
+Preface to the Statements of Accounting Standards
+(revised 2004)
+
+Contents                                                                 Paragraph
+
+FORMATION OF THE ACCOUNTING                                                             1
+STANDARDS BOARD
+
+OBJECTIVES AND FUNCTIONS OF THE
+ACCOUNTING STANDARDS BOARD                                                               2
+
+GENERAL PURPOSE  FINANCIAL STATEMENTS                                                              3
+
+SCOPE OF ACCOUNTING STANDARDS                                                           4
+
+PROCEDURE FOR ISSUING AN ACCOUNTING                                                5
+STANDARD
+
+COMPLIANCE WITH THE ACCOUNTING                                                             6
+STANDARDS
+Preface to the Statements of Accounting Standards
+(revised 2004)
+
+The following is the text of the Preface to the Statements of Accounting
+Standards  (revised  2004),  issued  by  the  Council  of  the  Institute  of
+Chartered Accountants of India.
+
+With the issuance of this revised Preface, the Preface to the Statements of
+Accounting Standards, issued in January, 1979, stands superseded.
+
+  1.    Formation of the Accounting Standards Board
+
+1.1     The Institute of Chartered Accountants of India (ICAI), recognising the
+        need to harmonise the diverse accounting policies and practices in use in
+        India, constituted the Accounting Standards Board (ASB) on 21st April,
+        1977.
+
+1.2     The   composition   of   the   ASB   is   fairly   broad-based   and   ensures
+        participation of all interest-groups in the standard-setting process. Apart
+        from the elected members of the Council of the ICAI nominated on the
+        ASB, the following are represented on the ASB:
+
+        (i)   Nominee of the Central Government representing the Department of
+              Company Affairs on the Council of the ICAI
+
+       (ii)   Nominee of the Central Government representing the Office of the
+              Comptroller and Auditor General of India on the Council of the ICAI
+
+      (iii)   Nominee of the Central Government representing the Central Board
+              of Direct Taxes on the Council of the ICAI
+
+      (iv)    Representative of the Institute of Cost and Works Accountants of
+              India
+
+       (v)    Representative of the Institute of Company Secretaries of India
+
+              Representatives   of   Industry   Associations   (1   from   Associated
+              Chambers  of  Commerce  and  Industry  (ASSOCHAM),  1                       from
+              Confederation  of  Indian  Industry  (CII)  and  1  from  Federation  of
+              Indian Chambers of Commerce and Industry (FICCI)
+
+      (vi)    Representative of Reserve Bank of India
+
+      (vii)   Representative of Securities and Exchange Board of India
+                  Preface to the Statements of Accounting Standards
+
+   (viii)      Representative of Controller General of Accounts
+
+    (ix)       Representative of Central Board of Excise and Customs
+
+     (x)       Representatives of Academic Institutions (1 from Universities and 1
+               from Indian Institutes of Management)
+
+    (xi)       Representative of Financial Institutions
+
+    (xii)      Eminent professionals co-opted by the ICAI (they may be in practice
+               or in industry, government, education, etc.)
+
+   (xiii)      Chairman  of  the  Research  Committee  and  the  Chairman  of  the
+               Expert Advisory Committee of the ICAI, if they are not otherwise
+               members of the Accounting Standards Board
+
+   (xiv)       Representative(s) of any other body, as considered appropriate by
+               the ICAI
+
+  2.    Objectives    and    Functions    of    the    Accounting
+        Standards Board1
+
+2.1     The following are the objectives of the Accounting Standards Board:
+
+        (i)    To conceive of and suggest areas in which Accounting Standards
+               need to be developed.
+
+       (ii)    To formulate Accounting Standards through a process that is robust,
+               comprehensive, and inclusive with a view to assisting the Council of
+               the  ICAI  in  evolving  and  establishing  Accounting  Standards  to
+               discharge its role of national standard-setter as follows:
+                 •   To  recommend  Accounting  Standards  (Indian  Accounting
+                     Standards  (Ind  AS)  and  Accounting  Standards  (AS))  to
+                     Government of India for notification under relevant provisions
+                     of  various  statutes,  such  as,  Companies  Act  2013,  Limited
+                     Liability Partnership Act, 2008;
+                •    To issue Accounting Standards for entities other than those
+
+1 The Council at its 364th meeting held on 23-25 March, 2017, amended points 2.1 and
+2.3 of this section of the preface,      thereafter,  point 2.1   was further amended by the
+Council at its 391st meeting held on March 20, 2020 and 410th            meeting held on 23-24
+March, 2022.
+
+
+                  Preface to the Statements of Accounting Standards
+
+                     covered above.
+     (iii)     To review, at regular intervals, the Accounting Standards from the
+               point  of  view  of  changed  conditions,            practical  challenges  and
+               implementation experience of the Accounting Standards, if any, and
+               revise the same appropriately.
+    (iv)       To  provide,  from  time  to  time,  interpretations  and  guidance                to
+               support    implementation    of          Accounting    Standards          including
+               publishing  education  material,  guidance  notes,  technical  guides,
+               implementation guide, e-learning tools etc..
+     (v)       To take adequate steps to enhance knowledge of the members and
+               other   stakeholders   for   proper   implementation   of   Accounting
+               Standards by conducting  workshops,  seminars,  train  the  trainers
+               programs, and certificate course/ diploma course on Ind AS in India
+               and abroad.
+    (vi)       To co-ordinate with various Committees of the ICAI with regard to
+               various issues in Accounting and Accounting Standards.
+    (vii)      To contribute to the development of a single set of high quality
+               globally accepted financial reporting standards for international use
+               by IFRS Foundation.
+   (viii)      To  collaborate  and  develop  mutually  beneficial  partnerships  with
+               other  national  standard-setters  and  various  consultative/advisory
+               forums  of  IFRS  Foundation  such  as  Asian-Oceanian  Standard-
+               Setters   Group(AOSSG),   Emerging   Economies   Group   (EEG),
+               International   Forum   of   Accounting   Standard-setters   (IFASS),
+               Accounting  Standards  Advisory  Forum  (ASAF),  IFRS  Advisory
+               Council,  Financial  Accounting  Standards  Board  of  US  (FASB),
+               European Financial Reporting Advisory Group (EFRAG) etc.
+    (ix)       To  carry  out  such  other  functions  relating  to  Accounting  and
+               Accounting Standards.
+
+2.2     The main function of the ASB is to formulate Accounting Standards so
+        that  such  standards  may  be  established  by  the  ICAI  in  India.  While
+        formulating   the   Accounting   Standards,   the   ASB   will   take   into
+        consideration   the  applicable   laws,   customs,   usages   and   business
+        environment prevailing in India.
+
+2.3     The ICAI, being a full-fledged member of the International Federation of
+        Accountants  (IFAC),  is  expected,  inter  alia,  to  actively  promote  the
+        International Accounting Standards Board’s (IASB) pronouncements in
+                  Preface to the Statements of Accounting Standards
+
+        the country with a view to facilitate global harmonisation of accounting
+        standards. Accordingly, while formulating the Accounting Standards, the
+        ASB  will  give  due  consideration  to  International  Financial  Reporting
+        Standards (IFRSs) issued by the IASB and try to integrate them, to the
+        extent possible, in the light of the conditions and practices prevailing in
+        India.
+
+2.4     The Accounting Standards are issued under the authority of the Council
+        of the ICAI. The ASB has also been entrusted with the responsibility of
+        propagating the Accounting Standards and of persuading the concerned
+        parties to adopt them in the preparation and presentation of financial
+        statements. The ASB will provide interpretations and guidance on issues
+        arising  from  Accounting  Standards.  The  ASB  will  also  review  the
+        Accounting Standards at periodical intervals and, if necessary, revise the
+        same.
+
+  3.    General Purpose Financial Statements
+
+3.1     For discharging its functions, the ASB will keep in view the purposes and
+        limitations of financial statements and the attest function of the auditors.
+        The  ASB  will  enumerate  and  describe  the  basic  concept  to  which
+        accounting  principles  should  be  oriented  and  state  the  accounting
+        principles to which the practices and procedures should conform.
+
+3.2     The ASB will clarify the terms commonly used in financial statements and
+        suggest improvements in the terminology wherever necessary. The ASB
+        will  examine  the  various  current  alternative  practices  in  vogue  and
+        endeavour  to  eliminate  or  reduce  alternatives  within  the  bounds  of
+        rationality.
+
+3.3     Accounting  Standards  are  designed  to  apply  to  the  general  purpose
+        financial statements and other financial reporting, which are subject to the
+        attest function of the members of the ICAI. Accounting Standards apply in
+        respect of any enterprise (whether organised in corporate, co-operative2
+        or other forms) engaged in commercial, industrial or business activities,
+        irrespective of whether it is profit oriented or it is established for charitable
+        or religious purposes. Accounting Standards will not, however, apply to
+        enterprises only carrying on the activities which are not of commercial,
+        industrial or business nature, (e.g., an activity of collecting donations and
+
+2 With this issuance of this revised Preface, General Clarification (GC) - 12/2002, Applicability
+of Accounting Standards to Co-operative Societies, issued by the Accounting Standards
+Board in October 2002, stands superseded.
+                  Preface to the Statements of Accounting Standards
+
+        giving them to flood affected people). Exclusion of an enterprise from the
+        applicability of the Accounting Standards would be permissible only if no
+        part of the activity of such enterprise is commercial, industrial or business
+        in nature. Even if a very small proportion of the activities of an enterprise
+        is  considered  to  be  commercial,  industrial  or  business  in  nature,  the
+        Accounting  Standards  would  apply  to  all  its  activities  including  those
+        which are not commercial, industrial or business in nature3.
+
+3.4     The term ‘General Purpose Financial Statements’ includes balance sheet,
+        statement of profit and loss, a cash flow statement (wherever applicable)
+        and statements and explanatory notes which form part thereof, issued for
+        the use of various stakeholders, Governments and their agencies and the
+        public.  References  to  financial  statements  in  this  Preface  and  in  the
+        standards issued from time to time will be construed to refer to General
+        Purpose Financial Statements.
+
+3.5     Responsibility for the preparation of financial statements and for adequate
+        disclosure is that of the management of the enterprise. The auditor’s
+        responsibility  is  to  form  his  opinion  and  report  on  such  financial
+        statements.
+
+4.      Scope of Accounting Standards
+
+4.1     Efforts  will  be  made  to  issue  Accounting  Standards  which  are  in
+        conformity with the provisions of the applicable laws, customs, usages
+        and business environment in India. However, if a particular Accounting
+        Standard is found to be not in conformity with law, the provisions of the
+        said law will prevail and the financial statements should be prepared in
+        conformity with such law.
+
+4.2     The  Accounting  Standards  by  their  very  nature  cannot  and  do  not
+        override   the   local   regulations   which   govern   the   preparation   and
+        presentation of financial statements in the country. However, the ICAI will
+        determine the extent of disclosure to be made in financial statements and
+        the  auditor’s  report  thereon.  Such  disclosure  may  be  by  way  of
+        appropriate  notes  explaining  the  treatment  of  particular  items.  Such
+        explanatory notes will be only in the nature of clarification and therefore
+        need  not  be  treated  as  adverse  comments  on  the  related  financial
+        statements.
+
+
+3 With this issuance of this revised Preface, Announcement on ‘Applicability of Accounting
+Standards  to  Charitable  and/or  Religious    Organisations’,  approved    by    the  Council
+(published in ‘The Chartered Accountant’, September 1995 (page 79)), stands superseded.
+                  Preface to the Statements of Accounting Standards
+
+4.3     The Accounting Standards are intended to apply only to items which are
+        material.  Any  limitations  with  regard  to  the  applicability  of  a  specific
+        Accounting Standard will be made clear by the ICAI from time to time.
+        The date from which a particular Standard will come into effect, as well as
+        the class of enterprises to which it will apply, will also be specified by the
+        ICAI.  However,  no  standard  will  have  retroactive  application,  unless
+        otherwise stated.
+
+4.4     The Institute will use its best endeavours to persuade the Government,
+        appropriate authorities, industrial and business community to adopt the
+        Accounting Standards in order to achieve uniformity in preparation and
+        presentation of financial statements.
+
+4.5     In formulation of Accounting Standards, the emphasis would be on laying
+        down  accounting  principles and  not  detailed  rules for application  and
+        implementation thereof.
+
+4.6     The Standards formulated by the ASB include paragraphs in bold italic
+        type and plain type, which have equal authority. Paragraphs in bold italic
+        type indicate the main principles. An individual standard should be read in
+        the context of the objective stated in that standard and this Preface.
+
+4.7     The  ASB  may  consider  any  issue  requiring  interpretation  on  any
+        Accounting Standard. Interpretations will be issued under the authority of
+        the  Council.  The  authority  of  Interpretation  is  the  same  as  that  of
+        Accounting Standard to which it relates.
+
+5.      Procedure for Issuing an Accounting Standard
+
+Broadly,   the   following   procedure   is   adopted   for   formulating   Accounting
+Standards:
+
+5.1     The ASB determines the broad areas in which Accounting Standards
+        need to be formulated and the priority in regard to the selection thereof.
+
+5.2     In the preparation of Accounting Standards, the ASB will be assisted by
+        Study Groups constituted to consider specific subjects. In the formation of
+        Study  Groups,  provision  will  be  made  for  wide  participation  by  the
+        members of the Institute and others.
+
+5.3     The draft of the proposed standard will normally include the following:
+
+        (a)    Objective of the Standard,
+
+        (b)    Scope of the Standard,
+                  Preface to the Statements of Accounting Standards
+
+
+
+        (c)    Definitions of the terms used in the Standard,
+
+        (d)    Recognition and measurement principles, wherever applicable,
+
+        (e)    Presentation and disclosure requirements.
+
+5.4     The ASB will consider the preliminary draft prepared by the Study Group
+        and if any revision of the draft is required on the basis of deliberations, the
+        ASB will make the same or refer the same to the Study Group.
+
+5.5     The ASB will circulate the draft of the Accounting Standard to the Council
+        members  of  the  ICAI  and  the  following  specified  bodies  for  their
+        comments*:
+
+        (i)    Department of Company Affairs (DCA)
+
+       (ii)    Comptroller and Auditor General of India (C&AG)
+
+       (iii)   Central Board of Direct Taxes (CBDT)
+
+       (iv)    The Institute of Cost and Works Accountants of India (ICWAI)
+
+       (v)     The Institute of Company Secretaries of India (ICSI)
+
+       (vi)    Associated Chambers of Commerce and Industry (ASSOCHAM),
+               Confederation  of  Indian  Industry  (CII)  and  Federation  of  Indian
+               Chambers of Commerce and Industry (FICCI)
+
+      (vii)    Reserve Bank of India (RBI)
+
+     (viii)    Securities and Exchange Board of India (SEBI)
+
+       (ix)    Standing Conference of Public Enterprises (SCOPE)
+
+       (x)     Indian Banks’ Association (IBA)
+
+       (xi)    Any other body considered relevant by the ASB keeping in view the
+               nature of the Accounting Standard
+
+5.6     The ASB will hold a meeting with the representatives of specified bodies
+        to ascertain their views on the draft of the proposed Accounting Standard.
+        On   the   basis   of   comments   received   and   discussion   with   the
+        representatives of specified bodies, the ASB will finalise the Exposure
+        Draft of the proposed Accounting Standard*.
+
+* The Council of ICAI, at its 291st meeting held on December 16-17, 2009 decided that
+procedures in paragraph 5.5 and 5.6 need not be followed in respect of Accounting Standards
+issued hithertofore.
+                  Preface to the Statements of Accounting Standards
+
+
+5.7     The  Exposure  Draft  of  the  proposed  Standard  will  be  issued  for
+        comments by the members of the Institute and the public. The Exposure
+        Draft will specifically be sent to specified bodies (as listed above), stock
+        exchanges, and other interest groups, as appropriate.
+
+5.8     After taking into consideration the comments received, the draft of the
+        proposed Standard will be finalised by the ASB and submitted to the
+        Council of the ICAI.
+
+5.9     The  Council  of  the  ICAI  will  consider the  final  draft  of  the  proposed
+        Standard, and if found necessary, modify the same in consultation with
+        the ASB. The Accounting Standard on the relevant subject will then be
+        issued by the ICAI.
+
+5.10    For  a  substantive  revision  of  an  Accounting  Standard,  the  procedure
+        followed for formulation of a new Accounting Standard, as detailed above,
+        will be followed.
+
+5.11    Subsequent to issuance of an Accounting Standard, some aspect(s) may
+        require revision which are not substantive in nature. For this purpose, the
+        ICAI  may  make  limited  revision  to  an  Accounting  Standard.  The
+        procedure followed for the limited revision will substantially be the same
+        as that to be followed for formulation of an Accounting Standard, ensuring
+        that sufficient opportunity is given to various interest groups and general
+        public to react to the proposal for limited revision.
+
+
+6.      Compliance with the Accounting Standards
+
+6.1     The Accounting Standards will be mandatory from the respective date(s)
+        mentioned in the Accounting Standard(s). The mandatory status of an
+        Accounting Standard implies that while discharging their attest functions,
+        it will be the duty of the members of the Institute to examine whether the
+        Accounting  Standard  is  complied  with  in  the  presentation  of  financial
+        statements covered by their audit. In the event of any deviation from the
+        Accounting Standard, it will be their duty to make adequate disclosures in
+        their audit reports so that the users of financial statements may be aware
+        of such deviation.
+
+6.2     Ensuring compliance with the Accounting Standards while preparing the
+        financial  statements  is  the  responsibility  of  the  management  of  the
+                  Preface to the Statements of Accounting Standards
+
+        enterprise.   Statutes   governing   certain   enterprises   require   of   the
+        enterprises   that   the   financial   statements   should   be   prepared   in
+        compliance  with  the  Accounting  Standards,  e.g.,  the  Companies  Act,
+        19564    (section  211),  and  the  Insurance  Regulatory  and  Development
+        Authority (Preparation of Financial Statements and Auditor’s Report of
+        Insurance Companies) Regulations, 2000.
+
+6.3     Financial  Statements  cannot  be  described  as  complying  with  the
+        Accounting Standards unless they comply with all the requirements of
+        each applicable Standard.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4 With regard to the reference to Companies Act, 1956, relevant section of Companies Act,
+2013, shall be referred.

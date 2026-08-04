@@ -1,0 +1,171 @@
+{
+  "id": "ACC-REV-INTEREST-ROYALTY-DIVIDEND",
+  "name": "Revenue recognition — use by others of enterprise resources yielding interest, royalties and dividends",
+  "status": "VERIFIED",
+  "definition": "Revenue from letting others use the enterprise's resources is recognised only when no significant uncertainty as to measurability or collectability exists, and then on a basis fixed per kind: interest on a time proportion basis using the amount outstanding and the rate applicable; royalties on an accrual basis in accordance with the terms of the relevant agreement; dividends when the owner's right to receive payment is established.",
+  "why_it_exists": "These three are not earned by delivering anything, so neither a delivery date nor a measure of performance is available. AS-9 replaces the missing trigger with a different one for each: elapsed time for interest, contract terms for royalties, and the establishment of a legal right for dividends. Collapsing them into one rule would recognise dividends before they are declared.",
+  "inputs": [
+    "which kind of yield it is: interest, royalty or dividend",
+    "for interest: amount outstanding, rate applicable, period elapsed",
+    "for royalties: the terms of the relevant agreement, and the substance of the transactions",
+    "for dividends: evidence that the right to receive payment is established",
+    "whether the payer is in a foreign country requiring exchange permission"
+  ],
+  "outputs": [
+    "revenue recognised for the period on the basis fixed for that kind",
+    "or recognition postponed"
+  ],
+  "preconditions": [
+    "the revenue arises from the use by others of enterprise resources, not from a sale of goods or a rendering of services",
+    "no significant uncertainty as to measurability or collectability exists"
+  ],
+  "rules": [
+    "ACC-REV-INTEREST-001",
+    "ACC-REV-ROYALTY-001",
+    "ACC-REV-DIVIDEND-001",
+    "ACC-REV-FOREIGN-REMITTANCE-001"
+  ],
+  "exceptions": [
+    "royalties may be recognised on some other systematic and rational basis where, having regard to the substance of the transactions, that is more appropriate than the agreement terms",
+    "where interest, royalties or dividends from foreign countries require exchange permission and uncertainty in remittance is anticipated, recognition may need to be postponed"
+  ],
+  "common_mistakes": [
+    "accruing dividend income for a period before the right to receive payment is established",
+    "recognising interest on receipt rather than on a time proportion basis",
+    "applying the royalty agreement's stated schedule mechanically where the substance of the transactions points to a different systematic and rational basis",
+    "recognising foreign interest, royalties or dividends in full while remittance permission is uncertain",
+    "treating the discount or premium on debt securities as a gain on maturity rather than as accruing over the period to maturity"
+  ],
+  "dependencies": [
+    "ACC-ACCRUAL-BASIS"
+  ],
+  "related_concepts": [
+    "ACC-REV-GOODS",
+    "ACC-REV-SERVICES",
+    "ACC-REV-SCOPE-EXCLUSIONS",
+    "ACC-REV-UNCERTAINTY-AFTER-RECOGNITION"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted from any downloaded source in this pass"
+  ],
+  "icai_references": [
+    "AS 9, paragraphs 8.1, 8.2, 8.3, 8.4, 8.5 and 13"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — GST treatment of interest, royalties and dividends is a separate determination and must not be conflated with accounting revenue recognition"
+  ],
+  "evidence_required": [
+    "for interest: the loan or security document showing the amount outstanding and the rate applicable",
+    "for royalties: the relevant agreement",
+    "for dividends: the document establishing the right to receive payment",
+    "for foreign sources: evidence of exchange permission or of anticipated uncertainty in remittance"
+  ],
+  "confidence_factors": [
+    "weak when the rate applicable or the amount outstanding is absent from the document",
+    "weak when the royalty agreement is not available and only a remittance advice is",
+    "weak when a dividend is evidenced only by a credit in a bank statement, which does not by itself show when the right was established",
+    "weak when the source is foreign and the document is silent on remittance"
+  ],
+  "validation_checks": [
+    "no significant uncertainty as to measurability or collectability exists, or recognition is postponed",
+    "interest recognised equals amount outstanding × rate applicable × the time proportion elapsed",
+    "no dividend is recognised earlier than the establishment of the right to receive payment",
+    "the royalty basis used is the agreement's, or a stated systematic and rational alternative justified by the substance of the transactions"
+  ],
+  "examples": [
+    "a loan of a stated principal at a stated rate, three months elapsed — recognise three months of interest on a time proportion basis",
+    "a licence agreement fixing royalty per unit sold, licensee's sales statement received — accrue in accordance with the agreement's terms"
+  ],
+  "counterexamples": [
+    "an expected dividend on a shareholding where no right to receive payment has yet been established — not recognised",
+    "an appreciation in the value of a shareholding — an unrealised holding gain, outside the definition of revenue (AS 9 para 3), not a dividend"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.1",
+      "quote": "The use by others of such enterprise resources gives rise to:"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.1(i)",
+      "quote": "interest—charges for the use of cash resources or amounts due to the enterprise"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.1(ii)",
+      "quote": "royalties—charges for the use of such assets as know-how, patents, trade marks and copyrights"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.1(iii)",
+      "quote": "dividends—rewards from the holding of investments in shares"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.2",
+      "quote": "Interest accrues, in most circumstances, on the time basis determined",
+      "extraction_note": "The continuation reads 'bythe amount outstanding and the rateapplicable': the PDF extraction joins 'by the' and 'rate applicable'. The measurement basis is quoted in full from the bold paragraph 13(i) below, which carries equal authority."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.2",
+      "quote": "on debt securities held is treated as though it were accruing over the period",
+      "extraction_note": "The words before read 'Usually, discountorpremium' and the words after read 'tomaturity': the PDF extraction joins 'discount or premium' and 'to maturity'. Quoted around both joins."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.3",
+      "quote": "Royalties accrue in accordance",
+      "extraction_note": "The continuation reads 'withthe terms': the PDF extraction joins 'with the'. The next quote resumes after that join."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.3",
+      "quote": "terms of the relevant agreement and are usually recognised on",
+      "extraction_note": "The continuation reads 'thatbasis unless': the PDF extraction joins 'that basis'. The next quote resumes after that join."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.3",
+      "quote": "unless, having regard to the substance of the transactions, it is more appropriate to recognise revenue on some other systematic and rational basis"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.4",
+      "quote": "Dividends from investments in shares",
+      "extraction_note": "The continuation reads 'arenotrecognised': the PDF extraction joins 'are not recognised'. The next quote resumes after that join."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.4",
+      "quote": "in the statement of profit and loss until a right to receive payment is established"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 8.5",
+      "quote": "When interest, royalties and dividends from foreign countries require exchange permission and uncertainty in remittance is anticipated, revenue recognition may need to be postponed"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 13",
+      "quote": "Revenue arising from the use by others of enterprise resources yielding interest, royalties and dividends should only be recognised when no significant uncertainty as to measurability or collectability exists."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 13(i), Interest",
+      "quote": "on a time proportion basis taking into account the amount outstanding and the rate applicable"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 13(ii), Royalties",
+      "quote": "on an accrual basis in accordance with the terms of the relevant agreement"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 13(iii), Dividends from investments in shares",
+      "quote": "when the owner’s right to receive payment",
+      "extraction_note": "Paragraph 13 is laid out as a two-column table, so the extracted text interleaves the row label with the text: it reads 'when the owner’s right to receive payment investments in is established. shares'. The words 'is established' therefore cannot be quoted contiguously with the rest of the sentence. Paragraph 8.4, quoted above, states the same condition in running text."
+    }
+  ]
+}

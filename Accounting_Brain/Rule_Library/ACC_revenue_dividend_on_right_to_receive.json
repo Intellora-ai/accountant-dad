@@ -1,0 +1,22 @@
+{
+  "id": "ACC-REV-DIVIDEND-001",
+  "status": "VERIFIED",
+  "if": ["the revenue is a dividend, being a reward from the holding of investments in shares"],
+  "then": "the dividend is NOT recognised in the statement of profit and loss UNTIL A RIGHT TO RECEIVE PAYMENT IS ESTABLISHED",
+  "source_section": "AS 9 paras 8.1(iii), 8.4 and 13(iii)",
+  "note": "This is a prohibition with a single release condition, which is why it is stated negatively — AS 9 para 8.4 says the dividend is not recognised UNTIL the right is established. Time elapsed, profitability of the investee, and expectation of a declaration are all irrelevant. Para 13 additionally requires that no significant uncertainty as to measurability or collectability exists.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.4",
+     "quote": "Dividends from investments in shares",
+     "extraction_note": "The continuation reads 'arenotrecognised in the statement': the PDF extraction joins 'are not recognised'. The next quote resumes after that join. The artifact is in the extraction, not in the standard."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.4",
+     "quote": "in the statement of profit and loss until a right to receive payment is established"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.1(iii)",
+     "quote": "dividends—rewards from the holding of investments in shares"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 13(iii)",
+     "quote": "when the owner’s right to receive payment",
+     "extraction_note": "Paragraph 13 is a two-column table, so the extraction interleaves the row label with the text: 'when the owner’s right to receive payment investments in is established. shares'. The words 'is established' cannot be quoted contiguously with the rest. Para 8.4 above states the same condition in running text."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 13",
+     "quote": "Revenue arising from the use by others of enterprise resources yielding interest, royalties and dividends should only be recognised when no significant uncertainty as to measurability or collectability exists."}
+  ]
+}

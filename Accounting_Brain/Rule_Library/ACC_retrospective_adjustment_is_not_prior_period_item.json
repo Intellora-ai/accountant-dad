@@ -1,0 +1,25 @@
+{
+  "id": "ACC-PRIORPERIOD-ITEM-002",
+  "status": "VERIFIED",
+  "if": [
+    "an adjustment arises in the current period",
+    "it is necessitated by circumstances which, though related to prior periods, are DETERMINED in the current period",
+    "no error or omission in preparing the prior periods' financial statements is involved"
+  ],
+  "then": "it is NOT a prior period item",
+  "source_section": "AS 5 para 16",
+  "note": "AS 5 gives the worked case: arrears payable to workers as a result of a retrospective wage revision during the current period. The prior statements were right when made; the obligation was created later. This is the rule that stops a bookkeeping system from labelling every backdated payment a prior period item.",
+  "evidence": [
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 16",
+      "quote": "The term does not include other adjustments necessitated by circumstances, which though related to prior periods, are determined in the current period, e.g., arrears payable to workers as a result of revision of wages with retrospective effect during the current period."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 16",
+      "quote": "as defined in this Statement, refers only to income or expenses which arise in the current period as a result of errors or omissions in the preparation of the financial statements of one or more prior periods.",
+      "extraction_note": "The sentence opens with the term in typographic single quotation marks; the quote begins after them so the comparison does not turn on a character the extractor may render differently."
+    }
+  ]
+}

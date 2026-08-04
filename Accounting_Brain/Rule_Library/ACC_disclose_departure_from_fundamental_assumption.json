@@ -1,0 +1,23 @@
+{
+  "id": "ACC-POLICY-ASSUMPTION-DEPARTURE-001",
+  "status": "VERIFIED",
+  "if": [
+    "financial statements are being prepared and presented",
+    "one of the fundamental accounting assumptions — Going Concern, Consistency or Accrual — is NOT followed"
+  ],
+  "then": "the FACT that it is not followed MUST be disclosed",
+  "source_section": "AS 1 paras 9 and 27",
+  "note": "The obligation is inverted from the usual direction: following the assumptions requires no disclosure at all, so silence asserts that all three hold. AS 1 does not require the amount of the departure to be disclosed under this paragraph — only the fact.",
+  "evidence": [
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 27",
+      "quote": "If the fundamental accounting assumptions, viz. Going Concern, Consistency and Accrual are followed in financial statements, specific disclosure is not required. If a fundamental accounting assumption is not followed, the fact should be disclosed."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 9",
+      "quote": "They are usually not specifically stated because their acceptance and use are assumed. Disclosure is necessary if they are not followed."
+    }
+  ]
+}

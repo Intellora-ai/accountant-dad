@@ -1,0 +1,21 @@
+{
+  "id": "ACC-REV-SERVICES-001",
+  "status": "VERIFIED",
+  "if": ["the transaction is the rendering of services",
+         "performance consists of the execution of more than one act",
+         "no significant uncertainty exists regarding the amount of the consideration"],
+  "then": "revenue is recognised PROPORTIONATELY by reference to the performance of each act, determined on the basis of contract value, associated costs, number of acts or other suitable basis",
+  "source_section": "AS 9 paras 7.1(i) and 12",
+  "note": "Straight line spreading is a practical sub-case, not the default: AS 9 permits it when the services are provided by an indeterminate number of acts over a specific period, and only unless there is evidence that some other method better represents the pattern of performance. Where the acts are determinate and countable, spread by the acts.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 7.1(i)",
+     "quote": "Performance consists of the execution of more than one act. Revenue is recognised proportionately by reference to the performance of each act."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 7.1(i)",
+     "quote": "The revenue recognised under this method would be determined on the basis of contract value, associated costs, number of acts or other suitable basis."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 7.1(i)",
+     "quote": "revenue is recognised on a straight line basis over the specific period unless there is evidence that some other method better represents the pattern of performance",
+     "extraction_note": "The words before read 'For practical purposes, when services are provided byan indeterminatenumber of acts over aspecificperiod of time,': the PDF extraction joins 'by an', 'indeterminate number' and 'a specific period'. The quote resumes after them. The artifact is in the extraction, not in the standard."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 12",
+     "quote": "Such performance should be regarded as being achieved when no significant uncertainty exists regarding the amount of the consideration that will be derived from rendering the service."}
+  ]
+}

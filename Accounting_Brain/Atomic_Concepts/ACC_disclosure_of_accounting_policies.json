@@ -1,0 +1,101 @@
+{
+  "id": "ACC-POLICY-DISCLOSURE",
+  "name": "Disclosure of accounting policies",
+  "status": "VERIFIED",
+  "definition": "All significant accounting policies adopted in preparing and presenting financial statements must be disclosed; the disclosure forms part of the financial statements and should normally be given in one place. Disclosure does not cure a wrong treatment.",
+  "why_it_exists": "The view a set of statements presents can be significantly affected by which policies were chosen, and the choices vary between enterprises. Without disclosure a reader cannot tell whether a difference between two enterprises is a difference in business or a difference in method.",
+  "inputs": [
+    "the set of accounting policies adopted for the period",
+    "which of them are significant"
+  ],
+  "outputs": [
+    "a disclosure of all significant accounting policies, forming part of the financial statements, normally in one place"
+  ],
+  "preconditions": [
+    "financial statements are being prepared and presented"
+  ],
+  "rules": [],
+  "exceptions": [
+    "UNKNOWN — AS 1 states no exemption from disclosure of a significant policy"
+  ],
+  "common_mistakes": [
+    "scattering policy notes across several statements, schedules and notes instead of collecting them in one place",
+    "presenting the policy statement as supplementary information rather than as part of the financial statements",
+    "assuming a disclosed policy legitimises a treatment — AS 1 paragraph 23 says disclosure cannot remedy a wrong or inappropriate treatment"
+  ],
+  "dependencies": [
+    "ACC-POLICY-NATURE-AND-SELECTION"
+  ],
+  "related_concepts": [
+    "ACC-POLICY-CHANGE",
+    "ACC-POLICY-FUNDAMENTAL-ASSUMPTIONS"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted; only ICAI AS-1 and AS-5 were read for this claim, so no statute is cited"
+  ],
+  "icai_references": [
+    "AS 1, paragraphs 18, 19 and 20",
+    "AS 1, paragraph 23",
+    "AS 1, paragraphs 24 and 25"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — AS-1 and AS-5 govern financial-statement policy and period attribution; GST is a separate determination and must not be conflated with it"
+  ],
+  "evidence_required": [
+    "the policy statement as presented in the financial statements",
+    "the location of that statement, to test whether it forms part of the statements"
+  ],
+  "confidence_factors": [
+    "AS 1 does not define 'significant', so whether a given policy must be disclosed is not decidable from this source alone",
+    "weak when only extracted note text is available and its placement within the statements is unknown"
+  ],
+  "validation_checks": [
+    "every significant accounting policy adopted for the period appears in the disclosure",
+    "the disclosure forms part of the financial statements",
+    "the significant policies are collected in one place rather than scattered",
+    "no incorrect treatment is being justified by the presence of a disclosure"
+  ],
+  "examples": [
+    "the areas listed in AS 1 paragraph 14 — depreciation method, inventory valuation, goodwill, retirement benefits and others — are ones for which disclosure of the policy adopted will be required"
+  ],
+  "counterexamples": [
+    "a wrongly valued inventory accompanied by a clear note describing the valuation policy — still wrong; the note does not remedy it"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 1",
+      "quote": "This Standard deals with the disclosure of significant accounting policies followed in preparing and presenting financial statements."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 18",
+      "quote": "To ensure proper understanding of financial statements, it is necessary that all significant accounting policies adopted in the preparation and presentation of financial statements should be disclosed."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 19",
+      "quote": "Such disclosure should form part of the financial statements."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 20",
+      "quote": "It would be helpful to the reader of financial statements if they are all disclosed as such in one place instead of being scattered over several statements, schedules and notes."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 23",
+      "quote": "Disclosure of accounting policies or of changes therein cannot remedy a wrong or inappropriate treatment of the item in the accounts."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 24",
+      "quote": "All significant accounting policies adopted in the preparation and presentation of financial statements should be disclosed."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 25",
+      "quote": "The disclosure of the significant accounting policies as such should form part of the financial statements and the significant accounting policies should normally be disclosed in one place."
+    }
+  ]
+}

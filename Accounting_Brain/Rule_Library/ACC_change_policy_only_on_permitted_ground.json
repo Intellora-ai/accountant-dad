@@ -1,0 +1,34 @@
+{
+  "id": "ACC-POLICY-CHANGE-002",
+  "status": "VERIFIED",
+  "if": [
+    "a change in an accounting policy is proposed",
+    "the change is NOT required by statute, NOT required for compliance with an accounting standard, and NOT considered to result in a more appropriate presentation of the financial statements"
+  ],
+  "then": "the change MUST NOT be made",
+  "source_section": "AS 5 paras 29 and 30",
+  "note": "AS 5 para 30 supplies the only definition of 'more appropriate presentation' available here: the new policy results in more relevant or reliable information about financial position, performance or cash flows. That is not measurable from this source, so this rule can REJECT a change with no stated reason but cannot by itself CONFIRM one claiming the third ground.",
+  "evidence": [
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 29",
+      "quote": "of a different accounting policy",
+      "extraction_note": "Paragraph 29 reads 'A change inanaccounting policy shouldbe made only ifthe adoption of a different accounting policy isrequired by statute or for compliance with an accounting standard or if itis considered that the change would result in a more appropriate presentation...'. The extraction joins words at five points, so the paragraph is quoted in three unjoined spans. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 29",
+      "quote": "by statute or for compliance with an accounting standard"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 29",
+      "quote": "result in a more appropriate presentation of the financial statements of the enterprise."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 30",
+      "quote": "A more appropriate presentation of events or transactions in the financial statements occurs when the new accounting policy results in more relevant or reliable information about the financial position, performance or cash flows of the enterprise."
+    }
+  ]
+}
