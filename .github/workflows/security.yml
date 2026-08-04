@@ -37,16 +37,45 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - name: not implemented
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        # ISOLATED ON PURPOSE. semgrep is a tool that INSPECTS this project, not
+        # a dependency OF it. Installing it into requirements-ci.txt dragged its
+        # own transitive packages (mcp, click) into the audited toolchain, and
+        # `dependency scan` correctly flagged 4 advisories inside the inspector.
+        # A scanner's internals are not this project's supply chain. Its own venv
+        # keeps them out, while `dependency scan` still audits everything that
+        # genuinely is a dependency. Nothing is ignored or suppressed.
         run: |
-          echo "NOT IMPLEMENTED - semgrep"
-          echo "BLOCKER: a determinism problem with no approved answer."
-          echo "--config=p/python pulls rules live from the registry, so the"
-          echo "same commit can score differently on two runs. The fix is to"
-          echo "vendor a rule set into the repository - but authoring rules"
-          echo "means inventing checks nobody specified. Needs a decision:"
-          echo "vendor a named upstream rule set, or pin a registry version."
-          exit 1
+          set -euo pipefail
+          python3 -m venv /tmp/semgrep-venv
+          /tmp/semgrep-venv/bin/pip install --disable-pip-version-check --quiet semgrep==1.145.0
+          /tmp/semgrep-venv/bin/semgrep --version
+      - name: fetch the rule set at a PINNED commit
+        # --config=p/python pulls live from the registry, so the same commit can
+        # score differently on two runs. Pinning the official rule set to an
+        # exact SHA makes this gate reproducible. No rule is authored here.
+        env:
+          RULES_SHA: 40b8c63f75dc7c22c8a77482d73bfb864b146f7e
+        run: |
+          set -euo pipefail
+          git clone --quiet --filter=blob:none --no-checkout \
+            https://github.com/semgrep/semgrep-rules.git /tmp/semgrep-rules
+          git -C /tmp/semgrep-rules checkout --quiet "$RULES_SHA"
+          echo "semgrep-rules pinned at $(git -C /tmp/semgrep-rules rev-parse HEAD)"
+      - name: semgrep, zero ERROR findings
+        run: |
+          set -euo pipefail
+          /tmp/semgrep-venv/bin/semgrep scan \
+            --config /tmp/semgrep-rules/python \
+            --severity ERROR \
+            --error \
+            --metrics off \
+            --disable-version-check \
+            --quiet \
+            src tools tests
 
   secret-scan:
     name: secret scan
