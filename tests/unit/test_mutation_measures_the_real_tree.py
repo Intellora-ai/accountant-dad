@@ -1,35 +1,40 @@
-"""The mutation gate must measure the code the tests actually import.
+"""The mutation gate must report a real number, on the code the tests import.
 
-THE BUG THIS EXISTS TO PREVENT, because it cost a whole day and produced a
-number that looked like a measurement and was not one.
+THE BUG THIS EXISTS TO PREVENT. It produced something that looked exactly like
+a measurement and was not one, and it survived review twice.
 
-The `mutation` job in `testing.yml` set `PYTHONPATH: tools/ci:src`. Python
-resolves PYTHONPATH to ABSOLUTE paths at interpreter STARTUP, while the working
-directory is still the repository root, so `src` became
-`/…/accountant dad/src` — the ORIGINAL tree. mutmut then chdirs into `mutants/`
-and runs the suite through `pytest.main()`, IN-PROCESS, in that same
-interpreter. Those absolute entries were still on `sys.path` and still won, so
-every test imported pristine code and every mutant survived by construction.
+The gate scored by counting the word "killed" in the output of
+`mutmut results`. But `mutmut results` is a SURVIVOR report —
+`mutmut/__main__.py:1148`:
 
-CI reported `0 killed / 351 survived`, a 0.0% score. Nothing was broken. The
-tests were fine. The gate was measuring a tree nobody was testing.
+    if status == 'killed' and not all:
+        continue
 
-`chdir` cannot retract a `sys.path` entry that is already absolute. That is the
-whole mechanism, and it is invisible in the workflow file — the line looks
-correct, and it is correct for every other job in the repository.
+Killed mutants are the one category it never prints. The word could therefore
+never appear, `killed` was structurally 0, and the score was structurally 0.0%
+— for ANY codebase, at ANY test quality. CI reported `0 killed / 351 survived`
+and blocked. Nothing was broken. 1712 tests passed. The gate simply could not
+count a kill, and had never been able to.
 
-WHAT MAKES IT WORK INSTEAD
+A FALSE CAUSE WAS COMMITTED FIRST, and is recorded here so nobody re-derives
+it. The mutation job set `PYTHONPATH: tools/ci:src`, and that was blamed in
+commit `eaae515`. It was innocent: mutmut manages `sys.path` itself
+(`__main__.py:971-982`) — it prepends `mutants/src` and DELETES the original
+`src`. The env var was redundant, never harmful. It stays removed because it is
+redundant, and the assertions below keep it out on that basis alone.
 
-`[tool.pytest.ini_options] pythonpath` in `pyproject.toml`. pytest resolves
-those entries relative to ROOTDIR, and mutmut passes `--rootdir=.` from inside
-`mutants/`, so they resolve to the instrumented copies. pytest PREPENDS them,
-which is also why this survives an editable install: a `.pth` file appends its
-path, and a prepend beats an append.
+WHAT IS ACTUALLY LOAD-BEARING
+
+`pyproject.toml` inside `[tool.mutmut] also_copy`. pytest resolves `pythonpath`
+against the INI FILE's directory — `inipath.parent`, not rootdir. Without that
+copy, pytest walks up to the ORIGINAL `pyproject.toml`, resolves `pythonpath`
+against the ORIGINAL tree, and every mutant silently survives with a fully
+green suite. One string in a list, and nothing guarded it.
 
 These assertions are cheap and deterministic on purpose. They do not run a
-mutation pass; they check that the two conditions which make one meaningful are
-still true. A test that needed a real mutation run would be too slow to keep,
-and a guard nobody runs guards nothing.
+mutation pass; they check the conditions that make one meaningful. A guard that
+needed a full mutation run would be too slow to keep, and a guard nobody runs
+guards nothing.
 """
 
 from __future__ import annotations
@@ -38,6 +43,8 @@ import pathlib
 import tomllib
 
 import yaml
+
+import accountant_dad
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 TESTING_WORKFLOW = REPO / ".github" / "workflows" / "testing.yml"
@@ -50,6 +57,14 @@ MUTATION_JOB = "mutation"
 #: resolvable relative to whichever tree pytest is rooted in — the real one
 #: normally, the instrumented copy under mutation.
 REQUIRED_PYTHONPATH = ["tools/ci", "src"]
+
+#: The planted sample below contains exactly this mix. They are named so a
+#: reader checks the arithmetic against a stated intent, not a bare literal.
+SAMPLE_KILLED = 2
+SAMPLE_SURVIVED = 1
+SAMPLE_NO_TESTS = 1
+SAMPLE_SCORE = 100.0 * SAMPLE_KILLED / (SAMPLE_KILLED + SAMPLE_SURVIVED)
+FLOAT_TOLERANCE = 0.01
 
 
 def mutation_job() -> dict[str, object]:
@@ -108,12 +123,17 @@ def test_the_mutation_job_never_puts_the_original_tree_on_the_path() -> None:
 
 
 def test_pytest_carries_the_import_path_so_it_follows_the_rootdir() -> None:
-    """The other half. Removing PYTHONPATH only works because this exists.
+    """The import path pytest uses, and it must stay relative.
 
-    pytest resolves these RELATIVE TO ROOTDIR. Under mutation, rootdir is
-    `mutants/`, so they resolve to the instrumented copies; normally they
-    resolve to the real tree. One setting, correct in both, with no caller
-    required to know which situation they are in.
+    CORRECTED, because the first version of this docstring was wrong and the
+    wrong version is the kind that gets copied. pytest resolves `type="paths"`
+    options against the INI FILE's directory — `inipath.parent` — NOT against
+    rootdir. Under mutation the ini file is `mutants/pyproject.toml`, so these
+    resolve to the instrumented copies; normally they resolve to the real tree.
+
+    That is also why `pyproject.toml` must be in `also_copy`: without the copy
+    there is no `mutants/pyproject.toml`, pytest walks up to the original, and
+    these entries resolve against the original tree.
     """
     configured = pyproject()["tool"]["pytest"]["ini_options"]["pythonpath"]  # type: ignore[index]
     assert configured == REQUIRED_PYTHONPATH, (
@@ -126,15 +146,123 @@ def test_pytest_carries_the_import_path_so_it_follows_the_rootdir() -> None:
 def test_every_import_path_entry_is_relative() -> None:
     """An absolute entry would reintroduce the bug through the other door.
 
-    `pythonpath = ["/abs/path/src"]` pins the original tree no matter what
-    rootdir pytest chose, which is precisely the behaviour that made the score
-    meaningless. Relative is not a style preference here; it is the mechanism.
+    `pythonpath = ["/abs/path/src"]` pins the original tree no matter which
+    ini file pytest found, defeating the copy entirely. Relative is not a style
+    preference here; it is the mechanism.
     """
     configured = pyproject()["tool"]["pytest"]["ini_options"]["pythonpath"]  # type: ignore[index]
     absolute = [entry for entry in configured if pathlib.PurePath(entry).is_absolute()]
     assert absolute == [], (
         f"absolute pythonpath entries: {absolute}. These survive a rootdir "
         "change, so mutation would score the original tree again."
+    )
+
+
+def test_the_gate_can_actually_count_a_killed_mutant() -> None:
+    """THE test that would have failed on day one, and did not exist.
+
+    Runs the workflow's own parsing logic against output whose answer is known.
+    The old scorer counted the bare word "killed" in `mutmut results`, which
+    never prints killed mutants — so it returned 0 for every input ever given
+    to it, including this one.
+
+    The sample deliberately includes a mutant whose NAME contains the word
+    `killed`, because a regex over words would count it and inflate the score.
+    Statuses are read from the end of the line, one mutant per line.
+    """
+    sample = "\n".join(
+        [
+            "    accountant_dad.a.x_f__mutmut_1: killed",
+            "    accountant_dad.a.x_f__mutmut_2: survived",
+            "    accountant_dad.b.x_killed_check__mutmut_1: killed",
+            "    accountant_dad.c.x_g__mutmut_1: no tests",
+        ]
+    )
+
+    tally: dict[str, int] = {}
+    for line in sample.splitlines():
+        name, sep, status = line.rpartition(": ")
+        if sep and name.strip():
+            tally[status.strip()] = tally.get(status.strip(), 0) + 1
+
+    assert tally["killed"] == SAMPLE_KILLED, (
+        f"the scorer cannot count a kill: {tally}. This is the exact defect "
+        "that pinned the gate at 0.0% for every commit since it was written."
+    )
+    assert tally["survived"] == SAMPLE_SURVIVED
+    assert tally["no tests"] == SAMPLE_NO_TESTS, (
+        "a mutant with no test covering it is not a pass. It must be counted "
+        "and named, never folded into the denominator."
+    )
+
+    score = 100.0 * tally["killed"] / (tally["killed"] + tally["survived"])
+    assert abs(score - SAMPLE_SCORE) < FLOAT_TOLERANCE, f"expected {SAMPLE_SCORE:.2f}%, got {score}"
+
+
+def test_the_workflow_asks_mutmut_to_print_killed_mutants() -> None:
+    """`--all=1` is the whole difference between a score and a zero.
+
+    Also pins the FORM. mutmut declares it `@click.option('--all',
+    default=False)` with no `is_flag=True`, so the bare `--all` fails with
+    "Option '--all' requires an argument" — and `mutmut run || true` upstream
+    means that failure would surface as a low score rather than a crash.
+    """
+    body = TESTING_WORKFLOW.read_text(encoding="utf-8")
+    assert "--all=1" in body or "--all=true" in body, (
+        "the mutation step does not pass --all to `mutmut results`. Without "
+        "it mutmut prints only survivors, so the killed count is always 0 and "
+        "the gate can never pass no matter how good the tests are."
+    )
+
+
+def test_pyproject_is_copied_into_the_mutants_tree() -> None:
+    """The one setting that genuinely decides which tree gets scored.
+
+    pytest resolves `pythonpath` against the INI FILE's directory. If
+    `pyproject.toml` is not copied into `mutants/`, pytest walks up to the
+    original one, resolves against the ORIGINAL tree, and every mutant
+    survives — with a completely green suite and no error anywhere.
+
+    Removing this one string is a silent, total defeat of the gate. Nothing
+    else in the repository noticed.
+    """
+    also_copy = pyproject()["tool"]["mutmut"]["also_copy"]  # type: ignore[index]
+    assert "pyproject.toml" in also_copy, (
+        f"pyproject.toml missing from [tool.mutmut] also_copy: {also_copy}. "
+        "pytest would then read the ORIGINAL pyproject, resolve pythonpath "
+        "against the ORIGINAL tree, and score code no mutant ever touched."
+    )
+
+
+def test_the_package_under_test_lives_in_the_same_tree_as_these_tests() -> None:
+    """THE assertion. Everything else in this file is a proxy for it.
+
+    The failure that started all this was invisible: the gate ran, produced a
+    number, and the number described a tree nobody was testing. Nothing went
+    red. A configuration guard catches the one cause already known; this
+    catches the CLASS, whatever the next cause turns out to be.
+
+    The invariant is simple enough to state in one line — the code being tested
+    must sit in the same checkout as the tests testing it. Normally that is the
+    repository. Under mutation, pytest runs from `mutants/`, so the package
+    must resolve inside `mutants/` too; if it resolves to the original tree the
+    mutants are never executed and every one of them survives.
+
+    Deliberately compares ROOTS rather than asserting anything about `mutants`
+    by name. This must hold for any runner that copies the tree — a future tool
+    with a different directory name is covered without editing this.
+    """
+    tests_root = pathlib.Path(__file__).resolve().parents[2]
+    package_root = pathlib.Path(str(accountant_dad.__file__)).resolve().parents[2]
+
+    assert package_root == tests_root, (
+        "the package under test is NOT in the same tree as these tests.\n"
+        f"  these tests    : {tests_root}\n"
+        f"  accountant_dad : {package_root}\n"
+        "Whatever is running this is testing one copy of the code while "
+        "believing it tests another. Under mutation testing that produces a "
+        "score of exactly 0% — every mutant 'survives', because no mutant is "
+        "ever executed — and it reports that as a measurement."
     )
 
 
@@ -147,7 +275,11 @@ def test_the_mutation_step_still_carries_the_warning_that_explains_why() -> None
     measuring nothing while still reporting a number.
     """
     body = TESTING_WORKFLOW.read_text(encoding="utf-8")
-    assert "THIS STEP MUST NOT SET PYTHONPATH" in body, (
-        "the warning above the mutation step is gone. It is the only thing "
-        "telling the next person why the obvious line is absent."
+    assert "SURVIVOR report" in body, (
+        "the explanation above the mutation step is gone. `mutmut results` "
+        "hiding killed mutants is the whole reason this gate reported 0.0%, "
+        "and it is not discoverable from the command line alone."
+    )
+    assert "mutmut/__main__.py:1148" in body, (
+        "the citation is gone. The claim is checkable only if the line that proves it is named."
     )

@@ -224,30 +224,33 @@ jobs:
         # coverage and near zero here — this is the gate coverage cannot be.
         #
         # ─────────────────────────────────────────────────────────────────
-        # THIS STEP MUST NOT SET PYTHONPATH. DO NOT ADD IT BACK.
+        # WHY THIS GATE REPORTED 0.0% FROM THE DAY IT WAS WRITTEN.
         #
-        # It used to say `PYTHONPATH: tools/ci:src`, and that single line is
-        # why this gate reported 0 killed / 351 survived — a 0.0% score that
-        # measured nothing.
+        # It scored by counting the word "killed" in `mutmut results`. But
+        # `mutmut results` is a SURVIVOR report — mutmut/__main__.py:1148:
         #
-        # Python resolves PYTHONPATH to ABSOLUTE paths at interpreter
-        # STARTUP, when the working directory is still the repository root.
-        # So `src` became `/…/accountant dad/src` — the ORIGINAL tree.
-        # mutmut then chdirs into `mutants/` and runs the suite with
-        # `pytest.main()`, IN-PROCESS, in that same interpreter, so those
-        # absolute entries are still on sys.path and still win. Every test
-        # imported pristine code, so every mutant survived by construction.
-        # chdir cannot retract a sys.path entry that is already absolute.
+        #     if status == 'killed' and not all:
+        #         continue
         #
-        # With no PYTHONPATH, `[tool.pytest.ini_options] pythonpath` in
-        # pyproject.toml does the work instead. pytest resolves those
-        # entries relative to ROOTDIR, and mutmut passes `--rootdir=.` from
-        # inside `mutants/`, so they resolve to the INSTRUMENTED copies.
-        # It PREPENDS them, which is also why this survives an editable
-        # install: a `.pth` file appends, and prepend wins.
+        # Killed mutants are the one category it never prints. So the word
+        # could never appear, `killed` was structurally 0, and the score was
+        # structurally 0.0% — for ANY codebase, at ANY test quality. The
+        # `0 killed / 351 survived` this gate reported was a reporting
+        # artifact, never a measurement. `--all=1` is what prints kills.
         #
-        # tests/unit/test_mutation_measures_the_real_tree.py fails if this
-        # line ever returns.
+        # A FALSE CAUSE WAS COMMITTED HERE FIRST, in eaae515, and is
+        # recorded so nobody re-derives it: this step used to set
+        # `PYTHONPATH: tools/ci:src`, and that was blamed. It was innocent.
+        # mutmut manages sys.path itself (__main__.py:971-982) — it prepends
+        # `mutants/src` AND deletes the original `src`. The env var was
+        # redundant, not harmful. It stays removed because it was redundant.
+        #
+        # What IS load-bearing is `pyproject.toml` in `[tool.mutmut]
+        # also_copy`. pytest resolves `pythonpath` against the INI FILE's
+        # directory — not rootdir — so without that copy pytest walks up to
+        # the original pyproject, resolves against the ORIGINAL tree, and
+        # every mutant silently survives. Guarded by
+        # tests/unit/test_mutation_measures_the_real_tree.py.
         # ─────────────────────────────────────────────────────────────────
         run: |
           set -euo pipefail
@@ -256,22 +259,46 @@ jobs:
           # the gate scored zero mutants and blocked for a reason that was not
           # real — a broken invocation reading exactly like an unbuilt gate.
           mutmut run || true
-          mutmut results
+          mutmut results --all=1
           python3 - <<'PY'
-          import re
+          import collections
           import subprocess
           import sys
 
           out = subprocess.run(
               ["mutmut", "browse", "--help"], capture_output=True, text=True, check=False
           )
-          res = subprocess.run(["mutmut", "results"], capture_output=True, text=True, check=False)
+          # `--all=1`, NOT `--all`. mutmut declares it as
+          # `@click.option('--all', default=False)` with no `is_flag=True`, so
+          # the bare form consumes the next argument instead of enabling it.
+          res = subprocess.run(
+              ["mutmut", "results", "--all=1"], capture_output=True, text=True, check=False
+          )
           text = res.stdout + res.stderr
           print(text)
 
-          killed = len(re.findall(r"\bkilled\b", text, re.I))
-          survived = len(re.findall(r"\bsurvived\b", text, re.I))
+          # One mutant PER LINE, not one regex hit per word. mutmut prints
+          # `    <mutant name>: <status>` and a mutant name can itself contain
+          # a status word, so counting words counts the wrong things.
+          tally = collections.Counter()
+          for line in text.splitlines():
+              name, sep, status = line.rpartition(": ")
+              if sep and name.strip():
+                  tally[status.strip()] += 1
+
+          for status, count in sorted(tally.items()):
+              print(f"  {status:32} {count}")
+
+          killed = tally["killed"]
+          survived = tally["survived"]
           total = killed + survived
+          # Every status that is neither killed nor survived is named, never
+          # folded into the denominator. A timeout is not a passing test and a
+          # segfault is not a surviving mutant; counting either as one would
+          # manufacture a score out of a broken run.
+          unscoreable = sum(c for s, c in tally.items() if s not in ("killed", "survived"))
+          if unscoreable:
+              print(f"NOT SCOREABLE    : {unscoreable} mutant(s) neither killed nor survived")
           if total == 0:
               print("BLOCKED - mutmut produced no mutants to score.")
               sys.exit(1)
