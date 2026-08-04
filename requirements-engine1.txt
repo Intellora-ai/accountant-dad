@@ -1,0 +1,30 @@
+# Engine 1 — Input Engine. Pinned exactly.
+#
+# SEPARATE FROM requirements-ci.txt ON PURPOSE. `docs/TECHNOLOGY_STACK.md`, the
+# locked stack decision, states it plainly: adding heavyweight engine
+# dependencies to the file every CI job installs "would slow every gate and risk
+# the job timeouts, for tools no code imports yet", so engine dependencies land
+# "per engine, at its phase, in a separate manifest".
+#
+# Amendment 3 (CLAUDE.md §P, 2026-08-05) reached Engine 1's phase.
+#
+# Every version below was read from installed metadata, never from memory.
+# Every licence below was read from the installed package, never recalled.
+#
+#   opencv-python  5.0.0.93   Apache 2.0
+#                             License :: OSI Approved :: Apache Software License
+#   numpy          2.5.1      BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0
+#                             (License-Expression field)
+#
+# EXPLICITLY NOT APPROVED by `docs/TECHNOLOGY_STACK.md` and deliberately absent:
+# Tesseract · EasyOCR · Camelot · Tabula · ImageMagick · Unstructured.
+# A test in `tests/unit/test_input_engine_cleaner.py` asserts their absence from
+# the source rather than trusting this comment.
+#
+# NOT YET WIRED INTO CI. `.github/workflows/testing.yml:26` installs only
+# `requirements-ci.txt`, so `tests/unit/test_input_engine_cleaner.py` cannot run
+# on CI until a step installing this file is added. That is a `.github` change
+# and needs the owner's explicit approval for that specific change.
+
+opencv-python==5.0.0.93
+numpy==2.5.1
