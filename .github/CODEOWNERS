@@ -1,0 +1,49 @@
+# CODEOWNERS — enforcement surfaces
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# READ THIS BEFORE TRUSTING IT
+#
+# This file is ADVISORY TODAY. The branch ruleset has
+# `required_approving_review_count = 0`, and CODEOWNERS blocks nothing until a
+# review is actually required. It is committed now because:
+#
+#   1. It makes ownership explicit rather than assumed.
+#   2. GitHub surfaces it in the pull request UI, so a change to an enforcement
+#      surface is visibly attributed even while unenforced.
+#   3. It becomes binding the moment reviews are turned on, with no further work.
+#
+# A file that states intent and a rule that binds are different things. This is
+# the first. Do not cite it as the second.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Why these two paths and no others:
+#
+#   /.github/**     the gates themselves — every workflow, job, step and check
+#   /tools/ci/**    the code the gates execute — the enforcement scripts
+#
+# Changing either can silently reduce what the repository proves about itself.
+# Every other path is guarded by the gates; these two ARE the gates.
+#
+# Ownership is @Intellora-ai — the repository owner. @sidhutanveer19-code has
+# read access only, and CODEOWNERS entries require write access to be valid, so
+# it is deliberately not listed here.
+
+# ── Default: no owner ────────────────────────────────────────────────────────
+# Deliberately absent. A catch-all owner would make every pull request look
+# reviewed-by-policy when only the two paths below actually warrant it.
+
+# ── The gates ────────────────────────────────────────────────────────────────
+/.github/                @Intellora-ai
+/.github/workflows/      @Intellora-ai
+/.github/CODEOWNERS      @Intellora-ai
+
+# ── The code the gates run ───────────────────────────────────────────────────
+/tools/ci/               @Intellora-ai
+
+# ── The constitution and the locked architecture ─────────────────────────────
+# Not required by the audit, included because a silent edit to either is the
+# same class of failure: a change to the standard, made by the thing being
+# judged against it.
+/CLAUDE.md               @Intellora-ai
+/docs/SYSTEM_INVARIANTS.md              @Intellora-ai
+/docs/FORWARD_DEPENDENCY_INVENTORY.md   @Intellora-ai
