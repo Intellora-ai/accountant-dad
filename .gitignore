@@ -39,3 +39,6 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# mutmut copies the tree here to instrument it. Never a source artifact.
+mutants/

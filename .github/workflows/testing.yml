@@ -226,7 +226,11 @@ jobs:
           PYTHONPATH: tools/ci:src
         run: |
           set -euo pipefail
-          mutmut run --paths-to-mutate tools/ci,src || true
+          # Paths come from [tool.mutmut] in pyproject.toml. mutmut 3.3.1
+          # deleted the --paths-to-mutate flag; passing it aborted the run, so
+          # the gate scored zero mutants and blocked for a reason that was not
+          # real — a broken invocation reading exactly like an unbuilt gate.
+          mutmut run || true
           mutmut results
           python3 - <<'PY'
           import re

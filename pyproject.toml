@@ -64,6 +64,19 @@ warn_unreachable = true
 testpaths = ["tests"]
 xfail_strict = true
 addopts = "--strict-markers --strict-config"
+# Resolved by pytest RELATIVE TO ROOTDIR, which is why it is written here and
+# not passed as an environment variable. `tools/ci` holds flat modules that the
+# tests import by bare name, and CI already exports the same two paths, so in an
+# ordinary run this changes nothing and simply stops depending on the caller to
+# set PYTHONPATH correctly.
+#
+# It also decides whether mutation testing can work at all. mutmut copies the
+# tree into `mutants/` and runs the suite from there, so rootdir becomes
+# `mutants/` and these two entries resolve to the INSTRUMENTED copies. Without
+# it the tests import the pristine originals instead, every mutant is reported
+# as `no tests`, and the score is unmeasurable — 602 mutants, 0 killed,
+# 0 survived. Measured, not assumed.
+pythonpath = ["tools/ci", "src"]
 
 # ── coverage ──────────────────────────────────────────────────────────────
 [tool.coverage.run]
@@ -75,3 +88,39 @@ show_missing = true
 skip_covered = false
 # Every exclusion is a hole. There are none.
 exclude_lines = []
+
+# ── mutation ──────────────────────────────────────────────────────────────
+# mutmut 2.x took `--paths-to-mutate` on the command line. 3.3.1 deleted that
+# option, so `mutmut run --paths-to-mutate tools/ci,src` aborted with
+# "No such option" and the gate reported "no mutants to score" — a real failure
+# that read like an unimplemented placeholder.
+#
+# 3.3.1 reads `[tool.mutmut]` here FIRST and falls back to setup.cfg only if
+# this table is absent, so the config belongs in the file that already exists.
+# The value is the same value the deleted flag carried; nothing was chosen.
+#
+# It must be a LIST. A comma-joined string is taken as one literal path and
+# fails with FileNotFoundError: 'tools/ci,src' — measured, not assumed.
+[tool.mutmut]
+paths_to_mutate = ["src"]
+
+# mutmut runs the suite from a `mutants/` copy of the tree, and copies only what
+# it mutates. This repository's tests read files that are NOT code, so without
+# this they fail on a missing path rather than on a surviving mutant:
+#
+#   docs/                the conformance registry reads every cited document and
+#                        asserts each quote is still on the line it cites
+#   .github/workflows/   the gate and step ratchets read the REAL workflows
+#   pyproject.toml       the packaging and coverage-config assertions read it
+#   requirements-ci.txt  pinned-version assertions read it
+#
+# Copied, never mutated: mutating a specification would test nothing about the
+# code, and mutating a workflow would make the ratchets judge a fiction.
+do_not_mutate = [
+    "*/services/audit.py",
+    "*/services/store.py",
+    "*/services/pipeline.py",
+    "*/engines/*/stub.py",
+    "*/brain/stub.py",
+]
+also_copy = ["tools/ci", "docs", ".github", "pyproject.toml", "requirements-ci.txt"]
