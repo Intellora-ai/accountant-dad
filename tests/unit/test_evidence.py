@@ -638,3 +638,32 @@ def test_a_document_id_is_frozen() -> None:
     identifier = DocumentId.new()
     with pytest.raises((AttributeError, TypeError)):
         identifier.value = uuid.uuid4()  # type: ignore[misc]
+
+
+# ── a padded blank is a blank ─────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("padded", ["   ", "\t", "\n", " \t\n "])
+def test_a_padded_blank_is_refused_wherever_a_real_value_is_required(padded: str) -> None:
+    """`NonEmptyText` was `Field(min_length=1)`, which refuses `""` and accepts
+    `"   "`. The other five artifact schemas reject blank-after-strip, so one
+    concept had two behaviours — and the looser one lived in the artifact that
+    carries the system's only evidence.
+
+    ENGINE_1:626 — "Every uncertainty marker carries a reason." A reason of
+    three spaces is not a reason. ENGINE_1:245 — a value without a real source
+    id and evidence reference "is not evidence and must not be emitted."
+
+    Found empirically by the conformance registry, not by reading the code.
+    """
+    with pytest.raises(ValidationError):
+        UncertaintyMarker(subject="Amount", reason=padded)
+    with pytest.raises(ValidationError):
+        UncertaintyMarker(subject=padded, reason="smudged")
+
+
+def test_a_real_value_with_surrounding_space_is_still_accepted() -> None:
+    """Stripping decides emptiness; it never edits the stored value. A source
+    reference the caller wrote with a trailing space is still that reference."""
+    marker = UncertaintyMarker(subject=" Amount ", reason="smudged")
+    assert marker.subject == " Amount "

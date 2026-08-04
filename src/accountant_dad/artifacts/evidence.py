@@ -54,14 +54,45 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from accountant_dad.confidence import Confidence
 from accountant_dad.identity import IdentityEnvelope
 
+
+def _meaningful_text(value: str) -> str:
+    """Non-empty AFTER stripping. A padded blank is a blank.
+
+    This was `Field(min_length=1)`, which refuses `""` and accepts `"   "`. The
+    other five artifact schemas reject blank-after-strip, so one concept had two
+    behaviours (Law 14, INV-10) and the looser one lived in the artifact that
+    carries the system's only evidence.
+
+    Found by the conformance registry, empirically, not by reading:
+
+        UncertaintyMarker(subject="Amount", reason="   ")   was ACCEPTED
+        UnresolvedDoubt(missing_fact="   ", ...)            already refused
+
+    `ENGINE_1:626` — *"Every uncertainty marker carries a reason. A bare score
+    cannot become a good question downstream."* A marker whose reason is three
+    spaces carries no reason, and `ENGINE_1:245` — a value without a real source
+    id and evidence reference *"is not evidence and must not be emitted."*
+    """
+    if not value.strip():
+        raise ValueError("must not be empty or blank")
+    return value
+
+
 #: Non-empty after stripping. Used wherever a blank string would be a claim
 #: rather than a value — a source id, an evidence reference, a field name.
-NonEmptyText = Annotated[str, Field(min_length=1)]
+NonEmptyText = Annotated[str, Field(min_length=1), AfterValidator(_meaningful_text)]
 
 _FROZEN = ConfigDict(frozen=True, extra="forbid")
 
