@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-FIELD-049-E",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a bill of supply referred to in clause (c) of sub-section (3) of section 31",
+    "it is issued under rule 49 of the CGST Rules, 2017"
+  ],
+  "then": "the bill of supply MUST carry the Harmonised System of Nomenclature Code for the goods or services",
+  "source_section": "CGST Rules 2017, rule 49(e)",
+  "note": "One mandatory particular of rule 49(e), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 49(e)",
+      "quote": "Harmonised System of Nomenclature Code for goods or services;",
+      "extraction_note": "Rule 49(e) spells 'Code' with a capital C where rule 46(g) spells it 'code'. Both are quoted as they appear."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "GST-ITC-17-1",
+  "status": "VERIFIED",
+  "if": [
+    "goods or services or both are used by the registered person PARTLY for the purpose of any business and PARTLY for other purposes"
+  ],
+  "then": "credit is RESTRICTED to so much of the input tax as is attributable to the purposes of his business",
+  "source_section": "CGST Act s.17(1)",
+  "note": "A restriction, not a block: the business share survives. Distinguish s.17(5)(g), which blocks entirely where goods or services are used for personal consumption. The manner of attribution is left to be prescribed under s.17(6), so the Act does not supply the formula. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(1)",
+      "quote": "Where the goods or services or both are used by the registered person partly for the purpose of any business and partly for other purposes, the amount of credit shall be restricted to so much of the input tax as is attributable to the purposes of his business."
+    }
+  ]
+}

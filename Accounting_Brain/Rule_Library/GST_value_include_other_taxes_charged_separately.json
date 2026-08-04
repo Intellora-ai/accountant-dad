@@ -1,0 +1,24 @@
+{
+  "id": "GST-VALUE-002",
+  "status": "VERIFIED",
+  "if": [
+    "taxes, duties, cesses, fees or charges are levied under any law in force other than the CGST Act, the SGST Act, the UTGST Act and the GST (Compensation to States) Act",
+    "they are charged SEPARATELY by the supplier"
+  ],
+  "then": "they are INCLUDED in the value of supply",
+  "source_section": "CGST s.15(2)(a)",
+  "note": "The four GST Acts are carved out; everything else charged separately goes into the base. So GST is not charged on GST, but it IS charged on other statutory levies appearing as separate lines on the invoice.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(2)",
+      "quote": "The value of supply shall include",
+      "extraction_note": "The sub-section ends '\u2013\u2013\u2013' (three dashes) in the extraction. The quote stops before them."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(2)(a)",
+      "quote": "any taxes, duties, cesses, fees and charges levied under any law for the time being in force other than this         Act, the State Goods and Services              Tax   Act, the Union Territory Goods and Services Tax Act and the Goods and Services Tax (Compensation to States) Act, if charged separately by the supplier;"
+    }
+  ]
+}

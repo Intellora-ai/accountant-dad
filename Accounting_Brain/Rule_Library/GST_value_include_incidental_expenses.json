@@ -1,0 +1,24 @@
+{
+  "id": "GST-VALUE-004",
+  "status": "VERIFIED",
+  "if": [
+    "the supplier charges the recipient incidental expenses, including commission and packing",
+    "or the supplier charges any amount for anything done in respect of the supply at the time of, or before, delivery of goods or supply of services"
+  ],
+  "then": "those amounts are INCLUDED in the value of supply",
+  "source_section": "CGST s.15(2)(c)",
+  "note": "Packing, commission and pre-delivery charges are part of the taxable base, not separate non-taxable recoveries. The timing test is 'at the time of, or before' delivery.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(2)(c)",
+      "quote": "incidental expenses, including commission and packing, charged by the",
+      "extraction_note": "Clause (c) is split by a page break in the extraction \u2014 the page number '35' and the running header 'CHAPTER IV TIME AND VALUE OF SUPPLY' fall between the two halves. Quoted as two spans."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(2)(c)",
+      "quote": "supplier to   the  recipient of a    supply and     any   amount charged        for anything done by the supplier in respect of      the  supply   of  goods    or  services or   both at    the time    of, or  before delivery of goods or supply of        services;"
+    }
+  ]
+}

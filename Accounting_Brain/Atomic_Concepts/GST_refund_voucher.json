@@ -1,0 +1,94 @@
+{
+  "id": "GST-INV-REFUND-VOUCHER",
+  "name": "Refund voucher",
+  "status": "VERIFIED",
+  "definition": "A refund voucher is issued under clause (e) of section 31(3) when an advance is refunded and no supply is made. Rule 51 fixes eleven particulars, (a) to (k), and clause (e) requires it to name the receipt voucher it reverses.",
+  "why_it_exists": "It closes an advance that never became a supply. Clause (e) makes the link explicit, which is what lets a refund be matched to the receipt it undoes instead of floating as an unexplained payment out.",
+  "inputs": [
+    "the document",
+    "the receipt voucher being reversed",
+    "the amount refunded"
+  ],
+  "outputs": [
+    "the set of rule 51 particulars found",
+    "the set of mandatory particulars absent"
+  ],
+  "preconditions": [
+    "an advance previously recorded on a receipt voucher is being refunded"
+  ],
+  "rules": [
+    "GST-INV-FIELD-051-A",
+    "GST-INV-FIELD-051-B",
+    "GST-INV-FIELD-051-C",
+    "GST-INV-FIELD-051-D",
+    "GST-INV-FIELD-051-E",
+    "GST-INV-FIELD-051-F",
+    "GST-INV-FIELD-051-G",
+    "GST-INV-FIELD-051-H",
+    "GST-INV-FIELD-051-I",
+    "GST-INV-FIELD-051-J",
+    "GST-INV-FIELD-051-K",
+    "GST-INV-SPECIAL-001"
+  ],
+  "exceptions": [
+    "rule 54(5) extends the rule 54(2) and 54(4) relaxations to refund vouchers"
+  ],
+  "common_mistakes": [
+    "treating a refund voucher as a credit note \u2014 a credit note under section 34 adjusts a supply already invoiced; a refund voucher undoes an advance where no supply happened",
+    "accepting a refund voucher with no reference to the receipt voucher \u2014 clause (e) requires the number and date"
+  ],
+  "dependencies": [
+    "GST-INV-RECEIPT-VOUCHER"
+  ],
+  "related_concepts": [
+    "GST-INV-RECEIPT-VOUCHER",
+    "GST-INV-CREDIT-OR-DEBIT-NOTE"
+  ],
+  "legal_references": [
+    "CGST Rules 2017, rule 51",
+    "UNKNOWN \u2014 clause (e) of sub-section (3) of section 31 of the CGST Act was not read for this record"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE"
+  ],
+  "gst_references": [
+    "CGST Rules 2017, rule 51",
+    "CGST Rules 2017, rule 50",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the document",
+    "the referenced receipt voucher number and date"
+  ],
+  "confidence_factors": [
+    "weak when the referenced receipt voucher cannot be located, because the reversal cannot then be matched"
+  ],
+  "validation_checks": [
+    "all eleven particulars (a) to (k) are present",
+    "clause (e) names a receipt voucher issued under rule 50",
+    "the referenced receipt voucher exists in the books"
+  ],
+  "examples": [
+    "a voucher naming receipt voucher RV-118 dated 4 May, refunding the advance and the tax on it"
+  ],
+  "counterexamples": [
+    "a voucher with no receipt voucher reference \u2014 clause (e) fails"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 51",
+      "quote": "51. Refund voucher.-A refund voucher referred to in clause (e) of sub-section (3) of section 31 shall contain the following particulars, namely:-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 51(e)",
+      "quote": "number and date of receipt voucher issued in accordance with the provisions of rule 50;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 51(g)",
+      "quote": "amount of refund made;"
+    }
+  ]
+}

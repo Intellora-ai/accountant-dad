@@ -1,0 +1,107 @@
+{
+  "id": "GST-ITC-APPORTIONMENT",
+  "name": "Apportionment of input tax credit \u2014 section 17(1) to (4) and (6)",
+  "status": "VERIFIED",
+  "definition": "Where goods or services are used partly for business and partly for other purposes, credit is restricted to the input tax attributable to business purposes. Where they are used partly for taxable supplies (including zero-rated) and partly for exempt supplies, credit is restricted to the input tax attributable to the taxable supplies. The value of exempt supply for that second test is prescribed and includes supplies on which the recipient pays tax on reverse charge, transactions in securities, sale of land and, subject to clause (b) of paragraph 5 of Schedule II, sale of building. A banking company, financial institution or non-banking financial company supplying deposit, loan or advance services may instead take a flat fifty per cent. of eligible credit each month and let the rest lapse.",
+  "why_it_exists": "Credit is the tax on inputs that feed taxable output. Inputs that feed private use or exempt output never produce output tax, so crediting them would refund tax that was never going to be recovered. Section 17 draws that line.",
+  "inputs": [
+    "total input tax for the period",
+    "the split of use between business and non-business purposes",
+    "the split of outward supplies between taxable, zero-rated and exempt",
+    "value of exempt supply, as prescribed",
+    "for banks and NBFCs, whether the fifty per cent. option has been exercised"
+  ],
+  "outputs": [
+    "the admissible portion of input tax credit",
+    "the restricted or lapsing portion"
+  ],
+  "preconditions": [
+    "credit is otherwise available under s.16 and not blocked by s.17(5)",
+    "the same input feeds more than one use, or more than one supply category"
+  ],
+  "rules": [
+    "GST-ITC-17-1",
+    "GST-ITC-17-2",
+    "GST-ITC-17-3",
+    "GST-ITC-17-4",
+    "GST-ITC-17-4-P1",
+    "GST-ITC-17-4-P2",
+    "GST-ITC-17-6"
+  ],
+  "exceptions": [
+    "GST-ITC-17-3-EXPL \u2014 CONFLICT: the Schedule III carve-out from the value of exempt supply differs between the two locally held sources"
+  ],
+  "common_mistakes": [
+    "treating zero-rated supplies as exempt \u2014 s.17(2) groups zero-rated with taxable, not with exempt",
+    "omitting reverse-charge inward supplies from the value of exempt supply, which s.17(3) requires to be included",
+    "omitting sale of land and sale of building from the value of exempt supply",
+    "a bank switching out of the fifty per cent. option mid-year, which the first proviso to s.17(4) forbids"
+  ],
+  "dependencies": [
+    "GST-ITC-CORE",
+    "GST-ITC-CONDITIONS"
+  ],
+  "related_concepts": [
+    "GST-ITC-BLOCKED"
+  ],
+  "legal_references": [
+    "CGST Act 2017, s.17(1), (2), (3), (4) and (6)",
+    "CGST Act 2017, s.2(47) \u2014 exempt supply",
+    "CGST Act 2017, Schedule II paragraph 5(b)"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 statutory apportionment, not an accounting allocation policy"
+  ],
+  "gst_references": [
+    "CGST Act 2017, s.17(1) to (4) and (6)"
+  ],
+  "evidence_required": [
+    "outward supply values split by taxable, zero-rated and exempt",
+    "a defensible basis for the business versus non-business split",
+    "for a bank or NBFC, the record of the option exercised for the financial year"
+  ],
+  "confidence_factors": [
+    "weak when the business versus non-business split rests on estimate rather than a measured basis",
+    "the manner of attribution is left to be prescribed by the Government under s.17(6), so the Act alone does not settle the computation",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "validation_checks": [
+    "reverse-charge inward supplies, securities transactions, sale of land and sale of building are all inside the exempt-supply value",
+    "zero-rated supplies are grouped with taxable supplies, never with exempt",
+    "the bank fifty per cent. election, once made, is unchanged for the remainder of the financial year"
+  ],
+  "examples": [
+    "a registered person makes taxable and exempt supplies from shared premises; the input tax on rent is restricted to the taxable share under s.17(2)"
+  ],
+  "counterexamples": [
+    "an exporter making only zero-rated supplies \u2014 s.17(2) does not restrict him, because zero-rated supplies sit on the taxable side of the test"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(1)",
+      "quote": "Where the goods or services or both are used by the registered person partly for the purpose of any business and partly for other purposes, the amount of credit shall be restricted to so much of the input tax as is attributable to the purposes of his business."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(2)",
+      "quote": "Where the goods or services or both are used by the registered person partly for effecting taxable supplies including zero-rated supplies under this Act or under the Integrated Goods and Services Tax Act and partly for effecting exempt supplies under the said Acts, the amount of credit shall be restricted to so much of the input tax as is attributable to the said taxable supplies including zero-rated supplies."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(3)",
+      "quote": "The value of exempt supply under sub-section (2) shall be such as may be prescribed, and shall include supplies on which the recipient is liable to pay tax on reverse charge basis, transactions in securities, sale of land and, subject to clause (b) of paragraph 5 of Schedule II, sale of building."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(6)",
+      "quote": "The Government may prescribe the manner in which the credit referred to in sub-sections (1) and (2) may be attributed."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(47)",
+      "quote": "means supply of any goods or services or both which attracts nil rate of tax or which may be wholly exempt from tax under section 11, or under section 6 of the Integrated Goods and Services Tax Act, and includes non-",
+      "extraction_note": "The closing words 'non-taxable supply' are split across a line break by the extractor, which renders them as 'non- taxable supply'. The quote stops at the hyphen rather than repairing the text."
+    }
+  ]
+}

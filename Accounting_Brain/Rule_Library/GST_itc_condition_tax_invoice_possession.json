@@ -1,0 +1,18 @@
+{
+  "id": "GST-ITC-16-2-A",
+  "status": "VERIFIED",
+  "if": [
+    "input tax credit is claimed on a supply of goods or services or both",
+    "the registered person is NOT in possession of a tax invoice or debit note issued by a supplier registered under the Act, nor of such other tax paying document as may be prescribed"
+  ],
+  "then": "credit of that input tax is DENIED",
+  "source_section": "CGST Act s.16(2)(a)",
+  "note": "Possession, not existence. A document that exists at the supplier is not possession by the recipient. The clause names three document types only: a tax invoice, a debit note, and such other tax paying documents as may be prescribed \u2014 which prescribed documents those are is UNKNOWN from the Act and lives in the Rules. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(a)",
+      "quote": "he is in possession of a tax invoice or debit note issued by a supplier registered under this Act, or such other tax paying documents as may be prescribed;"
+    }
+  ]
+}

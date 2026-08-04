@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-TIME-001",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a taxable supply of services",
+    "an invoice under rule 46 is required",
+    "the supplier is not an insurer, banking company or financial institution including a non-banking financial company"
+  ],
+  "then": "the invoice MUST be issued within thirty days from the date of the supply of service",
+  "source_section": "CGST Rules 2017, rule 47",
+  "note": "Rule 47 fixes a time limit for SERVICES only. UNKNOWN \u2014 the time limit for a supply of GOODS is set by section 31 of the CGST Act, which is a different document and was not read for this record.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 47",
+      "quote": "47. Time limit for issuing tax invoice.- The invoice referred to in rule 46, in the case of the taxable supply of services, shall be issued within a period of thirty days from the date of the supply of service:"
+    }
+  ]
+}

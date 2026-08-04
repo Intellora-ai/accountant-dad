@@ -1,0 +1,18 @@
+{
+  "id": "GST-TIME-SERVICES-004",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of services under forward charge",
+    "neither s.13(2)(a) nor s.13(2)(b) applies"
+  ],
+  "then": "this limb yields the date on which the RECIPIENT shows the receipt of services in his books of account",
+  "source_section": "CGST s.13(2)(c)",
+  "note": "Expressly conditional on (a) and (b) not applying. It is the only limb of s.13(2) that looks at the recipient's records rather than the supplier's.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2)(c)",
+      "quote": "the date on which the recipient shows the receipt of services in his books of account, in a case where the provisions of clause (a) or clause (b) do not apply"
+    }
+  ]
+}

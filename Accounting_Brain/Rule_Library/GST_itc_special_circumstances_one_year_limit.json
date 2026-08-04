@@ -1,0 +1,18 @@
+{
+  "id": "GST-ITC-18-2",
+  "status": "VERIFIED",
+  "if": [
+    "credit is claimed under s.18(1) on a supply of goods or services or both",
+    "more than ONE YEAR has expired from the DATE OF ISSUE OF THE TAX INVOICE relating to that supply"
+  ],
+  "then": "the registered person is NOT ENTITLED to take that credit",
+  "source_section": "CGST Act s.18(2)",
+  "note": "The clock runs from the invoice date, not from the transition event. Stock that cannot be traced to a dated tax invoice cannot be shown to be inside the year, and s.155 puts that burden on the claimant. This limit is separate from, and additional to, the s.16(4) limit. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(2)",
+      "quote": "A registered person shall not be entitled to take input tax credit under sub-section (1) in respect of any supply of goods or services or both to him after the expiry of one year from the date of issue of tax invoice relating to such supply."
+    }
+  ]
+}

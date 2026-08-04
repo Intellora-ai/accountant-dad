@@ -1,0 +1,17 @@
+{
+  "id": "GST-ITC-16-2-P1",
+  "status": "VERIFIED",
+  "if": [
+    "goods against a single invoice are received in lots or instalments"
+  ],
+  "then": "credit is taken only UPON RECEIPT OF THE LAST LOT OR INSTALMENT, not proportionately as each lot arrives",
+  "source_section": "CGST Act s.16(2), first proviso",
+  "note": "All or nothing at the end, not pro rata along the way. The proviso speaks of goods only; it says nothing about services supplied in tranches. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2), first proviso",
+      "quote": "Provided that where the goods against an invoice are received in lots or instalments, the registered person shall be entitled to take credit upon receipt of the last lot or instalment:"
+    }
+  ]
+}

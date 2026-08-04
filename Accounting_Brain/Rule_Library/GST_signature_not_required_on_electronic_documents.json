@@ -1,0 +1,33 @@
+{
+  "id": "GST-INV-SIGN-001",
+  "status": "VERIFIED",
+  "if": [
+    "the document is an electronic invoice, an electronic bill of supply, a consolidated tax invoice under rule 54(2), or a ticket under rule 54(4)",
+    "it is issued in accordance with the provisions of the Information Technology Act, 2000"
+  ],
+  "then": "the signature or digital signature of the supplier or his authorised representative is NOT required",
+  "source_section": "CGST Rules 2017, rules 46, 49, 54(2) and 54(4), provisos",
+  "note": "This is the only lawful way a document can be missing the signature particular. A paper document with no signature is defective.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, fifth proviso",
+      "quote": "Provided also that the signature or digital signature of the supplier or his authorised representative shall not be required in the case of issuance of an electronic invoice in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000)."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 49, third proviso",
+      "quote": "Provided also that the signature or digital signature of the supplier or his authorised representative shall not be required in the case of issuance of an electronic bill of supply in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000)."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 54(2), proviso",
+      "quote": "Provided that the signature or digital signature of the supplier or his authorised representative shall not be required in the case of issuance of a consolidated tax invoice or any other document in lieu thereof in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000)."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 54(4), proviso",
+      "quote": "Provided that the signature or digital signature of the supplier or his authorised representative shall not be required in the case of issuance of ticket in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000)."
+    }
+  ]
+}

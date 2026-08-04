@@ -1,0 +1,28 @@
+{
+  "id": "GST-ITC-18-1-C",
+  "status": "VERIFIED",
+  "if": [
+    "a registered person CEASES to pay tax under section 10"
+  ],
+  "then": "he is ENTITLED to credit of input tax on inputs held in stock, inputs contained in semi-finished or finished goods held in stock, AND ON CAPITAL GOODS, on the day immediately preceding the date from which he becomes liable to pay tax under section 9 \u2014 the credit on capital goods being reduced by such percentage points as may be prescribed",
+  "source_section": "CGST Act s.18(1)(c)",
+  "note": "Capital goods ARE included here, unlike clauses (a) and (b), but at a reduced amount. The reduction percentage is prescribed and is NOT stated in the Act \u2014 from this source it is UNKNOWN. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(1)(c)",
+      "quote": "where any registered person ceases to pay tax under section 10, he shall be entitled to take credit of input tax in respect of inputs held in stock, inputs contained in semi-",
+      "extraction_note": "The extractor breaks 'semi-finished' across a line here, so the clause is quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(1)(c), continued",
+      "quote": "finished or finished goods held in stock and on capital goods on the day immediately preceding the date from which he becomes liable to pay tax under section 9:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(1)(c), proviso",
+      "quote": "Provided that the credit on capital goods shall be reduced by such percentage points as may be prescribed;"
+    }
+  ]
+}

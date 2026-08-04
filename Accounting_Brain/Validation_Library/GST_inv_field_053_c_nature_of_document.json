@@ -1,0 +1,24 @@
+{
+  "id": "GST-INV-FIELD-053-C",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a revised tax invoice referred to in section 31",
+    "it is issued under rule 53(1) of the CGST Rules, 2017"
+  ],
+  "then": "the revised tax invoice MUST state the nature of the document",
+  "source_section": "CGST Rules 2017, rule 53(1)(c)",
+  "note": "One mandatory particular of rule 53(1)(c), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1)(c)",
+      "quote": "nature of the document;",
+      "extraction_note": "In the source this clause is bracketed and carries footnote marker 119, whose text reads 'Omitted vide Notf no. 03/2019-CT dt. 29.01.2019 wef 01.02.2019'. Whether the clause therefore stands omitted from rule 53(1) is an interpretation this record does not make: see GST-INV-REVISED-TAX-INVOICE."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53, footnote 119",
+      "quote": "119 Omitted vide Notf no. 03/2019-CT dt. 29.01.2019 wef 01.02.2019"
+    }
+  ]
+}

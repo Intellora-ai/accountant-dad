@@ -1,0 +1,17 @@
+{
+  "id": "GST-ITC-18-1-B",
+  "status": "VERIFIED",
+  "if": [
+    "a person takes registration under sub-section (3) of section 25"
+  ],
+  "then": "he is ENTITLED to credit of input tax on INPUTS held in stock and inputs contained in semi-finished or finished goods held in stock ON THE DAY IMMEDIATELY PRECEDING the date of grant of registration",
+  "source_section": "CGST Act s.18(1)(b)",
+  "note": "Voluntary registration. The measurement date here is the day before GRANT of registration, not the day before liability to pay tax as in clause (a). Capital goods are again outside this clause. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(1)(b)",
+      "quote": "a person who takes registration under sub-section (3) of section 25 shall be entitled to take credit of input tax in respect of inputs held in stock and inputs contained in semi-finished or finished goods held in stock on the day immediately preceding the date of grant of registration;"
+    }
+  ]
+}

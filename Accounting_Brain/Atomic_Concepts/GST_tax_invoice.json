@@ -1,0 +1,132 @@
+{
+  "id": "GST-INV-TAX-INVOICE",
+  "name": "Tax invoice under the CGST Rules",
+  "status": "VERIFIED",
+  "definition": "A tax invoice is the document a registered person issues for a taxable supply. Rule 46 fixes what it must contain: eighteen particulars, (a) to (r), some unconditional and some triggered by the facts of the supply.",
+  "why_it_exists": "It is the primary evidence of a taxable supply and the document input tax credit is claimed on. Rule 46 turns 'what does an invoice say' from a matter of practice into a closed list, which is exactly what a field-extraction contract needs.",
+  "inputs": [
+    "an image or file of a supplier document",
+    "whether the recipient is registered",
+    "the value of the taxable supply",
+    "whether the supply is inter-State",
+    "whether the invoice was prepared under rule 48(4)"
+  ],
+  "outputs": [
+    "the set of rule 46 particulars found on the document",
+    "the set of mandatory particulars that are absent"
+  ],
+  "preconditions": [
+    "the document is issued by a registered person for a taxable supply",
+    "rule 54 does not displace the particulars for this class of supplier"
+  ],
+  "rules": [
+    "GST-INV-FIELD-046-A",
+    "GST-INV-FIELD-046-B",
+    "GST-INV-FIELD-046-C",
+    "GST-INV-FIELD-046-D",
+    "GST-INV-FIELD-046-E",
+    "GST-INV-FIELD-046-F",
+    "GST-INV-FIELD-046-G",
+    "GST-INV-FIELD-046-H",
+    "GST-INV-FIELD-046-I",
+    "GST-INV-FIELD-046-J",
+    "GST-INV-FIELD-046-K",
+    "GST-INV-FIELD-046-L",
+    "GST-INV-FIELD-046-M",
+    "GST-INV-FIELD-046-N",
+    "GST-INV-FIELD-046-O",
+    "GST-INV-FIELD-046-P",
+    "GST-INV-FIELD-046-Q",
+    "GST-INV-FIELD-046-R",
+    "GST-INV-EXPORT-001",
+    "GST-INV-CONSOL-001",
+    "GST-INV-CONSOL-002",
+    "GST-INV-SIGN-001",
+    "GST-INV-QR-001"
+  ],
+  "exceptions": [
+    "rule 54 displaces or relaxes particulars for Input Service Distributors, insurers, banking companies, financial institutions, goods transport agencies, passenger transport and multiplex cinema tickets",
+    "rule 46A permits a single invoice-cum-bill of supply where taxable and exempt supplies go to an unregistered person",
+    "an electronic invoice under the Information Technology Act, 2000 needs no signature"
+  ],
+  "common_mistakes": [
+    "treating clause (e) and clause (f) as one rule \u2014 they carry different triggers, fifty thousand rupees or more versus less than fifty thousand rupees on request",
+    "demanding place of supply on every invoice \u2014 clause (n) applies only to inter-State supplies",
+    "demanding quantity on a services invoice \u2014 clause (i) is 'in case of goods'",
+    "treating a missing signature as always defective \u2014 it is not required on a compliant electronic invoice",
+    "reading rule 46 as if it stood alone \u2014 it opens 'Subject to rule 54'"
+  ],
+  "dependencies": [
+    "GST-INV-SPECIAL-CASES",
+    "GST-INV-MANNER",
+    "GST-INV-TIME-LIMIT"
+  ],
+  "related_concepts": [
+    "GST-INV-BILL-OF-SUPPLY",
+    "GST-INV-REVISED-TAX-INVOICE",
+    "GST-INV-CREDIT-OR-DEBIT-NOTE",
+    "GST-INV-DELIVERY-CHALLAN"
+  ],
+  "legal_references": [
+    "CGST Rules 2017, rule 46",
+    "UNKNOWN \u2014 section 31 of the CGST Act, which rule 46 implements, is a different document and was not read for this record"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 the contents of a tax invoice are fixed by the CGST Rules, not by an accounting standard"
+  ],
+  "gst_references": [
+    "CGST Rules 2017, rule 46",
+    "CGST Rules 2017, rule 46A",
+    "CGST Rules 2017, rule 54",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the document itself",
+    "the recipient's registration status",
+    "the taxable value of the supply",
+    "the place of supply"
+  ],
+  "confidence_factors": [
+    "weak when the supplier's GSTIN is illegible \u2014 clause (a) cannot be confirmed",
+    "weak when the recipient's registration status is unknown \u2014 clauses (d), (e) and (f) cannot be selected between",
+    "weak when the document may fall under rule 54, because the required particulars then change"
+  ],
+  "validation_checks": [
+    "every unconditional particular (a), (b), (c), (d), (g), (h), (j), (k), (l), (m), (p), (q) is present",
+    "the serial number is at most sixteen characters",
+    "clause (i) is present when the supply is of goods",
+    "clause (n) is present when the supply is inter-State",
+    "clause (o) is present when the delivery address differs from the place of supply",
+    "clause (r) is present when the invoice was prepared under rule 48(4)"
+  ],
+  "examples": [
+    "a registered supplier's invoice to a registered buyer carrying GSTIN of both, serial number, date, HSN, description, quantity, taxable value, rate and amount of CGST and SGST, reverse-charge flag and a signature \u2014 rule 46 satisfied"
+  ],
+  "counterexamples": [
+    "a document with no serial number \u2014 clause (b) fails, and rule 46 is not satisfied however complete the rest is",
+    "a document issued by a person notified under rule 48(4) but prepared outside that manner \u2014 rule 48(5) says it is not an invoice at all"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46",
+      "quote": "46. Tax invoice.-Subject to rule 54, a tax invoice referred to in section 31 shall be issued by the registered person containing the following particulars, namely,-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(a)",
+      "quote": "name, address and Goods and Services Tax Identification Number of the supplier;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(q)",
+      "quote": "signature or digital signature of the supplier or his authorised representative:"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, first proviso",
+      "quote": "the number of digits of Harmonised System of Nomenclature code for goods or services that a class of registered persons shall be required to mention; or",
+      "extraction_note": "The proviso lets the Board vary the HSN digit requirement by notification. No such notification is held locally, so the number of digits required is UNKNOWN."
+    }
+  ]
+}

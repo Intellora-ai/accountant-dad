@@ -1,0 +1,86 @@
+{
+  "id": "GST-INV-TIME-LIMIT",
+  "name": "Time limit for issuing a tax invoice",
+  "status": "VERIFIED",
+  "definition": "Rule 47 fixes when a tax invoice for a taxable supply of SERVICES must be issued: within thirty days of the supply, forty five days for insurers, banking companies and financial institutions, and, for specified suppliers making supplies between distinct persons, by the end of the quarter.",
+  "why_it_exists": "An invoice date that sits outside the permitted window is a defect visible from the document alone, without any accounting judgement. It is one of the few checks a machine can make with certainty.",
+  "inputs": [
+    "the date of the supply of service",
+    "the invoice date",
+    "the class of supplier",
+    "whether the supply is between distinct persons under section 25"
+  ],
+  "outputs": [
+    "within time",
+    "or out of time",
+    "or not determinable"
+  ],
+  "preconditions": [
+    "the supply is a taxable supply of services",
+    "the date of supply of service is known"
+  ],
+  "rules": [
+    "GST-INV-TIME-001",
+    "GST-INV-TIME-002",
+    "GST-INV-TIME-003"
+  ],
+  "exceptions": [
+    "insurers, banking companies and financial institutions including non-banking financial companies have forty five days",
+    "specified suppliers making supplies between distinct persons may invoice by the end of the quarter"
+  ],
+  "common_mistakes": [
+    "applying the thirty-day limit to a supply of goods \u2014 rule 47 says 'in the case of the taxable supply of services'",
+    "measuring from the invoice date instead of the date of supply of service",
+    "applying the forty five day period to any large company \u2014 it is limited to insurers, banking companies and financial institutions"
+  ],
+  "dependencies": [
+    "GST-INV-TAX-INVOICE"
+  ],
+  "related_concepts": [
+    "GST-INV-MANNER"
+  ],
+  "legal_references": [
+    "CGST Rules 2017, rule 47"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 a statutory invoicing deadline is not an accounting standard question"
+  ],
+  "gst_references": [
+    "CGST Rules 2017, rule 47",
+    "UNKNOWN \u2014 the time limit for issuing an invoice for a supply of GOODS is fixed by section 31 of the CGST Act, a different document not read for this record",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the date of supply of service",
+    "the invoice date",
+    "the supplier's class"
+  ],
+  "confidence_factors": [
+    "weak when the date of supply of service is not on the document",
+    "weak when it is unclear whether the supply is of goods or of services, because rule 47 only reaches services"
+  ],
+  "validation_checks": [
+    "invoice date minus date of supply of service is at most 30 days for an ordinary supplier of services",
+    "at most 45 days where the supplier is an insurer, banking company or financial institution",
+    "no arithmetic check is performed where the supply is of goods, because rule 47 does not govern it"
+  ],
+  "examples": [
+    "service supplied 1 April, invoice dated 25 April, ordinary supplier \u2014 within the thirty days"
+  ],
+  "counterexamples": [
+    "service supplied 1 April, invoice dated 15 May, ordinary supplier \u2014 outside thirty days",
+    "goods delivered 1 April, invoice dated 15 May \u2014 rule 47 says nothing about this; do not report it as late on the strength of rule 47"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 47",
+      "quote": "47. Time limit for issuing tax invoice.- The invoice referred to in rule 46, in the case of the taxable supply of services, shall be issued within a period of thirty days from the date of the supply of service:"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 47, first proviso",
+      "quote": "the period within which the invoice or any document in lieu thereof is to be issued shall be forty five days from the date of the supply of service:"
+    }
+  ]
+}

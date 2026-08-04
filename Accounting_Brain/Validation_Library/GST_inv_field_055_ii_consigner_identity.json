@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-FIELD-055-II",
+  "status": "VERIFIED",
+  "if": [
+    "goods are removed for transportation in one of the four cases in rule 55(1)(a) to (d)",
+    "a delivery challan is issued in lieu of an invoice under rule 55(1)"
+  ],
+  "then": "the delivery challan MUST carry the consigner's name, address and GSTIN, if the consigner is registered",
+  "source_section": "CGST Rules 2017, rule 55(1)(ii)",
+  "note": "One mandatory particular of rule 55(1)(ii), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)(ii)",
+      "quote": "name, address and Goods and Services Tax Identification Number of the consigner, if registered;"
+    }
+  ]
+}

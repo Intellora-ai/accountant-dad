@@ -1,0 +1,163 @@
+{
+  "id": "GST-VALUE-SUPPLY",
+  "name": "Value of taxable supply",
+  "status": "VERIFIED",
+  "definition": "The value of a supply is the transaction value \u2014 the price actually paid or payable for the supply \u2014 but only where the supplier and recipient are not related and the price is the sole consideration. To that value s.15(2) ADDS other statutory levies charged separately, amounts the supplier was liable for but the recipient incurred, incidental expenses including commission and packing, interest, late fee or penalty for delayed payment, and subsidies directly linked to the price other than Central and State Government subsidies. s.15(3) EXCLUDES a discount recorded in the invoice at or before the supply, and a post-supply discount only where it was agreed at or before the supply, linked to specific invoices, and the recipient has reversed the attributable input tax credit. Where s.15(1) cannot apply, s.15(4) sends the valuation to the prescribed manner.",
+  "why_it_exists": "It fixes the AMOUNT on which GST is charged. s.9(1) levies the tax on the value determined under s.15, so an error here is an error in the tax itself, not a presentation matter. The dangerous half is s.15(2): amounts a bookkeeper would naturally treat as recoveries or as finance income \u2014 packing, commission, interest on late payment \u2014 are part of the taxable base.",
+  "inputs": [
+    "the price actually paid or payable",
+    "whether supplier and recipient are related persons",
+    "whether the price is the sole consideration",
+    "other taxes, duties, cesses, fees and charges shown separately on the invoice",
+    "amounts the supplier was liable for that the recipient incurred",
+    "incidental expenses and pre-delivery charges",
+    "interest, late fee or penalty charged for delayed payment",
+    "subsidies received, and who provided them",
+    "discounts, and for a post-supply discount, whether the recipient reversed the attributable input tax credit"
+  ],
+  "outputs": [
+    "the value of the taxable supply \u2014 a single amount",
+    "or an escalation to the prescribed valuation rules under s.15(4) or s.15(5), which are not held locally"
+  ],
+  "preconditions": [
+    "the transaction is a supply under s.7 (GST-SUPPLY-SCOPE)",
+    "its time of supply has been, or will be, determined under s.12 or s.13 \u2014 the two are separate determinations"
+  ],
+  "rules": [
+    "GST-VALUE-001",
+    "GST-VALUE-002",
+    "GST-VALUE-003",
+    "GST-VALUE-004",
+    "GST-VALUE-005",
+    "GST-VALUE-006",
+    "GST-VALUE-007",
+    "GST-VALUE-008",
+    "GST-VALUE-009",
+    "GST-VALUE-010",
+    "GST-VALUE-011"
+  ],
+  "exceptions": [
+    "related persons, or price not the sole consideration \u2014 s.15(1) does not apply and s.15(4) governs (GST-VALUE-009, GST-VALUE-011)",
+    "supplies notified under s.15(5) \u2014 valued in the prescribed manner notwithstanding s.15(1) and s.15(4) (GST-VALUE-010)",
+    "UNKNOWN \u2014 the prescribed valuation rules under s.15(4) and s.15(5) live in the CGST Rules and are not extracted here",
+    "UNKNOWN \u2014 notifications and rules made under the Act are not held locally. Only the Act text as updated 31-08-2021 was consulted. A notification made under the Act can narrow or displace a limb without the section text changing.",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "taking the invoice total as the value without adding the s.15(2) inclusions",
+    "excluding packing and commission as recoveries \u2014 s.15(2)(c) includes them",
+    "treating interest on late payment as finance income outside GST \u2014 s.15(2)(d) includes it in the value",
+    "excluding a post-supply discount before the recipient has reversed the attributable input tax credit \u2014 s.15(3)(b)(ii) makes that reversal a condition",
+    "excluding a pre-supply discount that was never recorded in the invoice \u2014 s.15(3)(a) makes the invoice record a condition",
+    "using transaction value for a supply to a director or an employee \u2014 they are related persons under the s.15 Explanation",
+    "assuming GST is charged on GST \u2014 the four GST Acts are carved out of s.15(2)(a); other statutory levies are not"
+  ],
+  "dependencies": [
+    "GST-SUPPLY-SCOPE",
+    "UNKNOWN \u2014 CGST Rules valuation provisions referred to by s.15(4) and s.15(5) not extracted",
+    "UNKNOWN \u2014 the list of supplies notified under s.15(5) is not held locally"
+  ],
+  "related_concepts": [
+    "GST-TIME-GOODS",
+    "GST-TIME-SERVICES",
+    "GST-SUPPLY-SCOPE",
+    "ACC-REV-GOODS"
+  ],
+  "legal_references": [
+    "CGST Act, 2017 s.15 \u2014 Value of Taxable Supply",
+    "CGST Act, 2017 s.9(1) \u2014 tax levied on the value determined under section 15"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 the value of a taxable supply is a statutory computation under s.15. It is not the accounting measurement of revenue, and the two amounts can differ on the same transaction"
+  ],
+  "gst_references": [
+    "CGST Act, 2017 s.15(1) to s.15(5), the Explanation to s.15(2), and the Explanation to s.15 defining related persons"
+  ],
+  "evidence_required": [
+    "the tax invoice, with every separately charged line",
+    "the agreement, where a discount or a non-price consideration is claimed",
+    "for a post-supply discount: the pre-supply agreement, the linkage to specific invoices, and the document evidencing the recipient's input tax credit reversal",
+    "the relationship between supplier and recipient",
+    "for subsidies: who provided the subsidy and whether it is directly linked to the price"
+  ],
+  "confidence_factors": [
+    "weak when only the invoice is held \u2014 s.15(2)(b) and s.15(3)(b) both turn on facts that never appear on it",
+    "weak when the relationship between the parties is unknown, because s.15(1) is conditional on it",
+    "zero for a post-supply discount until the recipient's input tax credit reversal is evidenced",
+    "zero where s.15(4) or s.15(5) applies \u2014 the prescribed rules are not held locally"
+  ],
+  "validation_checks": [
+    "every s.15(2) inclusion has been considered before the value is fixed",
+    "a discount is excluded only under s.15(3)(a) or s.15(3)(b), never because it appears in the accounts",
+    "a post-supply discount is excluded only on evidence of the recipient's input tax credit reversal",
+    "a related-party supply is NOT valued at transaction value under s.15(1)",
+    "the value used for GST is recorded separately from the amount recognised as revenue in the books"
+  ],
+  "examples": [
+    "unrelated parties, price the sole consideration, packing charged separately \u2014 the value is the price plus the packing charge under s.15(2)(c)",
+    "a discount agreed before the supply and shown on the face of the invoice \u2014 excluded under s.15(3)(a)"
+  ],
+  "counterexamples": [
+    "a year-end volume rebate issued by credit note where no pre-supply agreement exists \u2014 s.15(3)(b)(i) is not satisfied, so the value of supply is unchanged and the rebate does not reduce the GST",
+    "goods supplied to an employee at cost \u2014 employer and employee are related persons under the s.15 Explanation, so s.15(1) does not apply and the transaction value is not the taxable value"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(1)",
+      "quote": "The value of a supply of goods or services or both shall be the transaction value, which is the price actually paid or payable for the said supply of goods or services or both where the supplier and the recipient of the supply are not related and the price is the sole consideration for the             supply."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(2)",
+      "quote": "The value of supply shall include",
+      "extraction_note": "The sub-section ends '\u2013\u2013\u2013' (three dashes) in the extraction. The quote stops before them."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(2)(d)",
+      "quote": "interest or late fee or penalty for delayed payment of any consideration for any supply"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(2)(e)",
+      "quote": "subsidies directly linked to the price excluding subsidies provided by the Central Government and State Governments."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(3)",
+      "quote": "The value of the supply shall not include any discount which is given",
+      "extraction_note": "The sub-section ends '\u2013\u2013' in the extraction. The quote stops before them."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(3)(a)",
+      "quote": "before or at the time of the supply if such discount has been duly recorded in the invoice issued in respect of such supply"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(3)(b)(ii)",
+      "quote": "input tax credit as is attributable to the discount on the basis of document issued by the supplier has been reversed by the recipient of the supply."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(4)",
+      "quote": "Where the value of the supply of goods or services or both cannot be determined under sub-section (1), the same shall be determined in such manner as may be prescribed."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(5)",
+      "quote": "Notwithstanding anything contained in sub-section (1) or sub-section (4), the value of such supplies as may be notified by the Government on the recommendations of the Council shall be determined in such manner as may be prescribed."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15 Explanation (a)(iii)",
+      "quote": "such persons are employer and employee;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.9(1)",
+      "quote": "on the value determined under section 15"
+    }
+  ]
+}

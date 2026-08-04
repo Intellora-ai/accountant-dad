@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-TIME-002",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a taxable supply of services",
+    "the supplier is an insurer, a banking company, or a financial institution including a non-banking financial company"
+  ],
+  "then": "the period for issuing the invoice or any document in lieu of it is forty five days from the date of the supply of service",
+  "source_section": "CGST Rules 2017, rule 47, first proviso",
+  "note": "This displaces the thirty-day limit in GST-INV-TIME-001 for these suppliers only.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 47, first proviso",
+      "quote": "Provided that where the supplier of services is an insurer or a banking company or a financial institution, including a non-banking financial company, the period within which the invoice or any document in lieu thereof is to be issued shall be forty five days from the date of the supply of service:"
+    }
+  ]
+}

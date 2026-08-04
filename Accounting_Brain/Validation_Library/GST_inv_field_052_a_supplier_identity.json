@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-FIELD-052-A",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a payment voucher referred to in clause (g) of sub-section (3) of section 31",
+    "it is issued under rule 52 of the CGST Rules, 2017"
+  ],
+  "then": "the payment voucher MUST carry the supplier's name, address and GSTIN if the supplier is registered",
+  "source_section": "CGST Rules 2017, rule 52(a)",
+  "note": "One mandatory particular of rule 52(a), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 52(a)",
+      "quote": "name, address and Goods and Services Tax Identification Number of the supplier if registered;",
+      "extraction_note": "Rule 52(a) is the only one of these particulars qualified by 'if registered' for the SUPPLIER: a payment voucher is issued by the recipient paying tax under reverse charge, so the supplier may be unregistered."
+    }
+  ]
+}

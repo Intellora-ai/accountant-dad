@@ -1,0 +1,18 @@
+{
+  "id": "GST-ITC-17-4-P1",
+  "status": "VERIFIED",
+  "if": [
+    "the option under s.17(4) has been exercised for a financial year",
+    "the registered person seeks to withdraw it before the end of that financial year"
+  ],
+  "then": "withdrawal is NOT PERMITTED for the remaining part of that financial year",
+  "source_section": "CGST Act s.17(4), first proviso",
+  "note": "The lock runs to the end of the financial year, not for twelve months from the election. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(4), first proviso",
+      "quote": "Provided that the option once exercised shall not be withdrawn during the remaining part of the financial year:"
+    }
+  ]
+}

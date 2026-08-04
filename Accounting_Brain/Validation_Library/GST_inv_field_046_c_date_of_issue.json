@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-FIELD-046-C",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a tax invoice required by section 31 and issued under rule 46 of the CGST Rules, 2017",
+    "no provision of rule 54 (tax invoice in special cases) displaces the particular"
+  ],
+  "then": "the tax invoice MUST carry its date of issue",
+  "source_section": "CGST Rules 2017, rule 46(c)",
+  "note": "One mandatory particular of rule 46(c), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(c)",
+      "quote": "date of its issue;"
+    }
+  ]
+}

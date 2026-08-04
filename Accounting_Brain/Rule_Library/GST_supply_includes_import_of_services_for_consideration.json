@@ -1,0 +1,19 @@
+{
+  "id": "GST-SUPPLY-002",
+  "status": "VERIFIED",
+  "if": [
+    "the transaction is an import of services",
+    "it is for a consideration"
+  ],
+  "then": "the transaction IS a supply, whether or not it is in the course or furtherance of business",
+  "source_section": "CGST s.7(1)(b)",
+  "note": "The business-purpose test in s.7(1)(a) does NOT apply here. This is the clause most often missed: an import of services for consideration outside any business is still a supply.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(1)(b)",
+      "quote": "import of services for a consideration whether or not in the course or furtherance of business",
+      "extraction_note": "The clause ends ';[and]12' in the extraction \u2014 an editorial amendment marker carried down to footnote 12. The quote stops at 'business' to stay clear of it."
+    }
+  ]
+}

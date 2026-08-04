@@ -1,0 +1,24 @@
+{
+  "id": "GST-TIME-SERVICES-003",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of services under forward charge",
+    "the invoice is NOT issued within the period prescribed under s.31"
+  ],
+  "then": "this limb yields the EARLIER of the date of provision of service and the date of receipt of payment",
+  "source_section": "CGST s.13(2)(b)",
+  "note": "Issuing the invoice late does not delay the tax point \u2014 it moves it BACK to the date the service was provided. This is the opposite of what a late invoice intuitively suggests.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2)(b)",
+      "quote": "the date of provision of service, if the invoice is not issued within the period",
+      "extraction_note": "Clause (b) is split by a page break: footnote 36 and the running header fall between 'period' and 'prescribed under'. The second span carries amendment marker '[******]37' before 'section 31', so it too is quoted around the marker."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2)(b)",
+      "quote": "section 31 or the date of receipt of payment, whichever is"
+    }
+  ]
+}

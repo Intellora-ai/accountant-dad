@@ -1,0 +1,29 @@
+{
+  "id": "GST-ITC-16-2-C",
+  "status": "VERIFIED",
+  "if": [
+    "input tax credit is claimed on a supply",
+    "the tax charged in respect of that supply has NOT been actually paid to the Government, in cash or through utilisation of admissible input tax credit"
+  ],
+  "then": "credit of that input tax is DENIED, subject to the provisions of section 41",
+  "source_section": "CGST Act s.16(2)(c)",
+  "note": "The only condition the recipient cannot verify from his own records \u2014 it turns on the supplier's conduct. Section 41 provisionally credits self-assessed eligible input tax, which is why the clause is expressed 'subject to the provisions of section 41'. A recipient's file can evidence the other three conditions and still fail this one. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(c)",
+      "quote": "subject to the provisions of section 41, the tax charged in respect of such supply has been actually paid to the Government, either in cash or through utilisation of",
+      "extraction_note": "A footnote and a page break interrupt this clause in the extracted text, so the remainder is quoted separately rather than stitched."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(c), continued",
+      "quote": "input tax credit admissible in respect of the said supply; and"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.41(1)",
+      "quote": "Every registered person shall, subject to such conditions and restrictions as may be prescribed, be entitled to take the credit of eligible input tax, as self-assessed, in his return and such amount shall be credited on a provisional basis to his electronic credit ledger."
+    }
+  ]
+}

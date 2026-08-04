@@ -1,0 +1,22 @@
+{
+  "id": "GST-SUPPLY-004",
+  "status": "VERIFIED",
+  "if": [
+    "the activity or transaction is specified in Schedule III"
+  ],
+  "then": "it is treated NEITHER as a supply of goods NOR as a supply of services \u2014 no time of supply and no value of supply arise, and no GST entry is posted",
+  "source_section": "CGST s.7(2)(a)",
+  "note": "s.7(2) opens 'Notwithstanding anything contained in sub-section (1)', so this overrides s.7(1). Schedule III is not extracted, so the list cannot be checked here.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(2)(a)",
+      "quote": "activities or transactions specified in Schedule III"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(2)",
+      "quote": "shall be treated neither as a supply of goods nor a supply of services."
+    }
+  ]
+}

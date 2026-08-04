@@ -1,0 +1,40 @@
+{
+  "id": "GST-INV-CONSOL-001",
+  "status": "VERIFIED",
+  "if": [
+    "the recipient is not a registered person",
+    "the recipient does not require an invoice",
+    "the supplier is not engaged in supplying services by way of admission to exhibition of cinematograph films in multiplex screens"
+  ],
+  "then": "the registered person MAY omit a per-supply tax invoice, and MUST instead issue a consolidated tax invoice for all such supplies at the close of each day",
+  "source_section": "CGST Rules 2017, rule 46, fourth proviso",
+  "note": "Both conditions must hold. 'The recipient does not require such invoice' is a fact about the recipient's demand, not about the value of the supply.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, fourth proviso",
+      "quote": "may not issue a tax invoice in accordance with the provisions of clause (b) of sub-section (3) of section 31 subject to the following conditions, namely,-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, fourth proviso",
+      "quote": "the recipient is not a registered person; and"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, fourth proviso",
+      "quote": "the recipient does not require such invoice, and"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, fourth proviso",
+      "quote": "shall issue a consolidated tax invoice for such supplies at the close of each day in respect of all such supplies."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, fourth proviso",
+      "quote": "other than the supplier engaged in making supply of services by way of admission to exhibition of cinematograph films in",
+      "extraction_note": "The sentence continues 'multiplex screens' after a page break carrying footnotes 107 to 109, so the quote stops at the page boundary rather than reaching across it."
+    }
+  ]
+}

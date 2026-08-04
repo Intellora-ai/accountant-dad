@@ -1,0 +1,216 @@
+{
+  "id": "CO-DEPRECIATION-SCHEDULE-II",
+  "name": "Depreciation — Schedule II to the Companies Act, 2013",
+  "status": "VERIFIED",
+  "definition": "Depreciation is the systematic allocation of the depreciable amount of an asset over its useful life. The depreciable amount is the cost of the asset, or the other amount substituted for cost, less its residual value. The useful life is the period over which the asset is expected to be available for use by an entity, or the number of production or similar units expected to be obtained from it. For the purposes of Schedule II, depreciation includes amortisation.",
+  "why_it_exists": "Schedule II is headed '(See section 123)', and s.123(2) requires that depreciation be provided in accordance with Schedule II for the profits out of which dividend is declared. It replaces a free choice of write-off with a specified useful life per class of asset and a cap on residual value, so that reported profit cannot be manufactured by stretching an asset's life.",
+  "inputs": [
+    "the cost of the asset, or the other amount substituted for cost",
+    "the residual value of the asset",
+    "the useful life of the asset, from Part C or a justified alternative",
+    "the date of any addition, sale, discard, demolition or destruction during the financial year",
+    "the number of shifts the asset was worked"
+  ],
+  "outputs": [
+    "the depreciation charge for the financial year",
+    "disclosure of the depreciation methods used, and of useful lives where they differ from the Schedule"
+  ],
+  "preconditions": [
+    "the entity is a company to which the Companies Act, 2013 applies",
+    "the asset is a tangible asset within Part C, or an intangible asset for which paragraph 3(ii) routes to the Accounting Standards"
+  ],
+  "rules": [
+    "CO-DEP-RESIDUAL-VALUE-001",
+    "CO-DEP-PRO-RATA-001",
+    "CO-DEP-REGULATOR-OVERRIDE-001"
+  ],
+  "exceptions": [
+    "Part B, paragraph 4 — a useful life or residual value notified for accounting purposes by a Regulatory Authority constituted under an Act of Parliament, or by the Central Government, is applied irrespective of the requirements of Schedule II",
+    "paragraph 3(i) proviso — a company may adopt a different useful life or residual value if the financial statements disclose the difference and provide justification duly supported by technical advice",
+    "Note 6 — assets marked NESD in Part C get no extra shift depreciation",
+    "UNKNOWN — source is the Act as enacted 2013; amendments not held locally",
+    "Beyond the general amendment caveat: Schedule II as printed in this source is NOT purely the 2013 text. Paragraph 3(i) and paragraph 4 each carry a footnote recording substitution by Notification G.S.R. 627(E) dated 29 August 2014."
+  ],
+  "common_mistakes": [
+    "reading Part C as a table of depreciation RATES — paragraph 5 introduces it as the useful lives of various tangible assets",
+    "leaving a residual value above five per cent. of original cost with no disclosure and no technical justification",
+    "charging a full year's depreciation on an asset added or disposed of mid-year — Note 2 requires a pro rata basis",
+    "applying a Schedule II life where a Regulatory Authority has notified one — Part B paragraph 4 overrides",
+    "assuming the printed Schedule is the enacted 2013 text — paragraphs 3(i) and 4 were substituted in 2014"
+  ],
+  "dependencies": [
+    "CO-FINANCIAL-YEAR"
+  ],
+  "related_concepts": [
+    "CO-FINANCIAL-STATEMENT",
+    "CO-BOOKS-OF-ACCOUNT"
+  ],
+  "legal_references": [
+    "Companies Act, 2013, Schedule II",
+    "Companies Act, 2013, section 123(2)"
+  ],
+  "icai_references": [
+    "Schedule II paragraph 3(ii), as printed, routes intangible assets to the relevant Indian Accounting Standards (Ind AS), or to the Accounting Standards under the Companies (Accounting Standards) Rules, 2006 where Ind AS does not apply. That paragraph is itself substituted text and the standards are not held in this source.",
+    "UNKNOWN — no ICAI standard on depreciation is extracted here"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — whether depreciation may be claimed on the tax component of a capital good is a separate question under the CGST Act and is not decided by Schedule II"
+  ],
+  "evidence_required": [
+    "cost of the asset, or the other amount substituted for cost",
+    "residual value, and the technical advice where it exceeds five per cent. of original cost",
+    "date of addition, or of sale, discard, demolition or destruction",
+    "the useful life applied, and the justification where it differs from Part C",
+    "any Regulatory Authority notification of a useful life or residual value for the asset"
+  ],
+  "confidence_factors": [
+    "weak when the asset class cannot be matched to a Part C line — the useful life is then unresolved",
+    "weak when the acquisition or disposal date is missing — the Note 2 pro rata computation cannot be performed",
+    "weak for an intangible asset — paragraph 3(ii) routes it out of Schedule II to the Accounting Standards, which are not held here",
+    "UNKNOWN — the depreciation METHOD (straight line, written down value, unit of production) is not specified in the Schedule II text extracted here; Note 3(i) only requires the methods used to be disclosed"
+  ],
+  "validation_checks": [
+    "residual value does not exceed five per cent. of the original cost, or the difference is disclosed with justification duly supported by technical advice",
+    "the useful life applied matches Part C, or the difference is disclosed with justification duly supported by technical advice",
+    "an asset added or disposed of during the year is depreciated pro rata from or up to that date",
+    "the depreciation methods used are disclosed in the accounts",
+    "any Regulatory Authority notified useful life or residual value has been applied in preference to the Schedule"
+  ],
+  "examples": [
+    "a building other than a factory building, RCC frame structure — useful life 60 years, Part C item I(a)",
+    "an end user device such as a desktop or laptop — useful life 3 years, Part C item XII(ii)",
+    "office equipment, marked NESD — useful life 5 years, and no extra shift depreciation"
+  ],
+  "counterexamples": [
+    "an asset whose useful life a Regulatory Authority constituted under an Act of Parliament has notified — Schedule II does not decide it",
+    "a residual value set at ten per cent. of original cost with nothing disclosed — outside paragraph 3(i) and its proviso"
+  ],
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, heading",
+      "quote": "SCHEDULE II (See section 123) USEFUL LIVES TO COMPUTE DEPRECIATION"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.123(2)",
+      "quote": "For the purposes of clause (a) of sub-section (1), depreciation shall be provided in accordance with the provisions of Schedule II"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part A, paragraph 1",
+      "quote": "Depreciation is the systematic allocation of the depreciable amount of an asset over its useful life"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part A, paragraph 1",
+      "quote": "The depreciable amount of an asset is the cost of an asset or other amount substituted for cost, less its residual value"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part A, paragraph 1",
+      "quote": "The useful life of an asset is the period over which an asset is expected to be available for use by an entity, or the number of production or similar units expected to be obtained from the asset by the entity"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part A, paragraph 2",
+      "quote": "For the purpose of this Schedule, the term depreciation includes amortisation"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part A, paragraph 3(i)",
+      "quote": "The useful life of an asset shall not ordinarily be different from the useful life specified in Part C and the residual value of an asset shall not be more than five per cent. of the original cost of the asset"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part A, paragraph 3(i), proviso",
+      "quote": "where a company adopts a useful life different from what is specified in Part C or uses a residual value different from the limit specified above, the financial statements shall disclose such difference and provide justification in this behalf duly supported by technical advice"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part B, paragraph 4",
+      "quote": "The useful life or residual value of any specific asset, as notified for accounting purposes by a Regulatory Authority constituted under an Act of Parliament or by the Central Government shall be applied in calculating the depreciation to be provided for such asset irrespective of the requirements of this Schedule"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, paragraph 5",
+      "quote": "Subject to Parts A and B above, the following are the useful lives of various tangible assets"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, item I(a)",
+      "quote": "Buildings (other than factory buildings) RCC Frame Structure 60 Years"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, item XII(ii)",
+      "quote": "End user devices, such as, desktops, laptops, etc. 3 Years"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, item XI",
+      "quote": "Office equipment [NESD] 5 Years"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 1",
+      "quote": "“Factory buildings” does not include offices, godowns, staff quarters"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 2",
+      "quote": "Where, during any financial year, any addition has been made to any asset, or where any asset has been sold, discarded, demolished or destroyed, the depreciation on such assets shall be calculated on a pro rata basis from the date of such addition or, as the case may be, up to the date on which such asset has been sold, discarded, demolished or destroyed."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 3(i)",
+      "quote": "The following information shall also be disclosed in the accounts, namely:— (i) depreciation methods used"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 3(ii)",
+      "quote": "the useful lives of the assets for computing depreciation, if they are different from the life specified in the Schedule"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 4(a)",
+      "quote": "of the Schedule is for whole of the asset and where cost of a part of the asset is significant to total cost of the asset and useful life of that part is different from the useful life of the remaining asset, useful life of that significant part shall be determined separately",
+      "extraction_note": "Quoted from 'of the Schedule' onward: the extraction splits 'Part C' into 'Par t C' immediately before it. The split is in the extraction, not in the Schedule."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 4(b)",
+      "quote": "shall be voluntary in respect of the financial year commencing on or after the 1st April, 2014 and mandatory for financial statements in respect of financial years commencing on or after the 1st April, 2015",
+      "extraction_note": "Quoted from 'shall be voluntary' onward: the extraction splits 'sub-paragraph (a)' into 'sub -paragraph ( a)' immediately before it."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 6",
+      "quote": "The useful lives of assets working on shift basis have been specified in the Schedule based on their single shift working"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 6",
+      "quote": "if an asset is used for any time during the year for double shift, the depreciation will increase by 50% for that period",
+      "extraction_note": "The intervening span is skipped: the extraction splits 'indicated' into 'indicate d'."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 6",
+      "quote": "the triple shift the depreciation shall be calculated on the basis of 100% for that period",
+      "extraction_note": "Quoted from 'the triple shift' onward: the extraction joins 'in case' into 'incase' immediately before it."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, footnote 1 to paragraph 3",
+      "quote": "Subs. by Notification No. G.S.R. 627(E) dated 29th August 2014, for sub-paragraph (i) of paragraph 3 (w.e.f. 29-8-2014)",
+      "extraction_note": "The Schedule's own footnote, quoted as direct evidence that paragraph 3(i) as printed is substituted 2014 text and not the 2013 enactment."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, footnote 1 to paragraph 4",
+      "quote": "Subs. by Notification No. G.S.R. 627(E) dated 29th August 2014, for paragraph 4 (w.e.f. 29-8-2014)",
+      "extraction_note": "The Schedule's own footnote, quoted as direct evidence that paragraph 4 as printed is substituted 2014 text."
+    }
+  ]
+}

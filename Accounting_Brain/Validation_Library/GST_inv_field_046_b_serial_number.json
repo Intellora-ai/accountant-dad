@@ -1,0 +1,24 @@
+{
+  "id": "GST-INV-FIELD-046-B",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a tax invoice required by section 31 and issued under rule 46 of the CGST Rules, 2017",
+    "no provision of rule 54 (tax invoice in special cases) displaces the particular"
+  ],
+  "then": "the tax invoice MUST carry a consecutive serial number of at most sixteen characters, unique for the financial year",
+  "source_section": "CGST Rules 2017, rule 46(b)",
+  "note": "One mandatory particular of rule 46(b), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(b)",
+      "quote": "a consecutive serial number not exceeding sixteen characters, in one or multiple series, containing alphabets or numerals or special characters- hyphen or dash and slash symbolised as",
+      "extraction_note": "The clause continues '\u2015-\u2016 and \u2015/\u2016 respectively'; the PDF extraction renders the quotation marks as U+2015 and U+2016, so the quote stops before them and the tail is quoted separately. The artifact is in the extraction, not in the Rules."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(b)",
+      "quote": "respectively, and any combination thereof, unique for a financial year;"
+    }
+  ]
+}

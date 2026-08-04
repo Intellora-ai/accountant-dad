@@ -1,0 +1,35 @@
+{
+  "id": "GST-ITC-16-2-P2",
+  "status": "CONFLICT",
+  "if": [
+    "a recipient has availed input tax credit on a supply",
+    "the supply is NOT one on which tax is payable on reverse charge basis",
+    "he fails to pay the supplier the value of supply together with the tax payable thereon within one hundred and eighty days from the date of issue of the invoice"
+  ],
+  "then": "CONFLICT \u2014 the two locally held sources state the consequence differently and this file resolves neither. Source A: an amount equal to the input tax credit availed is ADDED TO HIS OUTPUT TAX LIABILITY, along with interest thereon. Source B: that amount is PAID BY HIM ALONG WITH INTEREST PAYABLE UNDER SECTION 50",
+  "source_section": "CGST Act s.16(2), second proviso",
+  "note": "The one-hundred-and-eighty-day rule itself is common to both sources, as is its exclusion of reverse-charge supplies. Only the mechanism of the consequence differs. Source B carries a footnote recording the substitution by Act 8 of 2023 with effect from 1-10-2023, which is after the date of source A \u2014 but the resolution is a legal determination, not an extraction, and is left open here deliberately. The manner in both cases is 'as may be prescribed', so neither source closes the computation on its own.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2), second proviso (source A, Act as updated 31-08-2021)",
+      "quote": "Provided further that where a recipient fails to pay to the supplier of goods or services or both, other than the supplies on which tax is payable on reverse charge basis, the amount towards the value of supply along with tax payable thereon within a period of one hundred and eighty days from the date of issue of invoice by the supplier, an amount equal to the input tax credit availed by the recipient shall be added to his output tax liability, along with interest thereon, in such manner as may be prescribed:"
+    },
+    {
+      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
+      "section": "CGST Act s.16(2), second proviso (source B, IndiaCode consolidation)",
+      "quote": "an amount equal to the input tax credit availed by the recipient shall be"
+    },
+    {
+      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
+      "section": "CGST Act s.16(2), second proviso (source B, IndiaCode consolidation)",
+      "quote": "paid by him along with interest payable under section 50], in such manner as may be prescribed:",
+      "extraction_note": "The bracket is the consolidation's own amendment marker and is quoted as it appears rather than cleaned."
+    },
+    {
+      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
+      "section": "CGST Act s.16, footnote 6",
+      "quote": "Subs. by Act 8 of 2023, s. 138, for \u201cadded to his output tax liability, along with interest thereon\u201d (w.e.f. 1-10-2023)."
+    }
+  ]
+}

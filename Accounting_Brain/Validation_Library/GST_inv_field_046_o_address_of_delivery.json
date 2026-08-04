@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-FIELD-046-O",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a tax invoice required by section 31 and issued under rule 46 of the CGST Rules, 2017",
+    "no provision of rule 54 (tax invoice in special cases) displaces the particular",
+    "the address of delivery differs from the place of supply"
+  ],
+  "then": "where the address of delivery differs from the place of supply, the tax invoice MUST carry the address of delivery",
+  "source_section": "CGST Rules 2017, rule 46(o)",
+  "note": "One mandatory particular of rule 46(o), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(o)",
+      "quote": "address of delivery where the same is different from the place of supply;"
+    }
+  ]
+}

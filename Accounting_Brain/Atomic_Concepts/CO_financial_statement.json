@@ -1,0 +1,203 @@
+{
+  "id": "CO-FINANCIAL-STATEMENT",
+  "name": "Financial statement — what it comprises and what it must satisfy (Companies Act, 2013, s.2(40) and s.129)",
+  "status": "VERIFIED",
+  "definition": "A financial statement, in relation to a company, includes a balance sheet as at the end of the financial year; a profit and loss account (or, for an activity not for profit, an income and expenditure account) for the financial year; a cash flow statement for the financial year; a statement of changes in equity, if applicable; and any explanatory note annexed to or forming part of those documents. It must give a true and fair view of the state of affairs of the company or companies, comply with the accounting standards, and be in the form provided for its class of company in Schedule III.",
+  "why_it_exists": "This is the statutory backing beneath the ICAI Accounting Standards. The chain is explicit and three links long: s.129(1) requires financial statements to comply with the accounting standards; s.2(2) defines “accounting standards” as those referred to in s.133; s.133 empowers the Central Government to prescribe standards of accounting as recommended by the Institute of Chartered Accountants of India. An ICAI standard therefore binds a company because s.129 says so, not on its own authority.",
+  "inputs": [
+    "books of account kept under s.128 for the financial year",
+    "the accounting standards prescribed under s.133",
+    "the form prescribed for the class of company in Schedule III"
+  ],
+  "outputs": [
+    "a financial statement for the financial year, laid before the annual general meeting",
+    "where subsidiaries or associate companies exist, a consolidated financial statement as well",
+    "where the standards are not complied with, a disclosure of the deviation, its reasons and its financial effects"
+  ],
+  "preconditions": [
+    "the entity is a company to which the Companies Act, 2013 applies",
+    "a financial year as defined in s.2(41) has been identified",
+    "the company is not one for which a form of financial statement is specified in or under another governing Act (second proviso to s.129(1))"
+  ],
+  "rules": [
+    "CO-FS-TRUE-AND-FAIR-001",
+    "CO-FS-DEVIATION-DISCLOSURE-001",
+    "CO-FS-CONSOLIDATION-001"
+  ],
+  "exceptions": [
+    "s.2(40) proviso — a One Person Company, a small company and a dormant company may not include the cash flow statement",
+    "s.129(1) second proviso — sub-section (1) does not apply to an insurance or banking company, a company engaged in the generation or supply of electricity, or any other class for which a form of financial statement is specified in or under its governing Act",
+    "s.129(1) third proviso — failure to disclose matters not required to be disclosed by the Insurance Act, the Banking Regulation Act, the Electricity Act or another governing law does not by itself defeat the true and fair view",
+    "s.129(6) — the Central Government may by notification exempt classes of companies from the requirements of s.129",
+    "UNKNOWN — source is the Act as enacted 2013; amendments not held locally"
+  ],
+  "common_mistakes": [
+    "treating the notes as outside the financial statement — the Explanation to s.129 brings notes annexed to or forming part of it within the term",
+    "omitting the cash flow statement for a company that is not a One Person Company, small company or dormant company",
+    "treating disclosure of a deviation as curing it — s.129(5) operates 'Without prejudice to sub-section (1)'",
+    "citing an ICAI standard as binding on its own, without the s.129(1) → s.2(2) → s.133 chain",
+    "preparing standalone statements only, where subsidiaries or associate companies exist"
+  ],
+  "dependencies": [
+    "CO-BOOKS-OF-ACCOUNT",
+    "CO-FINANCIAL-YEAR"
+  ],
+  "related_concepts": [
+    "CO-DEPRECIATION-SCHEDULE-II",
+    "ACC-REV-GOODS"
+  ],
+  "legal_references": [
+    "Companies Act, 2013, section 2(40) — definition of “financial statement”",
+    "Companies Act, 2013, section 129",
+    "Companies Act, 2013, section 2(2) — definition of “accounting standards”",
+    "Companies Act, 2013, section 133 — Central Government to prescribe accounting standards",
+    "Companies Act, 2013, Schedule III — the form of the financial statement, as referred to in s.129(1). Schedule III itself is not extracted here."
+  ],
+  "icai_references": [
+    "Companies Act, 2013, s.133 routes the accounting standards to those recommended by the Institute of Chartered Accountants of India. Read with s.129(1) and s.2(2), this is the statutory backing for an ICAI Accounting Standard such as AS 9.",
+    "UNKNOWN — which specific ICAI standards stand notified under s.133, and in what version, is not stated in this source"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — a GST return is a separate filing under the CGST Act and is not a financial statement within s.2(40)"
+  ],
+  "evidence_required": [
+    "the books of account from which the statement is made up",
+    "identification of the class of company, which decides the Schedule III form and whether the s.2(40) proviso applies",
+    "where the standards are departed from: the deviation, its reasons and its financial effects"
+  ],
+  "confidence_factors": [
+    "weak when the class of company is unknown — One Person Company, small company and dormant company change what the statement must contain",
+    "weak for an insurance, banking or electricity company — the second proviso to s.129(1) puts them outside sub-section (1)",
+    "the printed text of s.129(3) carries a footnote recording substitution by Act 1 of 2018, so the consolidation wording is already post-enactment"
+  ],
+  "validation_checks": [
+    "the statement contains a balance sheet as at the end of the financial year",
+    "the statement contains a profit and loss account, or an income and expenditure account where the activity is not for profit",
+    "the statement contains a cash flow statement, unless the company is a One Person Company, small company or dormant company",
+    "any departure from the accounting standards is disclosed with its reasons and its financial effects",
+    "where subsidiaries or associate companies exist, a consolidated financial statement exists as well"
+  ],
+  "examples": [
+    "a company with a subsidiary prepares its own financial statement and a consolidated financial statement, and lays both before the annual general meeting — s.129(2) and s.129(3)",
+    "a small company omits the cash flow statement — permitted by the proviso to s.2(40)"
+  ],
+  "counterexamples": [
+    "a banking company's statements judged against s.129(1) — the second proviso to s.129(1) excludes it",
+    "a departure from an accounting standard left undisclosed because the directors consider it immaterial — s.129(5) attaches no materiality condition in the text quoted here"
+  ],
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(40)",
+      "quote": "“financial statement” in relation to a company, includes"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(40)(i)",
+      "quote": "a balance sheet as at the end of the financial year"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(40)(ii)",
+      "quote": "a profit and loss account, or in the case of a company carrying on any activity not for profit, an income and expenditure account for the financial year"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(40)(iii)",
+      "quote": "cash flow statement for the financial year"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(40)(iv)",
+      "quote": "a statement of changes in equity, if applicable"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(40)(v)",
+      "quote": "any explanatory note annexed to, or forming part of, any document referred to in sub-clause (i) to sub-clause (iv)"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(40), proviso",
+      "quote": "the financial statement, with respect to One Person Company, small company and dormant company, may not include the cash flow statement"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(1)",
+      "quote": "The financial statements shall give a true and fair view of the state of affairs of the company or companies, comply with the accounting standards notified under",
+      "extraction_note": "The sentence continues 'section133' with no space, so it is quoted up to 'notified under' and resumed in the next entry. The join is in the extraction, not in the Act."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(1)",
+      "quote": "shall be in the form or forms as may be provided for different class or classes of companies in Schedule III",
+      "extraction_note": "Resumes s.129(1) after the 'section133' join. The printed line double-spaces every word ('shall  be  in  the  form'); whitespace is normalised before comparison."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(1), first proviso",
+      "quote": "the items contained in such financial statements shall be in accordance with the accounting standards"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(1), second proviso",
+      "quote": "nothing contained in this sub-section shall apply to any insurance or banking company or any company engaged in the generation or supply of electricity, or to any other class of company for which a form of financial statement has been specified in or under the Act governing such class of company"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(1), third proviso",
+      "quote": "the financial statements shall not be treated as not disclosing a true and fair view of the state of affairs of the company, merely by reason of the fact that they do not disclose"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(2)",
+      "quote": "At every annual general meeting of a company, the Board of Directors of the company shall lay before such meeting financial statements for the financial year"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(3)",
+      "quote": "Where a company has one or more subsidiaries or associate companies, it shall, in addition to financial statements provided under sub-section (2), prepare a consolidated financial statement of the company and of all the subsidiaries and associate companies in the same form and manner as that of its own and in accordance with applicable accounting standards"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(3)",
+      "quote": "which shall also be laid before the annual general meeting of the company along with the laying of its financial statement under sub-section (2)"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(5)",
+      "quote": "Without prejudice to sub-section (1),"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(5)",
+      "quote": "where the financial statements of a company do not comply with the accounting standards referred to in sub-section (1), the company shall disclose in its financial statements, the deviation from the accounting standards, the reasons for such deviation and the financial effects, if any, arising out of such deviation"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(6)",
+      "quote": "The Central Government may, on its own or on an application by a class or classes of companies, by notification, exempt any class or classes of companies from complying with any of the requirements of this section or the rules made thereunder, if it is considered necessary to grant such exemption in the public interest"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129, Explanation",
+      "quote": "any reference to the financial statement shall include any notes annexed to or forming part of such financial statement"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(2)",
+      "quote": "“accounting standards” means the standards of accounting or any addendum thereto for companies or class of companies referred to in section 133"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.133",
+      "quote": "The Central Government may prescribe the standards of accounting or any addendum thereto, as recommended by the Institute of Chartered Accountants of India"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129, footnote 1",
+      "quote": "Subs. by Act 1 of 2018, s. 33, for sub-section (3) (w.e.f. 7-5-2018)",
+      "extraction_note": "The Act's own footnote, quoted as direct evidence that s.129(3) as printed is substituted text and not the 2013 enactment."
+    }
+  ]
+}

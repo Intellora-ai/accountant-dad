@@ -1,0 +1,146 @@
+{
+  "id": "GST-ITC-CORE",
+  "name": "Input tax credit \u2014 what it is and who may take it",
+  "status": "VERIFIED",
+  "definition": "Input tax credit is the credit of input tax. Input tax is the central, State, integrated or Union territory tax charged on any supply of goods or services or both made to a registered person, and it includes IGST on imported goods and the tax payable by him under reverse charge, but excludes tax paid under the composition levy. A registered person is entitled to take that credit on supplies used or intended to be used in the course or furtherance of his business, and the amount is credited to his electronic credit ledger.",
+  "why_it_exists": "GST is a tax on value added. Without a credit for tax already borne on inputs, tax would compound at every stage of a supply chain. The credit is the mechanism that makes the levy fall on the margin rather than on the whole price at each stage.",
+  "inputs": [
+    "registration status of the recipient",
+    "tax charged on the inward supply, by head (CGST / SGST / IGST / UTGST)",
+    "whether the inward supply is used or intended to be used in the course or furtherance of business",
+    "whether the tax was paid under the composition levy"
+  ],
+  "outputs": [
+    "an amount of input tax credit, by tax head",
+    "credit to the electronic credit ledger of the registered person",
+    "or a determination that no credit arises"
+  ],
+  "preconditions": [
+    "the claimant is a registered person under the CGST Act",
+    "the inward supply is a supply of goods or services or both made to him"
+  ],
+  "rules": [
+    "GST-ITC-16-1",
+    "GST-ITC-RCM-INPUT-TAX",
+    "GST-ITC-155"
+  ],
+  "exceptions": [
+    "GST-ITC-BLOCKED-17-5-A",
+    "GST-ITC-BLOCKED-17-5-AA",
+    "GST-ITC-BLOCKED-17-5-AB",
+    "GST-ITC-BLOCKED-17-5-B-I",
+    "GST-ITC-BLOCKED-17-5-B-II",
+    "GST-ITC-BLOCKED-17-5-B-III",
+    "GST-ITC-BLOCKED-17-5-C",
+    "GST-ITC-BLOCKED-17-5-D",
+    "GST-ITC-BLOCKED-17-5-E",
+    "GST-ITC-BLOCKED-17-5-F",
+    "GST-ITC-BLOCKED-17-5-G",
+    "GST-ITC-BLOCKED-17-5-H",
+    "GST-ITC-BLOCKED-17-5-I",
+    "GST-ITC-BLOCKED-17-5-FA"
+  ],
+  "common_mistakes": [
+    "treating tax paid under the composition levy as input tax \u2014 s.2(62) expressly excludes it",
+    "taking credit of tax on a supply that is not used or intended to be used in the course or furtherance of business",
+    "treating entitlement under s.16(1) as sufficient \u2014 s.16(2) is a separate, cumulative gate",
+    "booking the credit to the wrong tax head; the Act credits input tax by head, not as one pooled amount"
+  ],
+  "dependencies": [
+    "GST-ITC-REVERSE-CHARGE"
+  ],
+  "related_concepts": [
+    "GST-ITC-CONDITIONS",
+    "GST-ITC-APPORTIONMENT",
+    "GST-ITC-BLOCKED",
+    "GST-ITC-SPECIAL"
+  ],
+  "legal_references": [
+    "CGST Act 2017, s.2(62) \u2014 input tax",
+    "CGST Act 2017, s.2(63) \u2014 input tax credit",
+    "CGST Act 2017, s.2(59) \u2014 input",
+    "CGST Act 2017, s.2(60) \u2014 input service",
+    "CGST Act 2017, s.2(19) \u2014 capital goods",
+    "CGST Act 2017, s.16(1)"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 input tax credit is a statutory tax entitlement, not an accounting standard question"
+  ],
+  "gst_references": [
+    "CGST Act 2017, Chapter V (Input Tax Credit), ss.16 to 21"
+  ],
+  "evidence_required": [
+    "GSTIN of the recipient, showing he is registered",
+    "the inward supply document showing tax charged, by head",
+    "a business-use link for the inward supply"
+  ],
+  "confidence_factors": [
+    "weak when the document does not separate tax by head",
+    "weak when business use is asserted but not evidenced \u2014 s.155 places the burden of proof on the claimant",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "validation_checks": [
+    "the claimed credit does not exceed the tax charged on the document",
+    "the tax was not paid under the composition levy",
+    "each of the s.16(2) conditions is separately satisfied before the credit is taken"
+  ],
+  "examples": [
+    "a registered manufacturer buys raw material from a registered supplier who charges CGST and SGST; the material enters production \u2014 input tax within s.2(62), credit under s.16(1)"
+  ],
+  "counterexamples": [
+    "a registered person buys from a composition dealer \u2014 s.2(62) closes with 'but does not include the tax paid under the composition levy', so there is no input tax to credit"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(62)",
+      "quote": "in relation to a registered person, means the central tax, State tax, integrated tax or Union territory tax charged on any supply of goods or services or both made to him and includes",
+      "extraction_note": "The defined term itself, rendered by the extractor as \u2015input tax\u2016 with substituted quotation glyphs, is quoted around rather than reproduced. The glyph artifact is in the extraction, not in the Act."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(62)(a)",
+      "quote": "the integrated goods and services tax charged on import of goods;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(62)(b)",
+      "quote": "the tax payable under the provisions of sub-sections (3) and (4) of section 9;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(62), closing words",
+      "quote": "but does not include the tax paid under the composition levy;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(63)",
+      "quote": "means the credit of input tax;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(59)",
+      "quote": "means any goods other than capital goods used or intended to be used by a supplier in the course or furtherance of business;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(60)",
+      "quote": "means any service used or intended to be used by a supplier in the course or furtherance of business;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(19)",
+      "quote": "means goods, the value of which is capitalised in the books of account of the person claiming the input tax credit and which are used or intended to be used in the course or furtherance of business;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(1)",
+      "quote": "Every registered person shall, subject to such conditions and restrictions as may be prescribed and in the manner specified in section 49, be entitled to take credit of input tax charged on any supply of goods or services or both to him which are used or intended to be used in the course or furtherance of his business and the said amount shall be credited to the electronic credit ledger of such person."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.155",
+      "quote": "Where any person claims that he is eligible for input tax credit under this Act, the burden of proving such claim shall lie on such person."
+    }
+  ]
+}

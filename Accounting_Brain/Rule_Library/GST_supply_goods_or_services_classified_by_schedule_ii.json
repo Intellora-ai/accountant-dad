@@ -1,0 +1,23 @@
+{
+  "id": "GST-SUPPLY-005",
+  "status": "VERIFIED",
+  "if": [
+    "certain activities or transactions constitute a supply in accordance with s.7(1)"
+  ],
+  "then": "they are classified as EITHER a supply of goods OR a supply of services as referred to in Schedule II \u2014 which in turn decides whether s.12 or s.13 fixes the time of supply",
+  "source_section": "CGST s.7(1A)",
+  "note": "This is the branch that routes a transaction to s.12 (goods) or s.13 (services). Getting it wrong moves the tax point. Schedule II is not extracted, so the branch cannot be evaluated here. s.7(1A) was inserted, and the former s.7(1)(d) omitted, with retrospective effect \u2014 the updated text records this in its own footnotes.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(1A)",
+      "quote": "where certain activities or transactions constitute a supply in accordance with the provisions of sub-section (1), they shall be treated either as supply of goods or supply of services as referred to in Schedule II.",
+      "extraction_note": "The extraction wraps the sub-section in square brackets and appends footnote marker '15'. The quote stays inside the brackets."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7 footnote 15",
+      "quote": "Inserted w.e.f. 01st July, 2017 by The Central Goods and Services Tax (Amendment) Act, 2018 (No. 31 of 2018)"
+    }
+  ]
+}

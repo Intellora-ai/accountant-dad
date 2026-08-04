@@ -1,0 +1,29 @@
+{
+  "id": "GST-TIME-SERVICES-011",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of services",
+    "it is not possible to determine the time of supply under s.13(2), s.13(3) or s.13(4)"
+  ],
+  "then": "the time of supply is the date on which a periodical return is to be filed, where one has to be filed, and otherwise the date on which the tax is paid",
+  "source_section": "CGST s.13(5)",
+  "note": "The residual limb for services, worded as in s.12(5).",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(5)",
+      "quote": "Where  it  is  not  possible  to  determine  the  time  of  supply  under  the provisions of sub-section (2) or sub-section (3) or sub-section (4), the time of supply",
+      "extraction_note": "As in s.12(5), the extraction breaks the trailing dash of 'shall\u2013\u2013' across a line. The quote stops before 'shall'. Both sections carry the identical sentence, so this span is found in either."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(5)(a)",
+      "quote": "in a case where a periodical return has to be filed, be the date on which such return is to be filed"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(5)(b)",
+      "quote": "in any other case, be the date on which the tax is paid."
+    }
+  ]
+}

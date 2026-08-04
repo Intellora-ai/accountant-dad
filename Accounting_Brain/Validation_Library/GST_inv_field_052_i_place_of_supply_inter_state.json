@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-FIELD-052-I",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a payment voucher referred to in clause (g) of sub-section (3) of section 31",
+    "it is issued under rule 52 of the CGST Rules, 2017",
+    "the supply is in the course of inter-State trade or commerce"
+  ],
+  "then": "for an inter-State supply, the payment voucher MUST carry the place of supply with the State name and State code",
+  "source_section": "CGST Rules 2017, rule 52(i)",
+  "note": "One mandatory particular of rule 52(i), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 52(i)",
+      "quote": "place of supply along with the name of State and its code, in case of a supply in the course of inter-State trade or commerce; and"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "GST-ITC-18-1-A",
+  "status": "VERIFIED",
+  "if": [
+    "a person applied for registration within THIRTY DAYS from the date on which he became liable to registration",
+    "registration has been granted"
+  ],
+  "then": "he is ENTITLED to credit of input tax on INPUTS held in stock and inputs contained in semi-finished or finished goods held in stock ON THE DAY IMMEDIATELY PRECEDING the date from which he becomes liable to pay tax",
+  "source_section": "CGST Act s.18(1)(a)",
+  "note": "No capital goods. This clause names inputs and inputs contained in semi-finished or finished goods only \u2014 compare s.18(1)(c) and (d), which do extend to capital goods. Two dates matter and they differ: the thirty-day application window runs from liability to REGISTER; the stock is measured the day before liability to PAY TAX. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(1)(a)",
+      "quote": "a person who has applied for registration under this Act within thirty days from the date on which he becomes liable to registration and has been granted such registration shall be entitled to take credit of input tax in respect of inputs held in stock and inputs contained in semi-finished or finished goods held in stock on the day immediately preceding the date from which he becomes liable to pay tax under the provisions of this Act;"
+    }
+  ]
+}

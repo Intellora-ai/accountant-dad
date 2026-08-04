@@ -1,0 +1,23 @@
+{
+  "id": "GST-INV-MANNER-004",
+  "status": "VERIFIED",
+  "if": [
+    "the person belongs to a class of registered persons notified under rule 48(4)",
+    "an invoice was issued in any manner other than the manner specified in rule 48(4)"
+  ],
+  "then": "the document SHALL NOT be treated as an invoice",
+  "source_section": "CGST Rules 2017, rule 48(5)",
+  "note": "The hardest consequence in this chapter: not a defect in an invoice, but no invoice at all. UNKNOWN \u2014 which classes of registered persons are notified under rule 48(4) is fixed by notification, and no notification is held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(5)",
+      "quote": "Every invoice issued by a person to whom sub-rule (4) applies in any manner other than the manner specified in the said sub-rule shall not be treated as an invoice."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(4)",
+      "quote": "The invoice shall be prepared by such class of registered persons as may be notified by the Government, on the recommendations of the Council, by including such particulars contained in FORM GST INV-01 after obtaining an Invoice Reference Number by uploading information contained therein on the Common Goods and Services Tax Electronic Portal in such manner and subject to such conditions and restrictions as may be specified in the notification."
+    }
+  ]
+}

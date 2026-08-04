@@ -1,0 +1,18 @@
+{
+  "id": "GST-TIME-SERVICES-009",
+  "status": "VERIFIED",
+  "if": [
+    "the supply of service is between associated enterprises",
+    "the supplier of service is located OUTSIDE India"
+  ],
+  "then": "the time of supply is the EARLIER of the date of entry in the books of account of the recipient of supply and the date of payment",
+  "source_section": "CGST s.13(3) second proviso",
+  "note": "A special rule sitting inside the reverse-charge sub-section. It has no sixty-day limb at all, so an unpaid, unbooked intra-group import of services has no time of supply under this proviso until one of the two events happens. 'Associated enterprises' is not defined in the extracted portion of the Act.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(3) second proviso",
+      "quote": "Provided  further  that  in  case  of  supply  by  associated  enterprises,  where  the supplier of service is located outside India, the time of supply shall be the date of entry in the books of account of the recipient of supply or the date of payment, whichever is earlier."
+    }
+  ]
+}

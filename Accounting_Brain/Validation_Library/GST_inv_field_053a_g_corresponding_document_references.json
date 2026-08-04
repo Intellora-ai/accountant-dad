@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-FIELD-053A-G",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a credit note or a debit note referred to in section 34",
+    "it is issued under rule 53(1A) of the CGST Rules, 2017"
+  ],
+  "then": "the credit or debit note MUST carry the serial number(s) and date(s) of every tax invoice or bill of supply it adjusts",
+  "source_section": "CGST Rules 2017, rule 53(1A)(g)",
+  "note": "One mandatory particular of rule 53(1A)(g), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1A)(g)",
+      "quote": "serial number(s) and date(s) of the corresponding tax invoice(s) or, as the case may be, bill(s) of supply;",
+      "extraction_note": "Rule 53(1A)(g) is PLURAL where rule 53(1)(h) is singular: one credit or debit note may adjust more than one invoice."
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "GST-ITC-16-2-P3",
+  "status": "CONFLICT",
+  "if": [
+    "credit was reversed or added back under the second proviso to s.16(2) for non-payment within one hundred and eighty days",
+    "the recipient subsequently makes payment of the amount towards the value of supply along with the tax payable thereon"
+  ],
+  "then": "CONFLICT \u2014 both sources allow the credit to be availed again on payment, but differ on to whom payment must be made. Source A: 'on payment made by him of the amount'. Source B: 'on payment made by him to the supplier of the amount'",
+  "source_section": "CGST Act s.16(2), third proviso",
+  "note": "The difference is not cosmetic: source B fixes the payee as the supplier, source A leaves the payee unstated. This file records both and resolves neither. Neither source states a time limit for re-availment in this proviso.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2), third proviso (source A, Act as updated 31-08-2021)",
+      "quote": "Provided also that the recipient shall be entitled to avail of the credit of input tax on payment made by him of the amount towards the value of supply of goods or services or both along with tax payable thereon."
+    },
+    {
+      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
+      "section": "CGST Act s.16(2), third proviso (source B, IndiaCode consolidation)",
+      "quote": "Provided also that the recipient shall be entitled to avail of the credit of input tax on payment made by him"
+    },
+    {
+      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
+      "section": "CGST Act s.16(2), third proviso (source B, IndiaCode consolidation)",
+      "quote": "to the supplier] of the amount towards the value of supply of goods or services or both along with tax payable thereon.",
+      "extraction_note": "The bracket is the consolidation's own amendment marker and is quoted as it appears."
+    }
+  ]
+}

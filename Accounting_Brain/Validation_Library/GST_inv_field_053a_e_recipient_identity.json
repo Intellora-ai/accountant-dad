@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-FIELD-053A-E",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a credit note or a debit note referred to in section 34",
+    "it is issued under rule 53(1A) of the CGST Rules, 2017"
+  ],
+  "then": "the credit or debit note MUST carry the recipient's name, address and GSTIN or Unique Identity Number, where the recipient is registered",
+  "source_section": "CGST Rules 2017, rule 53(1A)(e)",
+  "note": "One mandatory particular of rule 53(1A)(e), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1A)(e)",
+      "quote": "name, address and Goods and Services Tax Identification Number or Unique Identity Number, if registered, of the recipient;"
+    }
+  ]
+}

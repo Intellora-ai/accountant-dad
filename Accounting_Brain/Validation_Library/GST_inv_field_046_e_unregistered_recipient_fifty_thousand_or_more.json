@@ -1,0 +1,20 @@
+{
+  "id": "GST-INV-FIELD-046-E",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a tax invoice required by section 31 and issued under rule 46 of the CGST Rules, 2017",
+    "no provision of rule 54 (tax invoice in special cases) displaces the particular",
+    "the recipient is un-registered",
+    "the value of the taxable supply is fifty thousand rupees or more"
+  ],
+  "then": "where the recipient is unregistered and the taxable supply is fifty thousand rupees or more, the tax invoice MUST carry the recipient's name and address, the address of delivery, and the State name and State code",
+  "source_section": "CGST Rules 2017, rule 46(e)",
+  "note": "One mandatory particular of rule 46(e), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(e)",
+      "quote": "name and address of the recipient and the address of delivery, along with the name of the State and its code, if such recipient is un-registered and where the value of the taxable supply is fifty thousand rupees or more;"
+    }
+  ]
+}

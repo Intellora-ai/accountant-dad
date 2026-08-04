@@ -1,0 +1,34 @@
+{
+  "id": "CO-DEP-RESIDUAL-VALUE-001",
+  "status": "VERIFIED",
+  "if": [
+    "a company is computing depreciation on an asset under Schedule II",
+    "a useful life or a residual value is being adopted"
+  ],
+  "then": "the useful life SHALL NOT ordinarily be different from the useful life specified in Part C, and the residual value SHALL NOT be more than five per cent. of the original cost of the asset; and where either differs, the financial statements SHALL disclose such difference and provide justification in this behalf duly supported by technical advice",
+  "source_section": "Companies Act, 2013, Schedule II, Part A, paragraph 3(i) and its proviso",
+  "note": "The five per cent. cap is on ORIGINAL COST, not on carrying amount and not on the depreciable amount. Departure is permitted but priced: disclosure plus technical advice. The printed paragraph 3(i) is NOT the 2013 enactment — the Schedule's own footnote records substitution by Notification G.S.R. 627(E) dated 29 August 2014. UNKNOWN — source is the Act as enacted 2013; amendments not held locally.",
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part A, paragraph 3(i)",
+      "quote": "The useful life of an asset shall not ordinarily be different from the useful life specified in Part C and the residual value of an asset shall not be more than five per cent. of the original cost of the asset"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part A, paragraph 3(i), proviso",
+      "quote": "where a company adopts a useful life different from what is specified in Part C or uses a residual value different from the limit specified above, the financial statements shall disclose such difference and provide justification in this behalf duly supported by technical advice"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, paragraph 5",
+      "quote": "Subject to Parts A and B above, the following are the useful lives of various tangible assets"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, footnote 1 to paragraph 3",
+      "quote": "Subs. by Notification No. G.S.R. 627(E) dated 29th August 2014, for sub-paragraph (i) of paragraph 3 (w.e.f. 29-8-2014)",
+      "extraction_note": "The Schedule's own footnote, quoted as direct evidence that paragraph 3(i) as printed is substituted 2014 text."
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "id": "GST-INV-RECEIPT-001",
+  "status": "VERIFIED",
+  "if": [
+    "a receipt voucher is issued under rule 50 for an advance",
+    "at the time of receipt of the advance the rate of tax or the nature of the supply is not determinable"
+  ],
+  "then": "where the rate is not determinable, tax is paid at eighteen per cent.; where the nature of supply is not determinable, the supply is treated as an inter-State supply",
+  "source_section": "CGST Rules 2017, rule 50, proviso",
+  "note": "The only rate stated anywhere in this chapter. It is a fallback for advances, not a rate for a supply, and must never be used as the tax rate on an invoice.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 50, proviso",
+      "quote": "Provided that where at the time of receipt of advance,-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 50, proviso",
+      "quote": "the rate of tax is not determinable, the tax shall be paid at the rate of eighteen per cent.;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 50, proviso",
+      "quote": "the nature of supply is not determinable, the same shall be treated as inter-",
+      "extraction_note": "The clause ends 'inter-State supply.' but the extraction breaks the line inside the compound, giving 'inter-' at the end of one line and 'State supply.' at the start of the next, so 'inter-State' cannot be quoted across the break."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 50, proviso",
+      "quote": "State supply."
+    }
+  ]
+}

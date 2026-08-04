@@ -1,0 +1,172 @@
+                                                                                                 Circular No. 246/03/2025-GST
+                                              F. No. CBIC-20001/14/2024-GST
+                                                        Government of India
+                                                         Ministry of Finance
+                                                      Department of Revenue
+                                   Central Board of Indirect Taxes and Customs
+                                                           GST Policy Wing
+                                                                     *****
+                                                                                                             North Block New Delhi,
+                                                                                                      Dated the  30        th January, 2025
+
+To,
+
+           All the Principal Chief Commissioners/ Chief Commissioners
+           All the Principal Directors General/ Directors General
+
+Madam/Sir,
+
+           Subject:  Clarification  on  applicability  of  late  fee  for  delay  in  furnishing  of
+           FORM GSTR-9C- reg.
+
+           Representations have been received seeking clarification regarding levy of late fee
+payable for delay in furnishing of reconciliation statement in FORM GSTR-9C. It has been
+requested to clarify whether late fee under section 47 of Central Goods and Services Tax Act,
+2017  (hereinafter  referred  to  as  the  “CGST  Act”)  will  be  leviable  where  reconciliation
+statement in FORM GSTR-9C is not furnished by the registered person alongwith the annual
+return in FORM GSTR-9 but is filed subsequently beyond the due date of furnishing of
+annual return.
+
+2.        In order to ensure uniformity in the implementation of the provisions of law across the
+field formations, the Board, in exercise of its powers conferred by sub-section (1) of section
+168 of the CGST Act, hereby clarifies the issues as below.
+
+3.        Prior to  01.08.2021, sub-section (2) of section 44 of CGST Act provided that a
+registered  person  who  is  required  to  get  his  accounts  audited  in  accordance  with  the
+provisions of sub-section (5) of section 35 of the CGST Act                                     shall furnish the annual return
+under  sub-section  (1)  of  the  said  section  along  with  a  copy  of  the  audited  annual
+accounts and a reconciliation statement                             . From 01.08.2021 onwards, with the omission of
+
+
+                                                                                Page 1 of 4
+
+the requirement of getting accounts audited in accordance with the provisions of sub-section
+(5) of section 35 of the CGST Act,  sub-section (1) of section 44 of CGST Act provides for
+furnishing of annual return which may include a self-certified reconciliation statement                                                          ,
+reconciling the value of supplies declared in the return furnished for the financial year, with
+the audited annual financial statement for every financial year electronically, within such
+time and in such form and in such manner as may be prescribed. Further, before 01.08.2021,
+sub-rule (3) of rule 80 of Central Goods and Services Tax Rules, 2017 (hereinafter referred to
+as the “CGST Rules”) provided that accounts shall be audited as per sub-section (5) of
+section 35 of the CGST Act in case the aggregate turnover of a registered person exceeded
+two crore rupees in a financial year and such taxpayer shall furnish a copy of audited annual
+accounts  and  a  reconciliation  statement,  duly  certified,  in  FORM  GSTR-9C.  From
+01.08.2021 onwards, sub-rule (3) of rule 80 of CGST Rules provides that taxpayer with
+aggregate turnover during a financial year exceeding five crore rupees, shall furnish a self-
+certified reconciliation statement as specified under section 44 of the CGST Act in FORM
+GSTR-9C along with the annual return in FORM GSTR-9 on or before the thirty-first day of
+December following the end of such financial year.
+
+3.1      Therefore, on a combined reading of section 44 of CGST Act with rule 80 of the
+CGST Rules, it can be concluded that both pre and post amendment, the provisions mandated
+that registered persons required to furnish an annual return in FORM GSTR-9 for a financial
+year shall also furnish along with it, a duly certified or self-certified reconciliation statement
+in FORM GSTR-9C, which reconciles the value of supplies declared in FORM GSTR-9
+furnished for the said financial year with the audited annual financial statement. It is also
+mentioned that a reconciliation statement in FORM GSTR-9C is required to be filed only if
+the aggregate turnover of the said registered person during a financial year exceeds the
+specified threshold limit.
+
+3.2      Sub-section (2) of section 47 of the CGST Act provides for a levy of a late fee for
+failure to furnish the return under section 44 of the CGST Act by its due date, which is to be
+computed at the specified rate, for each day for which such failure continues, subject to a
+maximum amount. As per the discussions above, in cases where reconciliation statement in
+FORM GSTR-9C is not required to be furnished, annual return under section 44 of CGST
+Act consists only of FORM GSTR-9 and in cases where a reconciliation statement in FORM
+GSTR-9C is required to be furnished, the annual return under section 44 of CGST Act
+
+
+                                                                                Page 2 of 4
+
+consists of the return in FORM GSTR-9 along with a reconciliation statement in FORM
+GSTR-9C. Therefore, in cases where the reconciliation statement in FORM GSTR-9C is
+required to be furnished along with the annual return in FORM GSTR-9, the furnishing of
+annual return under section 44 of the CGST Act, may not be said to be complete, unless both
+return in FORM GSTR-9 and reconciliation statement in FORM GSTR-9C are furnished. If
+only return in FORM GSTR-9 is furnished and reconciliation statement in FORM GSTR-9C
+is required but not furnished, annual return under section 44 of CGST Act cannot be said to
+have been furnished.
+
+3.3      In view of the above, it is clarified that late fee under sub-section (2) of section 47 of
+the CGST Act, is leviable for the delay in furnishing of complete annual return under section
+44 of the CGST Act, i.e. both FORM GSTR-9 and FORM GSTR-9C (where FORM GSTR-
+9C is also required to be furnished) and the late fee shall be payable for the period from the
+due date of furnishing of the said annual return upto the date of furnishing of the complete
+annual return i.e. FORM GSTR-9 and FORM GSTR-9C. It is also to be noted that late fee is
+not separately leviable for delayed furnishing of FORM GSTR-9 and delayed furnishing of
+FORM GSTR-9C, but has to be calculated for the period from the due date of furnishing of
+annual return under section 44 of the CGST Act till the date of furnishing of complete annual
+return i.e.:
+
+           i.  in cases where FORM GSTR-9C is not required to be furnished, the date of
+           furnishing of FORM GSTR-9;
+
+           ii. in cases where FORM GSTR-9C is required to be furnished along with FORM
+           GSTR-9,
+
+                       a.          the  date  of  furnishing  of  FORM  GSTR-9,  if  FORM  GSTR-9C  is
+                       furnished alongwith FORM GSTR-9; or
+                       b.          the date of furnishing of FORM GSTR-9C, if FORM GSTR-9C is
+                       furnished subsequent to furnishing of FORM GSTR-9.
+
+4.         It  is  further  mentioned  that  vide  notification  No.  08/2025-Central  Tax  dated
+23.01.2025,  the  late  fee  in  respect  of  delayed  filing  of  complete  annual  return  for  any
+financial year upto FY 2022-23 has been waived, which is in excess of the late fee payable
+under sub-section (2) of section 47 of CGST Act upto the date of furnishing of return in
+
+
+                                                                                Page 3 of 4
+
+FORM GSTR-9 for the said financial year, if the reconciliation statement in FORM GSTR-
+9C is furnished on or before 31                     st March 2025. Accordingly, in cases where reconciliation
+
+statement in FORM GSTR-9C was required to be furnished along with the return in FORM
+GSTR-9, but was not furnished so for any financial years upto FY 2022-23, and has been
+furnished subsequently on or before 31                          st March, 2025, then no additional late fee shall be
+
+payable for delayed furnishing of FORM GSTR-9C which is in excess of the late fee payable
+under section 47 upto the date of furnishing FORM GSTR-9 for the said financial year.
+Further, no refund shall be admissible in respect of any amount of late fee already paid in
+respect of delayed furnishing of FORM GSTR-9C for the said financial years.
+
+5.         It is requested that suitable trade notices may be issued to publicize the contents of
+this Circular.
+
+6.         Difficulty, if any, in the implementation of this Circular may be brought to the notice
+of the Board.
+
+
+                                                                                                                          Yours faithfully,
+
+
+
+                                                                                                                              Gaurav Singh
+                                                                                                                  Commissioner (GST)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                Page 4 of 4

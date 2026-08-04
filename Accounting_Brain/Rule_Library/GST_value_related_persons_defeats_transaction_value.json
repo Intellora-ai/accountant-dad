@@ -1,0 +1,40 @@
+{
+  "id": "GST-VALUE-011",
+  "status": "VERIFIED",
+  "if": [
+    "the supplier and recipient are officers or directors of one another's businesses, legally recognised partners, employer and employee, members of the same family, one controls the other, both are controlled by a third person, or together they control a third person",
+    "or either directly or indirectly owns, controls or holds twenty-five per cent or more of the outstanding voting stock or shares of both of them",
+    "or one is the sole agent, sole distributor or sole concessionaire of the other"
+  ],
+  "then": "they are RELATED PERSONS, s.15(1) does not apply, and the value falls to be determined under s.15(4) in the prescribed manner",
+  "source_section": "CGST s.15 Explanation (a) and (c)",
+  "note": "The employer-employee limb is the one that catches ordinary businesses \u2014 a supply to a director or an employee is a related-party supply, and its transaction value is NOT automatically the taxable value. The twenty-five per cent figure is the threshold stated in the Act as updated 31-08-2021.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15 Explanation (a)(i)",
+      "quote": "such persons are officers or directors of one another",
+      "extraction_note": "The clause continues '\u2018s businesses' with a curly apostrophe the extractor renders as a non-ASCII character. The quote stops before it."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15 Explanation (a)(iii)",
+      "quote": "such persons are employer and employee;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15 Explanation (a)(iv)",
+      "quote": "any  person    directly   or  indirectly   owns,    controls    or  holds   twenty-five per cent. or more of the outstanding voting stock or shares of both of them;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15 Explanation (a)(viii)",
+      "quote": "they are members of the same family;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15 Explanation (c)",
+      "quote": "persons who are associated in the business of one another in that one is the sole agent or sole distributor or sole concessionaire, howsoever described, of the other, shall be deemed to be related."
+    }
+  ]
+}

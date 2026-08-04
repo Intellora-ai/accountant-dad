@@ -1,0 +1,116 @@
+{
+  "id": "GST-ITC-REVERSE-CHARGE",
+  "name": "Reverse charge \u2014 as defined by the CGST Act",
+  "status": "VERIFIED",
+  "definition": "Reverse charge means the liability to pay tax by the recipient of a supply instead of the supplier, under s.9(3) or s.9(4) of the CGST Act or s.5(3) or s.5(4) of the IGST Act. Section 9(3) lets the Government notify categories of supply on which the recipient pays; s.9(4) lets it notify a class of registered persons who pay on specified categories received from an unregistered supplier. In both, all the provisions of the Act apply to the recipient as if he were the person liable to pay the tax. Tax so payable is input tax under s.2(62)(b), so it is capable of being credited on the ordinary conditions.",
+  "why_it_exists": "Collection is placed where it is enforceable. Where the supplier is outside the net, hard to reach, or numerous and small, the Act moves the payment obligation to the registered recipient, who is already filing.",
+  "inputs": [
+    "the category of the supply and whether it is notified under s.9(3)",
+    "the registration status of the supplier",
+    "whether the recipient falls in a class notified under s.9(4)",
+    "the value of the supply"
+  ],
+  "outputs": [
+    "an output tax liability on the recipient",
+    "a corresponding input tax amount, creditable subject to s.16, s.17 and s.18",
+    "a self-invoice and a payment voucher, where s.31(3)(f) and (g) apply"
+  ],
+  "preconditions": [
+    "a supply of goods or services or both has been received",
+    "a notification under s.9(3) or s.9(4) covers it"
+  ],
+  "rules": [
+    "GST-ITC-RCM-9-3",
+    "GST-ITC-RCM-9-4",
+    "GST-ITC-RCM-INPUT-TAX",
+    "GST-ITC-RCM-SELF-INVOICE",
+    "GST-ITC-RCM-PAYMENT-VOUCHER"
+  ],
+  "exceptions": [
+    "the second proviso to s.16(2) does not apply to supplies on which tax is payable on reverse charge basis \u2014 see GST-ITC-16-2-P2",
+    "s.17(3) requires reverse-charge inward supplies to be included in the value of exempt supply \u2014 see GST-ITC-17-3"
+  ],
+  "common_mistakes": [
+    "treating reverse charge as a rate concession \u2014 it moves who pays, not whether tax is due",
+    "netting the reverse-charge liability against the credit instead of discharging the liability and then taking credit",
+    "applying the one-hundred-and-eighty-day payment rule to a reverse-charge supply, which the proviso excludes",
+    "omitting reverse-charge inward supplies from the exempt-supply value in the s.17(2) apportionment",
+    "assuming a notification exists \u2014 s.9(3) and s.9(4) are enabling provisions; the categories live in notifications, not in the Act"
+  ],
+  "dependencies": [
+    "GST-ITC-CORE"
+  ],
+  "related_concepts": [
+    "GST-ITC-CONDITIONS",
+    "GST-ITC-APPORTIONMENT"
+  ],
+  "legal_references": [
+    "CGST Act 2017, s.2(98) \u2014 reverse charge",
+    "CGST Act 2017, s.9(3) and s.9(4)",
+    "CGST Act 2017, s.2(62)(b)",
+    "CGST Act 2017, s.31(3)(f) and (g)"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 a statutory collection mechanism, not an accounting standard question"
+  ],
+  "gst_references": [
+    "CGST Act 2017, s.9(3), s.9(4), s.2(98)",
+    "UNKNOWN \u2014 which supplies are actually notified under s.9(3) and s.9(4) is not stated in the Act and has not been extracted from a notification here"
+  ],
+  "evidence_required": [
+    "the supplier's registration status",
+    "the category of supply, matched to a notification",
+    "the self-invoice under s.31(3)(f) where the supplier is unregistered",
+    "the payment voucher under s.31(3)(g)"
+  ],
+  "confidence_factors": [
+    "the Act names no supply as reverse-charge; every actual case depends on a notification that is not in this source \u2014 any claim about a specific supply is UNKNOWN until that notification is read",
+    "weak when the supplier's registration status is unverified",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "validation_checks": [
+    "a reverse-charge determination cites a notification, never s.9(3) or s.9(4) alone",
+    "the liability is discharged before the corresponding credit is treated as available",
+    "a self-invoice exists where the supplier was unregistered",
+    "reverse-charge inward supplies appear in the exempt-supply value used for s.17(2)"
+  ],
+  "examples": [
+    "a registered person receives a supply falling in a category notified under s.9(3); he pays the tax as if he were the supplier, and the tax is input tax under s.2(62)(b)"
+  ],
+  "counterexamples": [
+    "a registered person buys from an unregistered supplier with no notification under s.9(4) covering that class or category \u2014 s.9(4) is enabling only, so no reverse-charge liability arises from the Act itself"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(98)",
+      "quote": "means the liability to pay tax by the recipient of supply of",
+      "extraction_note": "A page break and the running header interrupt this definition, and the extractor also splits 'sub-section' across a line; the definition is therefore quoted in three parts."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(98), continued",
+      "quote": "goods or services or both instead of the supplier of such goods or services or both under sub-section (3) or sub-section (4) of section 9, or under sub-section (3) or sub-"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(98), continued",
+      "quote": "section (4) of section 5 of the Integrated Goods and Services Tax Act;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.9(3)",
+      "quote": "The Government may, on the recommendations of the Council, by notification, specify categories of supply of goods or services or both, the tax on which shall be paid on reverse charge basis by the recipient of such goods or services or both and all the provisions of this Act shall apply to such recipient as if he is the person liable for paying the tax in relation to the supply of such goods or services or both."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.9(4)",
+      "quote": "The Government may, on the recommendations of the Council, by notification, specify a class of registered persons who shall, in respect of supply of specified categories of goods or services or both received from an unregistered supplier, pay the tax on reverse charge basis as the recipient of such supply of goods or services or both, and all the provisions of this Act shall apply to such recipient as if he is the person liable for paying the tax in relation to such supply of goods or services or both."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(62)(b)",
+      "quote": "the tax payable under the provisions of sub-sections (3) and (4) of section 9;"
+    }
+  ]
+}

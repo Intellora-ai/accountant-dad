@@ -1,0 +1,150 @@
+{
+  "id": "GST-TIME-GOODS",
+  "name": "Time of supply \u2014 goods",
+  "status": "VERIFIED",
+  "definition": "The time of supply of goods is the date fixed by s.12 at which the liability to pay tax on goods arises. Under forward charge it is the earlier of the date in s.12(2)(a) \u2014 the date of issue of invoice, or the last date on which the supplier was required under s.31 to issue it \u2014 and the date in s.12(2)(b), the date on which the supplier receives payment. Under reverse charge it is the earliest of receipt of goods, the date of payment in the recipient's records, and the date immediately following thirty days from the date of issue of invoice. Vouchers, residual cases and additions to value have their own sub-sections.",
+  "why_it_exists": "It fixes WHEN the GST liability arises, and therefore which return period the entry belongs to. s.12(1) ties the liability itself to this date, so choosing the wrong date does not merely misdate an entry \u2014 it puts the tax in the wrong period. This is NOT the accounting revenue recognition date: GST time of supply and AS-9 revenue recognition are separate determinations and can land in different periods.",
+  "inputs": [
+    "whether tax is payable on forward charge or reverse charge",
+    "the date of issue of invoice, and the last date on which s.31 required it to be issued",
+    "the date the supplier received payment \u2014 book entry date and bank credit date",
+    "for reverse charge: the date of receipt of goods, the recipient's book entry date and bank debit date",
+    "whether the supply is of vouchers, and whether the underlying supply is identifiable at issue",
+    "any addition to value by way of interest, late fee or penalty, and the date it was received"
+  ],
+  "outputs": [
+    "a single date \u2014 the time of supply of the goods",
+    "a separate date for any addition to value under s.12(6)",
+    "or an escalation, where a limb cannot be evaluated on the evidence held"
+  ],
+  "preconditions": [
+    "the transaction is a supply under s.7 (GST-SUPPLY-SCOPE)",
+    "it is classified as a supply of GOODS \u2014 if it is a supply of services, s.13 governs instead",
+    "there is NO change in the rate of tax \u2014 s.14 displaces s.12 if there is (GST-TIME-RATE-CHANGE-001)"
+  ],
+  "rules": [
+    "GST-TIME-GOODS-001",
+    "GST-TIME-GOODS-002",
+    "GST-TIME-GOODS-003",
+    "GST-TIME-GOODS-004",
+    "GST-TIME-GOODS-005",
+    "GST-TIME-GOODS-006",
+    "GST-TIME-GOODS-007",
+    "GST-TIME-GOODS-008",
+    "GST-TIME-GOODS-009",
+    "GST-TIME-RATE-CHANGE-001"
+  ],
+  "exceptions": [
+    "a change in the rate of tax \u2014 s.14 applies notwithstanding s.12 (GST-TIME-RATE-CHANGE-001)",
+    "excess received up to one thousand rupees \u2014 s.12(2) proviso, at the supplier's option (GST-TIME-GOODS-004)",
+    "vouchers \u2014 s.12(4) (GST-TIME-GOODS-007)",
+    "additions to value by interest, late fee or penalty \u2014 s.12(6) (GST-TIME-GOODS-009)",
+    "UNKNOWN \u2014 notifications and rules made under the Act are not held locally. Only the Act text as updated 31-08-2021 was consulted. A notification made under the Act can narrow or displace a limb without the section text changing.",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "using the invoice date when payment was received first \u2014 s.12(2) says EARLIER, not the invoice",
+    "letting a late invoice postpone the tax point \u2014 s.12(2)(a) names the last date the supplier was REQUIRED to issue it",
+    "using the bank credit date when the payment was entered in the books earlier \u2014 Explanation 2 takes the earlier of the two",
+    "applying the SIXTY-day reverse-charge clock from s.13(3) to goods \u2014 s.12(3)(c) is THIRTY days",
+    "treating the time of supply as the accounting revenue recognition date \u2014 they are different determinations under different instruments and can fall in different periods",
+    "jumping to the residual rule in s.12(5) without first establishing that s.12(2), (3) and (4) genuinely could not be applied"
+  ],
+  "dependencies": [
+    "GST-SUPPLY-SCOPE",
+    "UNKNOWN \u2014 CGST s.31 (tax invoice) not extracted, so the 'last date on which he is required to issue the invoice' limb of s.12(2)(a) cannot be evaluated",
+    "UNKNOWN \u2014 the list of supplies liable to reverse charge is not extracted, so forward-versus-reverse cannot be decided from this concept alone",
+    "UNKNOWN \u2014 CGST Schedule II not extracted, so the goods-versus-services branch cannot be closed here"
+  ],
+  "related_concepts": [
+    "GST-TIME-SERVICES",
+    "GST-VALUE-SUPPLY",
+    "GST-SUPPLY-SCOPE",
+    "ACC-REV-GOODS"
+  ],
+  "legal_references": [
+    "CGST Act, 2017 s.12 \u2014 Time of Supply of Goods",
+    "CGST Act, 2017 s.14 \u2014 Change in rate of tax in respect of supply of goods or services",
+    "CGST Act, 2017 s.31 \u2014 referenced by s.12(2)(a); NOT extracted"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 GST time of supply is a SEPARATE determination from accounting revenue recognition under AS-9. The two can fall in different periods and must never be conflated. ACC-REV-GOODS records the same boundary from the accounting side."
+  ],
+  "gst_references": [
+    "CGST Act, 2017 s.12(1) to s.12(6), including the proviso to s.12(2), Explanations 1 and 2 to s.12(2), and the proviso to s.12(3)"
+  ],
+  "evidence_required": [
+    "the tax invoice, with its date of issue",
+    "proof of the date payment was received \u2014 the book entry and the bank credit",
+    "for reverse charge: proof of the date the goods were received, and the recipient's book entry and bank debit dates",
+    "for vouchers: whether the underlying supply was identifiable at issue"
+  ],
+  "confidence_factors": [
+    "weak when only the invoice is held \u2014 s.12(2)(b) needs the payment date, and the earlier of the two governs",
+    "weak when the s.31 due date for the invoice is unknown, because s.12(2)(a) can then only be evaluated on the actual issue date",
+    "weak when it is unclear whether the supply is on reverse charge \u2014 the whole sub-section changes",
+    "zero when a change in the rate of tax is in play \u2014 s.14 displaces this concept entirely and its limbs are not extracted"
+  ],
+  "validation_checks": [
+    "the chosen date is the EARLIEST of the applicable limbs, never a later one",
+    "the invoice date alone is never used where a payment date is available and earlier",
+    "the reverse-charge clock used is THIRTY days, not sixty",
+    "the time of supply is recorded separately from any accounting revenue recognition date, and the two are never reconciled by adjusting one to match the other",
+    "an addition to value under s.12(6) carries its own date and does not move the original supply"
+  ],
+  "examples": [
+    "invoice issued 10th, payment received 3rd, forward charge \u2014 time of supply is the 3rd, being the earlier of the two limbs of s.12(2)",
+    "reverse charge, goods received 5th, payment entered in the recipient's books 20th, invoice issued 1st \u2014 the thirty-day limb gives the 31st, so the earliest is the 5th"
+  ],
+  "counterexamples": [
+    "revenue recognised under AS-9 on transfer of risks and rewards on the 28th, with the invoice issued and payment received in the following month \u2014 the accounting date and the GST time of supply fall in different periods, and neither is evidence for the other"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(1)",
+      "quote": "The liability to pay tax on goods shall arise at the time of supply, as determined in accordance with the provisions of this                    section."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(2)",
+      "quote": "The   time   of  supply    of  goods    shall  be  the   earlier  of  the  following     dates,"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(2)(a)",
+      "quote": "the date of issue of invoice by the supplier or the last date on which he is required, under",
+      "extraction_note": "The extraction inserts an amendment marker '[******]35' between 'under' and 'section 31'. The clause is quoted as two spans on either side of the marker. The artifact is in the extraction, not in the Act."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(2)(a)",
+      "quote": "section 31, to issue the invoice with respect to the supply"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(2)(b)",
+      "quote": "the date on which the supplier receives the payment with respect to the supply"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(3)",
+      "quote": "In case of supplies in respect of which tax is paid or liable to be paid on reverse  charge     basis,   the  time   of   supply   shall   be   the  earliest   of  the  following     dates,"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(3)(c)",
+      "quote": "the date immediately following thirty days from the date of issue of invoice or any other document, by whatever name called, in lieu thereof by the supplier"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(6)",
+      "quote": "The time of supply to the            extent   it relates   to  an  addition     in  the  value   of supply by way of interest, late fee or penalty for delayed payment of any consideration shall be the date on which the supplier receives such addition in value."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.14",
+      "quote": "Notwithstanding anything contained in section 12 or section 13, the time of supply, where there is a change in the rate of tax in respect of goods or services or both, shall be determined in the following manner, namely:"
+    }
+  ]
+}

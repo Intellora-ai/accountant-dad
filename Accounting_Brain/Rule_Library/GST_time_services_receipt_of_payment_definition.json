@@ -1,0 +1,23 @@
+{
+  "id": "GST-TIME-SERVICES-006",
+  "status": "VERIFIED",
+  "if": [
+    "s.13(2)(a) or s.13(2)(b) requires the date of receipt of payment"
+  ],
+  "then": "that date is the EARLIER of the date the payment is entered in the SUPPLIER's books of account and the date it is credited to his bank account",
+  "source_section": "CGST s.13(2) Explanation (ii)",
+  "note": "Supplier's books here; the recipient's books appear only in s.13(2)(c) and s.13(3). To the extent the supply is covered by the invoice or the payment, the Explanation deems the supply made.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2) Explanation (ii)",
+      "quote": "shall be the date on which the payment is entered in the books of account of the supplier or the date on which the payment                                  is credited to his bank account, whichever is earlier.",
+      "extraction_note": "The clause opens '\u2015the date of receipt of payment\u2016' in curly quotation marks the extractor renders as non-ASCII characters. The quote starts after them."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2) Explanation (i)",
+      "quote": "the supply shall be deemed to have been made to the extent it is covered by the invoice or, as the case may be, the payment;"
+    }
+  ]
+}

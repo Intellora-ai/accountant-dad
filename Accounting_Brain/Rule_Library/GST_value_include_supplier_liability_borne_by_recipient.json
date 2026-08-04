@@ -1,0 +1,19 @@
+{
+  "id": "GST-VALUE-003",
+  "status": "VERIFIED",
+  "if": [
+    "an amount is one the SUPPLIER is liable to pay in relation to the supply",
+    "it has instead been incurred by the RECIPIENT",
+    "it is not already included in the price actually paid or payable"
+  ],
+  "then": "that amount is INCLUDED in the value of supply",
+  "source_section": "CGST s.15(2)(b)",
+  "note": "The test is whose LIABILITY it was, not who wrote the cheque. An amount the recipient paid on his own account, for his own liability, is not caught. This clause is invisible on the invoice by definition \u2014 the document alone can never establish it.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(2)(b)",
+      "quote": "any amount that the supplier is liable to pay in relation to such supply but which has been incurred by the recipient of the supply and not included in the price actually paid or payable for the goods or services or            both;"
+    }
+  ]
+}

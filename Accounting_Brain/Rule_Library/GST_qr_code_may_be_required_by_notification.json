@@ -1,0 +1,22 @@
+{
+  "id": "GST-INV-QR-001",
+  "status": "VERIFIED",
+  "if": [
+    "the Government has notified, on the recommendations of the Council, that a Quick Response code is required"
+  ],
+  "then": "the tax invoice, and the bill of supply, MUST have a Quick Response (QR) code",
+  "source_section": "CGST Rules 2017, rule 46 sixth proviso and rule 49 fourth proviso",
+  "note": "UNKNOWN \u2014 which conditions and which classes of person are actually notified is fixed by notification and no notification is held locally. Rule 46(r) is a separate and stricter requirement: a QR code with the IRN embedded, for invoices prepared under rule 48(4).",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, sixth proviso",
+      "quote": "Provided also that the Government may, by notification, on the recommendations of the Council, and subject to such conditions and restrictions as mentioned therein, specify that the tax invoice shall have Quick Response (QR) code."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 49, fourth proviso",
+      "quote": "Provided also that the Government may, by notification, on the recommendations of the Council, and subject to such conditions and restrictions as mentioned therein, specify that the bill of supply shall have Quick Response (QR) code."
+    }
+  ]
+}

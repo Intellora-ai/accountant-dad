@@ -1,0 +1,37 @@
+{
+  "id": "GST-INV-CHALLAN-004",
+  "status": "VERIFIED",
+  "if": [
+    "goods are transported in a semi knocked down or completely knocked down condition, or in batches or lots"
+  ],
+  "then": "the complete invoice MUST be issued before dispatch of the first consignment; each later consignment MUST carry a delivery challan referring to that invoice, plus a duly certified copy of the invoice; and the original invoice MUST travel with the last consignment",
+  "source_section": "CGST Rules 2017, rule 55(5)",
+  "note": "One invoice, many movements. Counting each delivery challan here as a separate supply would multiply one sale into several.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(5)",
+      "quote": "Where the goods are being transported in a semi knocked down or completely knocked down condition"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(5)(a)",
+      "quote": "the supplier shall issue the complete invoice before dispatch of the first consignment;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(5)(b)",
+      "quote": "the supplier shall issue a delivery challan for each of the subsequent consignments, giving reference of the invoice;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(5)(c)",
+      "quote": "each consignment shall be accompanied by copies of the corresponding delivery challan along with a duly certified copy of the invoice; and"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(5)(d)",
+      "quote": "the original copy of the invoice shall be sent along with the last consignment."
+    }
+  ]
+}

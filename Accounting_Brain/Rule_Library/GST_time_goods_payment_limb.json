@@ -1,0 +1,30 @@
+{
+  "id": "GST-TIME-GOODS-003",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of goods under forward charge",
+    "the supplier has received payment with respect to the supply"
+  ],
+  "then": "this limb yields the date on which the supplier receives the payment, which is the EARLIER of the date the payment is entered in his books of account and the date it is credited to his bank account",
+  "source_section": "CGST s.12(2)(b) with Explanation 2",
+  "note": "Two candidate dates, and the Act picks the earlier. A book entry made before the bank credit therefore sets the tax point. To the extent the supply is covered by the payment, s.12 Explanation 1 deems the supply made.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(2)(b)",
+      "quote": "the date on which the supplier receives the payment with respect to the supply"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12 Explanation 2",
+      "quote": "shall be the date on which the payment is entered in his books of account or the date on which the payment is credited to his bank account, whichever is earlier.",
+      "extraction_note": "The Explanation opens with '\u2015the date on which the supplier receives the payment\u2016' in curly quotation marks that the extractor renders as non-ASCII characters. The quote starts after them."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12 Explanation 1",
+      "quote": "shall be deemed to have been made to the extent it is covered by the invoice or, as the case may be, the payment.",
+      "extraction_note": "Explanation 1 opens 'For the purposes of clauses (a) and (b), \u2015supply\u2016' \u2014 same curly-quote artifact. The quote starts after it."
+    }
+  ]
+}

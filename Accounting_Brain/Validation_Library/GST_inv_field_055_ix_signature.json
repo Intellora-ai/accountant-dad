@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-FIELD-055-IX",
+  "status": "VERIFIED",
+  "if": [
+    "goods are removed for transportation in one of the four cases in rule 55(1)(a) to (d)",
+    "a delivery challan is issued in lieu of an invoice under rule 55(1)"
+  ],
+  "then": "the delivery challan MUST carry a signature",
+  "source_section": "CGST Rules 2017, rule 55(1)(ix)",
+  "note": "One mandatory particular of rule 55(1)(ix), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)(ix)",
+      "quote": "signature.",
+      "extraction_note": "Rule 55(1)(ix) says only 'signature.' It does NOT repeat the rule 46(q) formula 'signature or digital signature of the supplier or his authorised representative'. The narrower wording is quoted as it stands."
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "id": "GST-ITC-BLOCKED",
+  "name": "Blocked credits \u2014 section 17(5)",
+  "status": "VERIFIED",
+  "definition": "Section 17(5) opens with a non obstante clause overriding section 16(1) and section 18(1), and then lists supplies on which input tax credit shall not be available at all. In the source held locally the list is: motor vehicles for transport of persons seating not more than thirteen including the driver; vessels and aircraft; general insurance, servicing, repair and maintenance of those conveyances; food and beverages and a group of listed goods and services; club and fitness centre membership; employee vacation travel benefits; works contract services for construction of immovable property; goods or services for own-account construction of immovable property; supplies taxed under the composition levy; supplies received by a non-resident taxable person; goods or services used for personal consumption; goods lost, stolen, destroyed, written off, gifted or given as free samples; and tax paid under the demand and detention provisions. Several entries carry their own exceptions.",
+  "why_it_exists": "Some inputs are consumed as final consumption rather than passed into a taxable supply, and some are too easily reclassified as business use. Rather than police that case by case, the Act blocks the class. The block is absolute for the class and is not softened by proving business use \u2014 s.17(5)(d) says so in terms, blocking own-account construction 'including when such goods or services or both are used in the course or furtherance of business'.",
+  "inputs": [
+    "the nature of the inward supply",
+    "the use to which it is put",
+    "for conveyances, the approved seating capacity and the use exception claimed",
+    "for construction, whether the asset is immovable property and whether it is plant and machinery"
+  ],
+  "outputs": [
+    "credit blocked, naming the clause of s.17(5)",
+    "or an exception within that clause satisfied, so credit survives"
+  ],
+  "preconditions": [
+    "credit would otherwise be available under s.16(1) or s.18(1)"
+  ],
+  "rules": [
+    "GST-ITC-17-PM"
+  ],
+  "exceptions": [
+    "GST-ITC-BLOCKED-17-5-A",
+    "GST-ITC-BLOCKED-17-5-AA",
+    "GST-ITC-BLOCKED-17-5-AB",
+    "GST-ITC-BLOCKED-17-5-B-I",
+    "GST-ITC-BLOCKED-17-5-B-II",
+    "GST-ITC-BLOCKED-17-5-B-III",
+    "GST-ITC-BLOCKED-17-5-C",
+    "GST-ITC-BLOCKED-17-5-D",
+    "GST-ITC-BLOCKED-17-5-E",
+    "GST-ITC-BLOCKED-17-5-F",
+    "GST-ITC-BLOCKED-17-5-G",
+    "GST-ITC-BLOCKED-17-5-H",
+    "GST-ITC-BLOCKED-17-5-I",
+    "GST-ITC-BLOCKED-17-5-FA"
+  ],
+  "common_mistakes": [
+    "claiming credit on a blocked item because it was genuinely used in business \u2014 business use does not defeat the block",
+    "reading s.17(5) as a restriction to be apportioned; it is an availability bar, not a proportion",
+    "treating the s.17(5)(a) exceptions as available to any registered person, when they apply only to the named taxable supplies",
+    "treating 'plant and machinery' as everything capitalised; the Explanation excludes land, buildings, civil structures, telecommunication towers and pipelines laid outside the factory"
+  ],
+  "dependencies": [
+    "GST-ITC-CORE"
+  ],
+  "related_concepts": [
+    "GST-ITC-APPORTIONMENT",
+    "GST-ITC-SPECIAL"
+  ],
+  "legal_references": [
+    "CGST Act 2017, s.17(5) and the Explanations to s.17"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 blocked credit is a tax availability question; the accounting consequence is that the tax becomes part of cost"
+  ],
+  "gst_references": [
+    "CGST Act 2017, s.17(5)"
+  ],
+  "evidence_required": [
+    "the description of the goods or services on the inward document",
+    "for conveyances, approved seating capacity and registration particulars",
+    "for construction, whether the resulting asset is immovable property and whether it was capitalised"
+  ],
+  "confidence_factors": [
+    "weak when the invoice description is generic and the blocked category cannot be ruled in or out",
+    "an AI that claims a blocked credit creates a real liability for the business \u2014 this list is scored strict, and an unresolved description is a clarification, never a claim",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally",
+    "CONFLICT \u2014 the second locally held source blocks a further class (corporate social responsibility) and states clause (i) differently; see GST-ITC-BLOCKED-17-5-FA and GST-ITC-BLOCKED-17-5-I"
+  ],
+  "validation_checks": [
+    "no claimed credit falls in any clause of s.17(5) without a stated exception",
+    "where an exception is claimed, the exact statutory use is named and evidenced",
+    "the s.17 'plant and machinery' Explanation is applied before treating any construction input as creditable"
+  ],
+  "examples": [
+    "a trading company buys a five-seat car for its director \u2014 s.17(5)(a) blocks the credit, and no exception applies because the company does not sell cars, carry passengers or teach driving"
+  ],
+  "counterexamples": [
+    "a driving school buys the same car to teach driving \u2014 the clause (C) exception applies and the credit survives"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, producing 'sub- section (1) of section 18'; the sentence is therefore quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17, Explanation to Chapter V and VI",
+      "quote": "For the purposes of this Chapter and Chapter VI, the expression",
+      "extraction_note": "The defined term is rendered with substituted quotation glyphs, so the definition is quoted around it in two parts."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17, Explanation to Chapter V and VI",
+      "quote": "means apparatus, equipment, and machinery fixed to earth by foundation or structural support that are used for making outward supply of goods or services or both and includes such foundation and structural supports but excludes"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17, Explanation (i)",
+      "quote": "land, building or any other civil structures;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17, Explanation (ii)",
+      "quote": "telecommunication towers; and"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17, Explanation (iii)",
+      "quote": "pipelines laid outside the factory premises."
+    }
+  ]
+}

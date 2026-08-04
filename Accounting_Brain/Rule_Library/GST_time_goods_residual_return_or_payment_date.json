@@ -1,0 +1,29 @@
+{
+  "id": "GST-TIME-GOODS-008",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of goods",
+    "it is not possible to determine the time of supply under s.12(2), s.12(3) or s.12(4)"
+  ],
+  "then": "the time of supply is the date on which a periodical return is to be filed, where one has to be filed, and otherwise the date on which the tax is paid",
+  "source_section": "CGST s.12(5)",
+  "note": "The residual limb. Reaching it means the earlier sub-sections genuinely could not be applied \u2014 it is not a default to fall back on for convenience.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(5)",
+      "quote": "Where  it  is  not  possible  to  determine  the  time  of  supply  under  the provisions of sub-section (2) or sub-section (3) or sub-section (4), the time of supply",
+      "extraction_note": "The extraction breaks the trailing dash of 'shall\u2013\u2013' across a line, so whitespace normalisation turns it into 'shall\u2013 \u2013'. The quote stops before 'shall' rather than reproducing the broken form."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(5)(a)",
+      "quote": "in a case where a periodical return has to be filed, be the date on which such return is to be filed"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(5)(b)",
+      "quote": "in any other case, be the date on which the tax is paid."
+    }
+  ]
+}

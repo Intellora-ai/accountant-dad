@@ -1,0 +1,18 @@
+{
+  "id": "GST-ITC-17-2",
+  "status": "VERIFIED",
+  "if": [
+    "goods or services or both are used PARTLY for effecting taxable supplies including zero-rated supplies under the CGST Act or the IGST Act",
+    "and PARTLY for effecting exempt supplies under those Acts"
+  ],
+  "then": "credit is RESTRICTED to so much of the input tax as is attributable to the taxable supplies including zero-rated supplies",
+  "source_section": "CGST Act s.17(2)",
+  "note": "Zero-rated supplies sit on the TAXABLE side of this test, not the exempt side. Treating an export as exempt here is the classic error and understates the admissible credit. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(2)",
+      "quote": "Where the goods or services or both are used by the registered person partly for effecting taxable supplies including zero-rated supplies under this Act or under the Integrated Goods and Services Tax Act and partly for effecting exempt supplies under the said Acts, the amount of credit shall be restricted to so much of the input tax as is attributable to the said taxable supplies including zero-rated supplies."
+    }
+  ]
+}

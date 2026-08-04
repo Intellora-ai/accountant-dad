@@ -1,0 +1,20 @@
+{
+  "id": "GST-ITC-RCM-9-4",
+  "status": "VERIFIED",
+  "if": [
+    "the Government has, by notification, specified a CLASS OF REGISTERED PERSONS",
+    "the recipient belongs to that class",
+    "the supply is of a SPECIFIED CATEGORY of goods or services or both",
+    "it was received FROM AN UNREGISTERED SUPPLIER"
+  ],
+  "then": "that recipient SHALL PAY THE TAX ON REVERSE CHARGE BASIS, and all the provisions of the Act apply to him as if he were the person liable to pay the tax on that supply",
+  "source_section": "CGST Act s.9(4)",
+  "note": "Three cumulative filters \u2014 notified class of recipient, specified category of supply, and unregistered supplier. Buying from an unregistered supplier does NOT by itself create a reverse-charge liability under this source; without a notification hitting all three, s.9(4) does nothing. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.9(4)",
+      "quote": "The Government may, on the recommendations of the Council, by notification, specify a class of registered persons who shall, in respect of supply of specified categories of goods or services or both received from an unregistered supplier, pay the tax on reverse charge basis as the recipient of such supply of goods or services or both, and all the provisions of this Act shall apply to such recipient as if he is the person liable for paying the tax in relation to such supply of goods or services or both."
+    }
+  ]
+}

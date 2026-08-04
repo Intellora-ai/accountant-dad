@@ -1,0 +1,19 @@
+{
+  "id": "GST-TIME-SERVICES-005",
+  "status": "VERIFIED",
+  "if": [
+    "the supplier of taxable service receives an amount in excess of the amount indicated in the tax invoice",
+    "that excess is up to one thousand rupees",
+    "the supplier exercises the option"
+  ],
+  "then": "the time of supply FOR THAT EXCESS AMOUNT ONLY is the date of issue of invoice relating to the excess amount",
+  "source_section": "CGST s.13(2) proviso",
+  "note": "Mirrors GST-TIME-GOODS-004 but is a separate proviso with its own wording ('relating to such excess amount', where s.12 says 'in respect of such excess amount'). At the supplier's option, and confined to the excess.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2) proviso",
+      "quote": "where the supplier of taxable service receives an amount up to one thousand rupees in excess of the amount indicated in the tax invoice, the time of supply to the extent of such excess amount shall, at the option of the said supplier, be the date of issue of invoice relating to such excess amount."
+    }
+  ]
+}

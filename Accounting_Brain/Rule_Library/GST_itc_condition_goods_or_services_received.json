@@ -1,0 +1,18 @@
+{
+  "id": "GST-ITC-16-2-B",
+  "status": "VERIFIED",
+  "if": [
+    "input tax credit is claimed on a supply of goods or services or both",
+    "the registered person has NOT received the goods or services or both"
+  ],
+  "then": "credit of that input tax is DENIED",
+  "source_section": "CGST Act s.16(2)(b)",
+  "note": "Receipt, not invoicing and not payment. An advance paid against a future supply carries no credit until the supply is received. Deemed receipt in the bill-to/ship-to case is governed separately by the Explanation \u2014 see GST-ITC-16-2-B-EXPL. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(b)",
+      "quote": "he has received the goods or services or both."
+    }
+  ]
+}

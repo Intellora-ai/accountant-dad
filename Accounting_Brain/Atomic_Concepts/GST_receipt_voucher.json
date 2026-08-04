@@ -1,0 +1,101 @@
+{
+  "id": "GST-INV-RECEIPT-VOUCHER",
+  "name": "Receipt voucher for an advance",
+  "status": "VERIFIED",
+  "definition": "A receipt voucher is the document issued on receipt of an advance, under clause (d) of section 31(3). Rule 50 fixes eleven particulars, (a) to (k), including the amount of advance taken and the tax on it.",
+  "why_it_exists": "An advance is money received before a supply. The receipt voucher records the tax on that money. Posting it as revenue would recognise a sale that has not happened.",
+  "inputs": [
+    "the document",
+    "the amount of advance",
+    "whether the rate and nature of supply are determinable"
+  ],
+  "outputs": [
+    "the set of rule 50 particulars found",
+    "the set of mandatory particulars absent"
+  ],
+  "preconditions": [
+    "an advance has been received",
+    "the document is issued under rule 50"
+  ],
+  "rules": [
+    "GST-INV-FIELD-050-A",
+    "GST-INV-FIELD-050-B",
+    "GST-INV-FIELD-050-C",
+    "GST-INV-FIELD-050-D",
+    "GST-INV-FIELD-050-E",
+    "GST-INV-FIELD-050-F",
+    "GST-INV-FIELD-050-G",
+    "GST-INV-FIELD-050-H",
+    "GST-INV-FIELD-050-I",
+    "GST-INV-FIELD-050-J",
+    "GST-INV-FIELD-050-K",
+    "GST-INV-RECEIPT-001",
+    "GST-INV-SPECIAL-001"
+  ],
+  "exceptions": [
+    "where the rate of tax is not determinable at receipt, tax is paid at eighteen per cent.",
+    "where the nature of supply is not determinable at receipt, the supply is treated as inter-State",
+    "rule 54(5) extends the rule 54(2) and 54(4) relaxations to receipt vouchers"
+  ],
+  "common_mistakes": [
+    "posting a receipt voucher as a sale \u2014 it evidences money received, not a supply made",
+    "treating the eighteen per cent. fallback as the rate of the eventual supply",
+    "expecting a quantity or a total invoice value \u2014 rule 50 requires the amount of advance taken, not either of those"
+  ],
+  "dependencies": [
+    "GST-INV-TAX-INVOICE"
+  ],
+  "related_concepts": [
+    "GST-INV-REFUND-VOUCHER",
+    "GST-INV-PAYMENT-VOUCHER"
+  ],
+  "legal_references": [
+    "CGST Rules 2017, rule 50",
+    "UNKNOWN \u2014 clause (d) of sub-section (3) of section 31 of the CGST Act was not read for this record"
+  ],
+  "icai_references": [
+    "UNKNOWN \u2014 the accounting treatment of an advance received is a separate question, not answered by the CGST Rules"
+  ],
+  "gst_references": [
+    "CGST Rules 2017, rule 50",
+    "CGST Rules 2017, rule 54(5)",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the document",
+    "the amount of advance",
+    "the place of supply where inter-State"
+  ],
+  "confidence_factors": [
+    "weak when the document does not distinguish an advance from a payment against an invoice",
+    "weak when the eighteen per cent. fallback was applied, because the true rate was unknown even to the supplier"
+  ],
+  "validation_checks": [
+    "all eleven particulars (a) to (k) are present, subject to (i) applying only to inter-State supplies",
+    "the amount of advance taken is present",
+    "the voucher is not posted to a revenue account"
+  ],
+  "examples": [
+    "a voucher showing supplier GSTIN, serial number, date, customer details, description, advance amount, rate and amount of tax, reverse-charge flag and signature"
+  ],
+  "counterexamples": [
+    "a document showing an invoice total and a balance due \u2014 that is an invoice, not a receipt voucher"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 50",
+      "quote": "50. Receipt voucher.- A receipt voucher referred to in clause (d) of sub-section (3) of section 31 shall contain the following particulars, namely,-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 50(f)",
+      "quote": "amount of advance taken;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 50, proviso",
+      "quote": "the rate of tax is not determinable, the tax shall be paid at the rate of eighteen per cent.;"
+    }
+  ]
+}

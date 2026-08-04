@@ -1,0 +1,112 @@
+{
+  "id": "GST-INV-DELIVERY-CHALLAN",
+  "name": "Delivery challan \u2014 transportation of goods without an invoice",
+  "status": "VERIFIED",
+  "definition": "A delivery challan is issued under rule 55(1) in lieu of an invoice at the time of removal of goods, in four cases: liquid gas of unknown quantity, goods sent for job work, movement for reasons other than supply, and other supplies notified by the Board. Rule 55(1) fixes nine particulars, (i) to (ix).",
+  "why_it_exists": "Goods move for reasons that are not sales. A delivery challan documents the movement without asserting a supply, which is precisely why it must never be posted as one.",
+  "inputs": [
+    "the document",
+    "the reason for the movement",
+    "whether the movement is for supply to the consignee"
+  ],
+  "outputs": [
+    "the set of rule 55(1) particulars found",
+    "the set of mandatory particulars absent",
+    "whether an invoice is still owed"
+  ],
+  "preconditions": [
+    "goods are being removed for transportation",
+    "the case falls within rule 55(1)(a) to (d)"
+  ],
+  "rules": [
+    "GST-INV-FIELD-055-I",
+    "GST-INV-FIELD-055-II",
+    "GST-INV-FIELD-055-III",
+    "GST-INV-FIELD-055-IV",
+    "GST-INV-FIELD-055-V",
+    "GST-INV-FIELD-055-VI",
+    "GST-INV-FIELD-055-VII",
+    "GST-INV-FIELD-055-VIII",
+    "GST-INV-FIELD-055-IX",
+    "GST-INV-CHALLAN-001",
+    "GST-INV-CHALLAN-002",
+    "GST-INV-CHALLAN-003",
+    "GST-INV-CHALLAN-004",
+    "GST-INV-TRANSPORT-001"
+  ],
+  "exceptions": [
+    "clause (vii), tax rate and tax amount, applies only where the transportation is for supply to the consignee",
+    "clause (v) permits a provisional quantity where the exact quantity is not known",
+    "rule 55(5) governs semi knocked down and completely knocked down consignments, where one invoice covers several challans"
+  ],
+  "common_mistakes": [
+    "posting a delivery challan as a purchase or a sale \u2014 three of its four cases are not supplies at all",
+    "treating a job-work challan as a sale to the job worker",
+    "counting each challan in a knocked-down shipment as a separate supply, when rule 55(5) puts one complete invoice before the first consignment",
+    "expecting the rule 46(q) signature formula \u2014 clause (ix) says only 'signature.'"
+  ],
+  "dependencies": [
+    "GST-INV-TAX-INVOICE",
+    "GST-INV-MANNER"
+  ],
+  "related_concepts": [
+    "GST-INV-TAX-INVOICE",
+    "GST-INV-BILL-OF-SUPPLY"
+  ],
+  "legal_references": [
+    "CGST Rules 2017, rule 55",
+    "CGST Rules 2017, rule 55A"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE"
+  ],
+  "gst_references": [
+    "CGST Rules 2017, rule 55",
+    "CGST Rules 2017, rule 138",
+    "UNKNOWN \u2014 which further supplies the Board has notified under rule 55(1)(d) is fixed by notification and no notification is held locally",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the document",
+    "the stated reason for the movement",
+    "the later tax invoice, where the movement was for supply"
+  ],
+  "confidence_factors": [
+    "weak when the document does not state why the goods are moving, because that is what decides whether a supply happened",
+    "weak when a challan issued for a supply has no matching later invoice"
+  ],
+  "validation_checks": [
+    "all nine particulars (i) to (ix) are present, subject to (vii) and (viii) applying conditionally",
+    "no revenue or purchase is posted from a delivery challan alone",
+    "where the movement was for supply to the recipient, a later tax invoice exists",
+    "the challan is declared as specified in rule 138 where it travels in lieu of an invoice"
+  ],
+  "examples": [
+    "a challan for goods sent to a job worker, showing consigner and consignee GSTINs, HSN, description, quantity, taxable value and signature, with no tax amount"
+  ],
+  "counterexamples": [
+    "a challan posted to the sales ledger \u2014 rule 55(1)(c) movements are expressly for reasons other than by way of supply"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)",
+      "quote": "the consigner may issue a delivery challan, serially numbered not exceeding sixteen characters, in one or multiple series, in lieu of invoice at the time of removal of goods for transportation, containing the following details, namely:-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)(c)",
+      "quote": "transportation of goods for reasons other than by way of supply, or"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(3)",
+      "quote": "Where goods are being transported on a delivery challan in lieu of invoice, the same shall be declared as specified in rule 138."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(4)",
+      "quote": "Where the goods being transported are for the purpose of supply to the recipient but the tax invoice could not be issued at the time of removal of goods for the purpose of supply, the supplier shall issue a tax invoice after delivery of goods."
+    }
+  ]
+}

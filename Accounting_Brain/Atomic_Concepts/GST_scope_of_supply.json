@@ -1,0 +1,126 @@
+{
+  "id": "GST-SUPPLY-SCOPE",
+  "name": "Supply \u2014 scope under the CGST Act",
+  "status": "VERIFIED",
+  "definition": "For the purposes of the CGST Act the expression 'supply' includes all forms of supply of goods or services or both \u2014 sale, transfer, barter, exchange, licence, rental, lease or disposal \u2014 made or agreed to be made for a consideration by a person in the course or furtherance of business; the import of services for a consideration whether or not in the course or furtherance of business; and the activities specified in Schedule I made or agreed to be made without a consideration. Activities specified in Schedule III are treated neither as a supply of goods nor as a supply of services.",
+  "why_it_exists": "Nothing else in GST can start without it. Time of supply (s.12, s.13) and value of supply (s.15) both presuppose that a supply exists, and s.9(1) levies the tax on supplies at the value determined under s.15. If the transaction is not a supply, no GST entry is posted at all \u2014 so this is the first gate, not a detail.",
+  "inputs": [
+    "the form of the transaction \u2014 sale, transfer, barter, exchange, licence, rental, lease or disposal",
+    "whether a consideration was given",
+    "whether it was in the course or furtherance of business",
+    "whether the activity is listed in Schedule I, Schedule II or Schedule III",
+    "whether the transaction is an import of services"
+  ],
+  "outputs": [
+    "the transaction IS a supply, or is NOT a supply",
+    "if it is a supply, whether it is a supply of goods or a supply of services (via Schedule II)"
+  ],
+  "preconditions": [
+    "the transaction is being assessed under the CGST Act, 2017",
+    "Schedules I, II and III are available \u2014 they are NOT extracted here, so any branch depending on them cannot be closed"
+  ],
+  "rules": [
+    "GST-SUPPLY-001",
+    "GST-SUPPLY-002",
+    "GST-SUPPLY-003",
+    "GST-SUPPLY-004",
+    "GST-SUPPLY-005"
+  ],
+  "exceptions": [
+    "activities or transactions specified in Schedule III \u2014 neither a supply of goods nor a supply of services (s.7(2)(a))",
+    "notified activities of the Central Government, a State Government or a local authority engaged as public authorities (s.7(2)(b))",
+    "UNKNOWN \u2014 the contents of Schedules I, II and III are not extracted; no classification depending on them can be completed",
+    "UNKNOWN \u2014 notifications and rules made under the Act are not held locally. Only the Act text as updated 31-08-2021 was consulted. A notification made under the Act can narrow or displace a limb without the section text changing.",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "concluding 'no consideration, therefore no supply' \u2014 Schedule I overrides that (s.7(1)(c))",
+    "treating an import of services as outside GST because it was not for business \u2014 s.7(1)(b) says otherwise",
+    "deciding goods-versus-services from the invoice wording instead of Schedule II \u2014 the branch decides whether s.12 or s.13 applies, and therefore the tax point",
+    "assuming a supply exists because an accounting entry exists \u2014 an accrual is not a supply"
+  ],
+  "dependencies": [
+    "UNKNOWN \u2014 CGST Schedule I (supplies without consideration) not extracted",
+    "UNKNOWN \u2014 CGST Schedule II (goods-versus-services classification) not extracted",
+    "UNKNOWN \u2014 CGST Schedule III (neither goods nor services) not extracted",
+    "UNKNOWN \u2014 CGST s.2 definitions of 'goods', 'services', 'consideration', 'business' and 'person' not extracted"
+  ],
+  "related_concepts": [
+    "GST-TIME-GOODS",
+    "GST-TIME-SERVICES",
+    "GST-VALUE-SUPPLY",
+    "ACC-REV-GOODS"
+  ],
+  "legal_references": [
+    "CGST Act, 2017 s.7 \u2014 Scope of supply",
+    "CGST Act, 2017 s.8 \u2014 Tax liability on composite and mixed supplies",
+    "CGST Act, 2017 s.9(1) \u2014 levy on intra-State supplies on the value determined under section 15"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 s.7 is a statutory test. Whether a transaction is a supply is not decided by any accounting standard"
+  ],
+  "gst_references": [
+    "CGST Act, 2017 s.7(1), s.7(1A), s.7(2), s.7(3)"
+  ],
+  "evidence_required": [
+    "the document or agreement showing the form of the transaction",
+    "evidence of the consideration, or of its absence",
+    "evidence that the person acted in the course or furtherance of business",
+    "for an import of services, evidence of the supplier's location"
+  ],
+  "confidence_factors": [
+    "weak when the document does not show whether consideration passed",
+    "weak when the transaction may fall in Schedule I, II or III \u2014 none of the three is held locally",
+    "weak for composite and mixed supplies, where s.8 changes the classification and the rate"
+  ],
+  "validation_checks": [
+    "a GST entry is posted only where s.7 makes the transaction a supply",
+    "the goods-versus-services branch is taken from Schedule II, never from the invoice heading",
+    "a Schedule III activity produces NO time of supply and NO value of supply"
+  ],
+  "examples": [
+    "goods sold for a price by a trader in the course of business \u2014 a supply under s.7(1)(a)",
+    "services imported for a consideration by a person not in business \u2014 still a supply under s.7(1)(b)"
+  ],
+  "counterexamples": [
+    "an activity specified in Schedule III \u2014 treated neither as a supply of goods nor a supply of services under s.7(2)(a), so no GST entry arises"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(1)",
+      "quote": "For the purposes of this Act, the expression",
+      "extraction_note": "The sentence continues '\u2015supply\u2016 includes\u2013\u2013' with curly quotation marks the extractor renders as non-ASCII characters. The quote stops before them."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(1)(a)",
+      "quote": "all forms of supply of goods or services or both such as sale, transfer, barter, exchange, licence, rental, lease or disposal made or agreed to be made for a consideration by a person in the course or furtherance of business"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(1)(b)",
+      "quote": "import of services for a consideration whether or not in the course or furtherance of business"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(1)(c)",
+      "quote": "the activities specified in Schedule I, made or agreed to be made without a consideration"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(1A)",
+      "quote": "where certain activities or transactions constitute a supply in accordance with the provisions of sub-section (1), they shall be treated either as supply of goods or supply of services as referred to in Schedule II."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(2)",
+      "quote": "shall be treated neither as a supply of goods nor a supply of services."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.9(1)",
+      "quote": "on the value determined under section 15"
+    }
+  ]
+}

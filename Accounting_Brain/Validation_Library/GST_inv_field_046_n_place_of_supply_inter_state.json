@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-FIELD-046-N",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a tax invoice required by section 31 and issued under rule 46 of the CGST Rules, 2017",
+    "no provision of rule 54 (tax invoice in special cases) displaces the particular",
+    "the supply is in the course of inter-State trade or commerce"
+  ],
+  "then": "for an inter-State supply, the tax invoice MUST carry the place of supply together with the name of the State",
+  "source_section": "CGST Rules 2017, rule 46(n)",
+  "note": "One mandatory particular of rule 46(n), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(n)",
+      "quote": "place of supply along with the name of the State, in the case of a supply in the course of inter-State trade or commerce;"
+    }
+  ]
+}

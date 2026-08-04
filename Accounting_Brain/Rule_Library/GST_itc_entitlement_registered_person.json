@@ -1,0 +1,19 @@
+{
+  "id": "GST-ITC-16-1",
+  "status": "VERIFIED",
+  "if": [
+    "the claimant is a registered person",
+    "input tax has been charged on a supply of goods or services or both made to him",
+    "the supply is used or intended to be used in the course or furtherance of his business"
+  ],
+  "then": "he is ENTITLED to take credit of that input tax, and the amount is credited to his electronic credit ledger",
+  "source_section": "CGST Act s.16(1)",
+  "note": "This is the entitlement, not the permission. Section 16(2) opens 'Notwithstanding anything contained in this section' and denies the credit unless its own conditions are met, and s.17(5) overrides s.16(1) outright for blocked classes. Entitlement under s.16(1) alone never justifies posting a credit. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(1)",
+      "quote": "Every registered person shall, subject to such conditions and restrictions as may be prescribed and in the manner specified in section 49, be entitled to take credit of input tax charged on any supply of goods or services or both to him which are used or intended to be used in the course or furtherance of his business and the said amount shall be credited to the electronic credit ledger of such person."
+    }
+  ]
+}

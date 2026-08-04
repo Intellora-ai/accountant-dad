@@ -1,0 +1,18 @@
+{
+  "id": "GST-TIME-GOODS-006",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of goods on reverse charge basis",
+    "it is not possible to determine the time of supply under s.12(3)(a), (b) or (c)"
+  ],
+  "then": "the time of supply is the date of entry in the books of account of the RECIPIENT of supply",
+  "source_section": "CGST s.12(3) proviso",
+  "note": "A last-resort limb. It fires only when all three limbs of s.12(3) fail, never as a shortcut past them.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(3) proviso",
+      "quote": "where it is not possible to determine the time of supply under clause (a) or clause (b) or clause (c), the time of supply shall be the date of entry in the books of account of the recipient of supply."
+    }
+  ]
+}

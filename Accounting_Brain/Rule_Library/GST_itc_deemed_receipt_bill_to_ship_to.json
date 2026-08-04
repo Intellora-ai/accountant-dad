@@ -1,0 +1,23 @@
+{
+  "id": "GST-ITC-16-2-B-EXPL",
+  "status": "VERIFIED",
+  "if": [
+    "goods are delivered by the supplier to a recipient or any other person on the direction of the registered person, whether he acts as agent or otherwise, before or during movement of goods, by transfer of documents of title or otherwise",
+    "OR services are provided by the supplier to any person on the direction of and on account of the registered person"
+  ],
+  "then": "the registered person is DEEMED to have received those goods or, as the case may be, those services, for the purposes of s.16(2)(b)",
+  "source_section": "CGST Act s.16(2)(b), Explanation",
+  "note": "The bill-to/ship-to route. Physical receipt by the registered person is not required; direction plus delivery to the third party is. The services limb requires BOTH 'on the direction of' and 'on account of' the registered person \u2014 a service directed by him but not on his account is not deemed received by him. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(b), Explanation (i)",
+      "quote": "where the goods are delivered by the supplier to a recipient or any other person on the direction of such registered person, whether acting as an agent or otherwise, before or during movement of goods, either by way of transfer of documents of title to goods or otherwise;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(b), Explanation (ii)",
+      "quote": "where the services are provided by the supplier to any person on the direction of and on account of such registered person;"
+    }
+  ]
+}

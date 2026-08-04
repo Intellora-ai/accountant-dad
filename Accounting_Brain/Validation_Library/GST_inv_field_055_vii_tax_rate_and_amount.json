@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-FIELD-055-VII",
+  "status": "VERIFIED",
+  "if": [
+    "goods are removed for transportation in one of the four cases in rule 55(1)(a) to (d)",
+    "a delivery challan is issued in lieu of an invoice under rule 55(1)",
+    "the transportation is for supply to the consignee"
+  ],
+  "then": "where the transportation is for supply to the consignee, the delivery challan MUST carry the tax rate and tax amount by head",
+  "source_section": "CGST Rules 2017, rule 55(1)(vii)",
+  "note": "One mandatory particular of rule 55(1)(vii), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)(vii)",
+      "quote": "tax rate and tax amount \u2013 central tax, State tax, integrated tax, Union territory tax or cess, where the transportation is for supply to the consignee;"
+    }
+  ]
+}

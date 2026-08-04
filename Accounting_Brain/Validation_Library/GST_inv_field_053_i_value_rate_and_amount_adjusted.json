@@ -1,0 +1,24 @@
+{
+  "id": "GST-INV-FIELD-053-I",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a revised tax invoice referred to in section 31",
+    "it is issued under rule 53(1) of the CGST Rules, 2017"
+  ],
+  "then": "the revised tax invoice MUST carry the taxable value, the rate of tax, and the amount of tax credited or debited to the recipient",
+  "source_section": "CGST Rules 2017, rule 53(1)(i)",
+  "note": "One mandatory particular of rule 53(1)(i), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1)(i)",
+      "quote": "value of taxable supply of goods or services, rate of tax and the amount of the tax credited or, as the case may be, debited to the recipient;",
+      "extraction_note": "Bracketed in the source with footnote marker 120, whose text reads 'Omitted vide Notf no. 03/2019-CT dt. 29.01.2019 wef 01.02.2019'."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53, footnote 120",
+      "quote": "120 Omitted vide Notf no. 03/2019-CT dt. 29.01.2019 wef 01.02.2019"
+    }
+  ]
+}

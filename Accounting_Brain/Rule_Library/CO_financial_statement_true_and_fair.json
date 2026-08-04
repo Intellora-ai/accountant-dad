@@ -1,0 +1,50 @@
+{
+  "id": "CO-FS-TRUE-AND-FAIR-001",
+  "status": "VERIFIED",
+  "if": [
+    "financial statements of a company are prepared for a financial year",
+    "the company is not one for which a form of financial statement is specified in or under another governing Act"
+  ],
+  "then": "the financial statements SHALL give a true and fair view of the state of affairs of the company or companies, SHALL comply with the accounting standards, and SHALL be in the form or forms provided for the class of company in Schedule III; and the items contained in them SHALL be in accordance with the accounting standards",
+  "source_section": "Companies Act, 2013, s.129(1)",
+  "note": "This is the provision that makes an ICAI Accounting Standard binding on a company. The chain: s.129(1) requires compliance with the accounting standards; s.2(2) defines them as those referred to in s.133; s.133 empowers the Central Government to prescribe standards of accounting as recommended by the Institute of Chartered Accountants of India. By the Explanation to s.129, notes annexed to or forming part of the statement are within the term. UNKNOWN — source is the Act as enacted 2013; amendments not held locally.",
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(1)",
+      "quote": "The financial statements shall give a true and fair view of the state of affairs of the company or companies, comply with the accounting standards notified under",
+      "extraction_note": "The sentence continues 'section133' with no space, so it is cut at 'notified under' and resumed below. The join is in the extraction, not in the Act."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(1)",
+      "quote": "shall be in the form or forms as may be provided for different class or classes of companies in Schedule III",
+      "extraction_note": "Resumes s.129(1) after the 'section133' join."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(1), first proviso",
+      "quote": "the items contained in such financial statements shall be in accordance with the accounting standards"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(1), second proviso",
+      "quote": "nothing contained in this sub-section shall apply to any insurance or banking company or any company engaged in the generation or supply of electricity, or to any other class of company for which a form of financial statement has been specified in or under the Act governing such class of company"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129, Explanation",
+      "quote": "any reference to the financial statement shall include any notes annexed to or forming part of such financial statement"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(2)",
+      "quote": "“accounting standards” means the standards of accounting or any addendum thereto for companies or class of companies referred to in section 133"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.133",
+      "quote": "The Central Government may prescribe the standards of accounting or any addendum thereto, as recommended by the Institute of Chartered Accountants of India"
+    }
+  ]
+}

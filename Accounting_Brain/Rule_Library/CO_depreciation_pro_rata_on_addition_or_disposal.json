@@ -1,0 +1,28 @@
+{
+  "id": "CO-DEP-PRO-RATA-001",
+  "status": "VERIFIED",
+  "if": [
+    "during a financial year an addition has been made to any asset",
+    "or an asset has been sold, discarded, demolished or destroyed during the financial year"
+  ],
+  "then": "depreciation on such assets SHALL be calculated on a pro rata basis from the date of such addition or, as the case may be, up to the date on which such asset has been sold, discarded, demolished or destroyed",
+  "source_section": "Companies Act, 2013, Schedule II, Part C, Note 2",
+  "note": "The trigger is the DATE of the event, not the month or half-year in which it fell. A full-year charge on a mid-year acquisition overstates depreciation and understates profit; the mirror error on a mid-year disposal does the reverse. Note 3 separately requires the depreciation methods used to be disclosed. UNKNOWN — source is the Act as enacted 2013; amendments not held locally.",
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 2",
+      "quote": "Where, during any financial year, any addition has been made to any asset, or where any asset has been sold, discarded, demolished or destroyed, the depreciation on such assets shall be calculated on a pro rata basis from the date of such addition or, as the case may be, up to the date on which such asset has been sold, discarded, demolished or destroyed."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 3(i)",
+      "quote": "The following information shall also be disclosed in the accounts, namely:— (i) depreciation methods used"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, Note 3(ii)",
+      "quote": "the useful lives of the assets for computing depreciation, if they are different from the life specified in the Schedule"
+    }
+  ]
+}

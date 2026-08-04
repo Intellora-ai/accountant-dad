@@ -1,0 +1,17 @@
+{
+  "id": "GST-INV-SPECIAL-001",
+  "status": "VERIFIED",
+  "if": [
+    "a document is issued under rule 49, rule 50, rule 51, rule 52 or rule 53"
+  ],
+  "then": "rule 54(2) and rule 54(4) apply to it, mutatis mutandis",
+  "source_section": "CGST Rules 2017, rule 54(5)",
+  "note": "So the banking-sector consolidated document and the passenger-transport ticket relaxations reach bills of supply, receipt vouchers, refund vouchers, payment vouchers and revised invoices too.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 54(5)",
+      "quote": "The provisions of sub-rule (2) or sub-rule (4) shall apply, mutatis mutandis, to the documents issued under rule 49 or rule 50 or rule 51 or rule 52 or rule 53."
+    }
+  ]
+}

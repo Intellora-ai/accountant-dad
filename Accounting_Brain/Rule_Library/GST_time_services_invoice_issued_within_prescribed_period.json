@@ -1,0 +1,24 @@
+{
+  "id": "GST-TIME-SERVICES-002",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of services under forward charge",
+    "the invoice IS issued within the period prescribed under s.31"
+  ],
+  "then": "this limb yields the EARLIER of the date of issue of invoice and the date of receipt of payment",
+  "source_section": "CGST s.13(2)(a)",
+  "note": "This limb is conditional on the invoice being timely. If it is not timely, s.13(2)(b) applies instead and the tax point moves to the date of provision of service. The prescribed period lives in s.31, which is not extracted here.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2)(a)",
+      "quote": "the date of issue of invoice by the supplier, if the invoice is issued within the period prescribed under",
+      "extraction_note": "The extraction inserts an amendment marker '[******]36' between 'under' and 'section 31'. Quoted as two spans on either side of it."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2)(a)",
+      "quote": "section 31 or the date of receipt of payment, whichever is"
+    }
+  ]
+}
