@@ -326,6 +326,38 @@ def test_the_refusal_cites_all_four_documents_that_require_the_hold() -> None:
         assert cited in message
 
 
+def test_the_refusal_message_is_pinned_word_for_word() -> None:
+    """The message IS the artifact. Fragments are not enough.
+
+    Everything above checks that certain substrings are present, which leaves
+    every other word free to change unnoticed — and the words carry the whole
+    argument for why this raises instead of routing. Mutation testing found 16
+    surviving mutants in this one function, all of them edits to text that no
+    assertion read.
+
+    A refusal nobody can act on is a refusal that failed. This one has to name
+    WHICH four documents require the hold, WHERE the proposed amendment sits,
+    and THAT the fix is an amendment rather than a code workaround. Pinning it
+    exactly is the only way those survive an edit.
+
+    If this test fails, the message changed. Read the new one and decide whether
+    the change was intended — do NOT relax the assertion to make it pass.
+    """
+    with pytest.raises(TransitionRejectedError) as raised:
+        approved_with_warning_has_no_state()
+
+    assert str(raised.value) == (
+        "an 'Approved With Warning' Validation Decision has no state in the "
+        "locked state machine. Four documents require the Application Layer to "
+        "hold it for a human (COMMUNICATION_RULES_VALIDATION_ENGINE.md:61, :69; "
+        "ENGINE_6_EXECUTION_ENGINE_RULES.md:147; DATA_FLOW.md:283) and "
+        "DATA_FLOW.md §14 gives it nowhere to wait. WaitingForApproval is "
+        "PROPOSED, not approved (ARCHITECTURE_AMENDMENTS.md:37). This is an "
+        "amendment, never a code workaround "
+        "(MVP_IMPLEMENTATION_BLUEPRINT.md:185)."
+    )
+
+
 def test_approved_with_warning_has_no_success_path_at_all() -> None:
     """It always raises. There is no argument that makes it return."""
     with pytest.raises(TransitionRejectedError):
