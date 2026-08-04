@@ -26,8 +26,8 @@ import pathlib
 import pytest
 
 from tools.evidence import model
-from tools.evidence.model import Layer, Span, normalise
-from tools.evidence.registry import Registry, read_manifest
+from tools.evidence.model import Failure, Layer, Span, normalise
+from tools.evidence.registry import Document, Registry, read_manifest
 from tools.evidence.verify import check_citation, check_document, run
 
 # A miniature Act in the real CGST grammar: number, whitespace, title, `.—`,
@@ -114,8 +114,21 @@ def cite(**overrides: object) -> dict[str, object]:
     return entry
 
 
-def layers(problems) -> list[Layer]:
+def layers(problems: list[Failure]) -> list[Layer]:
     return [p.layer for p in problems]
+
+
+def declared(registry: Registry, filename: str = "Tiny-Act.pdf") -> Document:
+    """The document, insisting it exists.
+
+    `Registry.get` returns `Document | None` because a citation may name a file
+    the manifest never declared — that is layer 1 and it has its own test. In a
+    fixture that just wrote the manifest, None means the fixture is broken, and
+    saying so here beats threading an Optional through every assertion.
+    """
+    document = registry.get(filename)
+    assert document is not None, f"fixture did not declare {filename}"
+    return document
 
 
 # ---------------------------------------------------------------- the happy path
@@ -126,7 +139,7 @@ def test_a_correct_citation_proves_every_layer(registry: Registry) -> None:
     assert problems == [], [p.render() for p in problems]
     assert citation is not None
     assert citation.section == "s.16"
-    assert citation.checksum == registry.get("Tiny-Act.pdf").sha256
+    assert citation.checksum == declared(registry).sha256
     assert citation.source_url == "https://example.invalid/tiny-act.pdf"
     assert citation.version == "as enacted"
     assert citation.evidence_id.startswith("EV-")
@@ -143,7 +156,7 @@ def test_a_missing_document_names_its_source_and_the_bootstrap_command(
     """A check that fails without saying how to fix it trains people to ignore it."""
     (tree / "Evidence_Library" / "sources" / "Tiny-Act.pdf").unlink()
 
-    document = registry.get("Tiny-Act.pdf")
+    document = declared(registry)
     problems = check_document(document)
 
     assert layers(problems) == [Layer.DOCUMENT]
@@ -157,7 +170,7 @@ def test_a_document_whose_bytes_changed_is_refused(tree: pathlib.Path, registry:
     """Every quote was proven against specific bytes. Different bytes, different proof."""
     (tree / "Evidence_Library" / "sources" / "Tiny-Act.pdf").write_bytes(b"something else")
 
-    problems = check_document(registry.get("Tiny-Act.pdf"))
+    problems = check_document(declared(registry))
 
     assert layers(problems) == [Layer.DOCUMENT]
     assert "manifest declares" in problems[0].message
@@ -211,7 +224,7 @@ def test_a_quote_appearing_in_two_sections_is_proven_against_the_cited_one(
     assert problems == [], [p.render() for p in problems]
     assert citation is not None
 
-    section_16 = registry.parser_for(registry.get("Tiny-Act.pdf")).locate(ACT_TEXT, "s.16")
+    section_16 = registry.parser_for(declared(registry)).locate(ACT_TEXT, "s.16")
     assert section_16 is not None
     span, _ = section_16
     start, end = citation.char_range
@@ -226,7 +239,7 @@ def test_the_same_duplicated_quote_also_proves_under_the_other_section(
     assert problems == [], [p.render() for p in problems]
     assert citation is not None
 
-    found = registry.parser_for(registry.get("Tiny-Act.pdf")).locate(ACT_TEXT, "s.17")
+    found = registry.parser_for(declared(registry)).locate(ACT_TEXT, "s.17")
     assert found is not None
     span, _ = found
     start, end = citation.char_range

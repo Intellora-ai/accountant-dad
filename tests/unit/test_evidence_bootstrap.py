@@ -24,6 +24,7 @@ import http.server
 import json
 import pathlib
 import threading
+from collections.abc import Iterator
 
 import pytest
 
@@ -51,7 +52,7 @@ class _Server(http.server.BaseHTTPRequestHandler):
 
 
 @pytest.fixture
-def origin():
+def origin() -> Iterator[str]:
     """A real HTTP origin on loopback, torn down with the test."""
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Server)
     thread = threading.Thread(target=server.serve_forever, daemon=True)

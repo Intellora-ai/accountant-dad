@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import inspect
 import itertools
+from typing import cast
 
 import pytest
 
@@ -394,3 +395,89 @@ def test_the_string_is_refused_rather_than_repaired() -> None:
     same reason identity.py refuses `"3"` instead of reading it as 3."""
     with pytest.raises(TransitionRejectedError):
         require_allowed(TransactionState.INPUT, "Understanding")  # type: ignore[arg-type]
+
+
+# ── every refusal is pinned word for word ─────────────────────────────────
+#
+# `match=` reads a FRAGMENT, so it clears a message that named the wrong role,
+# the wrong type, or the wrong pair — a rejection that raises for a reason the
+# caller cannot act on is still a rejection, and it still passes every test
+# above. Mutation testing found 26 surviving mutants in this module, all of them
+# edits to refusal text and to the role label that text is built from.
+#
+# `AL-INV-6` requires a disallowed transition to be REJECTED; the message is how
+# anyone finds out which one, and which side of it was wrong. So each message is
+# asserted by equality, in every position a caller can get wrong.
+#
+# If one of these fails, the message changed. Read the new one and decide whether
+# the change was intended — do NOT relax the assertion to make it pass.
+
+#: A plain `str` that equals a state. `!r` renders it quoted, and
+#: `type(value).__name__` renders `str`.
+IMPOSTOR = "Input"
+
+
+def impostor_refusal(role: str) -> str:
+    """`_require_a_real_state`'s exact words, for `IMPOSTOR` in `role`'s slot."""
+    return (
+        f"the {role} 'Input' is a str, not a "
+        "TransactionState. It compares equal to a state because "
+        "TransactionState is a StrEnum, and storing it would leave a "
+        "transaction in something that is `==` a state and `is` no state at "
+        "all (AL-INV-13)."
+    )
+
+
+def test_require_allowed_names_the_source_slot_word_for_word() -> None:
+    with pytest.raises(TransitionRejectedError) as raised:
+        require_allowed(cast(TransactionState, IMPOSTOR), TransactionState.UNDERSTANDING)
+    assert str(raised.value) == impostor_refusal("source")
+
+
+def test_require_allowed_names_the_target_slot_word_for_word() -> None:
+    """The role label is the only thing distinguishing the two refusals. A
+    target rejection that said "source" would send the caller to inspect the
+    wrong half of the call."""
+    with pytest.raises(TransitionRejectedError) as raised:
+        require_allowed(TransactionState.INPUT, cast(TransactionState, IMPOSTOR))
+    assert str(raised.value) == impostor_refusal("target")
+
+
+def test_is_allowed_names_the_source_slot_word_for_word() -> None:
+    """`is_allowed` passes its own role labels, so it gets its own assertions —
+    the same words from `require_allowed` prove nothing about this function."""
+    with pytest.raises(TransitionRejectedError) as raised:
+        is_allowed(cast(TransactionState, IMPOSTOR), TransactionState.UNDERSTANDING)
+    assert str(raised.value) == impostor_refusal("source")
+
+
+def test_is_allowed_names_the_target_slot_word_for_word() -> None:
+    with pytest.raises(TransitionRejectedError) as raised:
+        is_allowed(TransactionState.INPUT, cast(TransactionState, IMPOSTOR))
+    assert str(raised.value) == impostor_refusal("target")
+
+
+def test_the_same_state_refusal_is_pinned_word_for_word() -> None:
+    """AL-INV-2 is the whole argument for this branch, and it is carried
+    entirely by the sentence — nothing else in the module says why re-entering a
+    state is refused rather than allowed as a no-op."""
+    with pytest.raises(TransitionRejectedError) as raised:
+        require_allowed(TransactionState.INPUT, TransactionState.INPUT)
+    assert str(raised.value) == (
+        "Input to itself is not a transition. A transaction is in "
+        "exactly one state at any moment (AL-INV-2); re-entering the state it "
+        "already occupies records movement that did not happen."
+    )
+
+
+def test_the_off_whitelist_refusal_names_both_states_word_for_word() -> None:
+    """A rejection that does not say WHICH pair was refused cannot be acted on,
+    and one that names the pair in the wrong order sends the reader to the wrong
+    row of APPLICATION_LAYER.md:221-229."""
+    with pytest.raises(TransitionRejectedError) as raised:
+        require_allowed(TransactionState.CLARIFICATION, TransactionState.VALIDATION)
+    assert str(raised.value) == (
+        "Clarification → Validation is not in the locked state machine "
+        "(DATA_FLOW.md §14). No stage may be bypassed, however obvious it "
+        "appears (AL-INV-6, DATA_FLOW.md:283)."
+    )
