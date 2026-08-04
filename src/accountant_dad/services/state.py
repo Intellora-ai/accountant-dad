@@ -187,8 +187,46 @@ class TransitionRejectedError(Exception):
     """
 
 
+def _require_a_real_state(value: TransactionState, role: str) -> None:
+    """Refuse anything that merely EQUALS a state without BEING one.
+
+    `TransactionState` is a `StrEnum`, so its members hash and compare as their
+    own text:
+
+        hash(TransactionState.UNDERSTANDING) == hash("Understanding")   True
+
+    which means a plain `str` finds the enum member's tuple in
+    `ALLOWED_TRANSITIONS` and sails through every check below. Without this
+    guard, `"Understanding"` could be written into a live transaction as its
+    state: `==` a state forever, `is` a state never, so every
+    `state_of(...) is TransactionState.X` in the repo silently goes False. That
+    is `AL-INV-13` broken — *"the set of states in code equals the set in
+    `DATA_FLOW.md` §14 — exactly, no more."*
+
+    Found by red-teaming the state store, not by reading this file.
+
+    **Refused, never coerced.** `TransactionState(value)` would repair the input
+    and hide the caller's bug, which is the reason `identity.py` uses
+    `strict=True` on a version rather than accepting `"3"`.
+    """
+    if type(value) is not TransactionState:
+        raise TransitionRejectedError(
+            f"the {role} {value!r} is a {type(value).__name__}, not a "
+            "TransactionState. It compares equal to a state because "
+            "TransactionState is a StrEnum, and storing it would leave a "
+            "transaction in something that is `==` a state and `is` no state at "
+            "all (AL-INV-13)."
+        )
+
+
 def is_allowed(source: TransactionState, target: TransactionState) -> bool:
-    """Whether the locked state machine draws this edge."""
+    """Whether the locked state machine draws this edge.
+
+    Answers only about real states. A `str` that equals one is not one, and is
+    refused rather than silently accepted — see `_require_a_real_state`.
+    """
+    _require_a_real_state(source, "source")
+    _require_a_real_state(target, "target")
     return (source, target) in ALLOWED_TRANSITIONS
 
 
@@ -200,6 +238,8 @@ def require_allowed(source: TransactionState, target: TransactionState) -> None:
     setter would void AL-INV-6"* — and a bypass flag here would be that setter
     under another name.
     """
+    _require_a_real_state(source, "source")
+    _require_a_real_state(target, "target")
     if source == target:
         raise TransitionRejectedError(
             f"{source.value} to itself is not a transition. A transaction is in "

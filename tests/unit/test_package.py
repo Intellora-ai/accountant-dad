@@ -38,6 +38,7 @@ PERMITTED_MODULES = {
     "knowledge_contract",  # Brain interface contract — P2 (BLUEPRINT §2 line 84)
     "ablation",  # the ID ablation harness — P2 (BLUEPRINT §2 line 135, INV-9)
     "conformance",  # conformance predicates — Amendment 2, permitted list
+    "conformance_registry",  # the prohibition inventory and its negative controls
     # Amendment 2 "Permitted now — exhaustive", remaining three categories.
     "ingestion",  # document-ingestion tooling
     "sealing",  # held-out sealing mechanism
@@ -54,6 +55,9 @@ PERMITTED_MODULES = {
     # verbatim. DATA_FLOW.md §14 calls it `src/services/`.
     "services/__init__",
     "services/state",  # the locked transaction state machine
+    "services/pipeline",  # the walking skeleton — one transaction, end to end
+    "services/store",  # one state per Transaction ID (AL-INV-2)
+    "services/audit",  # the append-only transition history (AL-INV-3)
 }
 
 #: Still frozen by Amendment 2, verbatim: engine reasoning · accounting logic ·

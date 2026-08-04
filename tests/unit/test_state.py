@@ -331,3 +331,34 @@ def test_approved_with_warning_has_no_success_path_at_all() -> None:
     with pytest.raises(TransitionRejectedError):
         approved_with_warning_has_no_state()
     assert inspect.signature(approved_with_warning_has_no_state).parameters == {}
+
+
+# ── a string that equals a state is not a state ───────────────────────────
+
+
+@pytest.mark.parametrize("impostor", ["Input", "Understanding", "Completed", "Failed"])
+def test_a_raw_string_is_refused_even_though_it_compares_equal(impostor: str) -> None:
+    """TransactionState is a StrEnum, so its members hash as their own text and
+    a plain `str` finds their tuples in ALLOWED_TRANSITIONS. Storing one would
+    leave a transaction in something `==` a state and `is` no state at all,
+    breaking every identity check in the repo (AL-INV-13).
+
+    Found by red-teaming the state store, not by reading the state machine.
+    """
+    assert hash(TransactionState(impostor)) == hash(impostor)
+    with pytest.raises(TransitionRejectedError, match="not a TransactionState"):
+        require_allowed(TransactionState.INPUT, impostor)  # type: ignore[arg-type]
+    with pytest.raises(TransitionRejectedError, match="not a TransactionState"):
+        is_allowed(TransactionState.INPUT, impostor)  # type: ignore[arg-type]
+
+
+def test_the_impostor_is_refused_as_a_source_too() -> None:
+    with pytest.raises(TransitionRejectedError, match="not a TransactionState"):
+        require_allowed("Input", TransactionState.UNDERSTANDING)  # type: ignore[arg-type]
+
+
+def test_the_string_is_refused_rather_than_repaired() -> None:
+    """`TransactionState(value)` would coerce and hide the caller's bug — the
+    same reason identity.py refuses `"3"` instead of reading it as 3."""
+    with pytest.raises(TransitionRejectedError):
+        require_allowed(TransactionState.INPUT, "Understanding")  # type: ignore[arg-type]
