@@ -46,12 +46,24 @@ def workflows(tmp_path: Path) -> Path:
     return directory
 
 
+def declared_file(tmp_path: Path, body: str = "") -> Path:
+    """A declared-exceptions file. Empty by default: nothing is excused.
+
+    Empty is the strict default on purpose. A test that wants an exception must
+    ask for one explicitly, so no test can be accidentally lenient.
+    """
+    path = tmp_path / "declared.txt"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
 def run_main(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     runs: list["CheckRun"],
     *,
     timeout_minutes: str = "1",
+    declared: str = "",
 ) -> int:
     monkeypatch.setattr(poll_checks, "fetch_check_runs", lambda *_: runs)
     monkeypatch.setattr(time, "sleep", lambda _: None)
@@ -61,6 +73,7 @@ def run_main(
     monkeypatch.setenv("MERGE_GATE_POLL_TIMEOUT_MINUTES", timeout_minutes)
     monkeypatch.setenv("MERGE_GATE_POLL_INTERVAL_SECONDS", "0")
     monkeypatch.setenv("MERGE_GATE_WORKFLOWS_DIR", str(workflows(tmp_path)))
+    monkeypatch.setenv("MERGE_GATE_DECLARED_EXCEPTIONS", str(declared_file(tmp_path, declared)))
     return poll_checks.main()
 
 
@@ -73,7 +86,12 @@ def test_all_success_passes(
 ) -> None:
     code = run_main(monkeypatch, tmp_path, [done("alpha", "success"), done("beta", "success")])
     assert code == 0
-    assert "all 2 gates succeeded" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "all 2 gates accounted for" in out
+    # Stricter than the old assertion: with no declared exceptions, BOTH gates
+    # must be counted as passed and NONE as excused.
+    assert "2 passed" in out
+    assert "0 red by declaration" in out
 
 
 @pytest.mark.parametrize(
@@ -87,11 +105,44 @@ def test_every_non_success_conclusion_blocks(
     conclusion: str,
 ) -> None:
     # "skipped" is the one GitHub natively treats as passing. It must not here.
+    # No declared exceptions, so every one of these is an UNDECLARED failure.
     code = run_main(monkeypatch, tmp_path, [done("alpha", "success"), done("beta", conclusion)])
     assert code == 1
     out = capsys.readouterr().out
-    assert "BLOCKED - not every gate succeeded" in out
+    assert "BLOCKED - a gate that is NOT declared a placeholder did not succeed" in out
     assert conclusion.upper() in out
+
+
+def test_a_declared_gate_is_excused_but_an_undeclared_one_still_blocks(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The whole point of the mechanism, through main() rather than the pure
+    # function: one excused red must not excuse a second, undeclared red.
+    code = run_main(
+        monkeypatch,
+        tmp_path,
+        [done("alpha", "failure"), done("beta", "failure")],
+        declared="PH-90 | alpha | @o | P2 | schema exists | no artifact exists yet\n",
+    )
+    assert code == 1
+    out = capsys.readouterr().out
+    assert "EXCUSED alpha" in out
+    assert "FAILURE beta" in out
+
+
+def test_a_declared_gate_that_passes_blocks_as_stale(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Without this the list rots: a gate that starts passing stays excused
+    # forever and silently covers a later regression.
+    code = run_main(
+        monkeypatch,
+        tmp_path,
+        [done("alpha", "success"), done("beta", "success")],
+        declared="PH-90 | alpha | @o | P2 | schema exists | no artifact exists yet\n",
+    )
+    assert code == 1
+    assert "STALE" in capsys.readouterr().out
 
 
 def test_a_gate_that_never_reports_blocks_as_a_timeout(
@@ -136,6 +187,7 @@ def test_a_transient_api_error_retries_rather_than_deciding(
     monkeypatch.setenv("MERGE_GATE_POLL_TIMEOUT_MINUTES", "1")
     monkeypatch.setenv("MERGE_GATE_POLL_INTERVAL_SECONDS", "0")
     monkeypatch.setenv("MERGE_GATE_WORKFLOWS_DIR", str(workflows(tmp_path)))
+    monkeypatch.setenv("MERGE_GATE_DECLARED_EXCEPTIONS", str(declared_file(tmp_path)))
 
     assert poll_checks.main() == 0
     assert "api error, retrying" in capsys.readouterr().out
@@ -197,3 +249,37 @@ def test_fetch_tolerates_a_malformed_payload(monkeypatch: pytest.MonkeyPatch) ->
         urllib.request, "urlopen", lambda *_a, **_k: FakeResponse(["not", "a", "dict"])
     )
     assert poll_checks.fetch_check_runs("o/r", "sha", "tok") == []
+
+
+@pytest.mark.parametrize("found", ["nope", 5, None, {"id": 1}, True])
+def test_fetch_ignores_a_check_runs_field_that_is_not_a_list(
+    monkeypatch: pytest.MonkeyPatch, found: object
+) -> None:
+    # A dict payload whose check_runs has the wrong type. `5` and `None` are the
+    # cases that prove the isinstance narrowing is load-bearing: without it they
+    # raise TypeError inside the poll loop, which `main` does not catch — the
+    # merge gate would die with a traceback instead of returning a verdict, and
+    # a crashed gate is the ambiguous state this mechanism exists to remove.
+    # The iterable-but-wrong values are here so the whole class is covered.
+    monkeypatch.setattr(
+        urllib.request, "urlopen", lambda *_a, **_k: FakeResponse({"check_runs": found})
+    )
+    assert poll_checks.fetch_check_runs("o/r", "sha", "tok") == []
+
+
+def test_a_declared_name_matching_no_real_check_blocks_before_polling(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A declared name that matches nothing is dead weight at best and a typo
+    # shadowing a live gate at worst. Either way the list is wrong, and a wrong
+    # list is what silently excuses a real failure.
+    code = run_main(
+        monkeypatch,
+        tmp_path,
+        [done("alpha", "success"), done("beta", "success")],
+        declared="PH-90 | ghost | @o | P2 | schema exists | no artifact yet\n",
+    )
+    assert code == 1
+    out = capsys.readouterr().out
+    assert "declared-exceptions names a check that does not exist" in out
+    assert "UNKNOWN ghost" in out
