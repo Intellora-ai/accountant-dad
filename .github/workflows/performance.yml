@@ -21,4 +21,24 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - performance"
+          echo
+          echo "BLOCKER: there is no pipeline to time. Nothing processes a"
+          echo "document end to end, so there is no duration and no cost."
+          echo
+          echo "The bounds are NOT missing - MEASUREMENT_FRAMEWORK.md section 12"
+          echo "already fixes them, changeable only by amendment:"
+          echo "  wall clock, end to end   <= 60 seconds per document"
+          echo "  token cost               <= INR 5 per document"
+          echo
+          echo "So this gate is blocked on the subject, not on a threshold."
+          echo "That distinction matters: a gate missing its number must never"
+          echo "be given one (CLAUDE.md rule 10). This one has its numbers and"
+          echo "is waiting for something to measure."
+          echo
+          echo "NEEDS   the vertical slice processing one document end to end"
+          echo "PHASE   P4 measures it, P6 enforces both bounds"
+          echo "SOURCE  MEASUREMENT_FRAMEWORK.md section 12"
+          echo
+          echo "A correct entry taking 30 minutes and INR 200 fails the product"
+          echo "at any accuracy."
           exit 1

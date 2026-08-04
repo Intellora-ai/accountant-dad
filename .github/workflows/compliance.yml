@@ -21,6 +21,25 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - license scan"
+          echo
+          echo "BLOCKER: the licence allowlist does not exist. It is a POLICY"
+          echo "VALUE, not a technical one, and only the repository owner can"
+          echo "set it."
+          echo
+          echo "The tooling is not the problem. Enumerating every dependency's"
+          echo "licence is trivial and could ship today. What cannot ship is the"
+          echo "answer to 'which licences are acceptable for this project' -"
+          echo "permissive only, or copyleft permitted, or a named list."
+          echo
+          echo "NEEDS   an explicit allowlist of acceptable SPDX identifiers"
+          echo "PHASE   none - available the moment the list is provided"
+          echo "SOURCE  CLAUDE.md rule 10 - never set a number, or a value,"
+          echo "        that was not given"
+          echo
+          echo "A partial implementation was considered and rejected: a scan"
+          echo "that inventories licences but blocks nothing would go GREEN"
+          echo "while a GPL dependency entered the tree. That is a hollow gate"
+          echo "wearing a compliance name, which is worse than a red one."
           exit 1
 
   conformance:
@@ -86,6 +105,28 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - negative controls"
+          echo
+          echo "BLOCKER: the nine hard negative control documents have not been"
+          echo "collected, and no engine exists that could refuse them."
+          echo
+          echo "MEASUREMENT_FRAMEWORK.md section 3 names all nine:"
+          echo "  N1 proforma invoice      N6 invoice to a different company"
+          echo "  N2 purchase order        N7 invoice with amounts blanked"
+          echo "  N3 quotation             N8 blank page"
+          echo "  N4 delivery challan      N9 photograph of unrelated content"
+          echo "  N5 invoice stamped DUPLICATE"
+          echo
+          echo "N1 is the one that matters. A proforma invoice looks identical"
+          echo "to a tax invoice and posting one is the classic real bookkeeping"
+          echo "error. N8 and N9 are only a floor check."
+          echo
+          echo "NEEDS   the nine documents (P1) and a pipeline that can refuse"
+          echo "        them (P4)"
+          echo "PHASE   P1 collects, P4 makes refusal testable"
+          echo "SOURCE  MEASUREMENT_FRAMEWORK.md section 3"
+          echo
+          echo "If any control produces an accounting entry, the run is VOID and"
+          echo "no accuracy number is computed at all."
           exit 1
 
   golden-dataset:
@@ -101,6 +142,22 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - golden dataset"
+          echo
+          echo "BLOCKER: no ground truth exists, and no human ceiling has been"
+          echo "measured. Both are required and neither can be fabricated."
+          echo
+          echo "GOLDEN_DATASET.md requires 25 documents - 10 development, 6"
+          echo "held-out and sealed, 9 negative controls - each carrying a"
+          echo "correct entry, plus a FROZEN, HASHED inter-rater ceiling."
+          echo
+          echo "NEEDS   25 documents, their correct entries, a measured ceiling"
+          echo "        in ceiling.json, and the structural sealing mechanism"
+          echo "PHASE   P1"
+          echo "SOURCE  GOLDEN_DATASET.md, MEASUREMENT_FRAMEWORK.md section 1"
+          echo
+          echo "CLAUDE.md Law 52 and Law 24 forbid inventing any part of this."
+          echo "A system beating a ceiling that was never measured is a claim"
+          echo "about nothing, so this gate stays red rather than assert one."
           exit 1
 
   adversarial-tests:
@@ -116,4 +173,20 @@ jobs:
       - name: not implemented
         run: |
           echo "NOT IMPLEMENTED - adversarial tests"
+          echo
+          echo "BLOCKER: the 19 attacks in ADVERSARIAL_TESTING.md are aimed at a"
+          echo "reasoning pipeline. There is no pipeline to attack."
+          echo
+          echo "These are not unit tests. Each attack feeds hostile or edge input"
+          echo "through the REAL path and asserts the system refuses rather than"
+          echo "guesses. ADVERSARIAL_TESTING.md line 23 forbids substituting a"
+          echo "mock, so this cannot be faked at the boundary either."
+          echo
+          echo "The rotating poison test additionally needs a golden set to"
+          echo "poison. One miss fails the build - finish condition 6."
+          echo
+          echo "NEEDS   the six engines end to end (P4) and the golden set (P1)"
+          echo "PHASE   P5 - 19 of 19 plus poison caught"
+          echo "SOURCE  ADVERSARIAL_TESTING.md,"
+          echo "        MVP_IMPLEMENTATION_BLUEPRINT.md section 3, P5 row"
           exit 1

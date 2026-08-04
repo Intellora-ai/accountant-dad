@@ -68,7 +68,9 @@
 # this repository. Derived from repository permissions, not chosen.
 
 # ── legacy gates (gate.yml) ──────────────────────────────────────────────────
-PH-01 | typecheck · lint · tests · build | @Intellora-ai | NOW | PR #23 merges | implemented on PR #23; this line is dead the moment that lands
+# PH-01 removed: `typecheck · lint · tests · build` is implemented in this
+# change, so it is no longer a placeholder and no longer excused. Its own
+# removal condition said "PR #23 merges". The gate now binds for real.
 PH-02 | conformance suite | @Intellora-ai | P2 | the six artifact schemas exist and a predicate can evaluate one | no artifact schema exists, so every predicate would pass vacuously
 PH-03 | negative controls 9 of 9 | @Intellora-ai | P1 | the nine control documents are committed AND Engine 1 can refuse them | neither the nine documents nor an engine that could refuse them exists
 
