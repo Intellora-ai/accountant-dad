@@ -222,8 +222,33 @@ jobs:
         # Coverage says a line RAN. Mutation says a bug in that line would be
         # CAUGHT. Tests that execute code without asserting score high on
         # coverage and near zero here — this is the gate coverage cannot be.
-        env:
-          PYTHONPATH: tools/ci:src
+        #
+        # ─────────────────────────────────────────────────────────────────
+        # THIS STEP MUST NOT SET PYTHONPATH. DO NOT ADD IT BACK.
+        #
+        # It used to say `PYTHONPATH: tools/ci:src`, and that single line is
+        # why this gate reported 0 killed / 351 survived — a 0.0% score that
+        # measured nothing.
+        #
+        # Python resolves PYTHONPATH to ABSOLUTE paths at interpreter
+        # STARTUP, when the working directory is still the repository root.
+        # So `src` became `/…/accountant dad/src` — the ORIGINAL tree.
+        # mutmut then chdirs into `mutants/` and runs the suite with
+        # `pytest.main()`, IN-PROCESS, in that same interpreter, so those
+        # absolute entries are still on sys.path and still win. Every test
+        # imported pristine code, so every mutant survived by construction.
+        # chdir cannot retract a sys.path entry that is already absolute.
+        #
+        # With no PYTHONPATH, `[tool.pytest.ini_options] pythonpath` in
+        # pyproject.toml does the work instead. pytest resolves those
+        # entries relative to ROOTDIR, and mutmut passes `--rootdir=.` from
+        # inside `mutants/`, so they resolve to the INSTRUMENTED copies.
+        # It PREPENDS them, which is also why this survives an editable
+        # install: a `.pth` file appends, and prepend wins.
+        #
+        # tests/unit/test_mutation_measures_the_real_tree.py fails if this
+        # line ever returns.
+        # ─────────────────────────────────────────────────────────────────
         run: |
           set -euo pipefail
           # Paths come from [tool.mutmut] in pyproject.toml. mutmut 3.3.1
