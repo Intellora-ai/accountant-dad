@@ -1,13 +1,13 @@
 {
   "id": "GST-INV-FIELD-053-C",
-  "status": "VERIFIED",
+  "status": "UNKNOWN",
   "if": [
     "the document is a revised tax invoice referred to in section 31",
     "it is issued under rule 53(1) of the CGST Rules, 2017"
   ],
-  "then": "the revised tax invoice MUST state the nature of the document",
+  "then": "UNKNOWN — the printed clause reads 'nature of the document'. Do NOT report a revised tax invoice as defective for omitting it until the effect of Notf no. 03/2019-CT is confirmed against the notification.",
   "source_section": "CGST Rules 2017, rule 53(1)(c)",
-  "note": "One mandatory particular of rule 53(1)(c), addressable on its own so that a missing field names the clause it breaches.",
+  "note": "This record was written as a mandatory particular and then downgraded: the quote is in the source, but the source's own footnote says the clause was omitted. A quote that verifies is not the same as a rule that binds. The identical particular DOES bind a credit or debit note under rule 53(1A)(b), which carries no omission footnote — see GST-INV-FIELD-053A-B.",
   "evidence": [
     {
       "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",

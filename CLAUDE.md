@@ -642,15 +642,32 @@ and no domain implementation is written until its gates are green.**
 | **Guarded by** | Three, all binding: (1) the permitted list is **exhaustive** — anything not named is frozen; (2) gates promote one at a time via the lifecycle above — passes on correct code, fails on deliberately broken code, then required; (3) no pull request touching `.github/**` or the branch ruleset is merged autonomously |
 | **Approved** | The user, 2026-08-03 |
 
+**Amendment 3 — Engine 1 authorization.** Approved 2026-08-05.
+
+| | |
+|---|---|
+| **Doc / section** | `CLAUDE.md` §P build freeze |
+| **Old rule** | Engine reasoning frozen for all six engines. Only stubs permitted, at P3 |
+| **New rule** | **Engine 1, and only Engine 1, is released for implementation.** Source, sub-engines, OCR, CV, PDF parsing, document parsing, table extraction, document classification, the confidence sub-engine, interfaces, schemas, tests, benchmarks, CI gates and documentation. **Nothing outside Engine 1 is authorized by this amendment** |
+| **Why** | The freeze was read as blocking Engine 1 behind P1's ceiling. It does not: `MVP_IMPLEMENTATION_BLUEPRINT.md:100,102` make Engine 1 depend on the Application Layer and the artifact schemas, both built. P1 gates the *measurement* of Engine 1, never its construction |
+| **What failed** | `tests/unit/test_package.py` refused every module under `engines/`, proven by probe: creating `engines/input_engine/cleaner.py` failed two tests, deleting it restored nine green. Engine 1 was structurally unwritable, and three routes past the guard were closed by design |
+| **Trade-off** | Gained: Engine 1 is buildable, and its toolchain is already installed and measured. Lost: `engines/` is no longer a uniformly frozen directory, so the guard now distinguishes Engine 1 from its five siblings instead of refusing all of them |
+| **Guarded by** | Four, all binding: (1) `ENGINE_1_AUTHORIZED` is **exhaustive** — a path not named is refused; (2) a new test proves nothing outside `engines/input_engine/` enters it; (3) a new test proves no module named for accounting, tax, LLM, brain or Tally enters it, so **no accounting reasoning may live inside Engine 1**; (4) a new test proves Engines 2–6 remain frozen. Gate count rises by three |
+| **Approved** | The user, 2026-08-05 |
+
+**The six-engine architecture is unchanged. The Brain remains advisory, never binding. No accounting reasoning is permitted inside Engine 1.**
+
+**Confidence sub-engine — configuration-driven, and no number is invented.** Every threshold, weight and cutoff is a **named configuration variable** carrying its purpose, valid range, units, and what changes when it moves. **No hardcoded defaults. No silently assumed values. Missing required confidence configuration fails fast at startup, never falls back.** Values are set by the user, on evidence, after measurement and calibration — never chosen because they look reasonable. A system may not assert `confidence ≥ 0.90` until it can show why 0.90 is the correct operating point for the data collected. See `docs/ENGINE_1_CONFIDENCE_PARAMETERS.md`.
+
 **Permitted now — exhaustive:**
 
 ```
 artifact schemas · conformance predicates · domain models · Application Layer skeleton
 held-out sealing mechanism · strong baseline · CI gate implementations
-document-ingestion tooling
+document-ingestion tooling · ENGINE 1 IN FULL (Amendment 3)
 ```
 
-**Still frozen:** engine reasoning · accounting logic · tax logic · AI/LLM calls · Tally posting. **Each unlocks at its scheduled phase, and is asked for before it is written.**
+**Still frozen:** engine reasoning for **Engines 2–6** · accounting logic · tax logic · AI/LLM calls · Tally posting. **Each unlocks at its scheduled phase, and is asked for before it is written.**
 
 **Unchanged and non-negotiable:** gate count only goes up · never weaken a test to make it pass · no placeholder passing as complete · no accuracy claim before the ceiling exists (Law 52) · never fabricate a number, including a threshold · `.github/**` changes reported line by line, before and after.
 

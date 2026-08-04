@@ -368,14 +368,26 @@ def test_extracted_evidence_may_never_claim_a_human_origin() -> None:
     # a single fact." A human assertion filed as a detected field IS that
     # merge: it enters the Structured Document, which is labelled [EXTRACTED],
     # wearing the authority of something read off the artifact.
-    with pytest.raises(ValidationError, match="Human"):
+    #
+    # Asserted by EQUALITY against `human_origin_reason`, not `match="Human"`.
+    # `match` is a substring search, so every re-wording of the refusal below
+    # the word `Human` still passed it — measured: seven mutations of this
+    # message survived CI run 30946373087 while this test stayed green. The
+    # message IS the contract here: it is what tells whoever debugs the refusal
+    # WHICH component claimed the origin and WHERE the note actually belongs.
+    with pytest.raises(ValidationError) as raised:
         a_structured_document(
-            detected_fields=(a_detected_field(source_type=SourceType.HUMAN),),
+            detected_fields=(a_detected_field(name="Amount", source_type=SourceType.HUMAN),),
         )
+
+    assert messages(raised) == [human_origin_reason("detected field 'Amount'")]
 
 
 def test_a_detected_table_may_never_claim_a_human_origin() -> None:
-    with pytest.raises(ValidationError, match="Human"):
+    # The table's INDEX is the only handle a reader has on which table was
+    # refused — tables have no name — so the index is asserted, not just the
+    # word `Human`.
+    with pytest.raises(ValidationError) as raised:
         a_structured_document(
             detected_tables=(
                 DetectedTable(
@@ -384,6 +396,27 @@ def test_a_detected_table_may_never_claim_a_human_origin() -> None:
                 ),
             ),
         )
+
+    assert messages(raised) == [human_origin_reason("detected table 0")]
+
+
+def test_the_refused_table_is_named_by_its_own_index_not_the_first() -> None:
+    # Disconfirming check on the test above: with one table, index 0 is also
+    # what a hard-coded 0 would print. Two tables, the SECOND one human, is the
+    # case that can tell an enumeration from a constant.
+    extracted = DetectedTable(
+        rows=(("Item", "Qty"), ("Laptop", "2")),
+        provenance=a_provenance(source_type=SourceType.DOCUMENT),
+    )
+    asserted = DetectedTable(
+        rows=(("Note", "Advance paid to supplier"),),
+        provenance=a_provenance(source_type=SourceType.HUMAN),
+    )
+
+    with pytest.raises(ValidationError) as raised:
+        a_structured_document(detected_tables=(extracted, asserted))
+
+    assert messages(raised) == [human_origin_reason("detected table 1")]
 
 
 def test_structured_metadata_is_still_extractable_evidence() -> None:

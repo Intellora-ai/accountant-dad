@@ -16,28 +16,28 @@
       "extraction_note": "The defined expression, rendered by the extractor with substituted quotation glyphs, is quoted around rather than reproduced."
     },
     {
-      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
-      "section": "CGST Act s.17(3), Explanation (source B, IndiaCode consolidation)",
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17(3), Explanation (source B, IndiaCode consolidated text as on 11-06-2026)",
       "quote": "shall not include the value of activities or transactions specified in Schedule III,"
     },
     {
-      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
       "section": "CGST Act s.17(3), Explanation (i) (source B)",
       "quote": "the value of activities or transactions specified in paragraph 5 of the said Schedule; and"
     },
     {
-      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
       "section": "CGST Act s.17(3), Explanation (ii) (source B)",
       "quote": "the value of such activities or transactions as may be prescribed in respect of clause",
       "extraction_note": "The extractor pads the bracketed '(a)' with spaces, so the clause reference is quoted around rather than repaired."
     },
     {
-      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
       "section": "CGST Act s.17(3), Explanation (ii) (source B), continued",
       "quote": "of paragraph 8 of the said Schedule"
     },
     {
-      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
       "section": "CGST Act s.17, footnote 2",
       "quote": "Subs. by Act 8 of 2023, s. 139, for \u201cexcept those specified in paragraph 5 of the said Schedule\u201d (w.e.f. 1-10-2023)."
     }

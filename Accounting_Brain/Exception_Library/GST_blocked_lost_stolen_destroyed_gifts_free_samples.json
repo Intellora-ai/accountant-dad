@@ -1,0 +1,28 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-H",
+  "status": "VERIFIED",
+  "if": [
+    "goods are LOST, STOLEN, DESTROYED, WRITTEN OFF, or DISPOSED OF BY WAY OF GIFT OR FREE SAMPLES"
+  ],
+  "then": "input tax credit is NOT AVAILABLE on those goods",
+  "source_section": "CGST Act s.17(5)(h)",
+  "note": "Directly load-bearing for bookkeeping: a stock write-off, a shrinkage adjustment, a promotional free sample and a customer gift each trigger this clause, and credit already taken on those goods has to come out. The clause is drafted over goods only; it does not name services. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this clause; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(h)",
+      "quote": "goods lost, stolen, destroyed, written off or disposed of by way of gift or free samples; and"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-B-II",
+  "status": "VERIFIED",
+  "if": [
+    "the inward supply is MEMBERSHIP OF A CLUB, or of a HEALTH AND FITNESS CENTRE"
+  ],
+  "then": "input tax credit is NOT AVAILABLE on that membership",
+  "source_section": "CGST Act s.17(5)(b)(ii)",
+  "note": "Stated without any exception of its own in the source. The proviso about an employer being obliged by law to provide the benefit follows sub-clause (iii); this sub-clause carries no proviso in its own terms, and the same-category escape in the proviso to sub-clause (i) is attached to that sub-clause. Corporate membership taken in the company's name is still membership of a club. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this clause; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(b)(ii)",
+      "quote": "membership of a club, health and fitness centre; and"
+    }
+  ]
+}

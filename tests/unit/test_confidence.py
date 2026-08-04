@@ -31,6 +31,22 @@ class Holder(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel's o
     score: Confidence
 
 
+def messages(raised: pytest.ExceptionInfo[ValidationError]) -> list[str]:
+    """Every message pydantic reported, EXACTLY as the validator worded it.
+
+    Equality, not substring. `match="must be a Decimal"` passes against a
+    refusal whose remaining two sentences have been deleted, re-cased or
+    emptied — measured, not supposed: thirteen mutations of the three refusals
+    in `confidence.py` survived CI run 30946373087 with every test here green.
+
+    The wording is not decoration. Each refusal answers the question the reader
+    asks next — *why was my perfectly reasonable 0.7 rejected?* — and a
+    refusal that raises without answering it sends whoever hits it to go
+    "fix" the value rather than the type.
+    """
+    return [str(error["msg"]) for error in raised.value.errors()]
+
+
 # ── the agreed range, at both ends ───────────────────────────────────────────
 
 
@@ -79,6 +95,29 @@ def test_the_float_rejection_is_not_merely_a_range_check() -> None:
         adapter.validate_python(0.7)
 
 
+@pytest.mark.parametrize(
+    ("bad", "type_name"),
+    [(0.7, "float"), (1, "int"), ("0.7", "str"), (None, "NoneType"), (True, "bool")],
+)
+def test_the_type_refusal_names_the_type_it_got_and_why_converting_is_refused(
+    bad: object, type_name: str
+) -> None:
+    # The type name is the whole diagnostic value of this refusal: `0.7` and
+    # `Decimal("0.7")` are indistinguishable when printed, so a message that
+    # did not name the TYPE would leave the reader staring at a number that
+    # looks correct. `type(value).__name__` replaced by a constant still
+    # raises, still says "must be a Decimal", and tells four of these five
+    # callers something false.
+    with pytest.raises(ValidationError) as raised:
+        adapter.validate_python(bad)
+
+    assert messages(raised) == [
+        f"Value error, confidence must be a Decimal, got {type_name}. "
+        "float and int are refused rather than converted: converting is "
+        "the precision loss the representation exists to prevent."
+    ]
+
+
 def test_an_int_is_rejected_rather_than_widened() -> None:
     # 1 is in range and would widen to Decimal("1") cleanly. Still rejected:
     # the agreed representation is a four-place Decimal, and accepting bare
@@ -97,6 +136,26 @@ def test_more_precision_than_the_agreed_scale_is_rejected_not_rounded(bad: str) 
     # immutable and auditable (INV-5). Refusing is the honest failure.
     with pytest.raises(ValidationError):
         adapter.validate_python(Decimal(bad))
+
+
+@pytest.mark.parametrize(("bad", "places"), [("0.00001", 5), ("0.123456", 6), ("0.50000", 5)])
+def test_the_scale_refusal_counts_the_places_and_names_the_agreed_scale(
+    bad: str, places: int
+) -> None:
+    # `places = -exponent` mutated to `+exponent` prints "carries -5 decimal
+    # places" — still a refusal, still `ValidationError`, and a count that is
+    # negative is not a count. Asserting the number is the only thing that
+    # separates the two, and the number is what the reader trims the value by.
+    with pytest.raises(ValidationError) as raised:
+        adapter.validate_python(Decimal(bad))
+
+    assert messages(raised) == [
+        f"Value error, confidence carries {places} decimal places; the agreed scale is "
+        f"{CONFIDENCE_PLACES} ({MIN} to {MAX}). Refused rather than rounded: "
+        "an artifact is immutable and auditable, so silently rewriting a "
+        "value its producer asserted would falsify the record."
+    ]
+    assert places > CONFIDENCE_PLACES, "a refusal that reports fewer places than the scale is a lie"
 
 
 def test_fewer_places_than_the_scale_are_accepted_and_left_exactly_as_given() -> None:
@@ -122,6 +181,31 @@ def test_a_non_finite_decimal_is_rejected(bad: str) -> None:
     # every comparison downstream.
     with pytest.raises(ValidationError):
         adapter.validate_python(Decimal(bad))
+
+
+@pytest.mark.parametrize(
+    ("bad", "shown"),
+    [("NaN", "NaN"), ("Infinity", "Infinity"), ("-Infinity", "-Infinity"), ("sNaN", "sNaN")],
+)
+def test_the_non_finite_refusal_names_the_value_and_why_it_poisons_comparisons(
+    bad: str, shown: str
+) -> None:
+    # A `Decimal("NaN")` that reached an artifact would compare false against
+    # every threshold downstream, so the refusal has to say WHY rather than
+    # only that something was wrong — otherwise the obvious "fix" is to relax
+    # whichever comparison later reads false.
+    #
+    # `raise ValueError(None)` mutated in here still raises `ValidationError`
+    # and still passes the bare `pytest.raises` above it. It reports the word
+    # "None" to the reader. Equality is what tells the two apart.
+    with pytest.raises(ValidationError) as raised:
+        adapter.validate_python(Decimal(bad))
+
+    assert messages(raised) == [
+        f"Value error, confidence must be finite, got {shown}. A non-finite Decimal "
+        "compares false against everything and would poison every "
+        "comparison downstream of the artifact carrying it."
+    ]
 
 
 # ── it behaves as a field on a real frozen model ─────────────────────────────

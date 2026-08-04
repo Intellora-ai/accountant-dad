@@ -1,0 +1,34 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-B-III",
+  "status": "VERIFIED",
+  "if": [
+    "the inward supply is a TRAVEL BENEFIT extended to employees ON VACATION, such as leave or home travel concession",
+    "AND it is NOT obligatory for the employer to provide it to its employees under any law for the time being in force"
+  ],
+  "then": "input tax credit is NOT AVAILABLE on that travel benefit",
+  "source_section": "CGST Act s.17(5)(b)(iii)",
+  "note": "The block bites on vacation travel \u2014 leave travel concession and the like \u2014 not on business travel, which this sub-clause does not mention. The escape is a legal OBLIGATION on the employer under a law in force; a contractual or policy commitment is not a law. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this clause; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(b)(iii)",
+      "quote": "travel benefits extended to employees on vacation such as leave or home travel concession:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(b)(iii), proviso",
+      "quote": "Provided that the input tax credit in respect of such goods or services or both shall be available, where it is obligatory for an employer to provide the same to its employees under any law for the time being in force."
+    }
+  ]
+}

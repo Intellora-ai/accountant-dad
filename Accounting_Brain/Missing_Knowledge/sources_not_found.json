@@ -1,0 +1,152 @@
+{
+  "note": "Every authoritative document searched for on 2026-08-05 and NOT obtained, with the exact URLs tried and the exact reason each failed. This file is as valuable as the catalogue: it tells the next agent what has already been attempted, so the same dead end is not walked twice. No root-level `status` key is present on purpose — this is an acquisition record, not an accounting claim, so `verify_evidence.py` has nothing here to verify. Each entry carries its own status from the README vocabulary.",
+  "recorded": "2026-08-05",
+  "recorded_by": "evidence acquisition pass; see Evidence_Library/CATALOGUE.md for what DID come down",
+  "not_obtained": [
+    {
+      "document": "The Companies Act, 2013 and its Schedule II (depreciation) and Schedule III (financial statement format), as published by MCA",
+      "status": "NO AUTHORITATIVE SOURCE FOUND",
+      "body": "MCA",
+      "urls_tried": [
+        "https://www.mca.gov.in/content/dam/mca/pdf/CompaniesAct2013.pdf",
+        "https://www.mca.gov.in/Ministry/pdf/ScheduleIIIAmendmentNotification_24032021.pdf",
+        "https://www.mca.gov.in/Ministry/pdf/ScheduleIIIAmendmentNotification_13042021.pdf",
+        "https://www.mca.gov.in/Ministry/pdf/NotificationScheduleIII_12102018.pdf"
+      ],
+      "why_it_failed": "mca.gov.in sits behind Akamai bot protection. Every PDF request returns HTTP 403 with a 432-446 byte HTML page titled 'Access Denied'. Retried with a browser User-Agent, an Accept: application/pdf header and a same-site Referer; all four still returned 403. This is the exact failure that produced the 432-byte file previously saved as Companies-Act-2013.pdf, which has now been deleted.",
+      "partial_mitigation": "Companies-Act-2013-as-enacted.pdf (India Code) is in the library and DOES contain Schedule II and Schedule III as originally enacted. The 2018 and 2021 amendments to Schedule III are NOT in it. Any claim about the CURRENT Schedule III format is therefore unsupported by anything downloaded.",
+      "next_step": "A human with a browser can download the four PDFs above directly. Alternatively find the amendment notifications on egazette.gov.in, which is not blocked."
+    },
+    {
+      "document": "The Income-tax Act, 2025 and the Income-tax Rules, from the Income Tax Department's own site",
+      "status": "NO AUTHORITATIVE SOURCE FOUND",
+      "body": "Income Tax Department",
+      "urls_tried": [
+        "https://www.incometaxindia.gov.in/Documents/Act/Income-tax-Act-2025.pdf",
+        "https://www.incometaxindia.gov.in/documents/d/guest/income_tax_act_2025_as_amended_by_fa_act_2026-pdf",
+        "https://wmstatic-prd.incometaxindia.gov.in/documents/20117/42998/Income-tax-Act-2026_2026-04-01_04-31-39_477ea5_en.pdf"
+      ],
+      "why_it_failed": "Same Akamai block as MCA: HTTP 403, ~442-591 byte 'Access Denied' page, on every path and host tried, with and without a browser User-Agent.",
+      "partial_mitigation": "The Income-tax Act, 2025 WAS obtained from the Gazette of India (egazette.gov.in) — a priority-1 source, and the better one. The Income-tax Act, 1961 came from India Code. What is still missing is the departmental consolidation 'as amended by the Finance Act, 2026', so amendments made by Finance Act 2026 are not represented anywhere in this library.",
+      "next_step": "Find the Finance Act, 2026 on egazette.gov.in and download it as a separate source; the Act plus its amending Act is the honest substitute for a consolidation."
+    },
+    {
+      "document": "The Income-tax Rules, 1962, including the TDS rules and forms",
+      "status": "NO AUTHORITATIVE SOURCE FOUND",
+      "body": "Income Tax Department",
+      "urls_tried": [
+        "https://www.incometaxindia.gov.in/income-tax-rules"
+      ],
+      "why_it_failed": "Not attempted past the index because incometaxindia.gov.in returns 403 to every PDF request (see the entry above). No non-blocked primary host for the Rules was identified.",
+      "partial_mitigation": "None. TDS RATES AND THRESHOLDS ARE NOT SUPPORTED BY ANY DOWNLOADED SOURCE. The statutory TDS sections are inside the Income-tax Act 2025 and 1961 texts that were obtained; the Rules and the prescribed forms are not.",
+      "next_step": "Try India Code for the Income-tax Rules, or egazette.gov.in for the amending notifications."
+    },
+    {
+      "document": "CGST Act and Rules as clean per-section HTML, and every GST notification issued after 2022",
+      "status": "NO AUTHORITATIVE SOURCE FOUND",
+      "body": "CBIC",
+      "urls_tried": [
+        "https://taxinformation.cbic.gov.in/content-page/explore-act",
+        "https://taxinformation.cbic.gov.in/content-page/explore-rules/1000484/1000001",
+        "https://taxinformation.cbic.gov.in/view-pdf/1009785/ENG/Notifications"
+      ],
+      "why_it_failed": "TLS verification failure: 'unable to verify the first certificate'. The host serves an incomplete certificate chain, so no client that checks certificates can fetch from it. This confirms the warning already in the task brief.",
+      "partial_mitigation": "cbic-gst.gov.in served the Acts, the Rules and the 2017-2022 notifications. Its static notification index stops in 2022.",
+      "next_step": "Fetch the intermediate certificate and pin it explicitly, or use a browser. Do NOT disable certificate verification to work around this — an unverified TLS connection cannot establish that the bytes came from CBIC at all, which defeats the point of a hash manifest."
+    },
+    {
+      "document": "GST rate notifications issued after 2022, including the September 2025 rate rationalisation, as issued by the Department of Revenue",
+      "status": "NO AUTHORITATIVE SOURCE FOUND",
+      "body": "CBIC / Department of Revenue",
+      "urls_tried": [
+        "https://cbic-gst.gov.in/hindi/central-tax-rate.html",
+        "https://cbic-gst.gov.in/pdf/central-tax-rate/notfctn-11-cgst-rate-english.pdf",
+        "https://cbic-gst.gov.in/pdf/notfctn-1-central-tax-rate-english.pdf"
+      ],
+      "why_it_failed": "The only static index of Central Tax (Rate) notifications on cbic-gst.gov.in lists 162 English PDFs and the newest is from 2022. Post-2022 notifications live on taxinformation.cbic.gov.in, which fails TLS (see above), and in the Angular application at /cbec-portal-ui/, which serves no static links.",
+      "consequence": "THE RATE NOTIFICATIONS IN THIS LIBRARY ARE THE 2017 SERIES. India's GST rate structure was changed materially by the September 2025 rationalisation. Any GST RATE read out of Notification 1/2017 or 11/2017 as downloaded here is very likely WRONG TODAY. Rates must not be quoted from this library until the current series is obtained.",
+      "partial_mitigation": "One 2025 rate document was obtained — Notification-09-2025-Integrated-Tax-Rate.pdf — but it is an ICAI committee compilation, not the Department of Revenue text, and it is flagged as such in the manifest and the catalogue.",
+      "next_step": "egazette.gov.in publishes every notification. Search it by Gazette number rather than going through CBIC."
+    },
+    {
+      "document": "The UTGST Act, 2017 and the GST (Compensation to States) Act, 2017",
+      "status": "NO AUTHORITATIVE SOURCE FOUND",
+      "body": "CBIC",
+      "urls_tried": [
+        "https://cbic-gst.gov.in/UTGST-bill-e.html",
+        "https://cbic-gst.gov.in/compensation-cess-bill-e.html",
+        "https://www.indiacode.nic.in/bitstream/123456789/2250/1/A201714.pdf",
+        "https://www.indiacode.nic.in/bitstream/123456789/2249/1/A201715.pdf"
+      ],
+      "why_it_failed": "CBIC's own 'GST Acts' index page links to CGST-bill-e.html, IGST-bill-e.html, UTGST-bill-e.html and compensation-cess-bill-e.html — ALL FOUR return HTTP 404 from CBIC's own server. The two guessed India Code bitstream identifiers returned HTTP 302 redirects to an error page, so the handle numbers are wrong.",
+      "partial_mitigation": "CGST and IGST were obtained by other routes. UTGST and Compensation Cess are simply absent.",
+      "next_step": "Search India Code for the correct handles rather than guessing bitstream identifiers; the CGST handle is 123456789/15689 and the IGST handle is 123456789/2251, so the pattern is not sequential."
+    },
+    {
+      "document": "Individual ICAI Accounting Standard PDFs (AS 2, AS 3, AS 4, AS 7, AS 10, AS 11, AS 12, AS 13, AS 14, AS 15, AS 16, AS 17, AS 18, AS 19, AS 20, AS 21, AS 22, AS 23, AS 24, AS 25, AS 26, AS 27, AS 28, AS 29)",
+      "status": "NO AUTHORITATIVE SOURCE FOUND",
+      "body": "ICAI",
+      "urls_tried": [
+        "https://www.icai.org/post/accounting-standards",
+        "https://www.icai.org/post/accounting-standards-as",
+        "https://publication.icai.org/post-data/accounting-standards-as",
+        "https://publication.icai.org/post-data/accounting-standards-april-2025",
+        "https://publication.icai.org/publication/773",
+        "https://kb.icai.org/pdfs/PDFFile62c5477a61fa49.82409032.pdf"
+      ],
+      "why_it_failed": "publication.icai.org is a JavaScript single-page application. The per-standard pages (publication/772 through publication/798, one per standard) contain no PDF href at all — the file is fetched at runtime from a data attribute the server does not render into the HTML. kb.icai.org fails TLS with 'no alternative certificate subject name matches target host name'.",
+      "partial_mitigation": "RESOLVED IN SUBSTANCE, not in form. ICAI-Compendium-of-Accounting-Standards-2019.pdf contains AS 1 through AS 29 in one file, including all four standards the brief asked for by name — AS 2 Valuation of Inventories, AS 10 Property, Plant and Equipment, AS 11 Effects of Changes in Foreign Exchange Rates, AS 22 Accounting for Taxes on Income. Quotes verify against the compendium exactly as they would against a per-standard file.",
+      "caveat": "The compendium states the standards as on July 1, 2019. AS 1, AS 5 and AS 9 also exist as separate ICAI files already in the library."
+    },
+    {
+      "document": "Notification No. 1/2017-Central Tax (Rate) and No. 2/2017-Central Tax (Rate), complete",
+      "status": "CONFLICT",
+      "body": "CBIC",
+      "urls_tried": [
+        "https://cbic-gst.gov.in/hindi/pdf/central-tax-rate/Notification-for-CGST-rate-Schedule.pdf",
+        "https://cbic-gst.gov.in/hindi/pdf/central-tax-rate/Notification-for-CGST-exemption.pdf",
+        "https://www.cbic.gov.in/resources/htdocs-cbec/gst/Notification-for-CGST-rate-Schedule.pdf",
+        "https://www.cbic.gov.in/resources/htdocs-cbec/gst/Notification-for-CGST-exemption.pdf"
+      ],
+      "why_it_failed": "The PDFs served by CBIC are themselves TRUNCATED — they end mid cross-reference table with no trailer and no %%EOF marker. The HTTP Content-Length header matches the bytes received exactly (354,519 for 2/2017), so the transfer completed and the defect is in the file on the government server. pypdf refuses to open them. Requests to www.cbic.gov.in for the same filenames return HTTP 500 with a JSON error body.",
+      "what_was_done_instead": "Both were stored anyway, with the text recovered by poppler's pdftotext, which reconstructs the cross-reference table. The stored PDF is the untouched download, so its SHA-256 is the hash of exactly what CBIC served. The manifest and the catalogue both carry a `defect` field on these two entries.",
+      "what_may_not_be_concluded": "A quote FOUND in these two texts is real. The ABSENCE of a quote proves nothing, because the tail of each document may be missing. Never record a NO for a rate or an exemption on the basis of these two files.",
+      "status_reason": "Recorded as CONFLICT rather than VERIFIED or NO AUTHORITATIVE SOURCE FOUND: the source is authoritative and downloaded, and is also incomplete. Both facts are true and neither may be dropped."
+    },
+    {
+      "document": "CBIC 'GST — Concept and Status' briefing, 01.06.2019 edition",
+      "status": "NO AUTHORITATIVE SOURCE FOUND",
+      "body": "CBIC",
+      "urls_tried": [
+        "https://cbic-gst.gov.in/pdf/01062019-GST-Concept-Status.pdf"
+      ],
+      "why_it_failed": "HTTP 404, although the link appears on CBIC's own live index pages. The static site links to files that are no longer served.",
+      "partial_mitigation": "CBIC-FAQ-on-GST-2nd-Edition.pdf, a fuller CBIC publication, was obtained instead."
+    },
+    {
+      "document": "A consolidated CGST Rules, 2017 later than 01.01.2022",
+      "status": "NO AUTHORITATIVE SOURCE FOUND",
+      "body": "CBIC",
+      "urls_tried": [
+        "https://cbic-gst.gov.in/cgst-rules.html",
+        "https://cbic-gst.gov.in/pdf/01062021-CGST-Rules-2017-Part-A-Rules.pdf"
+      ],
+      "why_it_failed": "cbic-gst.gov.in/cgst-rules.html returns HTTP 404. The newest consolidated Rules PDF discoverable from the surviving static pages is the 01.01.2022 Part A / Part B pair, which was downloaded.",
+      "consequence": "Rule amendments made after 01.01.2022 — including the CGST (Second Amendment) Rules, 2025 — are not represented. Notification-11-2025-Central-Tax.pdf was obtained and amends the Rules, but the consolidated text does not reflect it."
+    },
+    {
+      "document": "The Finance Act, 2026",
+      "status": "UNKNOWN",
+      "body": "Gazette of India",
+      "urls_tried": [],
+      "why_it_failed": "Not searched for in this pass. Identified as a gap only because the Income-tax Act consolidation that would have folded it in could not be downloaded.",
+      "next_step": "egazette.gov.in, which served the Income-tax Act 2025 without difficulty."
+    },
+    {
+      "document": "Any scanned-image PDF requiring OCR",
+      "status": "UNKNOWN",
+      "why_it_failed": "None encountered. Every one of the 40 documents in the library produced a real text layer; the smallest extraction was 4,353 characters and the acquisition script rejects anything under 500. NO SOURCE IN THIS LIBRARY REQUIRES OCR.",
+      "note": "This entry exists so the next agent does not go looking for an OCR backlog that does not exist."
+    }
+  ]
+}

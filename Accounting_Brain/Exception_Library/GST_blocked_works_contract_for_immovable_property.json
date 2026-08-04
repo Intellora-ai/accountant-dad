@@ -1,0 +1,41 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-C",
+  "status": "VERIFIED",
+  "if": [
+    "the inward supply is WORKS CONTRACT SERVICES supplied for CONSTRUCTION OF AN IMMOVABLE PROPERTY",
+    "AND the immovable property is NOT plant and machinery",
+    "AND the works contract service is NOT an input service for further supply of works contract service"
+  ],
+  "then": "input tax credit is NOT AVAILABLE on those works contract services",
+  "source_section": "CGST Act s.17(5)(c)",
+  "note": "Two carve-outs, both narrow. 'Plant and machinery' carries the restricted meaning in the Explanation to s.17 \u2014 see GST-ITC-17-PM \u2014 which excludes land, buildings, other civil structures, telecommunication towers and pipelines laid outside the factory. The second carve-out saves the sub-contracting chain: a main contractor may credit a sub-contractor's works contract service, because his own output is a works contract service. 'Construction' is extended by the Explanation to clauses (c) and (d) to reach re-construction, renovation, additions, alterations and repairs, to the extent of capitalisation. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this clause; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(c)",
+      "quote": "works contract services when supplied for construction of an immovable property (other than plant and machinery) except where it is an input service for further supply of works contract service;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), Explanation to clauses (c) and (d)",
+      "quote": "For the purposes of clauses (c) and (d), the expression",
+      "extraction_note": "The defined word, rendered by the extractor with substituted quotation glyphs, is quoted around rather than reproduced."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), Explanation to clauses (c) and (d), continued",
+      "quote": "includes re-construction, renovation, additions or alterations or repairs, to the extent of capitalisation, to the said immovable property;"
+    }
+  ]
+}

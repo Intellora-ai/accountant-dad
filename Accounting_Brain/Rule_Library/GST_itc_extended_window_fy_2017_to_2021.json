@@ -7,15 +7,15 @@
   ],
   "then": "CONFLICT \u2014 one locally held source allows the credit notwithstanding the s.16(4) time bar; the other does not contain the sub-section at all. Neither is adopted here",
   "source_section": "CGST Act s.16(5)",
-  "note": "Absent from the primary source. The IndiaCode consolidation carries it and footnotes it as inserted by Act 15 of 2024 with retrospective effect from 1-07-2017. A retrospective relief of this kind materially changes whether a historic credit was time-barred, which is exactly why it is recorded and not resolved.",
+  "note": "Absent from the primary source. The IndiaCode consolidated text as on 11-06-2026 carries it and footnotes it as inserted by Act 15 of 2024 with retrospective effect from 1-07-2017. A retrospective relief of this kind materially changes whether a historic credit was time-barred, which is exactly why it is recorded and not resolved.",
   "evidence": [
     {
-      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
-      "section": "CGST Act s.16(5) (source B, IndiaCode consolidation)",
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.16(5) (source B, IndiaCode consolidated text as on 11-06-2026)",
       "quote": "Notwithstanding anything contained in sub-section (4), in respect of an invoice or debit note for supply of goods or services or both pertaining to the Financial Years 2017-18, 2018-19, 2019-20 and 2020-21, the registered person shall be entitled to take input tax credit in any return under section 39 which is filed up to the thirtieth day of November, 2021."
     },
     {
-      "file": "CGST-Act-2017-as-enacted-IndiaCode.pdf",
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
       "section": "CGST Act s.16, footnote 5",
       "quote": "Ins. by Act 15 of 2024, s. 118 (w.e.f. 1-07-2017)."
     },

@@ -991,3 +991,173 @@ def test_the_event_kind_is_open_text_and_not_an_enumeration() -> None:
         identified_event=(fact("a consignment transfer between two of this business's locations"),),
     )
     assert made.identified_event[0].statement.startswith("a consignment")
+
+
+# ── the refusal itself, word for word ─────────────────────────────────────
+# A refusal is the only thing this artifact ever says to a human, and a test
+# that asserts only `pytest.raises(ValidationError)` proves the code refused
+# WITHOUT proving it said anything true about why. Everything below pins the
+# COMPLETE message, case included, so that a refusal cannot silently rot into
+# an empty string, a shouted one, or one naming the wrong term or the wrong
+# type. Measured, not assumed: mutation run 30946373087 left 25 mutants alive
+# in this module, every one of them a corrupted refusal that the existing
+# substring assertions could not see.
+
+#: `ENGINE_2:852`, in full. The engine's whole explanation of the boundary it
+#: is enforcing — the sentence that tells a producer where the word belongs
+#: instead. Truncated, it stops being actionable.
+VOCABULARY_REFUSAL = (
+    "accounting vocabulary in authored text: ledger, voucher. "
+    "The Understanding Engine sends facts, never accounting conclusions "
+    "(ENGINE_2:852). A word quoted off a document belongs in stated_text, "
+    "which is never checked and never trimmed."
+)
+
+#: `ENGINE_2:462, :504`, in full, naming the offending fact by INDEX.
+PARAPHRASE_REFUSAL = (
+    "fact 1 must carry the document's own words in stated_text; "
+    "this component records what the document states, not a paraphrase "
+    "of it (ENGINE_2:462, :504)"
+)
+
+NOT_A_STRING = "must be a string, got int"
+BLANK = "must not be empty or blank"
+
+
+def refusal(raised: pytest.ExceptionInfo[ValidationError]) -> str:
+    """The refusal, exactly as pydantic produced it.
+
+    Compared by EQUALITY rather than searched for. `pytest.raises(match=...)`
+    runs `re.search`, so it accepts a message that merely CONTAINS the right
+    words — `"XXmust not be empty or blankXX"` passes a search for
+    `"must not be empty or blank"` and is not the message this code writes.
+    Equality is the only assertion that pins both ends of the sentence.
+    """
+    errors = raised.value.errors()
+    assert len(errors) == 1
+    return str(errors[0]["msg"]).removeprefix("Value error, ")
+
+
+def test_the_vocabulary_refusal_is_stated_in_full_and_not_merely_raised() -> None:
+    """Two terms, one of them capitalised in the input.
+
+    Both halves are load-bearing. TWO terms are needed for the separator
+    between them to exist at all — with one term, `", ".join` and any other
+    join are indistinguishable. CAPITALISATION is needed because the report is
+    normalised with `.lower()`: with an already-lowercase input, lower-casing
+    and upper-casing the match would be the same operation, and the test would
+    pass either way while proving nothing about which one ran.
+    """
+    with pytest.raises(ValidationError) as raised:
+        TransactionStory(narrative="Ledger and Voucher notes were filed")
+    assert refusal(raised) == VOCABULARY_REFUSAL
+
+
+def test_the_refusal_reports_the_terms_lower_cased_and_comma_separated() -> None:
+    """The same two facts as above, asserted as behaviour rather than as text.
+
+    ENGINE_2:852 asks the engine to name what it found. A term echoed back in
+    a case the producer never wrote is not what it found, and terms run
+    together are not a list.
+    """
+    with pytest.raises(ValidationError) as raised:
+        TransactionStory(narrative="Ledger and Voucher notes were filed")
+    reported = str(raised.value).split("authored text: ")[1].split(".")[0]
+    assert reported == "ledger, voucher"
+
+
+def test_the_vocabulary_refusal_names_every_term_it_found_not_just_the_first() -> None:
+    """A refusal naming one of three sends the producer back twice more."""
+    with pytest.raises(ValidationError) as raised:
+        TransactionStory(narrative="the Asset, the Journal and the Tax were recorded")
+    reported = str(raised.value).split("authored text: ")[1].split(".")[0]
+    assert reported == "asset, journal, tax"
+
+
+def test_the_paraphrase_refusal_is_stated_in_full_and_names_which_fact() -> None:
+    """A component holding several facts refuses by INDEX or not usefully at
+    all: "one of these is a paraphrase" is a search, not a defect report."""
+    with pytest.raises(ValidationError) as raised:
+        ItemUnderstandingResult(
+            confidence=score("0.5000"),
+            descriptions=(quoted("Laptop"), fact("about ten laptops")),
+        )
+    assert refusal(raised) == PARAPHRASE_REFUSAL
+
+
+@pytest.mark.parametrize(
+    ("result_type", "component"),
+    [
+        (ItemUnderstandingResult, "descriptions"),
+        (PaymentUnderstandingResult, "payment_references"),
+        (TimelineUnderstandingResult, "dates"),
+    ],
+)
+def test_every_as_stated_component_gives_the_same_refusal_in_full(
+    result_type: type[UnderstandingResult], component: str
+) -> None:
+    sent: dict[str, object] = {
+        "confidence": score("0.5000"),
+        component: (quoted("Laptop"), fact("about ten laptops")),
+    }
+    with pytest.raises(ValidationError) as raised:
+        result_type.model_validate(sent)
+    assert refusal(raised) == PARAPHRASE_REFUSAL
+
+
+def test_a_non_string_evidence_reference_is_refused_by_its_actual_type() -> None:
+    """`got int` is the whole diagnostic value of the message. A refusal that
+    reports a type the producer did not send sends them hunting the wrong
+    field."""
+    with pytest.raises(ValidationError) as raised:
+        ObservedFact.model_validate({"statement": "a fact", "evidence_references": (7,)})
+    assert refusal(raised) == NOT_A_STRING
+
+
+def test_a_non_string_payment_method_is_refused_by_its_actual_type() -> None:
+    with pytest.raises(ValidationError) as raised:
+        PaymentUnderstandingResult.model_validate(
+            {
+                "confidence": score("0.5000"),
+                "payment_method": 7,
+                "unknown_payment_details": (unknown("payment status"),),
+            }
+        )
+    assert refusal(raised) == NOT_A_STRING
+
+
+@pytest.mark.parametrize("blank", ["", " ", "\t", "\n  \n"])
+def test_a_blank_evidence_reference_is_refused_in_those_exact_words(blank: str) -> None:
+    with pytest.raises(ValidationError) as raised:
+        ObservedFact(statement="a fact", evidence_references=(blank,))
+    assert refusal(raised) == BLANK
+
+
+@pytest.mark.parametrize("blank", ["", " ", "\t"])
+def test_a_blank_payment_method_is_refused_in_those_exact_words(blank: str) -> None:
+    with pytest.raises(ValidationError) as raised:
+        PaymentUnderstandingResult(
+            confidence=score("0.5000"),
+            payment_method=blank,
+            unknown_payment_details=(unknown("payment status"),),
+        )
+    assert refusal(raised) == BLANK
+
+
+def test_a_non_string_quotation_is_refused_by_its_actual_type() -> None:
+    """`stated_text` is checked by its OWN validator (ENGINE_2:190 makes it
+    never trimmed and never vocabulary-checked), so its refusals are proven
+    separately from every other text field's — a shared message is not shared
+    code."""
+    with pytest.raises(ValidationError) as raised:
+        ObservedFact.model_validate(
+            {"statement": "a fact", "stated_text": 7, "evidence_references": ("d#1",)}
+        )
+    assert refusal(raised) == NOT_A_STRING
+
+
+@pytest.mark.parametrize("blank", ["", " ", "\t", "\n  \n"])
+def test_a_blank_quotation_is_refused_in_those_exact_words(blank: str) -> None:
+    with pytest.raises(ValidationError) as raised:
+        ObservedFact(statement="a fact", stated_text=blank, evidence_references=("d#1",))
+    assert refusal(raised) == BLANK

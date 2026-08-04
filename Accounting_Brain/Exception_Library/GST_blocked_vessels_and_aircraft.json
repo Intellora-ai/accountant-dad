@@ -1,0 +1,55 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-AA",
+  "status": "VERIFIED",
+  "if": [
+    "the inward supply is a VESSEL OR AIRCRAFT",
+    "AND it is NOT used for making a taxable supply of (A) further supply of such vessels or aircraft, (B) transportation of passengers, (C) imparting training on navigating such vessels, or (D) imparting training on flying such aircraft",
+    "AND it is NOT used for transportation of goods"
+  ],
+  "then": "input tax credit is NOT AVAILABLE on that vessel or aircraft",
+  "source_section": "CGST Act s.17(5)(aa)",
+  "note": "Unlike clause (a), this clause has no seating threshold \u2014 every vessel and aircraft is caught unless an exception applies. It carries one exception clause (a) does not: transportation of GOODS. A cargo aircraft or freight vessel therefore escapes the block, while a company jet used for staff travel does not. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this clause; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(aa)",
+      "quote": "vessels and aircraft except when they are used"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(aa)(i)(A)",
+      "quote": "further supply of such vessels or aircraft; or"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(aa)(i)(B)",
+      "quote": "transportation of passengers; or"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(aa)(i)(C)",
+      "quote": "imparting training on navigating such vessels; or"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(aa)(i)(D)",
+      "quote": "imparting training on flying such aircraft;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(aa)(ii)",
+      "quote": "for transportation of goods;"
+    }
+  ]
+}

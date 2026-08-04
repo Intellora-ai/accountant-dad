@@ -1,0 +1,45 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-A",
+  "status": "VERIFIED",
+  "if": [
+    "the inward supply is a MOTOR VEHICLE FOR TRANSPORTATION OF PERSONS with approved seating capacity of NOT MORE THAN THIRTEEN persons, including the driver",
+    "AND it is NOT used for making any of these taxable supplies: (A) further supply of such motor vehicles, (B) transportation of passengers, or (C) imparting training on driving such motor vehicles"
+  ],
+  "then": "input tax credit is NOT AVAILABLE on that motor vehicle",
+  "source_section": "CGST Act s.17(5)(a)",
+  "note": "The seating test is 'approved seating capacity', INCLUDING the driver, and the threshold is thirteen \u2014 a fourteen-seat vehicle is outside this clause. The clause covers vehicles for transportation of PERSONS only; goods vehicles are not caught. The three exceptions are exhaustive and each is a taxable supply the claimant must actually make: owning a car and occasionally carrying a client is not 'transportation of passengers'. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this clause; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(a)",
+      "quote": "motor vehicles for transportation of persons having approved seating capacity of not more than thirteen persons (including the driver), except when they are used for making the following taxable supplies, namely:",
+      "extraction_note": "A substitution marker '[' precedes 'motor' in the extracted text; the quote begins at the statutory words."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(a)(A)",
+      "quote": "further supply of such motor vehicles; or"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(a)(B)",
+      "quote": "transportation of passengers; or"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(a)(C)",
+      "quote": "imparting training on driving such motor vehicles;"
+    }
+  ]
+}

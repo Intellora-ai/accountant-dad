@@ -82,6 +82,29 @@ FROZEN_MARKERS = ("engine", "accounting", "tax", "llm", "openai", "anthropic", "
 #: architectural name is Execution Engine, the folder is locked and *"identities
 #: are part of the system contract and are never renamed once other engines
 #: reference them."*
+#: CLAUDE.md §P, **Amendment 3** — Engine 1 authorization, approved 2026-08-05.
+#: *"Engine 1, and only Engine 1, is released for implementation… Nothing outside
+#: Engine 1 is authorized by this amendment."*
+#:
+#: Exhaustive, like `AUTHORIZED_STUBS` and for the same reason: an exhaustive
+#: list makes a seventh sub-engine VISIBLE, where a pattern such as "anything
+#: under input_engine" would admit code nobody reviewed.
+#:
+#: `SUB_ENGINE_RESPONSIBILITIES.md` §1 names exactly four sub-engines — `cleaner`,
+#: `reader`, `parser`, `confidence` — and states: *"No assembler sub-engine
+#: exists, and none may be added."* The parent Input Engine performs the assembly
+#: itself, so `assembly` here is the ENGINE's own work, not a fifth sub-engine.
+ENGINE_1_AUTHORIZED = {
+    "engines/input_engine/cleaner",  # §1.1 deskew · denoise · crop · contrast
+    "engines/input_engine/reader",  # §1.2 text extraction, per-region confidence
+    "engines/input_engine/parser",  # §1.3 structure and tables, never meaning
+    "engines/input_engine/confidence_report",  # §1.4 "was this read correctly?"
+    "engines/input_engine/classification",  # document classification (Amendment 3)
+    "engines/input_engine/config",  # every threshold, named — no hardcoded value
+    "engines/input_engine/measurement",  # the calibration record
+    "engines/input_engine/assembly",  # the ENGINE assembles; not a sub-engine
+}
+
 AUTHORIZED_STUBS = {
     "brain/__init__",
     "brain/stub",
@@ -120,7 +143,9 @@ def test_package_imports_and_exposes_a_version() -> None:
 
 
 def test_every_module_is_on_the_permitted_list() -> None:
-    unlisted = sorted(package_modules() - PERMITTED_MODULES - AUTHORIZED_STUBS)
+    unlisted = sorted(
+        package_modules() - PERMITTED_MODULES - AUTHORIZED_STUBS - ENGINE_1_AUTHORIZED
+    )
     assert unlisted == [], (
         f"module(s) not on the Amendment 2 permitted list: {unlisted}. "
         "Add the name here deliberately, or the freeze was crossed by accident."
@@ -128,11 +153,74 @@ def test_every_module_is_on_the_permitted_list() -> None:
 
 
 def test_no_module_belongs_to_a_still_frozen_category() -> None:
-    offenders = frozen_named(package_modules() - AUTHORIZED_STUBS)
+    offenders = frozen_named(package_modules() - AUTHORIZED_STUBS - ENGINE_1_AUTHORIZED)
     assert offenders == [], (
         f"module(s) named for a still-frozen category: {offenders}. Engine "
-        "reasoning, accounting logic, tax logic, AI calls and Tally posting "
-        "stay frozen until their scheduled phase (CLAUDE.md §P)."
+        "reasoning for Engines 2-6, accounting logic, tax logic, AI calls and "
+        "Tally posting stay frozen until their scheduled phase (CLAUDE.md §P)."
+    )
+
+
+def test_engine_1_authorization_admits_only_the_input_engine() -> None:
+    """Amendment 3 released ONE engine. This is what keeps it to one.
+
+    The amendment's own words are *"Nothing outside Engine 1 is authorized by
+    this amendment."* Without this test `ENGINE_1_AUTHORIZED` becomes the next
+    place to park anything — adding `engines/accounting_engine/rules` would sail
+    straight past both tests above, exactly as `AUTHORIZED_STUBS` would have.
+    """
+    trespassers = sorted(
+        name for name in ENGINE_1_AUTHORIZED if not name.startswith("engines/input_engine/")
+    )
+    assert trespassers == [], (
+        f"ENGINE_1_AUTHORIZED names path(s) outside Engine 1: {trespassers}. "
+        "Amendment 3 released Engine 1 and nothing else; releasing another "
+        "engine takes its own amendment (§M), not an edit to this list."
+    )
+
+
+def test_engine_1_authorization_never_admits_accounting_reasoning() -> None:
+    """*"No accounting reasoning is permitted inside Engine 1."* — Amendment 3.
+
+    Engine 1 reads a document. Deciding what the document MEANS is Engine 2, and
+    deciding the entry is Engine 3 — which `TECHNOLOGY_STACK.md` requires to be
+    deterministic and LLM-free precisely so the entry is defensible. A module
+    named for accounting, tax, an LLM vendor, the Brain or Tally inside Engine 1
+    is that boundary being crossed under cover of a released engine.
+    """
+    inside_engine_1 = {name.removeprefix("engines/input_engine/") for name in ENGINE_1_AUTHORIZED}
+    reasoning = sorted(
+        name
+        for name in inside_engine_1
+        if any(marker in name.lower() for marker in FROZEN_MARKERS)
+    )
+    assert reasoning == [], (
+        f"Engine 1 module(s) named for reasoning that is not Engine 1's: {reasoning}. "
+        "Engine 1 reads; it never decides what a document means or what to post."
+    )
+
+
+def test_the_other_five_engines_remain_frozen() -> None:
+    """Amendment 3 is narrow, and narrow is only true if it is checked.
+
+    Engines 2-6 may carry their `__init__` and their P3 `stub` and nothing more.
+    """
+    siblings = {
+        "understanding_engine",
+        "accounting_engine",
+        "clarification_engine",
+        "validation_engine",
+        "tally_engine",
+    }
+    escaped = sorted(
+        name
+        for name in package_modules() - AUTHORIZED_STUBS
+        if any(name.startswith(f"engines/{sibling}/") for sibling in siblings)
+    )
+    assert escaped == [], (
+        f"module(s) in a still-frozen engine: {escaped}. Amendment 3 released "
+        "Engine 1 only. Engines 2-6 keep their __init__ and their P3 stub until "
+        "each is asked for and amended in writing."
     )
 
 

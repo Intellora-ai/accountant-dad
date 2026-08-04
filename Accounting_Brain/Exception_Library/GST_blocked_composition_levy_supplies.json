@@ -1,0 +1,33 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-E",
+  "status": "VERIFIED",
+  "if": [
+    "the goods or services or both are ones ON WHICH TAX HAS BEEN PAID UNDER SECTION 10, the composition levy"
+  ],
+  "then": "input tax credit is NOT AVAILABLE on them",
+  "source_section": "CGST Act s.17(5)(e)",
+  "note": "Consistent with s.2(62), which already excludes composition tax from the meaning of 'input tax'. Two provisions reach the same result by different routes, so a purchase from a composition dealer fails twice over. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this clause; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(e)",
+      "quote": "goods or services or both on which tax has been paid under section 10;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(62), closing words",
+      "quote": "but does not include the tax paid under the composition levy;"
+    }
+  ]
+}

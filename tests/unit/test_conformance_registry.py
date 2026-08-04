@@ -42,6 +42,7 @@ from accountant_dad.artifacts.decision import DecisionStatus
 from accountant_dad.artifacts.evidence import Corroborated, DocumentId, SourceType
 from accountant_dad.artifacts.execution import ExecutionAttemptId, ExecutionId
 from accountant_dad.conformance import (
+    PHASES,
     Attribution,
     Enforcement,
     NegativeControl,
@@ -68,10 +69,12 @@ from accountant_dad.conformance_registry import (
     _incomplete_decision,
     _journal_line,
     _mutate,
+    _predicate,
     _provenance,
     _results,
     _results_raising_an_unknown,
     _results_with_a_less_certain_one,
+    _review_only,
     _structured_document,
     _understanding,
     _unknown,
@@ -678,3 +681,119 @@ def test_mutate_still_refuses_to_write_a_frozen_artifact() -> None:
     """The property the six INV-5 controls actually rest on."""
     with pytest.raises(ValidationError):
         _mutate(_evidence())
+
+
+# ── the two builders every entry in the inventory is made of ──────────────
+#
+# WHY THESE NEED THEIR OWN TESTS, WHEN 40 PROHIBITIONS ALREADY RUN THROUGH THEM.
+#     They do not run through them — not while a test is running. `_predicate`
+#     and `_review_only` are called exactly once each per entry, at MODULE
+#     IMPORT, and `PROHIBITIONS` is a tuple of the results. By the time any test
+#     executes, both functions are finished and nothing calls them again. Every
+#     assertion in this file reads the tuple they already built.
+#
+#     That is invisible until the code inside them is changed, and then it is
+#     total: swap `Enforcement.PREDICATE` for `None`, drop the `source=` keyword
+#     entirely, and the whole suite stays green, because the altered line never
+#     runs a second time. Measured, not assumed — 22 mutations of these two
+#     functions survived a full mutation run with every other test in place.
+#
+#     So they are called here, directly, and the Prohibition they return is
+#     compared field for field. A builder is a promise about what an entry is
+#     made of, and this is the only place that promise is read back.
+
+#: Deliberately unlike anything in the real inventory: a builder that ignored an
+#: argument and substituted a constant would still match a fixture that happened
+#: to resemble the entries around it.
+_A_QUOTE = "a quote long enough to name the sentence it came from"
+_ANOTHER_QUOTE = "a different sentence, quoted from a different line"
+
+
+def test_the_predicate_builder_keeps_every_field_and_marks_it_enforced_now() -> None:
+    """`enforcement` is the field with no argument behind it — it is the whole
+    reason this builder exists rather than a bare `Prohibition(...)`. Nothing
+    else in the repository would notice it becoming `None`: a predicate carries
+    no expiry, so `__post_init__` has nothing to object to and the malformed
+    entry is filed silently."""
+    assert _predicate(
+        "SYSTEM_INVARIANTS:1/a-slug-no-real-entry-uses",
+        _A_QUOTE,
+        "docs/SYSTEM_INVARIANTS.md:1",
+        "a subject no real entry names",
+    ) == Prohibition(
+        identifier="SYSTEM_INVARIANTS:1/a-slug-no-real-entry-uses",
+        quote=_A_QUOTE,
+        source="docs/SYSTEM_INVARIANTS.md:1",
+        subject="a subject no real entry names",
+        enforcement=Enforcement.PREDICATE,
+        expiry=None,
+    )
+
+
+def test_the_review_only_builder_keeps_every_field_including_the_end_date() -> None:
+    """The expiry is the only thing separating a review-only entry from a
+    deletion written politely, and it is the one field the predicate builder
+    does not take. It is asserted as the value passed in, not merely as
+    not-None: an expiry pinned to a constant phase would outlive every entry
+    that named a later one."""
+    assert _review_only(
+        "SYSTEM_BOUNDARIES:2/another-slug-no-real-entry-uses",
+        _ANOTHER_QUOTE,
+        "docs/SYSTEM_BOUNDARIES.md:2",
+        "another subject no real entry names",
+        "P5",
+    ) == Prohibition(
+        identifier="SYSTEM_BOUNDARIES:2/another-slug-no-real-entry-uses",
+        quote=_ANOTHER_QUOTE,
+        source="docs/SYSTEM_BOUNDARIES.md:2",
+        subject="another subject no real entry names",
+        enforcement=Enforcement.REVIEW_ONLY,
+        expiry="P5",
+    )
+
+
+@pytest.mark.parametrize("expiry", sorted(PHASES))
+def test_the_review_only_builder_passes_each_phase_through_unchanged(expiry: str) -> None:
+    """Every declared phase, so no single hard-coded one can impersonate the
+    argument."""
+    assert _review_only("D:3/s", _A_QUOTE, "docs/DATA_FLOW.md:3", "a subject", expiry).expiry == (
+        expiry
+    )
+
+
+def test_the_two_builders_disagree_about_exactly_one_field() -> None:
+    """The enforcement, and nothing else. If they ever diverged elsewhere, the
+    inventory would hold two shapes of entry and the counts above would be
+    counting different things."""
+    enforced = _predicate("D:4/s", _A_QUOTE, "docs/DATA_FLOW.md:4", "a subject")
+    exempt = _review_only("D:4/s", _A_QUOTE, "docs/DATA_FLOW.md:4", "a subject", "P3")
+    differing = {
+        field.name
+        for field in dataclasses.fields(enforced)
+        if getattr(enforced, field.name) != getattr(exempt, field.name)
+    }
+    assert differing == {"enforcement", "expiry"}
+    assert enforced.enforcement is Enforcement.PREDICATE
+    assert exempt.enforcement is Enforcement.REVIEW_ONLY
+
+
+def test_every_entry_in_the_real_inventory_matches_what_its_builder_produces() -> None:
+    """Ties the direct tests above back to the live tuple. Rebuilding each entry
+    from its own recorded fields must reproduce it exactly — so a builder that
+    started dropping a field would be caught against all 40 real entries, not
+    only against the fixtures here."""
+    for item in PROHIBITIONS:
+        rebuilt = (
+            _predicate(item.identifier, item.quote, item.source, item.subject)
+            if item.enforcement is Enforcement.PREDICATE
+            else _review_only(
+                item.identifier,
+                item.quote,
+                item.source,
+                item.subject,
+                # `Registry` refuses a review-only entry with no expiry, so by
+                # construction this is never None here.
+                item.expiry or "",
+            )
+        )
+        assert rebuilt == item, item.identifier

@@ -1,13 +1,13 @@
 {
   "id": "GST-INV-FIELD-053-I",
-  "status": "VERIFIED",
+  "status": "UNKNOWN",
   "if": [
     "the document is a revised tax invoice referred to in section 31",
     "it is issued under rule 53(1) of the CGST Rules, 2017"
   ],
-  "then": "the revised tax invoice MUST carry the taxable value, the rate of tax, and the amount of tax credited or debited to the recipient",
+  "then": "UNKNOWN — the printed clause reads 'value of taxable supply of goods or services, rate of tax and the amount of the tax credited or, as the case may be, debited to the recipient'. Do NOT report a revised tax invoice as defective for omitting it until the effect of Notf no. 03/2019-CT is confirmed against the notification.",
   "source_section": "CGST Rules 2017, rule 53(1)(i)",
-  "note": "One mandatory particular of rule 53(1)(i), addressable on its own so that a missing field names the clause it breaches.",
+  "note": "This record was written as a mandatory particular and then downgraded: the quote is in the source, but the source's own footnote says the clause was omitted. The identical particular DOES bind a credit or debit note under rule 53(1A)(h), which carries no omission footnote — see GST-INV-FIELD-053A-H.",
   "evidence": [
     {
       "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
