@@ -33,10 +33,45 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - name: not implemented
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: conformance suite
+        # Every predicate, including the ID ablation test
+        # (MVP_BUILD_VERIFY_FIX.md:50). An EMPTY registry fails: a suite that
+        # runs zero controls passes vacuously, which is the false green the
+        # harness exists to prevent.
+        env:
+          PYTHONPATH: src
         run: |
-          echo "NOT IMPLEMENTED - conformance"
-          exit 1
+          set -euo pipefail
+          python3 - <<'PY'
+          from accountant_dad.conformance import Enforcement
+          from accountant_dad.conformance_registry import REGISTRY
+
+          predicates = REGISTRY.by_enforcement(Enforcement.PREDICATE)
+          if not predicates:
+              raise SystemExit("FAIL: the conformance registry is empty")
+
+          untested = REGISTRY.untested_predicates()
+          if untested:
+              raise SystemExit(f"FAIL: predicates with no negative control: {untested}")
+
+          for finding in REGISTRY.failures():
+              print(f"FAIL {finding.prohibition}: {finding.attribution} - {finding.detail}")
+          if REGISTRY.failures():
+              raise SystemExit(f"FAIL: {len(REGISTRY.failures())} conformance failure(s)")
+
+          for item in REGISTRY.by_enforcement(Enforcement.REVIEW_ONLY):
+              if item.expiry is None:
+                  raise SystemExit(f"FAIL: {item.identifier} is review-only with no expiry")
+
+          print(f"conformance: {len(predicates)} predicates, "
+                f"{len(REGISTRY.controls)} controls, all ENFORCED")
+          PY
+          python3 -m pytest tests/unit/test_id_ablation.py -q
 
   negative-controls:
     name: negative controls

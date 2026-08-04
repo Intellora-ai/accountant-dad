@@ -506,10 +506,43 @@ Full text of each in `docs/`. This section is the index, not the authority.
 | **Sign-off** — 6 definitions, 6 finish conditions, absolute floor | ⬜ **BLOCKING everything** |
 | **Ground truth** — 25 documents, 2 accountants, frozen ceiling | ❌ **None exists** |
 | **CI workflow** | ✅ **Exists.** Six workflows, 23 independent Check Runs |
-| **Merge gate** | ✅ **Exists and is PROVEN** — 11 attacks, 11 blocks (`docs/CI_S2_EVIDENCE.md`) |
+| **Merge gate** | ✅ **Exists and is PROVEN** — 11 attacks, 11 blocks (`docs/CI_S2_EVIDENCE.md`) — ❌ **but NOT REQUIRED, so it binds NOTHING** |
 | **Branch protection** | ✅ Ruleset `20249495` — deletions blocked, force-push blocked, PR required, bypass list empty |
-| **Enforcement** | ⚠️ **Partial.** The machinery is proven; individual gates are promoted to *required* one at a time, only after each is proven |
-| **Product code** | ❌ **None.** No engine, no artifact, no accounting logic |
+| **Enforcement** | ⚠️ **6 of 23 gates bind.** `build · typecheck · lint · unit tests · coverage · dependency scan`. **17 gates, including `merge gate`, enforce nothing** |
+| **Product code** | ⚠️ **Permitted for P2 and named infrastructure** (Amendment 2). Engine reasoning, accounting, tax, AI and Tally posting remain frozen |
+
+### EXISTS ≠ BINDS — the distinction this table used to hide
+
+**A gate that runs and a gate that blocks a merge are different states.** The row above previously said only *"Merge gate ✅ Exists and is PROVEN."* Both halves are true and neither one stops anything, because `merge gate` is **not on the required-status-checks list.**
+
+`merge gate` is the only job that polls every other gate and demands all of them succeed. It is therefore the single entry that would make all 23 bind. It currently binds nothing.
+
+#### What the record actually shows — measured, 2026-08-03
+
+```
+PR #4   merged 2026-08-02 19:34Z   every check red, including merge gate
+PR #14  merged 2026-08-02 20:01Z   every check red, including merge gate
+PR #15  merged 2026-08-02 20:32Z   6 required GREEN · 14 others RED · merged
+
+ruleset 20249495 created  2026-08-02 19:32Z   required list DELIBERATELY EMPTY
+ruleset 20249495 updated  2026-08-02 21:35Z   six checks added
+```
+
+**Correction to the obvious reading.** All three merged inside the bootstrap window — after the ruleset existed, **before any check was required.** They are *not* evidence that a required check failed to hold. The empty starting list was the documented bootstrap: protect immediately, promote per proven gate.
+
+**The live hole is real and unchanged.** Only 6 of 23 bind today. **PR #15 is the exact shape that still merges right now** — the required six green, fourteen others red. Merging on the required six alone means merging on *"it compiles and imports resolve."* `conformance`, `negative controls`, `golden dataset`, `adversarial tests`, `integration tests`, `performance`, `mutation`, `semgrep`, `end-to-end` and `docker build` are advisory.
+
+#### Why `merge gate` is not promoted yet
+
+**It would hard-lock the repository.** Nine gates are placeholders that `exit 1` by design (Amendment 1), and four of those cannot be implemented until P1 and P2 produce artifacts. Requiring `merge gate` today blocks every pull request — **including the one that would fix the placeholders** — and only the repository owner can unlock it.
+
+```
+correct order :  implement and prove each gate
+              →  promote it, one at a time, per the lifecycle below
+              →  merge gate goes required LAST, when it can actually pass
+```
+
+**The trigger to ask for it: when `merge gate` can pass.** Not before, and not on a passing remark.
 
 ### The gate lifecycle — how a gate becomes binding
 
@@ -543,6 +576,31 @@ and no domain implementation is written until its gates are green.**
 | **Trade-off** | Gained: gates that execute real code instead of placeholders. Lost: the repository is no longer literally empty, so "no code exists" is no longer a defence against unverified work |
 | **Guarded by** | The exemption list is exhaustive. Six engines, accounting logic, AI, Tally and domain implementation remain frozen. `conformance`, `golden dataset`, `negative controls`, `adversarial tests`, `integration tests` and `performance` stay red, with blockers documented, until their infrastructure exists |
 | **Approved** | The user, 2026-08-03 |
+
+**Amendment 2 — Build freeze, scoped release.** Approved 2026-08-03.
+
+| | |
+|---|---|
+| **Doc / section** | `CLAUDE.md` §P build freeze · `MVP_IMPLEMENTATION_BLUEPRINT.md` §2 |
+| **Old rule** | No engine, no artifact, no schema, no pipeline code. Amendment 1 permitted CI scaffolding only |
+| **New rule** | Product code is permitted for P2 and the unblocked infrastructure below, per-component, as each phase is reached. Engine reasoning, accounting logic, tax logic, AI calls and Tally posting remain frozen until their scheduled phase |
+| **Why** | The freeze conditioned release on *"all CI gates green on an empty repository."* Nine gates exit 1 by design and Amendment 1 states they stay red until their infrastructure exists — so the condition was **unsatisfiable by its own terms** |
+| **What failed** | P2 was blocked on sign-off despite not consuming it. Blueprint §2: P2 *"needs no ground truth and no AI."* Its only dependency is the locked architecture, frozen at `a47271d`. Work that had no blocker was stopped for one that does not apply to it |
+| **Trade-off** | Gained: P2, the sealing mechanism, the strong baseline and Tally verification all start now instead of after the ceiling. Lost: *"no code exists"* stops being a defence. From here, unverified work is possible and only the gates prevent it |
+| **Guarded by** | Three, all binding: (1) the permitted list is **exhaustive** — anything not named is frozen; (2) gates promote one at a time via the lifecycle above — passes on correct code, fails on deliberately broken code, then required; (3) no pull request touching `.github/**` or the branch ruleset is merged autonomously |
+| **Approved** | The user, 2026-08-03 |
+
+**Permitted now — exhaustive:**
+
+```
+artifact schemas · conformance predicates · domain models · Application Layer skeleton
+held-out sealing mechanism · strong baseline · CI gate implementations
+document-ingestion tooling
+```
+
+**Still frozen:** engine reasoning · accounting logic · tax logic · AI/LLM calls · Tally posting. **Each unlocks at its scheduled phase, and is asked for before it is written.**
+
+**Unchanged and non-negotiable:** gate count only goes up · never weaken a test to make it pass · no placeholder passing as complete · no accuracy claim before the ceiling exists (Law 52) · never fabricate a number, including a threshold · `.github/**` changes reported line by line, before and after.
 
 **Next: Phase 1 — Human Ceiling and Golden Set. No product code is written in it.**
 
