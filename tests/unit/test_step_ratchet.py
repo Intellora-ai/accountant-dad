@@ -137,7 +137,7 @@ def test_wrong_argument_count_exits(tmp_path: Path) -> None:
         main(["assert_steps_not_removed.py", str(tmp_path)])
 
 
-def test_the_real_workflows_have_their_canaries(tmp_path: Path) -> None:  # noqa: ARG001
+def test_the_real_workflows_have_their_canaries() -> None:
     real = Path(__file__).resolve().parents[2] / ".github" / "workflows"
     names = step_names(str(real))
     canaries = {n for n in names if "prove this gate can still fail" in n}
