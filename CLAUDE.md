@@ -145,6 +145,39 @@ Standing debt in this repo — seven load-bearing undefined terms across 23 lock
 
 These must be defined and made measurable before any build depends on them.
 
+### 55. A mandatory gate below its threshold makes a pull request unmergeable
+
+**There are no exceptions. Not one. Do not look for one.**
+
+If any mandatory gate sits below its required threshold:
+
+```
+✗  do NOT recommend merge
+✗  do NOT ask "should I merge?"
+✗  do NOT ask for approval, an override, or an exception
+✗  do NOT open a merge discussion
+✓  enter FIX MODE automatically, and continue until the gate passes
+```
+
+Merge may be discussed **only** when every mandatory gate satisfies its threshold.
+
+```
+every mandatory gate passes  →  merge may be recommended
+otherwise                    →  merge is IMPOSSIBLE. Fix the gate. Continue.
+```
+
+Applies to every mandatory gate that exists or ever will exist — **coverage floor ·
+mutation floor · performance floor · conformance · golden dataset · adversarial tests**
+— and to every one added later, automatically, without this list being updated.
+
+**Never assume the user wants an exception.** Silence is not an override. A number close
+to the floor is not the floor. A gate red "for a good reason" is red.
+
+**Why this is a law and not a preference.** It was asked once — whether to merge at a
+mutation score of 65.7% against a floor of 93. Asking was the defect. A threshold that
+can be discussed is not a threshold, and the asking itself implies an exception exists.
+It does not. This law removes the question, permanently.
+
 ---
 
 ## D. HOW TO THINK (apply, don't just name)
@@ -432,6 +465,7 @@ Then the 10 gates:
 8. The mission goal is achieved
 9. **Red-teamed + falsified** (§J.10) — you actively tried to prove the change AND its tests WRONG, not just watched green. State which rules you verified.
 10. **Every number in the change is measured, not estimated** (Law 52). No "should be faster." Before and after, with units.
+11. **Every mandatory gate is AT or ABOVE its threshold** (Law 55). Not close to it. If one is below, this change is not done, merge is not discussable, and the only valid next action is fixing that gate.
 
 **If any line cannot be ticked, it is NOT done.**
 
