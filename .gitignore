@@ -42,3 +42,6 @@ Thumbs.db
 
 # mutmut copies the tree here to instrument it. Never a source artifact.
 mutants/
+
+# Downloaded primary sources are large and re-fetchable; the manifest pins them.
+Accounting_Brain/Evidence_Library/sources/*.pdf
