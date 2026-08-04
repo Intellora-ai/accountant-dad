@@ -46,13 +46,25 @@ Python 3.12 · immutable JSON artifacts on disk · Pydantic · pytest · GitHub 
 
 ## 2. In what order?
 
-> ## ⛔ BUILD FREEZE
+> ## ⛔ BUILD FREEZE — in force, scoped by Amendment 2
 >
-> **No engine, no artifact, no schema and no pipeline code is written until the GitHub CI gates exist and are green on an empty repository.**
+> **Original rule:** *no engine, no artifact, no schema and no pipeline code is written until the GitHub CI gates exist and are green on an empty repository.*
 >
-> Reason: a result exists only if CI produced it (Law 44). **Code written before the gates cannot be verified**, so it cannot be called done, so it accumulates as unverified work — the exact debt this whole framework exists to prevent.
+> **That rule was unsatisfiable by its own terms.** Nine gates `exit 1` by design and stay red until the thing they test exists, so *"all gates green on an empty repository"* could never be reached. `CLAUDE.md` §P **Amendment 2** replaced it, and names this section as amended. This is that amendment applied here — the two documents said different things until now, and a half-applied amendment is a defect, not a choice (§G10).
 >
-> **The gates are a prerequisite, not a phase.** They are satisfied before P1 begins.
+> **Permitted now — exhaustive, copied from `CLAUDE.md` §P:**
+>
+> ```
+> artifact schemas · conformance predicates · domain models · Application Layer skeleton
+> held-out sealing mechanism · strong baseline · CI gate implementations
+> document-ingestion tooling
+> ```
+>
+> **Still frozen:** engine reasoning · accounting logic · tax logic · AI/LLM calls · Tally posting. Each unlocks at its scheduled phase, and is asked for before it is written.
+>
+> Reason the freeze exists at all, unchanged: a result exists only if CI produced it (Law 44). **Code written before the gates cannot be verified**, so it cannot be called done, so it accumulates as unverified work — the exact debt this whole framework exists to prevent.
+>
+> **The gates are still a prerequisite, not a phase.** What changed is *which* gates must be green before a given component may be written: the ones that can actually judge it. A gate with nothing to examine gates nothing, and waiting on it was waiting on nothing.
 
 ```
 P1  Ceiling + Golden Set        no code       the measuring stick AND its ceiling
@@ -62,6 +74,39 @@ P4  Vertical Slice              real          ONE correct entry, worst of 3
 P5  The Full Set                widen         the finish line
 P6  Confidence + Hardening      measure       separation, calibration, cost
 ```
+
+### Which component is built in which phase
+
+> **Gap closed.** `src/brain/` and `src/services/` are specified in the architecture but were scheduled nowhere. **The six phases are unchanged** — no phase renamed, split or added. Components are assigned to existing phases, dependency-driven.
+
+| Component | Phase | Why that phase and no earlier |
+|---|---|---|
+| **Brain interface contract** | **P2** | *"The Brain never returns a decision"* is a **pure predicate** — no AI, no ground truth, no cost. It belongs exactly where conformance lives. **Cannot be later:** engines call it from P3, and calling an undefined interface is a forward dependency |
+| **Application Layer** (`src/services/`) | **P3** | P3 proves the pipeline. A pipeline **is** orchestration — nothing can be sequenced before the sequencer exists. It contains **no AI**, so it is fully buildable here. **Cannot be later:** P3 is defined as proving the pipeline |
+| **Brain stub** (`src/brain/`) | **P3** | Proves the seam without knowledge. Engines call it and it answers structurally; nothing is faked as accounting truth |
+| **Brain — real knowledge, 1 document** | **P4** | P4 is ONE correct entry. The Brain needs only what that one document requires. **Built before Engine 3 within P4** |
+| **Brain — widened** | **P5** | P5 widens to the full golden set; the Brain widens with it |
+
+### Dependency table
+
+| Component | Phase | Depends On | Required By |
+|---|---|---|---|
+| Six artifact schemas | P2 | — | everything downstream |
+| Transaction ID format | P2 | artifact schemas | Application Layer |
+| Conformance predicates | P2 | artifact schemas | every later phase |
+| **Brain interface contract** | **P2** | — | Brain stub · Engines 2–6 |
+| **Application Layer** | **P3** | Transaction ID format · artifact schemas (both P2) | every engine · every workflow · P4–P6 |
+| **Brain stub** | **P3** | Brain interface contract (P2) | Engine stubs 2–6 |
+| Engine stubs 1–6 | P3 | Application Layer · artifact schemas | walking skeleton |
+| **Brain real (1 doc)** | **P4** | Brain stub (P3) · golden set (P1) | Engine 3 |
+| Engines 1–6 real | P4 | Application Layer (P3) · **Brain (P4, built first within the phase)** | vertical slice |
+| **Brain widened** | **P5** | Brain P4 · full golden set | Engines at P5 |
+
+**Forward-dependency proof.** Every `Depends On` resolves to the **same phase or an earlier one**. The single same-phase case — Brain before Engine 3 inside P4 — is stated explicitly rather than left implied. No component is required by anything built before it. **Zero forward dependencies.**
+
+Full specification: [`APPLICATION_LAYER.md`](APPLICATION_LAYER.md) · [`APPLICATION_LAYER_INVARIANTS.md`](APPLICATION_LAYER_INVARIANTS.md) · [`APPLICATION_LAYER_API.md`](APPLICATION_LAYER_API.md) · [`APPLICATION_LAYER_CONTRACTS.md`](APPLICATION_LAYER_CONTRACTS.md)
+
+---
 
 ### Why this order
 
@@ -87,8 +132,8 @@ Per phase. Not *"it works"* — the number, from CI.
 | Phase | Done when |
 |---|---|
 | **P1** | 25 documents collected and frozen · **2 qualified labelers** · 4 stages each · **ceiling frozen and hashed** · intra-rater measured · held-out sealed by construction · protocol written · 6 definitions + 6 conditions signed off |
-| **P2** | Every `MUST NEVER` is a predicate or on the review-only list with an expiry · **ID ablation test passes** · malformed artifact rejected **by the correct predicate** · CI green |
-| **P3** | End to end on 1 hardcoded document in CI · all artifacts valid · conformance green · Transaction ID intact · audit complete · **no accuracy claim permitted at this phase** |
+| **P2** | Every `MUST NEVER` is a predicate or on the review-only list with an expiry · **ID ablation test passes** · malformed artifact rejected **by the correct predicate** · **Brain interface contract defined, and "the Brain never returns a decision" enforced as a predicate** · CI green |
+| **P3** | End to end on 1 hardcoded document in CI · all artifacts valid · conformance green · Transaction ID intact · audit complete · **Application Layer creates the Transaction ID, runs the state machine and routes every artifact — no engine calls another** · **Brain stub answers structurally without faking knowledge** · **no accuracy claim permitted at this phase** |
 | **P4** | **1 correct entry, worst of 3**, blind-verified, in test Tally · posted exactly once on 3 submissions · **9/9 negatives** · both baselines recorded · pre-registered · **CI run URL recorded** |
 | **P5** | **≥ 80% of frozen ceiling AND ≥ absolute floor, worst of 3, held-out** · **0 wrong in 10 safety runs** · **margin ≥ 0.30 over strong baseline** · **spread ≤ 2** · isolated + contributed per engine · 19/19 attacks · poison caught |
 | **P6** | Confidence **separation ≥ 0.30** or confidence formally rejected and every document corrected · **calibration curve published and not flat** · **understanding ≥ 80% of ceiling** · **risk band agreement ≥ 80% with zero statutory under-ratings** · cost bounds met (60s, ₹5) · drift canary clean |

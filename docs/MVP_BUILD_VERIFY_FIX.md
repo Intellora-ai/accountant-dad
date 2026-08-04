@@ -29,8 +29,13 @@
 
 **Law 44.** Verification happens in **GitHub CI**. A local pass is not verification — it is exploration.
 
-> **⛔ BUILD FREEZE — no product code until the gates are green.**
+> **⛔ BUILD FREEZE — in force, scoped by Amendment 2.**
 > An unverifiable commit cannot be called done, so it accumulates as unverified work.
+>
+> The blanket form of this rule — *no product code until the gates are green* — was
+> unsatisfiable: nine gates `exit 1` by design until the thing they test exists.
+> `CLAUDE.md` §P **Amendment 2** replaced it. **`CLAUDE.md` §P is the single authority
+> on what is permitted; this line is a pointer, never a second copy.**
 
 ---
 
@@ -154,11 +159,30 @@ Do not confirm your code works. **Try to prove it WRONG.** Separate pass, separa
 | Phase | What "verify" means |
 |---|---|
 | **P1** | No code. Two accountants confirm the labels; **the ceiling is computed and frozen**; intra-rater measured; a second person reads the protocol. |
-| **P2** | CI green. Conformance green + **ID ablation passes** + malformed artifact rejected **by the correct predicate**, not merely rejected. Review-only list published with expiries. |
-| **P3** | End to end on 1 hardcoded document, **in CI**. **No accuracy claim is possible or permitted at this phase.** |
-| **P4** | The first real number. One entry, **worst of 3**, blind-verified, plus 3-submission idempotency and 9/9 negatives. Both baselines recorded. |
+| **P2** | CI green. Conformance green + **ID ablation passes** + malformed artifact rejected **by the correct predicate**, not merely rejected. Review-only list published with expiries. **Brain interface contract defined; the predicate proving the Brain never returns a decision, treatment, approval, ledger, rate or instruction passes.** |
+| **P3** | End to end on 1 hardcoded document, **in CI**. **Application Layer verified: it creates the Transaction ID, holds exactly one state per transaction, routes every artifact, and NO engine calls another** — conformance proves no engine module imports another engine or the state store. **Brain stub answers structurally and fabricates no accounting truth.** **No accuracy claim is possible or permitted at this phase.** |
+| **P4** | The first real number. One entry, **worst of 3**, blind-verified, plus 3-submission idempotency and 9/9 negatives. Both baselines recorded. **Brain populated for this one document and built BEFORE Engine 3 within the phase.** |
 | **P5** | Held-out opened **once**. Isolated + contributed per engine. **Safety at 10 repeats.** Full 19-attack list. |
 | **P6** | Confidence separation. **If below 0.30, say so and correct every document that implies confidence can gate anything.** Cost bounds enforced. |
+
+---
+
+### Verifying the two components the phases now schedule
+
+**Neither the Brain nor the Application Layer owns a decision, so neither is ever measured for accuracy.** Both are verified structurally — by predicate, not by score.
+
+| Component | What "verified" means | How |
+|---|---|---|
+| **Brain** | It never returns a decision, treatment, approval, ledger, rate or instruction | Pure predicate. Feed it a question whose answer would be a decision; assert it returns knowledge and a source, never an instruction |
+| **Brain** | It is advisory — an engine may ignore it | Predicate: an engine that acts against Brain knowledge still produces a valid artifact, recording why |
+| **Application Layer** | Exactly one state per Transaction ID | Predicate: the state store permits one row per ID. Zero or two is a hard failure |
+| **Application Layer** | No engine calls another | Predicate: no engine module imports another engine |
+| **Application Layer** | No engine touches state | Predicate: no engine module imports the state store |
+| **Application Layer** | No stage is skipped | Predicate: every transition validated against the allowed-transitions table; a disallowed one is rejected, never logged-and-permitted |
+| **Application Layer** | It never queries the Brain | Predicate: `src/services/` never imports `src/brain/` |
+| **Application Layer** | Engine failure produces nothing | Break an engine on purpose; assert zero artifacts and that completed artifacts survive |
+
+**These are all P2/P3 checks — free, no AI, no ground truth, run on every commit.**
 
 ---
 
