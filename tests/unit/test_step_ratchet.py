@@ -8,7 +8,7 @@ tests exist because that hole was real and shipped.
 from pathlib import Path
 
 import pytest
-from assert_steps_not_removed import main
+from assert_steps_not_removed import main, split_pair
 from expected_steps import MERGE_GATE_CHECK_NAME, cli, step_names
 
 WORKFLOW = """\
@@ -130,6 +130,101 @@ def test_renaming_a_step_reads_as_removal(tmp_path: Path) -> None:
     base = write(tmp_path / "base", WORKFLOW)
     head = write(tmp_path / "head", WORKFLOW.replace("- name: first", "- name: renamed"))
     assert check(base, head) == 1
+
+
+def two_gates(alpha_steps: str, beta_steps: str) -> str:
+    """Two named checks whose step lists are written out in full.
+
+    Spelled literally rather than produced by `.replace()` on a template: a
+    fixture built by string surgery can silently stop expressing the case it
+    was named for, and then the test passes for the wrong reason.
+    """
+    return (
+        "name: probe\non:\n  push:\njobs:\n"
+        f"  alpha:\n    name: gate alpha\n    runs-on: ubuntu-24.04\n    steps:{alpha_steps}\n"
+        f"  beta:\n    name: gate beta\n    runs-on: ubuntu-24.04\n    steps:{beta_steps}\n"
+    )
+
+
+PLACEHOLDER_STEPS = "\n      - name: not implemented\n        run: exit 1"
+NO_STEPS = " []"
+BETA_ONE = "\n      - name: untouched\n        run: exit 0"
+BETA_TWO = BETA_ONE + "\n      - name: brand new\n        run: exit 0"
+
+
+def test_a_placeholder_may_be_replaced_by_real_steps(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The whole reason the exception exists.
+
+    Implementing a placeholder gate means DELETING its `not implemented` step.
+    The first version of the ratchet forbade that, which froze all 14 declared
+    placeholders permanently. This is the case that must pass.
+    """
+    base = write(tmp_path / "base", two_gates(PLACEHOLDER_STEPS, BETA_ONE))
+    real = "\n      - name: the real assertion\n        run: exit 0"
+    head = write(tmp_path / "head", two_gates(real, BETA_ONE))
+    assert check(base, head) == 0
+    assert "UPGRADED gate alpha :: not implemented" in capsys.readouterr().out
+
+
+def test_a_placeholder_may_not_be_deleted_leaving_the_gate_empty(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Deleting the placeholder and adding nothing leaves a door unguarded.
+
+    This is the half of the rule that keeps it a ratchet rather than a licence:
+    the exception buys an UPGRADE, never a plain deletion.
+    """
+    base = write(tmp_path / "base", two_gates(PLACEHOLDER_STEPS, BETA_ONE))
+    head = write(tmp_path / "head", two_gates(NO_STEPS, BETA_ONE))
+    assert check(base, head) == 1
+    out = capsys.readouterr().out
+    assert "REMOVED gate alpha :: not implemented" in out
+    assert "gained no step to replace it" in out
+
+
+def test_a_placeholder_removal_cannot_be_laundered_through_another_gate(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ANTI-GAMING. The exception is per-check, not global.
+
+    Without this, deleting `alpha`'s placeholder would be excused by unrelated
+    growth in `beta` — a removal paid for with someone else's work.
+    """
+    base = write(tmp_path / "base", two_gates(PLACEHOLDER_STEPS, BETA_ONE))
+    head = write(tmp_path / "head", two_gates(NO_STEPS, BETA_TWO))
+    assert check(base, head) == 1
+    out = capsys.readouterr().out
+    assert "REMOVED gate alpha :: not implemented" in out
+    assert "ADDED   gate beta :: brand new" in out
+
+
+def test_a_real_step_is_still_blocked_even_when_the_gate_grows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ANTI-GAMING. The exception is by NAME, not by "something was added".
+
+    Otherwise any step could be deleted by bundling a decoy addition into the
+    same check — exactly how a canary would disappear.
+    """
+    base = write(tmp_path / "base", WORKFLOW)
+    head = write(
+        tmp_path / "head",
+        WORKFLOW.replace(
+            "      - name: prove this gate can still fail\n        run: exit 0\n",
+            "      - name: decoy\n        run: exit 0\n",
+        ),
+    )
+    assert check(base, head) == 1
+    assert "REMOVED gate alpha :: prove this gate can still fail" in capsys.readouterr().out
+
+
+def test_split_pair_keeps_a_separator_inside_the_step_label() -> None:
+    """Partition once from the LEFT. A step label may contain ` :: `; a check
+    name may not, so the check must win the first split."""
+    assert split_pair("gate alpha :: a :: b") == ("gate alpha", "a :: b")
+    assert split_pair("no separator here") == ("no separator here", "")
 
 
 def test_wrong_argument_count_exits(tmp_path: Path) -> None:

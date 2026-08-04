@@ -64,6 +64,11 @@ jobs:
         # every earlier step and fails here.
         run: |
           python3 -m venv /tmp/fresh-legacy
+          # The ONLY network access in this step, and it happens before the
+          # install, never during it. The package now declares a real runtime
+          # dependency, and `--no-index` below cannot fetch one. Downloading it
+          # into `dist` first keeps the install itself completely offline.
+          /tmp/fresh-legacy/bin/pip download --quiet --dest dist pydantic==2.12.3
           /tmp/fresh-legacy/bin/pip install --quiet --no-index --find-links dist accountant-dad
           /tmp/fresh-legacy/bin/python -c "import accountant_dad; print(accountant_dad.__version__)"
 
