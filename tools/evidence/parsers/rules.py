@@ -87,14 +87,14 @@ from .base import SectionParser, spans_from_headings
 #: the eight are indistinguishable from a hyphen on screen — which is exactly
 #: how one of them goes missing from the list unnoticed.
 _DASH = (
-    "-"        # U+002D hyphen-minus
-    "\u2010"   # hyphen
-    "\u2011"   # non-breaking hyphen
-    "\u2012"   # figure dash
-    "\u2013"   # en dash
-    "\u2014"   # em dash
-    "\u2015"   # horizontal bar
-    "\u2212"   # minus sign
+    "-"  # U+002D hyphen-minus
+    "\u2010"  # hyphen
+    "\u2011"  # non-breaking hyphen
+    "\u2012"  # figure dash
+    "\u2013"  # en dash
+    "\u2014"  # em dash
+    "\u2015"  # horizontal bar
+    "\u2212"  # minus sign
 )
 
 #: `[ <number>. <title>.-` — the shape of a rule heading.
@@ -171,9 +171,36 @@ _LETTERS = tuple("abcdefghijklmnopqrstuvwxyz")
 #: Clause roman numerals, in the order the Rules use them. Rule 55(1) runs to
 #: (ix); the extra headroom costs nothing and removes a cliff.
 _ROMANS = (
-    "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x",
-    "xi", "xii", "xiii", "xiv", "xv", "xvi", "xvii", "xviii", "xix", "xx",
-    "xxi", "xxii", "xxiii", "xxiv", "xxv", "xxvi", "xxvii", "xxviii", "xxix", "xxx",
+    "i",
+    "ii",
+    "iii",
+    "iv",
+    "v",
+    "vi",
+    "vii",
+    "viii",
+    "ix",
+    "x",
+    "xi",
+    "xii",
+    "xiii",
+    "xiv",
+    "xv",
+    "xvi",
+    "xvii",
+    "xviii",
+    "xix",
+    "xx",
+    "xxi",
+    "xxii",
+    "xxiii",
+    "xxiv",
+    "xxv",
+    "xxvi",
+    "xxvii",
+    "xxviii",
+    "xxix",
+    "xxx",
 )
 
 
@@ -339,6 +366,7 @@ def _clauses(text: str, parent: str, start: int, end: int) -> dict[str, Span]:
     so the whole roman reading is dropped rather than patched, and rule 50 ends
     up with no `(ii)` at all. That is correct: a proviso is not a clause list.
     """
+
     def usable(match: re.Match[str]) -> bool:
         return not _CONTINUATION.match(text, match.end(), min(match.end() + 12, end))
 

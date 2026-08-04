@@ -565,7 +565,7 @@ class GuidanceParser(_InstrumentParser):
     label_form = (
         'a numbered question — "Q 12", "Question 12" — qualified by its chapter where '
         'the document restarts numbering, "Chapter 3 Q 12"; or, for guidance written '
-        'as prose rather than questions, a numbered paragraph in dotted outline, '
+        "as prose rather than questions, a numbered paragraph in dotted outline, "
         '"paragraph 3.1.2". A bare "Q 6" is only addressable where exactly one '
         "question in the document carries that number"
     )

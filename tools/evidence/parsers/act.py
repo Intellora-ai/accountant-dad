@@ -179,9 +179,7 @@ _SCHEDULE_ENTRY = re.compile(
 #: then continues nothing and opens nothing, so (2) onward are dropped too.
 #: Measured: the whole of CGST s.18 and Companies s.129 proved only at section
 #: level until this was read.
-_OPENING_MARKER = re.compile(
-    r"\.[ \t]*[\u2014\u2013-][ \t]*(?:\d{0,2}\[)?\(([0-9A-Za-z]{1,4})\)"
-)
+_OPENING_MARKER = re.compile(r"\.[ \t]*[\u2014\u2013-][ \t]*(?:\d{0,2}\[)?\(([0-9A-Za-z]{1,4})\)")
 
 #: A clause marker at the left margin. The optional `N[` prefix is the footnote
 #: bracket these extractions carry into the text — `4[(3) The Board of Directors`
@@ -205,10 +203,7 @@ class ActParser(SectionParser):
     """Sections, sub-sections, clauses and schedules of an Act."""
 
     kind = "act"
-    label_form = (
-        "s.16, Section 128(1), CGST Act s.17(5)(i), "
-        "or Schedule II, Part C, paragraph 5"
-    )
+    label_form = "s.16, Section 128(1), CGST Act s.17(5)(i), or Schedule II, Part C, paragraph 5"
 
     def owns(self, label: str) -> bool:
         """True only for Act-shaped references.
@@ -413,11 +408,7 @@ def _body_headings(candidates: list[tuple[str, int, bool]]) -> list[tuple[str, i
         if bodies:
             chosen.append((label, min(bodies)))
             continue
-        contents = [
-            start
-            for start, _ in occurrences
-            if body_begins is None or start < body_begins
-        ]
+        contents = [start for start, _ in occurrences if body_begins is None or start < body_begins]
         chosen.extend((label, start) for start in contents)
     return chosen
 
@@ -445,9 +436,7 @@ def _keep_widest(spans: dict[str, Span], label: str, span: Span) -> None:
         spans[label] = span
 
 
-def _schedule_children(
-    text: str, prefix: str, span: Span, markers: _Markers
-) -> dict[str, Span]:
+def _schedule_children(text: str, prefix: str, span: Span, markers: _Markers) -> dict[str, Span]:
     """Parts, paragraphs, notes and items inside one schedule.
 
     A part label is taken ONCE. Companies Act Schedule III prints `PART I` twice
@@ -455,8 +444,10 @@ def _schedule_children(
     the same prefix put `Part I paragraph 3(2)` 70,000 characters outside `Part
     I paragraph 3`, breaking the containment the ancestor walk depends on.
     """
-    headings = [(f"{prefix} Part {m.group(1).upper()}", m.start())
-                for m in _PART_HEADING.finditer(text, span.start, span.end)]
+    headings = [
+        (f"{prefix} Part {m.group(1).upper()}", m.start())
+        for m in _PART_HEADING.finditer(text, span.start, span.end)
+    ]
     blocks: list[tuple[str, Span]] = []
     taken: set[str] = set()
     for label, block in _blocks(headings, span):

@@ -61,6 +61,8 @@ jobs:
           python-version: '3.12'
       - name: install tooling
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
       - name: prove this gate can still fail
         # HOLLOW-GATE DEFENCE. Feed mypy a real type error; it MUST reject it.
         run: |

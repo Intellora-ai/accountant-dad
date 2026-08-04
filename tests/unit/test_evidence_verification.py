@@ -260,9 +260,7 @@ def test_a_quote_not_in_the_document_at_all_is_refused(registry: Registry) -> No
 
 def test_one_changed_word_is_enough_to_refuse(registry: Registry) -> None:
     """`shall` to `may` is the whole difference between a duty and a discretion."""
-    problems, _ = check_citation(
-        cite(quote=ONLY_IN_16.replace("entitled", "permitted")), registry
-    )
+    problems, _ = check_citation(cite(quote=ONLY_IN_16.replace("entitled", "permitted")), registry)
 
     assert layers(problems) == [Layer.TEXT]
 

@@ -54,9 +54,7 @@ def fetch(document: Document, destination: pathlib.Path | None = None) -> None:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:  # noqa: S310
             payload = response.read()
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise CitationError(
-            f"could not fetch {document.file} from {document.url}: {exc}"
-        ) from exc
+        raise CitationError(f"could not fetch {document.file} from {document.url}: {exc}") from exc
 
     target.write_bytes(payload)
     actual = document.actual_sha256()

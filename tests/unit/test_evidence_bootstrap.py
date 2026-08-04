@@ -86,9 +86,7 @@ def build_manifest(tmp_path: pathlib.Path, url: str, sha256: str) -> pathlib.Pat
     return manifest
 
 
-def test_a_document_that_matches_its_checksum_is_kept(
-    tmp_path: pathlib.Path, origin: str
-) -> None:
+def test_a_document_that_matches_its_checksum_is_kept(tmp_path: pathlib.Path, origin: str) -> None:
     manifest = build_manifest(tmp_path, f"{origin}/correct", TRUE_HASH)
     document = read_manifest(manifest, manifest.parent / "sources")["Tiny-Act.pdf"]
 

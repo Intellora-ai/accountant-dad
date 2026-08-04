@@ -295,17 +295,13 @@ def _occurrences(text: str, quote: str) -> list[Span]:
     return [Span(m.start(), m.end()) for m in pattern.finditer(text)]
 
 
-def _describe_elsewhere(
-    parser: SectionParser, text: str, occurrences: list[Span]
-) -> str:
+def _describe_elsewhere(parser: SectionParser, text: str, occurrences: list[Span]) -> str:
     """Name the sections the quote IS in, so the fix is obvious rather than a hunt."""
     if not occurrences:
         return "nowhere the raw text can be indexed"
     sections = parser.sections(text)
     found = {
-        label
-        for label, span in sections.items()
-        if any(span.contains(occ) for occ in occurrences)
+        label for label, span in sections.items() if any(span.contains(occ) for occ in occurrences)
     }
     if not found:
         return f"{len(occurrences)} time(s), outside every parsed section"

@@ -190,9 +190,7 @@ def test_engine_1_authorization_never_admits_accounting_reasoning() -> None:
     """
     inside_engine_1 = {name.removeprefix("engines/input_engine/") for name in ENGINE_1_AUTHORIZED}
     reasoning = sorted(
-        name
-        for name in inside_engine_1
-        if any(marker in name.lower() for marker in FROZEN_MARKERS)
+        name for name in inside_engine_1 if any(marker in name.lower() for marker in FROZEN_MARKERS)
     )
     assert reasoning == [], (
         f"Engine 1 module(s) named for reasoning that is not Engine 1's: {reasoning}. "
