@@ -54,20 +54,66 @@ jobs:
           echo "base ref: $BASE_REF"
           ls -1 /tmp/base-workflows
 
-      - name: no gate may be removed
+      - name: materialise base-branch enforcement scripts
+        # ─────────────────────────────────────────────────────────────────
+        # A PULL REQUEST MUST NOT BE ABLE TO JUDGE ITSELF.
+        #
+        # Both enforcement scripts below used to be executed from the PR's
+        # own checkout. A pull request could therefore rewrite
+        # assert_gates_not_removed.py to `return 0`, delete every gate in the
+        # same commit, and pass its own check. Nothing reviewed the change,
+        # because the thing that reviews changes was the thing being changed.
+        #
+        # Same fix already applied to the workflows above: take the BASE
+        # branch's copy and run that. The base copy judges the PR's content.
+        # The PR's copy is never executed.
+        #
+        # This is the identical trust boundary as `materialise base-branch
+        # workflows` — extended to the code that reads them.
+        # ─────────────────────────────────────────────────────────────────
         env:
-          PYTHONPATH: tools/ci
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          python3 tools/ci/assert_gates_not_removed.py \
+          mkdir -p /tmp/base-tools-ci
+          git fetch --quiet origin "$BASE_REF"
+          git ls-tree --name-only "origin/$BASE_REF" tools/ci/ | while read -r f; do
+            git show "origin/$BASE_REF:$f" > "/tmp/base-tools-ci/$(basename "$f")"
+          done
+
+          # Fail loudly if the base copy is missing or empty. A silently absent
+          # enforcer is worse than a broken one: the job would go green having
+          # checked nothing.
+          for required in assert_gates_not_removed.py expected_checks.py poll_checks.py; do
+            if [ ! -s "/tmp/base-tools-ci/$required" ]; then
+              echo "FATAL: /tmp/base-tools-ci/$required is missing or empty on origin/$BASE_REF"
+              echo "The enforcement scripts could not be materialised from the base branch."
+              exit 1
+            fi
+          done
+
+          echo "base ref: $BASE_REF"
+          ls -1 /tmp/base-tools-ci
+
+      - name: no gate may be removed
+        # Script comes from the BASE branch. Workflows judged are the PR's.
+        env:
+          PYTHONPATH: /tmp/base-tools-ci
+        run: |
+          set -euo pipefail
+          python3 /tmp/base-tools-ci/assert_gates_not_removed.py \
             /tmp/base-workflows .github/workflows
 
       - name: every gate must succeed
+        # Script comes from the BASE branch. The workflows directory stays the
+        # PR's, deliberately: the step above has already proven the PR declares
+        # every gate the base declares, so the PR's directory is the union and
+        # a gate ADDED by the PR is still required to succeed.
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MERGE_GATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           MERGE_GATE_WORKFLOWS_DIR: .github/workflows
-          PYTHONPATH: tools/ci
+          PYTHONPATH: /tmp/base-tools-ci
         run: |
           set -euo pipefail
-          python3 tools/ci/poll_checks.py
+          python3 /tmp/base-tools-ci/poll_checks.py
