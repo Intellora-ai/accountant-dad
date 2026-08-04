@@ -24,6 +24,17 @@ jobs:
           python-version: '3.12'
       - name: install tooling
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: prove this gate can still fail
+        # HOLLOW-GATE DEFENCE. A failing test MUST make pytest exit non-zero.
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/canary-pytest
+          printf 'def test_canary() -> None:\n    assert 1 == 2\n' > /tmp/canary-pytest/test_c.py
+          if pytest -p no:randomly -q /tmp/canary-pytest; then
+            echo "BLOCKED - unit tests gate is HOLLOW: a failing test passed."
+            exit 1
+          fi
+          echo "canary rejected as expected - unit tests gate is live"
       - name: pytest, 100 percent passing
         # Seed derived from the commit, not chosen: random ORDER catches
         # order-dependent tests, a fixed seed keeps the run reproducible.
@@ -35,7 +46,22 @@ jobs:
           set -euo pipefail
           SEED=$(git rev-parse HEAD | head -c 8 | python3 -c "import sys; print(int(sys.stdin.read(), 16) % 4294967295)")
           echo "randomly-seed derived from commit: $SEED"
-          pytest -p randomly --randomly-seed="$SEED"
+          pytest -p randomly --randomly-seed="$SEED" --junitxml=/tmp/junit.xml
+      - name: tests must have ACTUALLY RUN
+        # FAIL-CLOSED. pytest exits 0 when it collects zero tests. A deleted or
+        # unimportable test directory would otherwise read as a pass.
+        run: |
+          set -euo pipefail
+          COLLECTED=$(python3 -c "
+          import re, pathlib
+          x = pathlib.Path('/tmp/junit.xml').read_text()
+          m = re.search(r'tests=\"(\d+)\"', x)
+          print(m.group(1) if m else 0)
+          ")
+          echo "tests collected: $COLLECTED"
+          [ "$COLLECTED" -gt 0 ] || {
+            echo "BLOCKED - zero tests ran. A green suite that ran nothing is not a pass."
+            exit 1; }
       - name: skip markers are a ratchet
         # Anti-gaming. Marking a failing test `skip` or `xfail` is the cheapest
         # way to turn this gate green. Counted in the SOURCE, which is where the
@@ -98,13 +124,63 @@ jobs:
           python-version: '3.12'
       - name: install tooling
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
-      - name: branch coverage at or above 93 percent
+      - name: prove this gate can still fail
+        # HOLLOW-GATE DEFENCE. An impossible floor MUST be rejected.
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/canary-cov && cd /tmp/canary-cov
+          printf 'def unused(x):\n    if x:\n        return 1\n    return 2\n' > m.py
+          printf 'import m\ndef test_t():\n    assert m.unused(1) == 1\n' > test_m.py
+          coverage run --branch -m pytest -p no:randomly -q >/dev/null 2>&1 || true
+          if coverage report --fail-under=100 >/dev/null 2>&1; then
+            echo "BLOCKED - coverage gate is HOLLOW: partial coverage passed a 100% floor."
+            exit 1
+          fi
+          echo "canary rejected as expected - coverage gate is live"
+      - name: coverage floor is the HIGHER of 93 and the base branch's actual
+        # LOWERED-THRESHOLD DEFENCE. The literal 93 is only a MINIMUM. The real
+        # floor is whatever coverage the base branch already achieves, so the
+        # number can never go down - editing 93 to 80 changes nothing while the
+        # base branch sits at 94. Coverage becomes a one-way ratchet.
         env:
           PYTHONPATH: tools/ci:src
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           coverage run -m pytest -p no:randomly -q
-          coverage report --fail-under=93 --show-missing
+          coverage json -o /tmp/head-cov.json >/dev/null
+          export HEAD_PCT=$(python3 -c "import json;print(json.load(open('/tmp/head-cov.json'))['totals']['percent_covered'])")
+
+          git fetch --quiet origin "$BASE_REF"
+          rm -rf /tmp/base-tree
+          git worktree add --quiet --detach /tmp/base-tree "origin/$BASE_REF"
+          export BASE_PCT=0
+          if [ -d /tmp/base-tree/tests ]; then
+            ( cd /tmp/base-tree \
+              && PYTHONPATH=tools/ci:src coverage run -m pytest -p no:randomly -q >/dev/null 2>&1 || true
+              cd /tmp/base-tree && coverage json -o /tmp/base-cov.json >/dev/null 2>&1 || true )
+            if [ -f /tmp/base-cov.json ]; then
+              export BASE_PCT=$(python3 -c "import json;print(json.load(open('/tmp/base-cov.json'))['totals']['percent_covered'])")
+            fi
+          fi
+
+          python3 - <<'PY'
+          import os
+          import sys
+
+          head = float(os.environ["HEAD_PCT"])
+          base = float(os.environ["BASE_PCT"])
+          absolute_minimum = 93.0
+          floor = max(absolute_minimum, base)
+          print(f"absolute minimum      : {absolute_minimum:.1f}%")
+          print(f"base branch actual    : {base:.2f}%")
+          print(f"EFFECTIVE FLOOR       : {floor:.2f}%")
+          print(f"this branch           : {head:.2f}%")
+          if head + 1e-9 < floor:
+              print("BLOCKED - coverage fell below the floor. It may only go up.")
+              sys.exit(1)
+          print("coverage held or improved")
+          PY
       - name: no coverage exclusions
         # Anti-gaming. `# pragma: no cover` and exclude_lines are how a coverage
         # number gets manufactured. There are none, and there must stay none.

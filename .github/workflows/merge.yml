@@ -104,6 +104,30 @@ jobs:
           python3 /tmp/base-tools-ci/assert_gates_not_removed.py \
             /tmp/base-workflows .github/workflows
 
+      - name: no gate STEP may be removed
+        # The job-level ratchet above has a hole: deleting a step inside a job
+        # leaves the job count identical, so a canary or an anti-gaming
+        # assertion could vanish while everything still reported "no gate
+        # removed". The standing rule says gate, job, STEP, check or assertion.
+        # This enforces the word that was previously only prose.
+        env:
+          PYTHONPATH: /tmp/base-tools-ci
+        run: |
+          set -euo pipefail
+          # The enforcer runs from the BASE copy, never the PR's, or a pull
+          # request could neuter the script that judges it and delete gate
+          # steps unseen. Same trust boundary as the job-level ratchet above.
+          if [ -s "/tmp/base-tools-ci/assert_steps_not_removed.py" ]; then
+            python3 /tmp/base-tools-ci/assert_steps_not_removed.py \
+              /tmp/base-workflows .github/workflows
+          else
+            # BOOTSTRAP, once only: this is the pull request introducing the
+            # script, so the base branch cannot have it yet. Runs from the PR
+            # tree this one time; every later run takes the branch above.
+            echo "BOOTSTRAP: origin/$BASE_REF has no assert_steps_not_removed.py"
+            PYTHONPATH=tools/ci python3 tools/ci/assert_steps_not_removed.py \
+              /tmp/base-workflows .github/workflows
+          fi
       - name: every gate must succeed
         # Script comes from the BASE branch. The workflows directory stays the
         # PR's, deliberately: the step above has already proven the PR declares

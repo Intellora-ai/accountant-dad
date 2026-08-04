@@ -111,6 +111,18 @@ jobs:
           python-version: '3.12'
       - name: install pip-audit
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: prove this gate can still fail
+        # HOLLOW-GATE DEFENCE. pip-audit MUST reject a package with a known
+        # advisory. pytest 8.4.2 carries PYSEC-2026-1845, found by this very
+        # gate on its first real run.
+        run: |
+          set -euo pipefail
+          printf 'pytest==8.4.2\n' > /tmp/canary-req.txt
+          if pip-audit --strict --requirement /tmp/canary-req.txt; then
+            echo "BLOCKED - dependency scan is HOLLOW: it passed a known-vulnerable pin."
+            exit 1
+          fi
+          echo "canary rejected as expected - dependency scan is live"
       - name: audit the CI toolchain
         # This gate is INTENTIONALLY non-deterministic, and that is correct.
         # The advisory database changes daily, so a dependency that was safe
