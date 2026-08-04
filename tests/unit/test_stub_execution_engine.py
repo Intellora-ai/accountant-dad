@@ -196,16 +196,27 @@ def _module_tree() -> ast.Module:
     return ast.parse(inspect.getsource(stub))
 
 
-def _imported_modules() -> set[str]:
-    """Every module name the stub imports, as written."""
+def _imported_names() -> set[str]:
+    """Every dotted name the stub imports — what it imports FROM, and what it
+    pulls OUT of it.
+
+    Both halves, and the second one is not decoration. A mutation pass caught
+    this test in its first form: `from accountant_dad.engines import
+    input_engine` reaches sideways into another engine while the module it
+    imports *from* is only `accountant_dad.engines`, so recording the source
+    alone let an AL-INV-5 violation through green. Recording both closes it.
+
+    A relative import contributes a leading dot and therefore fails the
+    allowlist, which is correct — its root cannot be read off this file alone.
+    """
     found: set[str] = set()
     for node in ast.walk(_module_tree()):
         if isinstance(node, ast.Import):
             found.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
-            # A relative import contributes "" and therefore fails the
-            # allowlist, which is correct: its root cannot be read off the file.
-            found.add("." * node.level + (node.module or ""))
+            source = "." * node.level + (node.module or "")
+            found.add(source)
+            found.update(f"{source}.{alias.name}" for alias in node.names)
     return found
 
 
@@ -320,7 +331,7 @@ def test_the_module_imports_nothing_outside_the_allowlist() -> None:
     one nobody predicted. `requests`, `socket`, `pathlib` and `subprocess` all
     fail this, and so does a name that does not exist yet.
     """
-    roots = {name.split(".")[0] for name in _imported_modules()}
+    roots = {name.split(".")[0] for name in _imported_names()}
 
     assert roots <= ALLOWED_IMPORT_ROOTS, (
         f"the Execution Engine stub imports {sorted(roots - ALLOWED_IMPORT_ROOTS)}. "
@@ -345,12 +356,16 @@ def test_no_other_engine_is_imported() -> None:
     the Application Layer. AL-INV-11 — Engine 6 has no backward arrow at all."""
     reaching_sideways = sorted(
         name
-        for name in _imported_modules()
-        if name.startswith("accountant_dad.engines.")
+        for name in _imported_names()
+        if name.startswith("accountant_dad.engines")
         and not name.startswith("accountant_dad.engines.tally_engine")
     )
 
-    assert reaching_sideways == [], f"AL-INV-5 broken by {reaching_sideways}"
+    assert reaching_sideways == [], (
+        f"AL-INV-5 broken by {reaching_sideways}. The bare `accountant_dad.engines` "
+        "package is refused too: a module inside it has no reason to import it, "
+        "and importing it is one `getattr` away from holding another engine."
+    )
 
 
 def test_the_application_layer_is_not_imported() -> None:
@@ -358,7 +373,7 @@ def test_the_application_layer_is_not_imported() -> None:
     state. The conformance check named there is exactly this one: no engine
     module imports the state store."""
     reaching_up = sorted(
-        name for name in _imported_modules() if name.startswith("accountant_dad.services")
+        name for name in _imported_names() if name.startswith("accountant_dad.services")
     )
 
     assert reaching_up == [], f"AL-INV-4 broken by {reaching_up}"
