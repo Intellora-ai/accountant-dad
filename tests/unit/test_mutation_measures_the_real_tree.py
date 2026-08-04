@@ -82,6 +82,28 @@ def pyproject() -> dict[str, object]:
         return tomllib.load(handle)
 
 
+def setting(*path: str) -> list[str]:
+    """Walk `pyproject.toml` to a list-valued key, checking the shape as it goes.
+
+    `tomllib` returns `dict[str, object]`, so every subscript is an error to
+    mypy without a suppression. Narrowing at each hop keeps the type honest and
+    adds NO `type: ignore` — this repository counts suppressions and blocks on
+    any increase, so a guard that cost one would be a guard that broke a gate.
+
+    A missing or wrongly-typed key fails here with the path that was being
+    walked, rather than as an opaque KeyError inside a test.
+    """
+    node: object = pyproject()
+    walked: list[str] = []
+    for key in path:
+        walked.append(key)
+        assert isinstance(node, dict), f"{'.'.join(walked)} is not a table"
+        assert key in node, f"{'.'.join(walked)} is missing from pyproject.toml"
+        node = node[key]
+    assert isinstance(node, list), f"{'.'.join(walked)} is not a list"
+    return [str(item) for item in node]
+
+
 def test_the_mutation_job_never_puts_the_original_tree_on_the_path() -> None:
     """The exact line that made the gate measure nothing. It may not return.
 
@@ -135,7 +157,7 @@ def test_pytest_carries_the_import_path_so_it_follows_the_rootdir() -> None:
     there is no `mutants/pyproject.toml`, pytest walks up to the original, and
     these entries resolve against the original tree.
     """
-    configured = pyproject()["tool"]["pytest"]["ini_options"]["pythonpath"]  # type: ignore[index]
+    configured = setting("tool", "pytest", "ini_options", "pythonpath")
     assert configured == REQUIRED_PYTHONPATH, (
         f"expected pythonpath {REQUIRED_PYTHONPATH}, found {configured}. "
         "Without it, dropping PYTHONPATH from the mutation job leaves the "
@@ -150,7 +172,7 @@ def test_every_import_path_entry_is_relative() -> None:
     ini file pytest found, defeating the copy entirely. Relative is not a style
     preference here; it is the mechanism.
     """
-    configured = pyproject()["tool"]["pytest"]["ini_options"]["pythonpath"]  # type: ignore[index]
+    configured = setting("tool", "pytest", "ini_options", "pythonpath")
     absolute = [entry for entry in configured if pathlib.PurePath(entry).is_absolute()]
     assert absolute == [], (
         f"absolute pythonpath entries: {absolute}. These survive a rootdir "
@@ -226,7 +248,7 @@ def test_pyproject_is_copied_into_the_mutants_tree() -> None:
     Removing this one string is a silent, total defeat of the gate. Nothing
     else in the repository noticed.
     """
-    also_copy = pyproject()["tool"]["mutmut"]["also_copy"]  # type: ignore[index]
+    also_copy = setting("tool", "mutmut", "also_copy")
     assert "pyproject.toml" in also_copy, (
         f"pyproject.toml missing from [tool.mutmut] also_copy: {also_copy}. "
         "pytest would then read the ORIGINAL pyproject, resolve pythonpath "

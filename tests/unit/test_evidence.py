@@ -110,6 +110,42 @@ def a_confidence_report(
     )
 
 
+#: The exact words `_meaningful_text` refuses a blank with. Asserting only that
+#: `ValidationError` was raised passes while the schema refuses for a completely
+#: different reason — and a value refused for the wrong reason is a defect that
+#: reports itself wrongly to whoever debugs it next.
+BLANK_REASON = "must not be empty or blank"
+
+
+def messages(raised: pytest.ExceptionInfo[ValidationError]) -> list[str]:
+    """Every message pydantic reported, EXACTLY as the validator worded it.
+
+    Equality, not substring: a message padded or re-cased either side still
+    CONTAINS the fragment, so a substring check is not a check on the wording.
+    """
+    return [str(error["msg"]) for error in raised.value.errors()]
+
+
+def assert_refused_as_blank(raised: pytest.ExceptionInfo[ValidationError]) -> None:
+    assert f"Value error, {BLANK_REASON}" in messages(raised)
+
+
+def human_origin_reason(what: str) -> str:
+    """The exact refusal `_reject_human_origin` must give, naming `what`.
+
+    The component's own name is part of the contract: a message that named a
+    fixed component, or none, still raises and still passes a bare
+    `pytest.raises` while telling the reader the wrong thing about which
+    detected field claimed a human origin.
+    """
+    return (
+        f"Value error, {what} claims a Human origin. Engine 1 never merges an "
+        "extracted reading with a human assertion "
+        "(ENGINE_1_INPUT_ENGINE_RULES.md:233); a human note belongs in "
+        "human_business_context, beside this component and never inside it."
+    )
+
+
 def an_identity() -> IdentityEnvelope:
     return IdentityEnvelope(
         artifact_id=ArtifactId.new(),
@@ -656,10 +692,12 @@ def test_a_padded_blank_is_refused_wherever_a_real_value_is_required(padded: str
 
     Found empirically by the conformance registry, not by reading the code.
     """
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         UncertaintyMarker(subject="Amount", reason=padded)
-    with pytest.raises(ValidationError):
+    assert_refused_as_blank(raised)
+    with pytest.raises(ValidationError) as raised:
         UncertaintyMarker(subject=padded, reason="smudged")
+    assert_refused_as_blank(raised)
 
 
 def test_a_real_value_with_surrounding_space_is_still_accepted() -> None:

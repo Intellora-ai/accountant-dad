@@ -30,11 +30,17 @@ from __future__ import annotations
 
 import dataclasses
 import pathlib
+import uuid
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
+from pydantic import BaseModel, ValidationError, create_model
 
 import accountant_dad
+from accountant_dad.artifacts.decision import DecisionStatus
+from accountant_dad.artifacts.evidence import Corroborated, DocumentId, SourceType
+from accountant_dad.artifacts.execution import ExecutionAttemptId, ExecutionId
 from accountant_dad.conformance import (
     Attribution,
     Enforcement,
@@ -48,9 +54,31 @@ from accountant_dad.conformance_registry import (
     IMMUTABLE,
     PROHIBITIONS,
     REGISTRY,
+    _clarification,
+    _confidence_report,
+    _conflict,
+    _decision,
+    _detected_field,
+    _doubt,
+    _envelope,
+    _evidence,
+    _execution,
+    _fact,
+    _finding,
+    _incomplete_decision,
     _journal_line,
+    _mutate,
+    _provenance,
+    _results,
+    _results_raising_an_unknown,
+    _results_with_a_less_certain_one,
+    _structured_document,
+    _understanding,
+    _unknown,
+    _uuid,
     _validation,
 )
+from accountant_dad.identity import ArtifactId, TransactionId
 
 #: Explicit, so a silent deletion is a red test rather than a smaller number
 #: nobody notices. Raising these is normal; lowering one is a claim that a rule
@@ -303,3 +331,350 @@ def test_the_registry_refuses_a_control_for_a_rule_nobody_wrote_down() -> None:
             PROHIBITIONS,
             (*CONTROLS, NegativeControl("unlisted", clean=_journal_line, violating=_journal_line)),
         )
+
+
+# ── the fixed material, pinned ────────────────────────────────────────────
+#
+# WHY EVERY LITERAL IN EVERY BUILDER IS ASSERTED HERE.
+#     A negative control only proves what the difference between its two halves
+#     is. Everything the two halves SHARE is unexamined: change "Tally" to
+#     "TALLY", `retry_count` from 0 to 1, or an identity from `_uuid("5")` to
+#     `None`, and both halves move together, so the control still reports
+#     ENFORCED and the suite stays green. Mutation testing found exactly that —
+#     the shared payload was the largest unasserted surface in the repository.
+#
+#     The module docstring promises payloads that are FIXED: no clock, no
+#     randomness, byte-identical across runs. That promise is only a promise
+#     until something reads the values back. These tests read them back.
+#
+# WHAT THIS IS NOT.
+#     Not a restatement of the schema — the schema is what refuses a payload,
+#     and it is exercised by the controls. This is the fixture itself: the
+#     specific words a clean payload is written in, the specific identities it
+#     carries, and the specific numbers. Those are choices, and a choice that
+#     nothing checks is a choice anybody can silently reverse.
+
+_EVIDENCE_REFERENCE = "page 1, line 4"
+_SOURCE_FILE = "invoice-2026-0041.pdf"
+_RECEIPT_DATE = "the date the goods were received"
+_RECEIPT_QUESTION = "On what date were the goods received?"
+_OFFICE_EQUIPMENT = "Office Equipment"
+
+#: `identity.py` chose v4 precisely because it encodes nothing (INV-9).
+_UUID_VERSION_4 = 4
+
+
+def test_the_envelope_carries_the_two_fixed_identities() -> None:
+    """`_uuid("1")` and `_uuid("2")`, not `None` and not each other.
+
+    `ArtifactId` is a frozen dataclass, and pydantic accepts an already-built
+    dataclass instance without revalidating its field — so `ArtifactId(None)`
+    reaches an artifact intact. Nothing but reading the value back catches it.
+    """
+    envelope = _envelope()
+    assert envelope.artifact_id == ArtifactId(_uuid("1"))
+    assert envelope.transaction_id == TransactionId(_uuid("2"))
+    assert envelope.version == 1
+    assert envelope.parent_versions == ()
+
+
+def test_the_fixed_uuid_is_a_legal_v4_built_from_one_digit() -> None:
+    """The version and variant nibbles are pinned deliberately; a stand-in that
+    was not a legal v4 would be a different value no reader could see."""
+    value = _uuid("a")
+    assert value.version == _UUID_VERSION_4
+    assert value.variant == uuid.RFC_4122
+    assert str(value) == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    assert _uuid("b") != value
+
+
+def test_the_provenance_names_the_document_and_the_line() -> None:
+    provenance = _provenance()
+    assert provenance.source_type is SourceType.DOCUMENT
+    assert provenance.source_id == _SOURCE_FILE
+    assert provenance.evidence_reference == _EVIDENCE_REFERENCE
+    assert provenance.timestamp == datetime(2026, 8, 3, 12, 0, tzinfo=UTC)
+    assert provenance.confidence == Decimal("0.9000")
+    assert provenance.corroborated is Corroborated.NOT_ASSESSED
+
+
+def test_the_detected_field_carries_the_amount_it_claims_to() -> None:
+    field = _detected_field()
+    assert field.name == "Amount"
+    assert field.value == "1180.00"
+    assert field.provenance == _provenance()
+
+
+def test_the_structured_document_quotes_the_text_it_was_read_from() -> None:
+    document = _structured_document()
+    assert document.extracted_text == "INVOICE  Total 1,180.00"
+    assert document.document_structure == "header, one table, footer"
+    assert document.detected_tables == ()
+    assert tuple(item.name for item in document.detected_fields) == ("Amount",)
+
+
+def test_the_confidence_report_says_why_the_reading_is_reliable() -> None:
+    report = _confidence_report()
+    assert report.reliability_information == "typed document, clean scan"
+    assert report.uncertainty_markers == ()
+    assert report.risky_fields == ()
+    assert tuple(score.field_name for score in report.confidence_scores) == ("Amount",)
+
+
+def test_the_evidence_object_names_its_document_and_its_source() -> None:
+    evidence = _evidence()
+    assert evidence.document_id == DocumentId(_uuid("3"))
+    assert evidence.source_references == (_SOURCE_FILE,)
+    assert evidence.human_business_context is None
+
+
+def test_the_observed_fact_states_what_the_document_says_and_cites_it() -> None:
+    fact = _fact()
+    assert fact.statement == "The document states a total of 1,180.00."
+    assert fact.stated_text == "Total  1,180.00"
+    assert fact.evidence_references == (_EVIDENCE_REFERENCE,)
+
+
+def test_the_unknown_names_the_gap_and_why_it_matters() -> None:
+    unknown = _unknown()
+    assert unknown.subject == _RECEIPT_DATE
+    assert unknown.why_it_matters == (
+        "Without it, the period this event belongs to cannot be settled."
+    )
+
+
+def test_the_conflict_carries_two_readings_that_actually_disagree() -> None:
+    """Two DIFFERENT statements. Collapse them to one wording and the payload
+    stops being a conflict, which is the whole thing `TWO_READINGS` tests."""
+    conflict = _conflict()
+    assert conflict.subject == "the total on the document"
+    assert tuple(reading.statement for reading in conflict.competing_readings) == (
+        "The printed total reads 1,180.00.",
+        "The lines add up to 1,180.50.",
+    )
+
+
+def test_all_six_results_report_the_facts_they_are_supposed_to() -> None:
+    """`RESULT_REPORTS` — no Result may omit what it found. A Result silently
+    emptied here still constructs, because the control that tests the rule
+    builds its own payload rather than reading this one."""
+    results = _results()
+    assert results.transaction.identified_event == (_fact(),)
+    assert results.party.identified_entities == (_fact(),)
+    assert results.item.identified_goods_and_services == (_fact(),)
+    assert results.item.descriptions == (_fact(),)
+    assert results.payment.amount_relationships == (_fact(),)
+    assert results.timeline.dates == (_fact(),)
+    assert results.business_context.context_clues == (_fact(),)
+    assert results.transaction.unknown_information == ()
+    for result in (
+        results.transaction,
+        results.party,
+        results.item,
+        results.payment,
+        results.timeline,
+        results.business_context,
+    ):
+        assert result.confidence == Decimal("0.9000")
+
+
+def test_the_results_that_raise_an_unknown_keep_everything_else_intact() -> None:
+    """The gap is ADDED, nothing is dropped for it. A Result that lost its facts
+    while gaining an unknown would still satisfy `UNKNOWNS_INTACT`."""
+    results = _results_raising_an_unknown()
+    assert results.transaction.unknown_information == (_unknown(),)
+    assert results.transaction.identified_event == (_fact(),)
+    assert results.transaction.confidence == Decimal("0.9000")
+
+
+def test_the_less_certain_results_differ_from_the_rest_in_exactly_one_place() -> None:
+    """Five at 0.9000 and one at 0.7000, so `min` and `max` cannot coincide —
+    which is the only reason `NO_FREE_CONFIDENCE` has anything to refuse."""
+    results = _results_with_a_less_certain_one()
+    assert results.payment.confidence == Decimal("0.7000")
+    scores = {
+        results.transaction.confidence,
+        results.party.confidence,
+        results.item.confidence,
+        results.timeline.confidence,
+        results.business_context.confidence,
+    }
+    assert scores == {Decimal("0.9000")}
+
+
+def test_the_transaction_story_is_written_in_the_business_register() -> None:
+    understanding = _understanding()
+    assert understanding.transaction_story.narrative == (
+        "Twelve units were delivered and paid for on the stated date."
+    )
+    assert understanding.identified_unknowns == ()
+
+
+def test_the_journal_line_names_a_ledger_and_an_exact_amount() -> None:
+    line = _journal_line()
+    assert line.ledger == _OFFICE_EQUIPMENT
+    assert line.amount == Decimal("1180.00")
+
+
+def test_the_doubt_names_both_the_missing_fact_and_the_question() -> None:
+    doubt = _doubt()
+    assert doubt.missing_fact == _RECEIPT_DATE
+    assert doubt.required_clarification == _RECEIPT_QUESTION
+
+
+def test_the_decision_carries_the_treatment_and_the_two_sides_it_posts() -> None:
+    decision = _decision()
+    assert decision.decision_status is DecisionStatus.COMPLETE
+    assert decision.accounting_treatment == "Purchase of office equipment"
+    assert decision.ledger_classification == _OFFICE_EQUIPMENT
+    assert decision.journal_structure == "one debit, one credit"
+    assert decision.tax_treatment == "input credit claimed at the stated rate"
+    assert decision.supporting_reasoning == (
+        "The document names the item, the seller and the amount."
+    )
+    assert tuple(line.ledger for line in decision.debit_entries) == (_OFFICE_EQUIPMENT,)
+    assert tuple(line.ledger for line in decision.credit_entries) == ("Bank",)
+    assert decision.unresolved_doubts == ()
+
+
+def test_the_incomplete_decision_posts_nothing_and_names_its_doubt() -> None:
+    decision = _incomplete_decision()
+    assert decision.decision_status is DecisionStatus.INCOMPLETE_INFORMATION_REQUIRED
+    assert decision.debit_entries == ()
+    assert decision.credit_entries == ()
+    assert decision.unresolved_doubts == (_doubt(),)
+
+
+def test_the_clarification_asks_one_question_about_one_decision() -> None:
+    request = _clarification()
+    assert request.clarification_id == ArtifactId(_uuid("4"))
+    assert request.related_decision_id == ArtifactId(_uuid("5"))
+    assert request.related_artifact_version == 1
+    assert request.missing_information == (_RECEIPT_DATE,)
+    assert request.required_clarification == _RECEIPT_QUESTION
+    assert request.reason_clarification_is_required == (
+        "The period the entry belongs to depends on it."
+    )
+    assert request.affected_decision == "the accounting period of the entry"
+    assert request.supporting_evidence_references == (_EVIDENCE_REFERENCE,)
+    assert request.detected_conflicts == ()
+
+
+def test_the_finding_says_what_failed_why_and_what_to_do_next() -> None:
+    finding = _finding()
+    assert finding.what_failed == "the claimed input credit"
+    assert finding.why_it_failed == "no evidence reference names the rate it was claimed at"
+    assert finding.affected_artifact == "Accounting Decision"
+    assert finding.recommended_next_step == "raise a clarification for the rate"
+    assert finding.supporting_evidence_references == (_EVIDENCE_REFERENCE,)
+
+
+def test_the_validation_decision_points_at_the_decision_it_judged() -> None:
+    validation = _validation()
+    assert validation.related_decision_id == ArtifactId(_uuid("5"))
+    assert validation.related_artifact_version == 1
+    assert validation.supporting_evidence_references == (_EVIDENCE_REFERENCE,)
+    assert validation.validation_reasoning == ("every rule the decision was checked against passed")
+    assert validation.validation_findings == ()
+
+
+def test_the_execution_result_records_one_posting_to_one_destination() -> None:
+    """Every one of these is a value a control shares with its violating twin,
+    so nothing else in the suite would notice any of them changing."""
+    execution = _execution()
+    assert execution.execution_id == ExecutionId(_uuid("6"))
+    assert execution.execution_attempt_id == ExecutionAttemptId(_uuid("7"))
+    assert execution.accounting_decision_id == ArtifactId(_uuid("5"))
+    assert execution.decision_version == 1
+    assert execution.validation_decision_id == ArtifactId(_uuid("8"))
+    assert execution.destination_system == "Tally"
+    assert execution.corrects_execution_result is None
+    assert execution.posting_status == "Posted"
+    assert execution.external_transaction_ids == ("TALLY-88214",)
+    assert execution.retry_count == 0
+    assert execution.queue_status == "Drained"
+    assert execution.notification_status == "Sent"
+    assert execution.classified_error is None
+    assert execution.audit_reference.execution_id == ExecutionId(_uuid("6"))
+    assert execution.execution_outcome == "Success"
+
+
+def test_the_execution_audit_reference_points_at_its_own_execution_by_default() -> None:
+    """`AUDIT_POINTS_HOME` is only testable because the clean payload's audit
+    reference and execution id are the SAME id. Drift them apart and the
+    control's clean half becomes the violation it is supposed to contrast."""
+    execution = _execution()
+    assert execution.audit_reference.execution_id == execution.execution_id
+
+
+# ── the immutability violation, examined directly ─────────────────────────
+#
+# `_mutate` is the violating half of all six INV-5 controls, and against a
+# frozen model EVERY way of breaking it produces the same outcome: an
+# exception. `setattr(None, ...)`, `getattr(model, None)`, writing `None`
+# instead of the field's own value — all six controls stay green through all of
+# them, because the control only asks WHETHER the payload was refused.
+#
+# So `_mutate` is exercised here against a model that is NOT frozen, where the
+# three things it promises are separately visible: it writes the FIRST declared
+# field, it writes that field's OWN value, and it returns the same object.
+
+
+#: Deliberately mutable, so a write SUCCEEDS and can be inspected — every real
+#: artifact is `frozen=True`, which refuses the write before it can be observed.
+#:
+#: Built with `create_model` rather than a `class` statement on purpose. A
+#: subclass of `BaseModel` re-inherits `Any` from its base signature, and this
+#: repository runs `disallow_any_explicit` and separately COUNTS suppressions,
+#: blocking on any increase. A `type: ignore[explicit-any]` here would buy one
+#: test at the cost of a gate.
+_Writable = create_model("_Writable", first=(str, ...), second=(str, ...))
+
+
+def test_mutate_writes_the_first_declared_field_back_to_its_own_value() -> None:
+    model = _Writable(first="kept", second="untouched")
+    returned = _mutate(model)
+    assert returned is model
+    # The whole model state, not two fields: a write that also touched
+    # something else would slip past a pair of per-field checks.
+    assert model.model_dump() == {"first": "kept", "second": "untouched"}
+
+
+def test_mutate_writes_the_first_field_and_not_a_later_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A `_mutate` that picked a different field would still trip `frozen=True`
+    on all six artifacts, so only a direct probe can tell the two apart.
+
+    `_mutate` assigns a field back to its OWN value, so no comparison of values
+    can see it — the write itself is the only observable. Recorded by patching
+    `__setattr__` on the existing class rather than by subclassing it: a
+    subclass of a pydantic model re-inherits `Any` from its base signature and
+    would need a `type: ignore[explicit-any]`, and this repository counts
+    suppressions and blocks on any increase.
+
+    The instance is built BEFORE the patch, so construction is not recorded and
+    the single entry that remains is the one `_mutate` performed.
+    """
+    written: list[tuple[str, object]] = []
+    model = _Writable(first="kept", second="untouched")
+    original = type(model).__setattr__
+
+    def record(instance: BaseModel, name: str, value: object) -> None:
+        written.append((name, value))
+        original(instance, name, value)
+
+    monkeypatch.setattr(_Writable, "__setattr__", record)
+    _mutate(model)
+
+    assert written == [("first", "kept")], (
+        "`_mutate` must write the FIRST declared field, once. Any other field, "
+        "or more than one write, and the six INV-5 controls are probing "
+        "something other than what they claim to probe."
+    )
+
+
+def test_mutate_still_refuses_to_write_a_frozen_artifact() -> None:
+    """The property the six INV-5 controls actually rest on."""
+    with pytest.raises(ValidationError):
+        _mutate(_evidence())
