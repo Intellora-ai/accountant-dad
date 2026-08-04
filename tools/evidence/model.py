@@ -144,6 +144,21 @@ _TYPOGRAPHIC = {
 _TYPOGRAPHIC_RE = re.compile("|".join(map(re.escape, _TYPOGRAPHIC)))
 
 
+def typographic_equivalents() -> dict[str, str]:
+    """Plain character → every odd character that normalises to it.
+
+    Public because `verify` needs it to build a raw-text search pattern, and
+    reaching into `_TYPOGRAPHIC` from another module meant a function-level
+    import to dodge the circularity — which cost a lint suppression, and a CI
+    gate blocks any increase in those. Exposing the derived view is the honest
+    fix: the table stays private, the fact other code needs is public.
+    """
+    equivalents: dict[str, str] = {}
+    for odd, plain in _TYPOGRAPHIC.items():
+        equivalents[plain] = equivalents.get(plain, "") + odd
+    return equivalents
+
+
 def normalise(text: str) -> str:
     """Collapse only what a PDF extractor legitimately mangles.
 

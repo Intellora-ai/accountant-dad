@@ -143,16 +143,33 @@ def test_a_present_document_is_not_reported_missing(tmp_path: pathlib.Path) -> N
     assert Registry.load(manifest, parsers={}).missing() == []
 
 
+def find_manifest() -> pathlib.Path:
+    """The repository's real manifest, found by walking up rather than counting up.
+
+    `parents[2]` was wrong and CI proved it. Under mutation, mutmut copies the
+    tree into `mutants/` and runs pytest from there, so `parents[2]` resolves to
+    `mutants/` — which has no `Accounting_Brain`. The test failed, the BASELINE
+    suite failed with it, and mutmut therefore scored 1593 mutants as
+    "not checked": a gate reporting nothing while looking like it ran.
+
+    Walking up for the directory finds it from either tree and cannot silently
+    resolve to the wrong depth if the layout changes.
+    """
+    for parent in pathlib.Path(__file__).resolve().parents:
+        candidate = parent / "Accounting_Brain" / "Evidence_Library" / "manifest.jsonl"
+        if candidate.is_file():
+            return candidate
+    raise AssertionError(
+        "no Accounting_Brain/Evidence_Library/manifest.jsonl above "
+        f"{pathlib.Path(__file__).resolve()} — the repository declares no documents"
+    )
+
+
 def test_the_repositorys_own_manifest_declares_every_field_a_proof_needs() -> None:
     """The real manifest, not a fixture. Every declared document must carry a
     source URL, a checksum and a parseable kind — the three things without which
     a citation against it could never be proven on another machine."""
-    documents = read_manifest(
-        pathlib.Path(__file__).resolve().parents[2]
-        / "Accounting_Brain"
-        / "Evidence_Library"
-        / "manifest.jsonl"
-    )
+    documents = read_manifest(find_manifest())
 
     assert documents, "the repository declares no documents"
     for document in documents.values():

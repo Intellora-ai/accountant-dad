@@ -31,6 +31,7 @@ from .model import (
     Span,
     evidence_id,
     normalise,
+    typographic_equivalents,
 )
 from .parsers.base import SectionParser
 from .registry import BOOTSTRAP_COMMAND, BRAIN, SOURCES, Document, Registry
@@ -276,12 +277,7 @@ def _occurrences(text: str, quote: str) -> list[Span]:
     typography-tolerant pattern built from the quote's own characters, which
     keeps `char_range` meaningful against the committed sidecar.
     """
-    from .model import _TYPOGRAPHIC  # noqa: PLC0415 — private, deliberately not re-exported
-
-    equivalents: dict[str, str] = {}
-    for odd, plain in _TYPOGRAPHIC.items():
-        equivalents.setdefault(plain, "")
-        equivalents[plain] += odd
+    equivalents = typographic_equivalents()
 
     pieces: list[str] = []
     for char in normalise(quote):

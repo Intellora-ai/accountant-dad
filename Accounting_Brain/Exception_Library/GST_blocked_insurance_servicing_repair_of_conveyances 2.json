@@ -1,0 +1,62 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-AB",
+  "status": "VERIFIED",
+  "if": [
+    "the inward supply is a service of GENERAL INSURANCE, SERVICING, REPAIR OR MAINTENANCE",
+    "in so far as it relates to a motor vehicle, vessel or aircraft referred to in clause (a) or clause (aa)",
+    "AND the conveyance is not used for the purposes specified in those clauses",
+    "AND the recipient is not a taxable person engaged in manufacturing such conveyances or in supplying general insurance services in respect of such conveyances insured by him"
+  ],
+  "then": "input tax credit is NOT AVAILABLE on that service",
+  "source_section": "CGST Act s.17(5)(ab)",
+  "note": "The block follows the asset: if the conveyance is blocked, so is its insurance, servicing, repair and maintenance. Two escape routes exist \u2014 the conveyance being used for a purpose specified in clause (a) or (aa), or the recipient being a manufacturer of such conveyances or an insurer of them. Note the second route is defined by WHO receives the service, not by how the vehicle is used. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this clause; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(ab)",
+      "quote": "services of general insurance, servicing, repair and maintenance in so far as they relate to motor vehicles, vessels or aircraft referred to in clause (a) or clause (aa):"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(ab), proviso",
+      "quote": "Provided that the input tax credit in respect of such services shall be available"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(ab), proviso (i)",
+      "quote": "where the motor vehicles, vessels or aircraft referred to in clause (a) or clause (aa) are used for the purposes specified therein;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(ab), proviso (ii)",
+      "quote": "where received by a taxable person engaged"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(ab), proviso (ii)(I)",
+      "quote": "in the manufacture of such motor vehicles, vessels or aircraft; or"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(ab), proviso (ii)(II)",
+      "quote": "in the supply of general insurance services in respect of such motor",
+      "extraction_note": "A page break interrupts this sub-clause in the extracted text, so the remainder is quoted separately."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(ab), proviso (ii)(II), continued",
+      "quote": "vehicles, vessels or aircraft insured by him;"
+    }
+  ]
+}

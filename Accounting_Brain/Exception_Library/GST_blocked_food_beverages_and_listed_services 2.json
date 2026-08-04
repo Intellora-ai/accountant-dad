@@ -1,0 +1,45 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-B-I",
+  "status": "VERIFIED",
+  "if": [
+    "the inward supply is FOOD AND BEVERAGES, OUTDOOR CATERING, BEAUTY TREATMENT, HEALTH SERVICES, COSMETIC AND PLASTIC SURGERY, LEASING, RENTING OR HIRING of motor vehicles, vessels or aircraft referred to in clause (a) or clause (aa) except when used for the purposes specified therein, LIFE INSURANCE or HEALTH INSURANCE",
+    "AND that inward supply is NOT used by the registered person for making an outward TAXABLE supply of the SAME CATEGORY of goods or services, nor as an element of a taxable composite or mixed supply"
+  ],
+  "then": "input tax credit is NOT AVAILABLE on that supply",
+  "source_section": "CGST Act s.17(5)(b)(i)",
+  "note": "The heaviest single blocked entry in practice \u2014 staff canteen, client entertainment, hired cars, group health cover all sit here. The escape is narrow and category-matched: a restaurant may credit food inputs because its OUTWARD supply is food; a factory may not credit its canteen, because its outward supply is not food. The 'element of a taxable composite or mixed supply' limb is the second escape. A separate proviso covering statutory obligation on the employer attaches to sub-clause (iii), not to this one. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this clause; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(b)",
+      "quote": "the following supply of goods or services or both"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(b)(i)",
+      "quote": "food and beverages, outdoor catering, beauty treatment, health services, cosmetic and plastic surgery, leasing, renting or hiring of motor vehicles, vessels or aircraft referred to in clause (a) or clause (aa) except when used for the purposes specified therein, life insurance and health insurance:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(b)(i), proviso",
+      "quote": "Provided that the input tax credit in respect of such goods or services or both sh",
+      "extraction_note": "A page break splits the word 'shall' in the extracted text, leaving 'sh' at the foot of one page and 'all' at the head of the next. The proviso is therefore quoted in two parts around the break; the text is not repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(b)(i), proviso, continued",
+      "quote": "be available where an inward supply of such goods or services or both is used by a registered person for making an outward taxable supply of the same category of goods or services or both or as an element of a taxable composite or mixed supply;"
+    }
+  ]
+}

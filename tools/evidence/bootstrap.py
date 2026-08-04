@@ -27,10 +27,10 @@ machine can state the gap precisely instead of failing with a stack trace.
 from __future__ import annotations
 
 import argparse
+import http.client
 import pathlib
 import sys
-import urllib.error
-import urllib.request
+import urllib.parse
 
 from .model import CitationError
 from .registry import SOURCES, Document, Registry
@@ -41,20 +41,44 @@ USER_AGENT = "accountant-dad-evidence-bootstrap/1.0 (+source verification)"
 
 TIMEOUT_SECONDS = 120
 
+#: Manifest URLs are data, and data is untrusted (Law 23). Checking the scheme
+#: before opening is both the real fix and the reason no lint suppression is
+#: needed here: `file://` would read a local path and `ftp://` an
+#: unauthenticated host, either while looking exactly like a download.
+ALLOWED_SCHEMES = frozenset({"http", "https"})
+
+#: A redirect is remote input too. Bounded, and each hop re-checked.
+MAX_REDIRECTS = 5
+REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+
 
 def fetch(document: Document, destination: pathlib.Path | None = None) -> None:
-    """Download one document and keep it only if its bytes match the manifest."""
+    """Download one document and keep it only if its bytes match the manifest.
+
+    Uses `http.client` directly rather than `urllib.request`. That is not
+    stylistic: `urlopen` resolves a URL through a global opener carrying
+    `file:`, `ftp:` and `data:` handlers, so a manifest entry reading
+    `file:///etc/passwd` would be loaded from disk and hashed while looking
+    exactly like a download. A manifest is data, and data is untrusted (Law 23).
+
+    `http.client` cannot express those schemes at all. The protection is
+    structural — there is no handler to reach — rather than a guard that the
+    next call site can forget. It also means no lint suppression is needed,
+    which matters because a CI gate blocks any increase in those.
+    """
     target = destination or document.path
     target.parent.mkdir(parents=True, exist_ok=True)
 
-    request = urllib.request.Request(  # noqa: S310 — manifest URLs, checksum-verified below
-        document.url, headers={"User-Agent": USER_AGENT}
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:  # noqa: S310
-            payload = response.read()
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise CitationError(f"could not fetch {document.file} from {document.url}: {exc}") from exc
+    parts = urllib.parse.urlparse(document.url)
+    if parts.scheme not in ALLOWED_SCHEMES:
+        raise CitationError(
+            f"{document.file} declares a {parts.scheme or 'schemeless'} URL: "
+            f"{document.url}. Only {', '.join(sorted(ALLOWED_SCHEMES))} are fetched."
+        )
+    if not parts.hostname:
+        raise CitationError(f"{document.file} declares a URL with no host: {document.url}")
+
+    payload = _get(parts)
 
     target.write_bytes(payload)
     actual = document.actual_sha256()
@@ -66,6 +90,46 @@ def fetch(document: Document, destination: pathlib.Path | None = None) -> None:
             f"a document that is present and wrong is more dangerous than one that is "
             f"absent, because absence is visible and a wrong version is not."
         )
+
+
+def _get(parts: urllib.parse.ParseResult, hops: int = 0) -> bytes:
+    """One GET, following redirects only to schemes and hosts we would accept."""
+    if hops > MAX_REDIRECTS:
+        raise CitationError(f"more than {MAX_REDIRECTS} redirects starting at {parts.geturl()}")
+
+    connection: http.client.HTTPConnection
+    if parts.scheme == "https":
+        connection = http.client.HTTPSConnection(parts.netloc, timeout=TIMEOUT_SECONDS)
+    else:
+        connection = http.client.HTTPConnection(parts.netloc, timeout=TIMEOUT_SECONDS)
+
+    path = parts.path or "/"
+    if parts.query:
+        path = f"{path}?{parts.query}"
+
+    try:
+        connection.request("GET", path, headers={"User-Agent": USER_AGENT})
+        response = connection.getresponse()
+        if response.status in REDIRECT_STATUSES:
+            location = response.headers.get("Location", "")
+            response.read()
+            if not location:
+                raise CitationError(f"{parts.geturl()} redirected with no Location header")
+            moved = urllib.parse.urlparse(urllib.parse.urljoin(parts.geturl(), location))
+            if moved.scheme not in ALLOWED_SCHEMES:
+                raise CitationError(
+                    f"{parts.geturl()} redirected to a {moved.scheme or 'schemeless'} URL: "
+                    f"{moved.geturl()}. A redirect is remote input and is refused the same way."
+                )
+            connection.close()
+            return _get(moved, hops + 1)
+        if response.status != http.HTTPStatus.OK:
+            raise CitationError(f"{parts.geturl()} returned HTTP {response.status}")
+        return response.read()
+    except (OSError, http.client.HTTPException, TimeoutError) as exc:
+        raise CitationError(f"could not fetch {parts.geturl()}: {exc}") from exc
+    finally:
+        connection.close()
 
 
 def report_missing(missing: list[Document]) -> str:
