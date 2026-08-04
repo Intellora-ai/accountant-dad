@@ -45,3 +45,6 @@ mutants/
 
 # Downloaded primary sources are large and re-fetchable; the manifest pins them.
 Accounting_Brain/Evidence_Library/sources/*.pdf
+
+# Agent worktrees and local session state. Never repository content.
+.claude/
