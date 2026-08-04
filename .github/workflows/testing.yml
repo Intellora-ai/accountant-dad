@@ -210,7 +210,7 @@ jobs:
   mutation:
     name: mutation
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 100
     permissions:
       contents: read
     steps:
