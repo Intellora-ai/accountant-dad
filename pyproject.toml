@@ -123,4 +123,17 @@ do_not_mutate = [
     "*/engines/*/stub.py",
     "*/brain/stub.py",
 ]
-also_copy = ["tools/ci", "docs", ".github", "pyproject.toml", "requirements-ci.txt"]
+also_copy = [
+    "tools/ci",
+    # The citation verifier. `tests/conftest.py` puts the repo root on sys.path
+    # so `tools.evidence` imports; under mutation the root IS `mutants/`, so
+    # without this copy the whole suite fails to collect with
+    # `ModuleNotFoundError: No module named 'tools.evidence'` — which mutmut
+    # scores as every mutant surviving. Found on CI, not locally: the local run
+    # resolves against the real tree and never notices.
+    "tools/evidence",
+    "docs",
+    ".github",
+    "pyproject.toml",
+    "requirements-ci.txt",
+]
