@@ -61,6 +61,41 @@ PERMITTED_MODULES = {
 #: cannot slip past by decorating the name.
 FROZEN_MARKERS = ("engine", "accounting", "tax", "llm", "openai", "anthropic", "tally", "brain")
 
+#: The P3 stubs, authorized by the user on 2026-08-04: *"Build src/brain/
+#: skeleton. Build Engine 1-6 stubs."*
+#:
+#: These paths sit inside directories `FROZEN_MARKERS` covers, so they are named
+#: here one by one rather than admitted by a pattern. `BLUEPRINT:100` schedules
+#: engine stubs at P3 and `:99` schedules the Brain stub at P3; `:86` — the stub
+#: *"proves the seam without knowledge. Engines call it and it answers
+#: structurally; nothing is faked as accounting truth."*
+#:
+#: An exhaustive list, not a rule, because the exhaustive form is the one that
+#: makes a seventh engine or a second brain module VISIBLE. A pattern like
+#: "anything called stub.py" would admit code nobody reviewed.
+#:
+#: `engines/tally_engine` keeps that name deliberately: `ENGINE_6:19` — the
+#: architectural name is Execution Engine, the folder is locked and *"identities
+#: are part of the system contract and are never renamed once other engines
+#: reference them."*
+AUTHORIZED_STUBS = {
+    "brain/__init__",
+    "brain/stub",
+    "engines/__init__",
+    "engines/input_engine/__init__",
+    "engines/input_engine/stub",
+    "engines/understanding_engine/__init__",
+    "engines/understanding_engine/stub",
+    "engines/accounting_engine/__init__",
+    "engines/accounting_engine/stub",
+    "engines/clarification_engine/__init__",
+    "engines/clarification_engine/stub",
+    "engines/validation_engine/__init__",
+    "engines/validation_engine/stub",
+    "engines/tally_engine/__init__",
+    "engines/tally_engine/stub",
+}
+
 
 def package_modules() -> set[str]:
     """Every module in the package, by its path relative to the package root."""
@@ -81,7 +116,7 @@ def test_package_imports_and_exposes_a_version() -> None:
 
 
 def test_every_module_is_on_the_permitted_list() -> None:
-    unlisted = sorted(package_modules() - PERMITTED_MODULES)
+    unlisted = sorted(package_modules() - PERMITTED_MODULES - AUTHORIZED_STUBS)
     assert unlisted == [], (
         f"module(s) not on the Amendment 2 permitted list: {unlisted}. "
         "Add the name here deliberately, or the freeze was crossed by accident."
@@ -89,12 +124,71 @@ def test_every_module_is_on_the_permitted_list() -> None:
 
 
 def test_no_module_belongs_to_a_still_frozen_category() -> None:
-    offenders = frozen_named(package_modules())
+    offenders = frozen_named(package_modules() - AUTHORIZED_STUBS)
     assert offenders == [], (
         f"module(s) named for a still-frozen category: {offenders}. Engine "
         "reasoning, accounting logic, tax logic, AI calls and Tally posting "
         "stay frozen until their scheduled phase (CLAUDE.md §P)."
     )
+
+
+def test_the_stub_allowlist_admits_only_stubs_and_only_where_stubs_belong() -> None:
+    """The list is the hole, so the list is what gets constrained.
+
+    Without this, `AUTHORIZED_STUBS` is a place to park anything: adding
+    `engines/accounting_engine/tax_rules` would sail past both tests above and
+    put tax logic in the package while the freeze still covers it.
+
+    Two constraints, both structural. A stub lives under `engines/` or `brain/`,
+    and it is called `stub` or `__init__` — nothing else. `stub.py` is where
+    `BLUEPRINT:86` puts a thing that "answers structurally" without knowledge;
+    a file called anything else is claiming to do something a stub does not.
+    """
+    misplaced = sorted(
+        name for name in AUTHORIZED_STUBS if not (name.startswith(("engines/", "brain/")))
+    )
+    assert misplaced == [], (
+        f"outside engines/ and brain/: {misplaced}. The stub allowlist exists "
+        "for the two directories the freeze covers, not as a general exemption."
+    )
+
+    not_a_stub = sorted(
+        name for name in AUTHORIZED_STUBS if name.rsplit("/", 1)[-1] not in {"stub", "__init__"}
+    )
+    assert not_a_stub == [], (
+        f"not a stub: {not_a_stub}. A stub is `stub.py` or a package `__init__`. "
+        "Anything else is engine reasoning, which CLAUDE.md §P still freezes."
+    )
+
+
+def test_the_stub_allowlist_covers_six_engines_and_one_brain() -> None:
+    """Six engines, no more (`ENGINE_2:307` — do not add new sub-engines; the
+    same rule holds at engine level). A seventh entry here is an architecture
+    change wearing a test edit."""
+    engine_dirs = {
+        name.split("/")[1]
+        for name in AUTHORIZED_STUBS
+        if name.startswith("engines/") and name.count("/") > 1
+    }
+    assert engine_dirs == {
+        "input_engine",
+        "understanding_engine",
+        "accounting_engine",
+        "clarification_engine",
+        "validation_engine",
+        # ENGINE_6:19 — architectural name Execution Engine, folder locked.
+        "tally_engine",
+    }
+    assert {name for name in AUTHORIZED_STUBS if name.startswith("brain/")} == {
+        "brain/__init__",
+        "brain/stub",
+    }
+
+
+def test_an_authorized_stub_is_never_also_on_the_permitted_list() -> None:
+    """Two lists granting the same path would let one quietly outlive the other
+    when the stubs are replaced by real engines at P4."""
+    assert not AUTHORIZED_STUBS & PERMITTED_MODULES
 
 
 def test_the_permitted_list_cannot_silently_cover_a_frozen_category() -> None:
