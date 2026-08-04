@@ -46,7 +46,7 @@ data**, Engine 1 runs in measurement mode: it records every signal, and gates no
 | 12 | `capture_fidelity_floor` | Lowest capture-fidelity score for a typed Human Business Description | `P` | more human notes refused as poorly captured | more poorly captured notes treated as faithful |
 | 13 | `document_score_rule` | **How per-field scores combine into one document score** | named rule: `min` · `product` · `weighted_mean` · `worst_k` | — | — |
 | 14 | `document_score_weights` | Per-field weights, only if #13 is `weighted_mean` | map field → weight, sum `1.0000` | — | — |
-| 15 | `worst_k` | How many worst fields the document score uses, only if #13 is `worst_k` | `N` | closer to the true worst case | closer to an average, hiding a single bad field |
+| 15 | `worst_k` | How many worst fields the document score uses, only if #13 is `worst_k` | `N` | **closer to an average, hiding a single bad field** | **closer to the true worst case** (`k=1` IS the minimum) |
 | 16 | `processing_budget_ms` | Wall-clock budget per document before Engine 1 reports a timeout | `ms` | slower documents allowed to finish | faster failure; complex documents abandoned |
 
 ---
@@ -64,6 +64,65 @@ existence either. They are Law 54 gaps and need a decision, not a number.
 
 **Until #13 has a rule, #1–#12 cannot be calibrated**, because there is no document score to
 calibrate against.
+
+### CORRECTION, 2026-08-05 — row #15 was inverted, and dangerously
+
+The two effect columns for `worst_k` were the wrong way round. As first written, the table
+told the reader that **raising** `k` moved toward the true worst case. The opposite is true:
+
+```
+k = 1   IS the minimum          the true worst case
+k = n   IS the arithmetic mean  full compensation
+orness(k, n) = (k-1) / (2(n-1))    compensation RISES with k, linearly, from k=2
+```
+
+Anyone signing off from the original table would have set `k` **high** believing that was the
+conservative choice — on the single parameter that decides whether one misread GSTIN is
+visible or averaged away. Corrected above. Recorded rather than quietly edited, because a
+sign-off document that silently changes meaning is worse than one that was wrong out loud.
+
+### What the research settled without any data — six methods, four eliminated
+
+The elimination is a **named theorem**, not a preference. Marichal & Mesiar,
+*Meaningful aggregation functions mapping ordinal scales into an ordinal scale*
+(Aequationes Math. 77(3), 2009), Corollary 5.7 — first proved by Orlov (1981):
+
+> A symmetric, continuous, idempotent function on an ordinal scale is comparison meaningful
+> **iff it is an order statistic function.**
+
+Mean, product, Bayesian pooling and Dempster–Shafer combination are not order statistics.
+On an ordinal scale they are not merely inaccurate — their **ordering flips** under a
+transformation the data permits. Product fails even at the interval level: `φ(x) = x + 1`
+reverses which of two documents ranks higher.
+
+```
+ELIMINATED on measurement scale     product · weighted_mean
+ELIMINATED, no estimable likelihood  Bayesian      (the missing piece is p(s | wrong),
+                                                   which needs observed wrong readings)
+ELIMINATED, unmeasurable parameter   Dempster-Shafer  (output is ~24x more sensitive to
+                                                   the invented ignorance mass than to
+                                                   the measured evidence, under conflict)
+SURVIVING                            min · worst_k
+```
+
+**One correction to the owner's framing, and it matters.** The ordinal argument does not
+leave `min` alone — it leaves the whole order-statistic family, so `{min, worst_k}` both
+survive. Choosing between them is a policy question about how much compensation to buy,
+and it needs data.
+
+**And a second, sharper finding: `min` is not free either.** The same paper, Corollary 6.2 —
+on **independent** ordinal scales, the only comparison-meaningful function is a *projection*
+onto one coordinate. OCR, table-structure and document-type are three different instruments.
+Using `min` across them asserts **commensurability**: that an OCR 0.70 is the same amount of
+doubt as a table-structure 0.70. That claim is strictly stronger than ordinality, is not
+implied by it, and can only be established with labelled data.
+
+### The consequence for the architecture
+
+`min ≥ t` is *identically* `∀i : c_i ≥ t`. The document scalar adds nothing that per-field
+floors do not already carry — and it creates a false affordance, inviting someone downstream
+to average it, compare it across documents, or threshold it, all of which are meaningless on
+this scale. This is the owner's A5 position, reached independently by the research.
 
 ---
 
