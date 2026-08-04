@@ -106,6 +106,34 @@ def claims() -> list[tuple[pathlib.Path, dict[str, object]]]:
     return found
 
 
+def check_evidence(item: object, recorded: dict[str, dict[str, str]]) -> list[str]:
+    """Everything wrong with ONE evidence entry. Empty list means it holds up.
+
+    Split out of `main` so each refusal is testable on its own, and so adding a
+    new one does not push the caller past its branch budget — a limit that
+    exists to stop exactly the kind of sprawling function this was becoming.
+    """
+    if not isinstance(item, dict):
+        return ["evidence entry is not an object"]
+
+    filename = str(item.get("file", ""))
+    quote = str(item.get("quote", ""))
+    if not filename or not quote:
+        return ["evidence needs both `file` and `quote`"]
+
+    local = SOURCES / filename
+    if not local.is_file():
+        return [f"cites {filename}, which is not downloaded"]
+    if filename in recorded and sha256(local) != recorded[filename].get("sha256"):
+        return [f"{filename} no longer matches its recorded hash"]
+    if normalise(quote) not in normalise(extracted_text(local)):
+        return [
+            f"quote NOT FOUND in {filename} — {quote[:70]!r}. "
+            "Record it as NO AUTHORITATIVE SOURCE FOUND rather than asserting it."
+        ]
+    return []
+
+
 def main() -> int:
     failures: list[str] = []
     tally: dict[str, int] = {}
@@ -128,27 +156,7 @@ def main() -> int:
             continue
 
         for item in evidence:
-            if not isinstance(item, dict):
-                failures.append(f"{label}: evidence entry is not an object")
-                continue
-            filename = str(item.get("file", ""))
-            quote = str(item.get("quote", ""))
-            local = SOURCES / filename
-
-            if not filename or not quote:
-                failures.append(f"{label}: evidence needs both `file` and `quote`")
-                continue
-            if not local.is_file():
-                failures.append(f"{label}: cites {filename}, which is not downloaded")
-                continue
-            if filename in recorded and sha256(local) != recorded[filename].get("sha256"):
-                failures.append(f"{label}: {filename} no longer matches its recorded hash")
-                continue
-            if normalise(quote) not in normalise(extracted_text(local)):
-                failures.append(
-                    f"{label}: quote NOT FOUND in {filename} — {quote[:70]!r}. "
-                    "Record it as NO AUTHORITATIVE SOURCE FOUND rather than asserting it."
-                )
+            failures.extend(f"{label}: {problem}" for problem in check_evidence(item, recorded))
 
     for status, count in sorted(tally.items()):
         print(f"  {status:28} {count}")
