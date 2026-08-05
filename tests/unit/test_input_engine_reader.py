@@ -35,12 +35,14 @@ from __future__ import annotations
 import ast
 import importlib.util
 import inspect
+import io
 import pathlib
 from decimal import Decimal
 from typing import Protocol, cast
 
 import pymupdf
 import pytest
+from PIL import Image
 
 from accountant_dad.engines.input_engine import reader
 
@@ -385,6 +387,123 @@ def test_render_pdf_pages_raises_on_an_unopenable_pdf() -> None:
         reader._render_pdf_pages(b"not a pdf at all", render_dpi=FIXTURE_DPI)
 
 
+def test_render_pdf_pages_error_message_names_the_reason_completely() -> None:
+    """§J.2 - assert the real result, not merely that SOME error fired."""
+    with pytest.raises(reader.UnreadableDocumentError) as raised:
+        reader._render_pdf_pages(b"not a pdf at all", render_dpi=FIXTURE_DPI)
+
+    assert str(raised.value).startswith("the bytes supplied could not be opened as a PDF: ")
+
+
+def test_render_pdf_pages_declares_pdf_the_callers_dpi_and_png_to_pymupdf(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """PyMuPDF tolerates ANY filetype string and either case of the output
+    format for a real stream - measured directly against this exact fixture:
+    'pdf', 'PDF' and 'XXpdfXX' all open it identically, and 'png'/'PNG' render
+    byte-identical output. A wrong literal is therefore invisible in the return
+    value, and the corrupt-DPI case is likewise invisible - PyMuPDF accepts
+    `dpi=None` without raising. The only way to prove the CALLER's DPI, 'pdf'
+    and 'png' are the exact values actually used is to record what reaches the
+    real, unmocked PyMuPDF call - every one of the three still runs for real
+    underneath (`CLAUDE.md` §J.6/§J.7 - fake only at the narrowest I/O edge,
+    and even here nothing is faked, only observed on the way through).
+    """
+    filetype_calls: list[str] = []
+    dpi_calls: list[int] = []
+    format_calls: list[str] = []
+    real_open_pdf = reader._open_pdf
+
+    class _RecordedPixmap:
+        def __init__(self, real: reader._Pixmap) -> None:
+            self._real = real
+
+        def tobytes(self, output: str) -> bytes:
+            format_calls.append(output)
+            return self._real.tobytes(output)
+
+    class _RecordedPage:
+        def __init__(self, real: reader._PdfPage) -> None:
+            self._real = real
+
+        def get_pixmap(self, *, dpi: int) -> _RecordedPixmap:
+            dpi_calls.append(dpi)
+            return _RecordedPixmap(self._real.get_pixmap(dpi=dpi))
+
+    class _RecordedDocument:
+        def __init__(self, real: reader._PdfDocument) -> None:
+            self._real = real
+
+        @property
+        def page_count(self) -> int:
+            return self._real.page_count
+
+        def __getitem__(self, index: int) -> _RecordedPage:
+            return _RecordedPage(self._real[index])
+
+        def close(self) -> None:
+            self._real.close()
+
+    def spy_open_pdf(*, stream: bytes, filetype: str) -> _RecordedDocument:
+        filetype_calls.append(filetype)
+        return _RecordedDocument(real_open_pdf(stream=stream, filetype=filetype))
+
+    monkeypatch.setattr(reader, "_open_pdf", spy_open_pdf)
+
+    pages = reader._render_pdf_pages(an_image_only_pdf(), render_dpi=FIXTURE_DPI)
+
+    assert filetype_calls == ["pdf"]
+    assert dpi_calls == [FIXTURE_DPI]
+    assert format_calls == ["png"]
+    assert pages[0].startswith(b"\x89PNG\r\n\x1a\n")
+
+
+# ── `_decode_image`: PIL/numpy only, reachable without a recogniser ───────
+#
+# Like `_render_pdf_pages` above, `reader.read` only reaches `_decode_image`'s
+# result on the OCR path (needs PaddleOCR, absent here) - but the IMAGE branch
+# of `reader.read` also calls it directly, before OCR, purely to fail fast on
+# undecodable bytes. Called directly it performs no recognition at all, so it
+# is real logic tested for real, without the OCR guard.
+
+
+def an_rgba_png() -> bytes:
+    """A real PNG carrying a genuine alpha channel.
+
+    PIL decodes this natively as RGBA (4 channels), not RGB - measured
+    directly: `Image.open(...).convert(None)` on this exact fixture returns
+    the ORIGINAL 4-channel data unchanged. So this is the fixture that actually
+    exercises `.convert("RGB")` rather than accepting it for free; an RGB
+    source would decode to 3 channels whether or not the conversion ran.
+    """
+    image = Image.new("RGBA", (4, 3), color=(200, 50, 25, 128))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def test_decode_image_converts_every_native_mode_to_true_three_channel_rgb() -> None:
+    """§1.2/module docstring - PaddleOCR is handed 'an RGB array'. Not RGBA."""
+    decoded = reader._decode_image(an_rgba_png())
+
+    assert decoded.shape == (3, 4, 3), (
+        f"expected height=3, width=4, 3 channels (true RGB); got shape {decoded.shape}"
+    )
+
+
+def test_a_corrupt_image_error_message_names_every_reason_completely() -> None:
+    """§J.2 - assert the real result, not merely that SOME error fired."""
+    with pytest.raises(reader.UnreadableDocumentError) as raised:
+        reader._decode_image(b"this is plainly not an image")
+
+    message = str(raised.value)
+    assert message.startswith("the bytes supplied could not be decoded as an image: ")
+    assert message.endswith(
+        "Raised rather than returned as an empty reading - a file that could "
+        "not be opened and a page with nothing on it are different answers."
+    )
+
+
 # ── blank pages: zero regions, never invented text ────────────────────────
 
 
@@ -626,6 +745,35 @@ def test_vision_fallback_names_the_lowest_score_and_the_threshold() -> None:
     # the LOWEST score, not the first, not the highest, not an average
     assert "0.2000" in str(raised.value)
     assert "0.5000" in str(raised.value)
+
+
+def test_the_vision_fallback_message_names_every_reason_completely() -> None:
+    """§J.2 - the exact result, not merely that VisionFallbackUnavailableError fired.
+
+    Pins every one of the five literal segments the message is assembled from,
+    so a mutation to any one of them - a changed word, a flipped case, a
+    fragment silently dropped or wrapped - turns this test red, not merely
+    'some `VisionFallbackUnavailableError` was raised'.
+    """
+    low = reader.TextRegion(
+        text="a",
+        location=reader.SourceLocation(page_index=0, left=0.0, top=0.0, right=1.0, bottom=1.0),
+        extraction_confidence=Decimal("0.2000"),
+    )
+    reading = reader.Reading(regions=(low,), backend=reader.Backend.OCR, pages_read=1)
+
+    with pytest.raises(reader.VisionFallbackUnavailableError) as raised:
+        reader._vision_fallback(reading, Decimal("0.5000"))
+
+    assert str(raised.value) == (
+        "OCR returned a region scored 0.2000, below the supplied vision-fallback "
+        "threshold 0.5000, so the Gemini Vision fallback was reached. It cannot "
+        "run: TECHNOLOGY_STACK.md records no API key for it, and records the trigger "
+        "threshold as 'UNKNOWN - REQUIRES A NUMBER FROM THE OWNER'. The OCR reading is "
+        "deliberately NOT returned in its place - a caller who asked for the fallback "
+        "and silently received the reading it was meant to replace would have no way "
+        "to know which backend produced the evidence."
+    )
 
 
 def test_vision_fallback_reports_no_lowest_score_when_no_region_scored() -> None:
