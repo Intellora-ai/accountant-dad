@@ -686,25 +686,61 @@ def test_parser_produces_no_expected_field_list_so_missing_fields_is_always_empt
     assert pipeline.missing_fields(structure) == ()
 
 
-# ── rasterisation for cleaner: identity for an image, a real render for a PDF ─
+# ── ONE pipeline: every stage reads the CLEANED artifact ──────────────────
+#
+# These replace two tests of `rasterise_first_page_for_cleaning`, a legacy
+# adapter that existed only because `cleaner` emitted a bitmap and could not
+# take a PDF. The F-017 migration removed the reason for it, so the adapter is
+# deleted and these pin the architecture that replaced it.
 
 
-def test_rasterise_is_the_identity_function_for_an_image() -> None:
-    raw = a_tiny_png()
-    intake = a_document_intake(document=raw, media_type=reader.MediaType.IMAGE)
+def test_the_pipeline_reads_the_cleaned_document_not_the_original() -> None:
+    """The bypass F-012 recorded, now impossible to reintroduce silently.
 
-    assert pipeline.rasterise_first_page_for_cleaning(intake, render_dpi=RENDER_DPI) == raw
+    `run` hands `reader` and `parser` the CLEANED artifact's payload. Before
+    the migration each re-opened `intake.document`, correctly, because the
+    cleaned form was a bitmap and reading a bitmap of a PDF destroys its text
+    layer. This asserts on the source text of `run` itself, because the defect
+    is structural: a future edit passing `intake.document` to a later stage
+    would restore two pipelines while every behavioural test still passed.
+    """
+    source = inspect.getsource(pipeline.run)
+    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
+        pytest.skip(
+            "mutmut rewrote this module in its `mutants/` copy, so the source read "
+            "here is the instrumentation rather than ours. Skipped under mutation "
+            "only; it runs in every ordinary suite."
+        )
+
+    after_cleaner = source.split("_payload_of(cleaned)", 1)[1]
+    assert "intake.document" not in after_cleaner, (
+        "no stage after `cleaner` may read the ORIGINAL document. Every one must "
+        "read the cleaned artifact's payload, or there are two pipelines again."
+    )
 
 
-def test_rasterise_produces_bytes_cleaner_can_decode_for_a_pdf() -> None:
-    intake = a_document_intake(document=an_invoice_pdf(), media_type=reader.MediaType.PDF)
+def test_a_missing_artifact_fails_loudly_rather_than_falling_back() -> None:
+    """A fallback to `intake.document` would reinstate the bypass while every
+    behavioural test kept passing — the exact shape of a false green (§J.(a)).
+    """
+    without_artifact = cleaner.CleanedDocument(
+        original=np.zeros((1, 1), dtype=np.uint8),
+        cleaned=np.zeros((1, 1), dtype=np.uint8),
+        quality_observations=(),
+        preservation_status=cleaner.PreservationStatus.CLEANED_IS_SAFER,
+        artifact=None,
+    )
 
-    rasterised = pipeline.rasterise_first_page_for_cleaning(intake, render_dpi=RENDER_DPI)
+    with pytest.raises(pipeline.PipelineError, match="no media-aware artifact"):
+        pipeline._payload_of(without_artifact)
 
-    # defect 2, the positive side: cleaner.decode raises on the raw PDF bytes
-    # (proven separately below) and succeeds on what this function returns.
-    image = cleaner.decode(rasterised)
-    assert image.ndim in (2, 3)
+
+def test_the_legacy_rasterisation_adapter_is_gone() -> None:
+    """It existed only because `cleaner` could not take a PDF. That is fixed,
+    so the adapter is dead code and dead code that still imports cleanly is the
+    kind that gets called again by mistake.
+    """
+    assert not hasattr(pipeline, "rasterise_first_page_for_cleaning")
 
 
 def test_cleaner_cannot_decode_a_raw_pdf_directly() -> None:

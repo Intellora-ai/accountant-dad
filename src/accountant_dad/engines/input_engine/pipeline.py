@@ -311,27 +311,30 @@ class DocumentIntake:
             )
 
 
-def rasterise_first_page_for_cleaning(intake: DocumentIntake, *, render_dpi: int) -> bytes:
-    """Bytes `cleaner.decode` can actually decode. See the module docstring,
-    defect 2.
+#: The caller declares a `reader.MediaType`; `cleaner` speaks `MediaKind`. One
+#: mapping, in one place, so the two vocabularies cannot drift.
+_MEDIA_KIND: dict[reader.MediaType, cleaner.MediaKind] = {
+    reader.MediaType.PDF: cleaner.MediaKind.PDF,
+    reader.MediaType.IMAGE: cleaner.MediaKind.IMAGE,
+}
 
-    For an image this is the identity function — `cleaner.decode` already
-    accepts the caller's bytes directly, and `cv2.imdecode` recognises
-    ordinary raster formats. For a PDF, `cleaner.decode` raises on the raw
-    bytes unconditionally (measured; PDF is not a format its codecs
-    recognise), so this renders ONLY the first page to a PNG with PyMuPDF, at
-    the caller's own `render_dpi` — the same number `reader.read` already
-    requires for the identical operation on its own OCR-fallback path, never a
-    second number invented here.
+
+def _payload_of(cleaned: cleaner.CleanedDocument) -> bytes:
+    """The cleaned artifact's own bytes, or a loud failure.
+
+    `clean_artifact` always sets `artifact`; this refuses rather than falling
+    back to the original, because falling back is precisely the bypass this
+    migration removed. A silent fallback would restore the two-pipeline
+    architecture while every test still passed (Law 11, §J.(a)).
     """
-    if intake.media_type is reader.MediaType.IMAGE:
-        return intake.document
-    opened = _open_pdf(stream=intake.document, filetype="pdf")
-    try:
-        page = opened[0]
-        return bytes(page.get_pixmap(dpi=render_dpi).tobytes("png"))
-    finally:
-        opened.close()
+    if cleaned.artifact is None:
+        raise PipelineError(
+            "cleaner returned no media-aware artifact. The pipeline reads the "
+            "CLEANED document, never the original, so there is nothing safe to "
+            "continue with. Refused rather than silently re-reading the intake, "
+            "which would reinstate the bypass that F-017 removed."
+        )
+    return cleaned.artifact.payload
 
 
 def region_readings(reading: reader.Reading) -> tuple[confidence_report.RegionReading, ...]:
@@ -520,16 +523,27 @@ def run(
     preserved = PipelinePartialResult()
 
     try:
-        rasterised = rasterise_first_page_for_cleaning(intake, render_dpi=settings.render_dpi)
-        image = cleaner.decode(rasterised)
-        cleaned = cleaner.clean(image, settings.cleaner_settings)
+        cleaned = cleaner.clean_artifact(
+            intake.document,
+            _MEDIA_KIND[intake.media_type],
+            settings.cleaner_settings,
+            render_dpi=settings.render_dpi,
+        )
     except Exception as exc:
         raise PipelineStageError("cleaner", exc, preserved) from exc
     preserved = replace(preserved, cleaned=cleaned)
 
+    # THE ONE PIPELINE. Everything below reads the CLEANED artifact, never
+    # `intake.document`. Before the F-017 migration each stage re-opened the
+    # original, because `cleaner` emitted a bitmap and reading a bitmap of a
+    # PDF destroys its text layer — so bypassing was correct and the type was
+    # wrong. `CleanedArtifact.payload` is the artifact in its own format, so
+    # there is no longer any reason to bypass, and no path that does.
+    cleaned_document = _payload_of(cleaned)
+
     try:
         reading = reader.read(
-            intake.document,
+            cleaned_document,
             media_type=intake.media_type,
             render_dpi=settings.render_dpi,
             vision_fallback_threshold=settings.vision_fallback_threshold,
@@ -539,7 +553,7 @@ def run(
     preserved = replace(preserved, reading=reading)
 
     try:
-        parsed = _parse_document(intake, settings)
+        parsed = _parse_document(cleaned_document, intake, settings)
     except Exception as exc:
         raise PipelineStageError("parser", exc, preserved) from exc
     preserved = replace(preserved, parsed=parsed)
@@ -573,18 +587,21 @@ def run(
         raise PipelineStageError("assembly", exc, preserved) from exc
 
 
-def _parse_document(intake: DocumentIntake, settings: PipelineSettings) -> parser.ParsedStructure:
-    """Materialise `intake.document` to a real file and hand it to
-    `parser.parse`, which needs a `pathlib.Path` (see the module docstring,
-    defect 1 — `parser` opens the document itself; it does not consume
-    `reader`'s output). The temporary file is removed whether `parser.parse`
-    succeeds or raises; it is bookkeeping for this call only, never part of
-    what a caller can inspect.
+def _parse_document(
+    document: bytes, intake: DocumentIntake, settings: PipelineSettings
+) -> parser.ParsedStructure:
+    """Materialise the CLEANED document and hand it to `parser.parse`.
+
+    `document` is `CleanedArtifact.payload`, never `intake.document` — that is
+    the whole point of the F-017 migration and the reason this parameter
+    exists at all. Docling needs a real path, so the bytes are written to a
+    temporary file; that is a filesystem detail of this call, not a second
+    pipeline. The file is removed whether `parser.parse` succeeds or raises.
     """
     with tempfile.NamedTemporaryFile(
         suffix=_TEMP_FILE_SUFFIX[intake.media_type], delete=False
     ) as handle:
-        handle.write(intake.document)
+        handle.write(document)
         temp_path = Path(handle.name)
     try:
         return parser.parse(
