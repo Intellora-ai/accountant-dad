@@ -287,6 +287,69 @@ it still needs the deliberately-broken-code proof before promotion.
 
 ---
 
+## F-017 · ROOT CAUSE of F-009, F-011 and F-012 — `cleaner` collapses every document to a raster
+
+| | |
+|---|---|
+| **Severity** | HIGH — architecture. Three recorded failures are symptoms of this one |
+| **Status** | 🔒 **BLOCKED · needs an owner decision (§M)** |
+| **Found** | 2026-08-05, tracing F-011 to its root instead of patching it |
+
+**The single defect.** `cleaner` was implemented as an **image** cleaner. The
+architecture requires a **document** cleaner.
+
+```
+Image = npt.NDArray[np.uint8]              cleaner.py:100
+def decode(data: bytes) -> Image           cleaner.py:618
+class CleanedDocument: cleaned: Image      cleaner.py:263
+```
+
+`SUB_ENGINE_RESPONSIBILITIES.md` §1.1 states the input plainly:
+
+> The raw artifact exactly as received: photo, camera capture, image upload,
+> **PDF**, scan, handwritten note, **Excel file**, email content, structured
+> metadata, or other digital file
+
+A PDF, an Excel file and an email can none of them be an `NDArray[uint8]`. The
+phrase *"cleaned document representation"* was read as *"a cleaned raster"*, and
+nothing in the codebase forced otherwise.
+
+**The three symptoms, each derived:**
+
+- **F-011** — `decode` cannot decode a PDF, because `cv2.imdecode` cannot rasterise
+  one and the return type leaves nowhere else to go. Engine 1's primary input.
+- **F-012** — `reader` and `parser` re-open the original rather than consuming
+  `cleaner`'s output. **This is correct, not sloppy.** `read_pdf_text_layer` takes
+  the original bytes and `parse` takes the original path; handing either a bitmap
+  of a PDF **destroys the text layer**, which is the exact thing that makes a
+  text-layer PDF readable without OCR. Consuming the cleaned output would be
+  strictly worse, so both modules refuse to.
+- **F-009** — a raster is the only representation **PaddleOCR** can take, so OCR is
+  the only consumer `cleaner`'s output currently fits — and it is the one path CI
+  cannot run.
+
+**The measured consequence.** `cleaner`'s deskew residual — **0.0017 at 32°**, the
+figure quoted throughout this project — describes work that reaches **no downstream
+consumer on the text-layer path**, and only PaddleOCR on the OCR path, which CI never
+runs. A real measurement of an effect nothing currently observes.
+
+**Why this was invisible until integration.** `cleaner` has 61 tests and every one
+feeds it an image, because that is what `decode` accepts. A test suite shaped by the
+signature can never question the signature. Only wiring the chain asked the question
+(`LESSONS.md` L-007).
+
+**The fix, and why it is not an engineer's call.** Cleaning must be
+**format-preserving**: a cleaned PDF is still a PDF, deskewed, with its text layer
+intact. `CleanedDocument.cleaned` becomes a representation carrying its media type
+rather than `NDArray[uint8]`. That changes a locked contract across `cleaner`,
+`reader`, `parser` and `assembly` — four modules and their specifications (§M).
+
+**Cheapest correct first step:** decide at the SPEC level what *"cleaned document
+representation"* means for a non-image input. Everything else follows from that
+answer, and guessing it stacks a fifth wrong assumption on four.
+
+---
+
 ## F-016 · Mutation testing cannot run on macOS at all
 
 | | |
