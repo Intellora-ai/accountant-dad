@@ -287,6 +287,100 @@ it still needs the deliberately-broken-code proof before promotion.
 
 ---
 
+## F-011 · `cleaner.decode` cannot decode a PDF — Engine 1's own primary input
+
+| | |
+|---|---|
+| **Severity** | HIGH |
+| **Status** | ⬜ OPEN · worked around in `pipeline.py`, not fixed at source |
+| **Found** | 2026-08-05, wiring the pipeline — invisible to every unit test |
+
+**Description.** `cleaner.decode` calls `cv2.imdecode`, which returns `None` on real PDF
+bytes, so decode raises `UndecodableArtifactError` **unconditionally for every PDF** —
+even though PDF is named in `cleaner`'s own specification.
+
+**Impact.** Taken literally, Engine 1 could never process a PDF. The MVP's primary input.
+
+**Why no unit test caught it.** `cleaner`'s 57 tests feed it images, because that is what
+`decode` accepts. Nothing had ever handed it the input the *spec* says it takes.
+
+**Workaround, in `pipeline.py` only.** Render page one via PyMuPDF — already an approved,
+already-imported Engine 1 tool — at the **caller's own `render_dpi`**, never a second
+invented number. `cleaner.py` is untouched.
+
+**Permanent fix.** Not chosen. Either `cleaner.decode` learns PDFs, or the spec is
+revised to say `cleaner` takes rasterised pages and someone else rasterises. That is a
+boundary question, so it is the owner's.
+
+---
+
+## F-012 · The pipeline is not a pipe — each stage re-opens the raw document
+
+| | |
+|---|---|
+| **Severity** | HIGH — architecture, not code |
+| **Status** | ⬜ OPEN |
+| **Found** | 2026-08-05, wiring the pipeline |
+
+**Description.** `docs/DATA_FLOW.md` draws `cleaner → reader → parser` as a chain. The
+code is not one:
+
+```
+reader.read(document: bytes, ...)     opens the PDF itself
+parser.parse(path: Path, ...)         opens the SAME document a third time, via Docling
+```
+
+**Neither consumes `cleaner`'s output.** `parser.py`'s own docstring already admits this
+— *"a real departure … it must not stay that way."*
+
+**Impact.** Cleaning does not affect what is read or parsed. A deskewed, denoised,
+contrast-corrected page is produced and then **ignored** by both downstream stages.
+Every measurement of `cleaner` — the 0.0017 residual included — currently describes work
+that changes no output.
+
+**Permanent fix.** Make `reader` and `parser` consume the previous stage's artifact.
+That changes three locked module contracts and is an architecture change, not a patch.
+
+---
+
+## F-013 · Extraction content can never carry a per-field confidence
+
+| | |
+|---|---|
+| **Severity** | HIGH |
+| **Status** | ⬜ OPEN |
+| **Found** | 2026-08-05, wiring the pipeline |
+
+**Description.** Two independent gaps compose into one hole.
+
+1. `confidence_report.RegionReading(text="TAX INVOICE", extraction_confidence=None)`
+   **always raises** `MalformedSignalError`. Its invariant assumes text-without-a-score
+   means "unread" — true for OCR, **false for a PDF text layer**, whose entire design is
+   real text with an honestly absent score.
+2. Deeper, and measured: even a validly-constructed *scored* `RegionReading` never
+   becomes a `confidence_scores` entry. `record_confidence`'s `_field_confidence_scores`
+   reads only `parsed_fields` — **never `reader_regions`.**
+
+Separately, `assembly.ParserOutput.detected_fields` and `.detected_tables` each need a
+`Provenance` carrying a `Confidence`, and **neither `reader` nor `parser` produces one
+attached to a name**: `parser.Region`/`Table`/`Cell` carry no confidence at all (by
+design — only `confidence` may produce one), and `reader.TextRegion` carries a
+confidence but no name. Building either would mean inventing the missing half.
+
+**Combined consequence, stated plainly.** For a PDF-text-layer document, the
+`confidence_scores` tuple can carry **no document-content entry at all** — only the
+optional Human Business Context's capture-fidelity score can appear there.
+
+Extraction content is still fully traceable via `extracted_text` and
+`document_structure`. It is the **per-field confidence** that is structurally
+unavailable — which is the number Engine 5 would eventually need.
+
+**Permanent fix.** Not chosen. `RegionReading`'s invariant needs a third state, and
+something must name a field before a confidence can be attached to it. Both are contract
+changes across `reader`, `parser`, `confidence_report` and `assembly`.
+
+---
+
 ## F-010 · Two same-day documents disagree on whether classification is authorised
 
 | | |

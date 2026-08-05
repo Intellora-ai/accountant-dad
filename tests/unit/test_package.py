@@ -103,6 +103,7 @@ ENGINE_1_AUTHORIZED = {
     "engines/input_engine/config",  # every threshold, named — no hardcoded value
     "engines/input_engine/measurement",  # the calibration record
     "engines/input_engine/assembly",  # the ENGINE assembles; not a sub-engine
+    "engines/input_engine/pipeline",  # the ENGINE's own runner: bytes in, artifact out
 }
 
 AUTHORIZED_STUBS = {
