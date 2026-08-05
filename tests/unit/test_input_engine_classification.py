@@ -449,6 +449,13 @@ def test_document_type_values_carry_no_field_that_could_hold_a_money_amount() ->
     numeric_annotations = {"int", "float", "Decimal", "Confidence"}
     offenders = []
     for _name, member in inspect.getmembers(classification_module, is_dataclass):
+        # `is_dataclass` admits both a dataclass INSTANCE and a dataclass CLASS,
+        # and only the class carries `__name__`. A module attribute that is a
+        # dataclass is always the class, so narrowing to `type` costs nothing
+        # here and is stricter than a suppression would have been: mypy now
+        # checks the rest of the loop instead of being told to look away.
+        if not isinstance(member, type):
+            continue
         if getattr(member, "__module__", None) != classification_module.__name__:
             continue
         for field in fields(member):
