@@ -245,6 +245,14 @@ def test_several_missing_parameters_are_all_named_in_one_raise() -> None:
     assert c.WORST_K in message
     assert c.DOCUMENT_SCORE_RULE in message
     assert reported_problem_count(message) == THREE_MISSING_PARAMETERS
+    # `"\n".join(...)` puts every problem on its OWN freshly-indented line -
+    # mutated to a wrapped separator (`"XX\nXX".join(...)`), only the first
+    # line (which comes from the outer f-string's own "problem(s):\n", never
+    # touched by this mutation) still starts cleanly after a newline; the
+    # joins between the three problems below it do not. A single-problem
+    # test can never tell the two apart, because `str.join` never even calls
+    # the separator when there is only one item to join.
+    assert message.count("\n  - ") == THREE_MISSING_PARAMETERS
 
 
 def test_one_missing_parameter_names_only_that_one() -> None:
@@ -319,11 +327,21 @@ def test_a_count_parameter_given_a_decimal_string_is_refused_not_truncated() -> 
 
 
 def test_document_score_rule_given_an_unknown_name_is_refused() -> None:
+    """The full allowed-values clause is pinned verbatim, not just the
+    offending input: `match=r"banana"` alone survives a mutation that drops
+    `", ".join(...)` entirely (the message would say "must be one of None")
+    or wraps the `", "` separator in `XX` markers - `"banana"` is untouched
+    either way, so only asserting the assembled list, with its real
+    separator, catches them.
+    """
     env = a_valid_env()
     env[env_var(c.DOCUMENT_SCORE_RULE)] = "banana"
 
-    with pytest.raises(c.ConfigurationError, match=r"banana"):
+    with pytest.raises(c.ConfigurationError) as raised:
         c.load_confidence_parameters(env)
+
+    message = str(raised.value)
+    assert "must be one of min, product, weighted_mean, worst_k; got 'banana'." in message
 
 
 def test_document_score_weights_given_non_json_text_is_refused() -> None:
@@ -332,6 +350,25 @@ def test_document_score_weights_given_non_json_text_is_refused() -> None:
 
     with pytest.raises(c.ConfigurationError, match=r"not json at all"):
         c.load_confidence_parameters(env)
+
+
+def test_parse_weights_names_the_exact_reason_json_decoding_failed() -> None:
+    """Exact equality, not `match=` or `in`: a mutation that wraps "must be a
+    JSON object mapping field name to weight; got " in `XX` markers only ADDS
+    characters at the two ends of that literal - the original text is still
+    a contiguous substring of the wrapped one, so `"must be a JSON object..."
+    in message` would still be True even under the mutation and never turn
+    red. Lower/upper-casing "JSON" is caught by a substring check (the cased
+    text differs), but the wrap is not, so only pinning the WHOLE raised
+    message, exactly, catches all three string mutations at this literal.
+    """
+    with pytest.raises(c._ParameterValueError) as raised:
+        c._parse_weights("not json at all")
+
+    assert str(raised.value) == (
+        "must be a JSON object mapping field name to weight; got "
+        "'not json at all', which does not parse as JSON."
+    )
 
 
 # ── probability bounds: below, above, and exactly at each boundary ────────
@@ -643,6 +680,15 @@ def test_probability_problem_reports_a_non_finite_value_as_the_specific_reason()
     assert "must be finite" in problem
 
 
+def test_weights_problem_with_no_fields_reports_the_exact_message() -> None:
+    """Exact equality, not a substring check: `"must name at least one
+    field; got none."` mutated to `"XXmust name at least one field; got
+    none.XX"` still CONTAINS "at least one field" as a substring, so only
+    pinning the whole returned string catches the wrap.
+    """
+    assert c._weights_problem({}) == "must name at least one field; got none."
+
+
 def test_weights_problem_names_which_field_carries_the_bad_weight() -> None:
     """Falsification: a bare 'weight out of range' message would not say
     WHICH of several weights was the offender. This checks the field name is
@@ -670,6 +716,26 @@ def test_parse_weights_refuses_a_weight_that_is_not_a_number_at_all() -> None:
         c._parse_weights('{"gstin": null}')
     with pytest.raises(c._ParameterValueError, match=r"must be a number"):
         c._parse_weights('{"gstin": [1, 2]}')
+
+
+# `_parse_weights`'s `if not isinstance(key, str): raise ...` branch (the
+# "every weight key must be a string" message) has NO test calling it,
+# deliberately: `raw` only ever reaches this loop after `json.loads(raw)`
+# already produced `parsed`, and JSON's own grammar requires every object
+# key to be a double-quoted string - `json.loads` cannot hand back a `dict`
+# with a non-`str` key from ANY syntactically valid JSON text (verified:
+# `json.loads('{1: 2}')` and `json.loads('{true: 1}')` both raise
+# `JSONDecodeError` before an object is ever built). The branch is real
+# defence-in-depth, not dead weight to delete, but it is unreachable through
+# `_parse_weights`'s only entry point, `raw: str`. The one way to execute it
+# would be handing `json.loads` a custom `object_pairs_hook` or monkeypatching
+# `json.loads` itself to fabricate a non-str key - both fake the parser
+# rather than the I/O edge, which `CLAUDE.md` §J.7 forbids for exactly this
+# reason ("parsing untrusted input is LOGIC - test it for real with hostile
+# input"). Mutating this branch's raised message to `None`
+# (`x__parse_weights__mutmut_14`) is therefore judged an EQUIVALENT MUTANT:
+# no legitimate call through the real `_parse_weights(raw)` contract can ever
+# tell the mutant and the original apart.
 
 
 # ── document_score_rule: the tension left visible on purpose ──────────────

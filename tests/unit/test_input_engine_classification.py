@@ -124,6 +124,11 @@ def test_a_document_with_one_clear_cue_is_typed_and_carries_its_own_evidence() -
     assert matched[0].matched_text == "TAX INVOICE"
     assert matched[0].instrument is Instrument.READER
     assert "page 0" in matched[0].location
+    # A TYPED result carries no `reasons` — there is nothing to explain when
+    # exactly one catalogued type was found. `None` is not `()`: a caller
+    # that iterates `result.reasons` on a mutated `None` would raise, which
+    # is exactly what this line catches.
+    assert result.reasons == ()
 
 
 def test_a_lower_case_heading_still_matches_case_insensitively() -> None:
@@ -173,8 +178,15 @@ def test_a_document_with_no_catalogued_cue_is_unknown_with_reasons() -> None:
     assert result.status is ClassificationStatus.UNKNOWN
     assert result.candidates == ()
     assert result.document_type is None
-    assert result.reasons != ()
-    assert "no type is guessed" in result.reasons[0]
+    # Exact text, not a substring: a mutation to either edge of the message
+    # (the opening clause or the closing clause) must be observable here —
+    # the middle clause alone (checked by the old substring assertion) never
+    # moved when either edge was mutated by hand.
+    assert result.reasons == (
+        "none of this module's catalogued structural cues were found in the "
+        "2 region(s) of text supplied by reader and parser; no type is "
+        "guessed in their place.",
+    )
 
 
 def test_unknown_is_never_resolved_to_the_nearest_or_most_similar_catalogued_type() -> None:
@@ -234,9 +246,15 @@ def test_conflicting_cues_in_one_document_are_both_preserved_as_ambiguous() -> N
     by_type = {candidate.document_type: candidate for candidate in result.candidates}
     assert by_type[DocumentType.PROFORMA_INVOICE].matched_cues[0].cue == "PROFORMA INVOICE"
     assert by_type[DocumentType.TAX_INVOICE].matched_cues[0].cue == "TAX INVOICE"
-    assert len(result.reasons) == 1
-    assert "Tax Invoice" in result.reasons[0]
-    assert "Proforma Invoice" in result.reasons[0]
+    # Exact text, including the ", " that separates the two type names and
+    # the closing "between them." clause — a substring check on either name
+    # alone survives a mutation to the separator or the closing clause
+    # because both names still appear somewhere in the string either way.
+    assert result.reasons == (
+        "structural cues were found for more than one catalogued document "
+        "type (Tax Invoice, Proforma Invoice); this module does not choose "
+        "between them.",
+    )
 
 
 def test_conflicting_cues_split_across_reader_and_parser_are_both_preserved() -> None:
