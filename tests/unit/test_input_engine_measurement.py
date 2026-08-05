@@ -923,3 +923,266 @@ def test_absent_reprs_as_absent_not_as_the_default_object_repr() -> None:
     `<accountant_dad.engines.input_engine.measurement.AbsentType object at
     0x...>` would tell an operator nothing; `ABSENT` names itself."""
     assert repr(m.ABSENT) == "ABSENT"
+
+
+# ── exact-message pins: "did it raise" is not the same as "raised correctly" ──
+#
+# CI's mutation run left 24 survivors below `pytest.raises(...)` never
+# noticed, because a bare `pytest.raises(...)` - or a `match=` that only
+# checks a fragment - is satisfied by ANY exception of the right type,
+# including one whose message a mutation quietly wrecked, or whose `path` or
+# `line_number` argument a mutation silently replaced with `None`. Every test
+# below pins the FULL message, or the exact argument crossing an I/O
+# boundary, because that is the only thing left for a mutation to hide behind
+# once membership is no longer enough (§J.2 - assert the real RESULT).
+
+
+def test_the_duplicate_message_is_exactly_pinned() -> None:
+    """Pins the entire message, not just membership - six survivors here:
+    case-flipped and `XX`-wrapped variants of both literal fragments, and a
+    mutated join separator that needs at least two DISTINCT duplicated names
+    to observe (a single duplicated name joins to itself regardless of the
+    separator - the same reasoning `DUPLICATED_NAMES` above gives `sorted()`).
+    """
+    with pytest.raises(m.UnrecordableMeasurementError) as raised:
+        m.MeasurementRow(
+            document_id=a_document_id(),
+            source_document_type="invoice",
+            processing_time_ms=1.0,
+            per_field=(
+                m.NamedSignal(name="gstin", value=0.5, instrument="PaddleOCR"),
+                m.NamedSignal(name="gstin", value=0.9, instrument="PDF text layer"),
+                m.NamedSignal(name="hsn", value=0.1, instrument="PaddleOCR"),
+                m.NamedSignal(name="hsn", value=0.2, instrument="PaddleOCR"),
+            ),
+        )
+
+    assert str(raised.value) == (
+        "`per_field` names the same signal twice: gstin, hsn. "
+        "Two values for one name leaves no authority for which one a "
+        "later calibration run should read."
+    )
+
+
+def test_an_unrecordable_row_names_the_line_the_path_and_the_cause(tmp_path: Path) -> None:
+    """The `except (KeyError, TypeError, ValueError)` branch in `_row_from_json`
+    wraps the cause with the line and the path. CI's mutation run replaced
+    that whole message with the literal `None` -
+    `MalformedMeasurementRecordError(None)` still raises the right TYPE, so a
+    bare `pytest.raises(...)` never noticed.
+    """
+    store = tmp_path / "store.jsonl"
+    store.write_text("{}\n", encoding="utf-8")  # valid JSON object, missing every key
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as excinfo:
+        m.read_all(store)
+
+    assert str(excinfo.value) == (
+        f"line 1 of {store} is not a recordable measurement row: 'document_id'"
+    )
+
+
+def test_a_malformed_row_names_the_real_store_path(tmp_path: Path) -> None:
+    """`read_all` passes `path` into `_row_from_json` on every line it reads -
+    CI's mutation run replaced that argument with `None`, and the existing
+    `test_a_line_that_is_valid_json_but_not_an_object_names_its_line_number`
+    only checks `line 1`, never `path`.
+    """
+    store = tmp_path / "store.jsonl"
+    store.write_text("[1, 2, 3]\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as excinfo:
+        m.read_all(store)
+
+    assert str(excinfo.value) == f"line 1 of {store} is not a JSON object; got [1, 2, 3]."
+
+
+def test_a_malformed_per_region_ocr_signal_names_the_real_line_and_path(tmp_path: Path) -> None:
+    """`_row_from_json` passes `line_number` and `path` to `_category_from_json`
+    separately for each of the four categories. CI's mutation run silently
+    replaced `path` with `None` on the `per_region_ocr` call specifically (and,
+    independently, inside `_category_from_json`'s own call to
+    `_signal_from_json` - this test exercises and kills that mutant too, since
+    the wrong `path` shows up the same way regardless of which category
+    reached it).
+    """
+    good_row = {
+        "document_id": str(uuid.uuid4()),
+        "source_document_type": "invoice",
+        "processing_time_ms": 1.0,
+        "correctness": "unlabelled",
+    }
+    bad_row = dict(good_row)
+    bad_row["per_region_ocr"] = [123]
+    store = tmp_path / "store.jsonl"
+    store.write_text(json.dumps(good_row) + "\n" + json.dumps(bad_row) + "\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as excinfo:
+        m.read_all(store)
+
+    assert str(excinfo.value) == f"line 2 of {store}: a signal must be a JSON object; got 123."
+
+
+def test_a_malformed_per_field_signal_names_the_real_line_and_path(tmp_path: Path) -> None:
+    """Same claim as the `per_region_ocr` test above, for `per_field` - CI's
+    mutation run left BOTH `line_number` and `path` unguarded for this
+    category, so this one message pins both at once.
+    """
+    good_row = {
+        "document_id": str(uuid.uuid4()),
+        "source_document_type": "invoice",
+        "processing_time_ms": 1.0,
+        "correctness": "unlabelled",
+    }
+    bad_row = dict(good_row)
+    bad_row["per_field"] = [123]
+    store = tmp_path / "store.jsonl"
+    store.write_text(json.dumps(good_row) + "\n" + json.dumps(bad_row) + "\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as excinfo:
+        m.read_all(store)
+
+    assert str(excinfo.value) == f"line 2 of {store}: a signal must be a JSON object; got 123."
+
+
+def test_a_malformed_classification_signal_names_the_real_line_and_path(tmp_path: Path) -> None:
+    """Same claim as the `per_region_ocr` test above, for `classification`."""
+    good_row = {
+        "document_id": str(uuid.uuid4()),
+        "source_document_type": "invoice",
+        "processing_time_ms": 1.0,
+        "correctness": "unlabelled",
+    }
+    bad_row = dict(good_row)
+    bad_row["classification"] = [123]
+    store = tmp_path / "store.jsonl"
+    store.write_text(json.dumps(good_row) + "\n" + json.dumps(bad_row) + "\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as excinfo:
+        m.read_all(store)
+
+    assert str(excinfo.value) == f"line 2 of {store}: a signal must be a JSON object; got 123."
+
+
+def test_a_malformed_table_signal_names_the_real_line_and_path(tmp_path: Path) -> None:
+    """Same claim as the `per_region_ocr` test above, for `table`."""
+    good_row = {
+        "document_id": str(uuid.uuid4()),
+        "source_document_type": "invoice",
+        "processing_time_ms": 1.0,
+        "correctness": "unlabelled",
+    }
+    bad_row = dict(good_row)
+    bad_row["table"] = [123]
+    store = tmp_path / "store.jsonl"
+    store.write_text(json.dumps(good_row) + "\n" + json.dumps(bad_row) + "\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as excinfo:
+        m.read_all(store)
+
+    assert str(excinfo.value) == f"line 2 of {store}: a signal must be a JSON object; got 123."
+
+
+def test_the_stored_line_writes_keys_in_sorted_order(tmp_path: Path) -> None:
+    """`sort_keys=True` is invisible to every round-trip test above, because
+    `MeasurementRow.__eq__` does not care what order the JSON keys came back
+    in. CI's mutation run found three ways to make `sort_keys` fall through to
+    falsy (`None`, the keyword dropped entirely, and an explicit `False`), and
+    none of them changed a single round-tripped VALUE - only the raw bytes on
+    disk show it.
+    """
+    row = a_full_row()
+    store = tmp_path / "store.jsonl"
+
+    m.append(store, row)
+
+    (line,) = store.read_text(encoding="utf-8").splitlines()
+    keys = list(json.loads(line).keys())
+
+    insertion_order = [
+        "document_id",
+        "source_document_type",
+        "processing_time_ms",
+        "correctness",
+        "document_score",
+        "per_region_ocr",
+        "per_field",
+        "classification",
+        "table",
+        "failed_fields",
+    ]
+    assert keys != insertion_order, (
+        "this fixture's natural construction order must NOT already be "
+        "alphabetical, or this test cannot tell `sort_keys=True` apart from "
+        "`sort_keys` doing nothing"
+    )
+    assert keys == sorted(keys)
+
+
+# `ensure_ascii=False` mutated to `ensure_ascii=None` (mutmut_3 in `x_append`)
+# has NO test below it, and cannot: `json.dumps`'s own encoder only branches on
+# `if ensure_ascii:`, and `None` is exactly as falsy as `False` for every
+# possible input - measured directly, not assumed:
+#
+#     json.dumps({"a": "चालान"}, ensure_ascii=False) == \
+#         json.dumps({"a": "चालान"}, ensure_ascii=None)   # True, always
+#
+# There is no byte on disk this mutation could change, and `json.dumps` is
+# in-process LOGIC, not an I/O boundary - §J.7 forbids faking it the way the
+# two tests below fake `Path.open`. This is a genuine equivalent mutant, not
+# an untested one; recorded here rather than silently left out.
+
+
+def test_append_opens_the_file_with_explicit_lowercase_utf8(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`encoding=None`, an omitted `encoding` keyword, and `encoding="UTF-8"`
+    all write IDENTICAL bytes to disk as an explicit `encoding="utf-8"` on
+    every interpreter this suite runs on: Python's UTF-8 mode (PEP 538/540)
+    already forces the platform default to UTF-8 (`locale.getpreferredencoding
+    (False)` returns `"utf-8"` even after forcing `locale.setlocale(LC_ALL,
+    "C")` - measured), and a codec name is looked up case-insensitively
+    (`codecs.lookup("UTF-8") == codecs.lookup("utf-8")` - also measured). No
+    test of the WRITTEN BYTES can tell these four apart. This test inspects
+    the one thing that still differs: the literal argument `append()` passes
+    across the filesystem boundary, through the real, unmocked `Path.open`
+    (§J.7 - fake only at the I/O edge, and only the narrowest thing about it;
+    every byte is still written by the real call underneath).
+    """
+    store = tmp_path / "store.jsonl"
+    real_open = Path.open
+    captured: list[str | None] = []
+
+    def spy_open(self: Path, mode: str = "r", *, encoding: str | None = None) -> object:
+        if self == store:
+            captured.append(encoding)
+        return real_open(self, mode, encoding=encoding)
+
+    monkeypatch.setattr(Path, "open", spy_open)
+
+    m.append(store, a_full_row())
+
+    assert captured == ["utf-8"]
+
+
+def test_read_all_opens_the_file_with_explicit_lowercase_utf8(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Same claim as `test_append_opens_the_file_with_explicit_lowercase_utf8`
+    above, for the read side."""
+    store = tmp_path / "store.jsonl"
+    m.append(store, a_full_row())  # written with the real, unpatched open
+
+    real_open = Path.open
+    captured: list[str | None] = []
+
+    def spy_open(self: Path, mode: str = "r", *, encoding: str | None = None) -> object:
+        if self == store:
+            captured.append(encoding)
+        return real_open(self, mode, encoding=encoding)
+
+    monkeypatch.setattr(Path, "open", spy_open)
+
+    m.read_all(store)
+
+    assert captured == ["utf-8"]
