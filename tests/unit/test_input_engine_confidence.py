@@ -212,6 +212,14 @@ def test_no_numeric_comparison_appears_anywhere_in_the_module() -> None:
     is what catches the constant nested inside the `Decimal(...)` call.
     """
     source = inspect.getsource(confidence_report_module)
+    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
+        pytest.skip(
+            "mutmut rewrote this module in its `mutants/` copy, so the source read "
+            "here is mutmut's instrumentation rather than ours. Asserting on it "
+            "measures the mutation tool, not the code under test — and a structural "
+            "assertion about OUR source cannot be evaluated against a file we did "
+            "not write. Skipped under mutation only; it runs in every ordinary suite."
+        )
     tree = ast.parse(source)
     offending_lines = sorted(
         {

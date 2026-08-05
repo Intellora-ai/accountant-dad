@@ -638,7 +638,16 @@ def top_level_imports(module_path: str) -> set[str]:
     Reading the import statements asserts the real one: nothing unapproved is
     actually reachable from this module.
     """
-    tree = ast.parse(pathlib.Path(module_path).read_text(encoding="utf-8"))
+    source = pathlib.Path(module_path).read_text(encoding="utf-8")
+    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
+        pytest.skip(
+            "mutmut rewrote this module in its `mutants/` copy, so the source read "
+            "here is mutmut's instrumentation rather than ours. Asserting on it "
+            "measures the mutation tool, not the code under test — and a structural "
+            "assertion about OUR source cannot be evaluated against a file we did "
+            "not write. Skipped under mutation only; it runs in every ordinary suite."
+        )
+    tree = ast.parse(source)
     imported: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -688,7 +697,16 @@ def test_the_only_dynamically_imported_module_is_the_approved_ocr() -> None:
     only reads `import` statements. So the string literals are pinned too, and
     the two tests together cover both ways a dependency can enter this module.
     """
-    tree = ast.parse(pathlib.Path(reader.__file__).read_text(encoding="utf-8"))
+    source = pathlib.Path(reader.__file__).read_text(encoding="utf-8")
+    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
+        pytest.skip(
+            "mutmut rewrote this module in its `mutants/` copy, so the source read "
+            "here is mutmut's instrumentation rather than ours. Asserting on it "
+            "measures the mutation tool, not the code under test — and a structural "
+            "assertion about OUR source cannot be evaluated against a file we did "
+            "not write. Skipped under mutation only; it runs in every ordinary suite."
+        )
+    tree = ast.parse(source)
     dynamic: set[str] = set()
     for node in ast.walk(tree):
         if (

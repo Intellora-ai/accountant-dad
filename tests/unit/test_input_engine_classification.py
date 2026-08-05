@@ -293,6 +293,14 @@ def test_no_numeric_comparison_appears_anywhere_in_the_module() -> None:
     call the way a bare `ast.Constant` check would miss.
     """
     source = inspect.getsource(classification_module)
+    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
+        pytest.skip(
+            "mutmut rewrote this module in its `mutants/` copy, so the source read "
+            "here is mutmut's instrumentation rather than ours. Asserting on it "
+            "measures the mutation tool, not the code under test — and a structural "
+            "assertion about OUR source cannot be evaluated against a file we did "
+            "not write. Skipped under mutation only; it runs in every ordinary suite."
+        )
     tree = ast.parse(source)
     offending_lines = sorted(
         {
@@ -320,6 +328,14 @@ def test_status_is_decided_by_pattern_matching_the_shape_not_a_count() -> None:
     threshold could dodge.
     """
     source = inspect.getsource(classification_module.classify)
+    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
+        pytest.skip(
+            "mutmut rewrote this module in its `mutants/` copy, so the source read "
+            "here is mutmut's instrumentation rather than ours. Asserting on it "
+            "measures the mutation tool, not the code under test — and a structural "
+            "assertion about OUR source cannot be evaluated against a file we did "
+            "not write. Skipped under mutation only; it runs in every ordinary suite."
+        )
     tree = ast.parse(source)
     assert any(isinstance(node, ast.Match) for node in ast.walk(tree))
 
