@@ -88,6 +88,7 @@ STATED ASSUMPTION, BECAUSE IT IS AN ASSUMPTION AND NOT A FACT.
 
 from __future__ import annotations
 
+import importlib
 import math
 from dataclasses import dataclass
 from enum import StrEnum
@@ -247,13 +248,85 @@ class CleanerSettings:
             )
 
 
+class MediaKind(StrEnum):
+    """What the artifact IS, carried alongside it so cleaning never has to guess.
+
+    §1.1's input list is *"photo, camera capture, image upload, PDF, scan,
+    handwritten note, Excel file, email content, structured metadata, or other
+    digital file."* Those are not interchangeable, and the whole point of
+    `CleanedArtifact` is that the cleaned form of each is still ITS OWN KIND.
+
+    Declared by the caller and never sniffed from the bytes — `reader.MediaType`
+    takes the same position for the same reason (Law 23: external input is
+    untrusted, and guessing a document's type from its bytes is a guess).
+    """
+
+    IMAGE = "image"
+    PDF = "pdf"
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class CleanedArtifact:
+    """A cleaned document that is still the kind of document it started as.
+
+    THIS TYPE EXISTS BECAUSE THE PREVIOUS ONE WAS WRONG, and the way it was
+    wrong is worth stating so it is not reintroduced. `cleaned` used to be
+    `NDArray[uint8]` — a bitmap. That made "cleaned document representation"
+    mean "cleaned raster", which the specification never said and which cannot
+    represent a PDF, a workbook or an email at all.
+
+    Three failures followed from that one line, and all three were symptoms
+    rather than separate bugs (`KNOWN_FAILURES.md` F-017):
+
+        a PDF could not be decoded at all, because the return type left nowhere
+        for it to go — Engine 1's own primary input
+
+        `reader` and `parser` refused to consume cleaner's output, CORRECTLY:
+        handing either a bitmap of a PDF destroys the text layer, which is the
+        one thing that makes a text-layer PDF readable without OCR. They
+        re-opened the original because doing so was strictly better
+
+        OCR became the only consumer the output fitted, and OCR is the one path
+        CI cannot run
+
+    `payload` is therefore the cleaned artifact IN ITS OWN FORMAT: a cleaned
+    image stays image bytes, a cleaned PDF stays a PDF with its text layer
+    intact. `raster` is an additional VIEW for consumers that need pixels
+    (OCR), never a replacement for the payload.
+
+    CLEANING MAY NEVER REDUCE THE INFORMATION AVAILABLE. That is why a
+    text-layer PDF passes through untouched rather than being "improved": a
+    digitally-generated PDF has no skew, no sensor noise and no contrast
+    problem, so every transformation available would be a rewrite that could
+    only lose something. §1.1's own failure behaviour says the same of a
+    provided source — *"any transformation would be a rewrite."*
+    """
+
+    kind: MediaKind
+    #: The cleaned artifact, in its native format. What every downstream
+    #: sub-engine consumes, so there is one pipeline rather than two.
+    payload: bytes
+    #: `ENGINE_1:461` — never discarded, so a damaging transformation is always
+    #: recoverable. The bytes exactly as received.
+    original: bytes
+    #: A rendered view, when one was produced. `None` when nothing was
+    #: rasterised — which is NOT "a blank page" and must never be read as one.
+    raster: Image | None = None
+
+    def with_raster(self, raster: Image) -> CleanedArtifact:
+        """A copy carrying a rendered view. The payload is never touched."""
+        return CleanedArtifact(
+            kind=self.kind, payload=self.payload, original=self.original, raster=raster
+        )
+
+
 @dataclass(frozen=True, slots=True, eq=False)
 class CleanedDocument:
     """The three outputs §1.1 names, plus the original it may never discard.
 
-    `eq=False` because two of the four members are arrays: the generated
-    comparison would evaluate an array in a boolean context and raise. Identity
-    comparison is the honest default for something holding a megabyte of pixels.
+    `eq=False` because members hold arrays: the generated comparison would
+    evaluate an array in a boolean context and raise. Identity comparison is the
+    honest default for something holding a megabyte of pixels.
     """
 
     #: `ENGINE_1:461` — never discarded, so a damaging transformation is always
@@ -264,6 +337,11 @@ class CleanedDocument:
     #: Quality issues detected, as measurements. Evidence for `confidence`.
     quality_observations: tuple[QualityObservation, ...]
     preservation_status: PreservationStatus
+    #: The media-aware form of the same cleaning, carrying the artifact in its
+    #: OWN format so `reader` and `parser` can consume it without the text
+    #: layer being destroyed. `None` only on the raster-only path that predates
+    #: `clean_artifact`; every path that knows its media kind sets it.
+    artifact: CleanedArtifact | None = None
 
     def observed(self, name: str, stage: Stage) -> QualityObservation:
         """The measurement, or `KeyError`. A miss is never a `None` in disguise."""
@@ -633,6 +711,179 @@ def decode(data: bytes) -> Image:
             "that genuinely had nothing on it."
         )
     return _u8(decoded)
+
+
+def clean_artifact(
+    data: bytes, kind: MediaKind, settings: CleanerSettings, *, render_dpi: int
+) -> CleanedDocument:
+    """Clean a document and hand back something that is STILL that kind of document.
+
+    The one entry point every caller should use. `decode` + `clean` remain for
+    the raster path they were written for; this is the media-aware form that
+    makes a single pipeline possible.
+
+        IMAGE                 rasterise, clean, re-encode as an image
+        PDF with a text layer PASS THROUGH UNTOUCHED, and say so
+        PDF without one       rasterise each page, clean, rebuild a PDF
+
+    WHY A TEXT-LAYER PDF IS NOT CLEANED, which looks like a gap and is the
+    opposite. `cleaner` owns *"deskewing, rotation, denoising, cropping,
+    contrast"* — every one of them a defect of a PHOTOGRAPH. A
+    digitally-generated PDF has none of them: its characters are already
+    exact. Rasterising it to apply a deskew would replace exact characters with
+    pixels and destroy the text layer, which is the single thing that lets it
+    be read with no recognition and no confidence loss at all.
+
+    §1.1 forbids exactly that: cleaner *"cannot discard content"* and
+    *"alters presentation only"*. Passing through is not the absence of
+    cleaning; it is the correct cleaning of a document with no physical defect,
+    and `preservation_status` records which basis is safer either way.
+
+    `render_dpi` is the caller's, with no default, for the same reason
+    `reader.read` demands it: no document in this repository states one, and
+    choosing here would answer a question put to the owner (Law 52).
+    """
+    if not data:
+        raise UndecodableArtifactError("no bytes were supplied; there is nothing to clean.")
+
+    if kind is MediaKind.PDF:
+        return _clean_pdf(data, settings, render_dpi=render_dpi)
+
+    image = decode(data)
+    document = clean(image, settings)
+    payload = _encode_png(document.cleaned)
+    return replace_artifact(
+        document,
+        CleanedArtifact(
+            kind=MediaKind.IMAGE, payload=payload, original=data, raster=document.cleaned
+        ),
+    )
+
+
+def replace_artifact(document: CleanedDocument, artifact: CleanedArtifact) -> CleanedDocument:
+    """A copy of `document` carrying `artifact`. Nothing measured is touched."""
+    return CleanedDocument(
+        original=document.original,
+        cleaned=document.cleaned,
+        quality_observations=document.quality_observations,
+        preservation_status=document.preservation_status,
+        artifact=artifact,
+    )
+
+
+def _encode_png(image: Image) -> bytes:
+    """Lossless, deliberately. A lossy re-encode would lose information that
+    the original had, which is the one thing cleaning may never do."""
+    ok, buffer = cv2.imencode(".png", image)
+    if not ok:
+        raise UndecodableArtifactError(
+            "the cleaned image could not be re-encoded. Reported rather than "
+            "silently returning the original, which would claim a cleaning that "
+            "never happened."
+        )
+    return bytes(buffer.tobytes())
+
+
+def _pdf_has_text_layer(data: bytes) -> bool:
+    """True when any page carries embedded text. Measured, never assumed."""
+    fitz = importlib.import_module("pymupdf")
+    document = fitz.open(stream=data, filetype="pdf")
+    try:
+        return any(document[index].get_text("text").strip() for index in range(document.page_count))
+    finally:
+        document.close()
+
+
+def _clean_pdf(data: bytes, settings: CleanerSettings, *, render_dpi: int) -> CleanedDocument:
+    """A PDF in, a PDF out — always. The text layer decides how."""
+    if _pdf_has_text_layer(data):
+        return _pdf_passed_through(data)
+    return _pdf_rebuilt_from_cleaned_pages(data, settings, render_dpi=render_dpi)
+
+
+def _pdf_passed_through(data: bytes) -> CleanedDocument:
+    """A text-layer PDF, untouched, with the reason recorded as a measurement.
+
+    `original` and `cleaned` are the same single-pixel placeholder because
+    there is no raster on this path and inventing one would be a fabricated
+    observation (Law 24). Everything a consumer needs is on `artifact`.
+    """
+    placeholder: Image = np.zeros((1, 1), dtype=np.uint8)
+    observation = QualityObservation(
+        name="text_layer_present",
+        stage=Stage.ORIGINAL,
+        value=1.0,
+        unit="boolean",
+        note=(
+            "the PDF carries an embedded text layer, so its characters are already "
+            "exact. Deskewing or denoising would mean rasterising them into pixels, "
+            "which destroys the text layer and loses information cleaning may never "
+            "lose. Passed through unchanged."
+        ),
+    )
+    return CleanedDocument(
+        original=placeholder,
+        cleaned=placeholder,
+        quality_observations=(observation,),
+        preservation_status=PreservationStatus.ORIGINAL_IS_SAFER,
+        artifact=CleanedArtifact(kind=MediaKind.PDF, payload=data, original=data, raster=None),
+    )
+
+
+def _pdf_rebuilt_from_cleaned_pages(
+    data: bytes, settings: CleanerSettings, *, render_dpi: int
+) -> CleanedDocument:
+    """A scanned PDF: every page rasterised, cleaned, and rebuilt into a PDF.
+
+    Information is not lost by rasterising here, because there was never
+    anything but pixels to begin with — that is what "no text layer" means.
+    The output stays a PDF so the pipeline has one shape for every input.
+    """
+    fitz = importlib.import_module("pymupdf")
+    source = fitz.open(stream=data, filetype="pdf")
+    cleaned_pages: list[Image] = []
+    first: CleanedDocument | None = None
+    try:
+        for index in range(source.page_count):
+            rendered = source[index].get_pixmap(dpi=render_dpi).tobytes("png")
+            document = clean(decode(rendered), settings)
+            cleaned_pages.append(document.cleaned)
+            if first is None:
+                first = document
+    finally:
+        source.close()
+
+    if first is None:
+        raise UndecodableArtifactError(
+            "the PDF reports zero pages. Reported rather than returned as a blank "
+            "document, which would read as a page that genuinely held nothing."
+        )
+
+    rebuilt = fitz.open()
+    try:
+        for page in cleaned_pages:
+            encoded = _encode_png(page)
+            image_document = fitz.open(stream=encoded, filetype="png")
+            try:
+                # `convert_to_pdf` returns BYTES, not a Document, so it has to be
+                # reopened before `insert_pdf` will take it. Measured, not
+                # assumed: passing the bytes straight in raises
+                # `AttributeError: 'bytes' object has no attribute '_graft_id'`.
+                as_pdf = fitz.open("pdf", image_document.convert_to_pdf())
+                try:
+                    rebuilt.insert_pdf(as_pdf)
+                finally:
+                    as_pdf.close()
+            finally:
+                image_document.close()
+        payload = bytes(rebuilt.tobytes())
+    finally:
+        rebuilt.close()
+
+    return replace_artifact(
+        first,
+        CleanedArtifact(kind=MediaKind.PDF, payload=payload, original=data, raster=first.cleaned),
+    )
 
 
 def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:

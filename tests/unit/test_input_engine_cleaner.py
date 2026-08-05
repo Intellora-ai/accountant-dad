@@ -24,15 +24,17 @@ stage as the only possible cause of the difference.
 
 from __future__ import annotations
 
+import importlib
 import inspect
 import math
+from decimal import Decimal
 
 import cv2
 import numpy as np
 import numpy.typing as npt
 import pytest
 
-from accountant_dad.engines.input_engine import cleaner
+from accountant_dad.engines.input_engine import cleaner, reader
 
 Image = npt.NDArray[np.uint8]
 Real = npt.NDArray[np.float64]
@@ -811,3 +813,192 @@ def test_cleaning_the_same_page_twice_gives_the_same_bytes() -> None:
     second = cleaner.clean(page, BASELINE)
     assert np.array_equal(first.cleaned, second.cleaned)
     assert first.quality_observations == second.quality_observations
+
+
+# ── the media-aware migration (KNOWN_FAILURES F-017) ──────────────────────
+#
+# Before this, `CleanedDocument.cleaned` was `NDArray[uint8]` — a bitmap. That
+# one type made "cleaned document representation" mean "cleaned raster", which
+# cannot represent a PDF at all, and it caused three separate recorded failures
+# that were really one defect. These tests pin the corrected contract: a cleaned
+# document is still the KIND of document it started as.
+
+
+def a_settings() -> cleaner.CleanerSettings:
+    """Legal values so the artifact paths can be exercised. Not recommended
+    operating points — every one of the sixteen confidence parameters is UNSET
+    by design and these are the TEST's own numbers (Law 52)."""
+    return cleaner.CleanerSettings(
+        max_deskew_degrees=45.0,
+        denoise_strength=10.0,
+        denoise_template_window=7,
+        denoise_search_window=21,
+        contrast_clip_limit=2.0,
+        contrast_tile_grid=8,
+        crop_margin_pixels=10,
+        max_ink_loss_fraction=0.15,
+    )
+
+
+def an_image_page() -> bytes:
+    """A small page with real ink on it, as PNG bytes."""
+    page = np.full((200, 400), 255, dtype=np.uint8)
+    cv2.putText(page, "TAX INVOICE", (20, 110), cv2.FONT_HERSHEY_SIMPLEX, 1.2, 0, 3)
+    ok, buffer = cv2.imencode(".png", page)
+    assert ok
+    return bytes(buffer.tobytes())
+
+
+def a_text_layer_pdf() -> bytes:
+    """A PDF whose characters are embedded — the case that must NEVER be
+    rasterised, because rasterising destroys the text layer."""
+    fitz = importlib.import_module("pymupdf")
+    document = fitz.open()
+    try:
+        page = document.new_page()
+        page.insert_text((72, 144), "TAX INVOICE 27AAECS1234F1Z5")
+        return bytes(document.tobytes())
+    finally:
+        document.close()
+
+
+def a_scanned_pdf() -> bytes:
+    """A PDF holding only an image — no text layer, so rasterising loses nothing."""
+    fitz = importlib.import_module("pymupdf")
+    document = fitz.open()
+    try:
+        page = document.new_page(width=400, height=200)
+        page.insert_image(fitz.Rect(0, 0, 400, 200), stream=an_image_page())
+        return bytes(document.tobytes())
+    finally:
+        document.close()
+
+
+def test_a_pdf_can_be_cleaned_at_all() -> None:
+    """The headline defect. `decode` returns an Image and `cv2.imdecode` returns
+    None on PDF bytes, so before this migration EVERY PDF raised — for Engine
+    1's own primary input, and 61 tests missed it because all 61 feed an image.
+    """
+    cleaned = cleaner.clean_artifact(
+        a_text_layer_pdf(), cleaner.MediaKind.PDF, a_settings(), render_dpi=150
+    )
+
+    assert cleaned.artifact is not None
+    assert cleaned.artifact.kind is cleaner.MediaKind.PDF
+
+
+def test_a_cleaned_pdf_is_still_a_pdf() -> None:
+    """The contract in one line: cleaning preserves the media kind."""
+    cleaned = cleaner.clean_artifact(
+        a_text_layer_pdf(), cleaner.MediaKind.PDF, a_settings(), render_dpi=150
+    )
+
+    assert cleaned.artifact is not None
+    assert cleaned.artifact.payload.startswith(b"%PDF-")
+
+
+def test_a_text_layer_pdf_passes_through_byte_for_byte() -> None:
+    """A digitally-generated PDF has no skew, no sensor noise and no contrast
+    problem. Every transformation available would rasterise exact characters
+    into pixels and destroy the text layer — information cleaning may never
+    lose. Passing through unchanged is the CORRECT cleaning here, not the
+    absence of it, and the observation records why.
+    """
+    source = a_text_layer_pdf()
+
+    cleaned = cleaner.clean_artifact(source, cleaner.MediaKind.PDF, a_settings(), render_dpi=150)
+
+    assert cleaned.artifact is not None
+    assert cleaned.artifact.payload == source, "a text-layer PDF must not be altered"
+    assert cleaned.preservation_status is cleaner.PreservationStatus.ORIGINAL_IS_SAFER
+    names = [observation.name for observation in cleaned.quality_observations]
+    assert "text_layer_present" in names, "the reason for passing through must be recorded"
+
+
+def test_a_scanned_pdf_is_rebuilt_and_is_still_a_pdf() -> None:
+    """No text layer means there was never anything but pixels, so rasterising
+    loses nothing. The output stays a PDF so the pipeline has ONE shape.
+    """
+    source = a_scanned_pdf()
+
+    cleaned = cleaner.clean_artifact(source, cleaner.MediaKind.PDF, a_settings(), render_dpi=150)
+
+    assert cleaned.artifact is not None
+    assert cleaned.artifact.payload.startswith(b"%PDF-")
+    assert cleaned.artifact.payload != source, "a scan must actually be cleaned, not passed through"
+
+
+def test_the_original_bytes_are_never_discarded() -> None:
+    """`ENGINE_1:461` — a damaging transformation must always be recoverable."""
+    for source, kind in (
+        (an_image_page(), cleaner.MediaKind.IMAGE),
+        (a_text_layer_pdf(), cleaner.MediaKind.PDF),
+        (a_scanned_pdf(), cleaner.MediaKind.PDF),
+    ):
+        cleaned = cleaner.clean_artifact(source, kind, a_settings(), render_dpi=150)
+        assert cleaned.artifact is not None
+        assert cleaned.artifact.original == source
+
+
+def test_a_cleaned_image_is_still_a_decodable_image() -> None:
+    cleaned = cleaner.clean_artifact(
+        an_image_page(), cleaner.MediaKind.IMAGE, a_settings(), render_dpi=150
+    )
+
+    assert cleaned.artifact is not None
+    assert cleaned.artifact.kind is cleaner.MediaKind.IMAGE
+    assert cleaner.decode(cleaned.artifact.payload).ndim == ONE_CHANNEL_NDIM, (
+        "the payload must decode back to an image"
+    )
+
+
+def test_an_image_carries_a_raster_and_a_passed_through_pdf_does_not() -> None:
+    """`raster is None` means NOTHING WAS RASTERISED. It is not a blank page and
+    must never be read as one — the same distinction `reader` keeps between an
+    unreadable file and an empty one.
+    """
+    image = cleaner.clean_artifact(
+        an_image_page(), cleaner.MediaKind.IMAGE, a_settings(), render_dpi=150
+    )
+    assert image.artifact is not None
+    assert image.artifact.raster is not None
+
+    text_pdf = cleaner.clean_artifact(
+        a_text_layer_pdf(), cleaner.MediaKind.PDF, a_settings(), render_dpi=150
+    )
+    assert text_pdf.artifact is not None
+    assert text_pdf.artifact.raster is None
+
+
+def test_empty_bytes_are_refused_rather_than_cleaned_into_a_blank_page() -> None:
+    with pytest.raises(cleaner.UndecodableArtifactError, match="nothing to clean"):
+        cleaner.clean_artifact(b"", cleaner.MediaKind.PDF, a_settings(), render_dpi=150)
+
+
+def test_reader_consumes_cleaner_output_and_the_text_layer_survives() -> None:
+    """THE MIGRATION'S WHOLE POINT, and the test that would have caught F-012.
+
+    Before this, `reader` re-opened the ORIGINAL document rather than consuming
+    `cleaner`'s output — correctly, because the output was a bitmap and reading
+    a bitmap of a PDF destroys the text layer. One pipeline is only possible if
+    the cleaned artifact is still readable AS a PDF.
+    """
+    cleaned = cleaner.clean_artifact(
+        a_text_layer_pdf(), cleaner.MediaKind.PDF, a_settings(), render_dpi=150
+    )
+    assert cleaned.artifact is not None
+
+    reading = reader.read(
+        cleaned.artifact.payload,
+        media_type=reader.MediaType.PDF,
+        render_dpi=150,
+        vision_fallback_threshold=Decimal("0.5"),
+    )
+
+    assert reading.backend is reader.Backend.PDF_TEXT_LAYER
+    recovered = " ".join(region.text for region in reading.regions)
+    assert "TAX INVOICE" in recovered
+    assert "27AAECS1234F1Z5" in recovered, (
+        "the text layer must survive cleaning; if this fails the cleaner has "
+        "rasterised a document whose characters were already exact"
+    )
