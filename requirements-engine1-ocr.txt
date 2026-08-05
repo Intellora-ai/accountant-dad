@@ -1,0 +1,69 @@
+# Engine 1 — the OCR stack. SEPARATE FROM requirements-engine1.txt, and it has
+# to be: the two cannot be installed into the same environment.
+#
+# `docs/TECHNOLOGY_STACK.md:26` names PaddleOCR as **the** OCR — "text
+# extraction with per-region confidence" — and line 114 repeats it. That lock
+# is not in question here. What is in question is where it may be installed.
+#
+# ── THE CONFLICT, MEASURED ON CI, NOT PREDICTED ───────────────────────────
+#
+# Installing this alongside `requirements-engine1.txt` fails outright:
+#
+#     ERROR: Cannot install ... numpy==2.5.1, paddlepaddle and paddlex because
+#     these package versions have conflicting dependencies.
+#     ERROR: ResolutionImpossible
+#
+# The cause, read from installed metadata:
+#
+#     paddlex                  numpy<2.4,>=1.24
+#     requirements-engine1.txt numpy==2.5.1
+#
+# There is a second, quieter conflict that pip does NOT report as an error,
+# which makes it the more dangerous of the two:
+#
+#     paddleocr → paddlex → opencv-contrib-python 4.10.0.84
+#     requirements-engine1.txt pins opencv-python 5.0.0.93
+#
+# Both packages provide `cv2`. Installation order decides which one
+# `import cv2` resolves to, and nothing in either manifest controls that.
+# Observed locally: `cv2.__version__` reported **4.10.0** while the pin said
+# 5.0.0.93. No error, no warning, wrong library.
+#
+# ── WHY THIS IS NOT SOLVED BY LOOSENING A PIN ─────────────────────────────
+#
+# Both pins carry measurements. `cleaner`'s deskew residual — 0.0017 at 32°,
+# down from 0.0496 after the pipeline was reordered — was measured against
+# opencv-python 5.0.0.93 and numpy 2.5.1. Relaxing either to accommodate a
+# transitive dependency would leave the assertion guarding a library the number
+# was never derived from. It would still pass. It would no longer mean anything
+# (Law 24: never fabricate a metric; Law 52: every number carries its units and
+# its provenance).
+#
+# Choosing a different numpy would also be setting a number nobody measured.
+#
+# ── HOW TO USE IT ─────────────────────────────────────────────────────────
+#
+# In a SEPARATE environment from requirements-engine1.txt:
+#
+#     python -m venv .venv-ocr
+#     .venv-ocr/bin/pip install -r requirements-engine1-ocr.txt
+#
+# `reader.py` resolves PaddleOCR through `importlib` inside its `@cache`d
+# builder, so the module imports and every non-OCR test runs without any of
+# this present. The dependency is needed to RUN OCR, never to import the module
+# that offers it.
+#
+# ── WHAT THIS COSTS, STATED PLAINLY ───────────────────────────────────────
+#
+# 11 of reader's tests exercise real OCR and are skipped when PaddleOCR is
+# absent. They are skipped the same way `test_input_engine_parser.py` skips its
+# Docling measurements, with a message that says so. **They do not run on CI
+# today, so the OCR path is not proven where proof lives** (Law 44). That is a
+# real gap and it is recorded as KNOWN_FAILURES.md F-009 rather than left to be
+# discovered by whoever trusts the green tick.
+#
+# Versions read from installed metadata on 2026-08-05, never from memory.
+# Licences likewise: both Apache 2.0.
+
+paddleocr==3.7.0
+paddlepaddle==3.3.1

@@ -42,8 +42,8 @@ judgement, and `CLAUDE.md` §E.8 forbids removing what the owner specified.
 
 | | |
 |---|---|
-| **Severity** | MEDIUM — reproducibility |
-| **Status** | ⬜ OPEN · latent, not currently breaking |
+| **Severity** | HIGH — it was silently active, not latent |
+| **Status** | ✅ **RESOLVED 2026-08-05** by separating the manifests |
 | **Found** | 2026-08-05, installing PaddleOCR |
 
 **Description.**
@@ -63,13 +63,37 @@ order, not by anything in `requirements-engine1.txt`.
 and the test asserting the bound would then be measuring a different library than the
 one the bound was derived from.
 
-**Measured, not assumed.** With both present the full unit suite is green: **2068
-passed, 14 skipped, 0 failed** (local, 2026-08-05). So this is latent.
+**CORRECTION — I first recorded this as "latent, not currently breaking". That was
+wrong, and the error is instructive.** The evidence I cited was a green suite:
+2068 passed, 14 skipped, 0 failed. What I had not checked was which libraries were
+actually loaded. When I looked:
 
-**Permanent fix.** Not yet chosen. Pinning `opencv-contrib-python` to a version nobody
-has measured would be inventing a number (Law 24). The honest options are: measure
-`cleaner` against both and pin the one that holds the bound, or isolate the OCR
-dependency so the two never share an environment.
+```
+requirements-engine1.txt pins    numpy 2.5.1   ·  opencv-python 5.0.0.93
+import numpy, cv2 reported       numpy 2.3.5   ·  cv2 4.10.0
+```
+
+**Both pins were already being overridden, silently, with no error and no warning.**
+The suite I called evidence had run against neither pinned library. A green test on
+the wrong dependency is worse than a red one — it is a false green, which is the exact
+failure `CLAUDE.md` §J exists to prevent.
+
+pip also downgraded numpy without complaint locally, while CI — resolving clean —
+refused outright with `ResolutionImpossible`. Two environments, two behaviours, and
+only the CI one told the truth. Law 44, demonstrated.
+
+**Permanent fix — LANDED.** The OCR stack moved to its own manifest,
+`requirements-engine1-ocr.txt`, which is exactly what `docs/TECHNOLOGY_STACK.md`
+prescribes: engine dependencies land *"per engine, at its phase, in a separate
+manifest."*
+
+Rejected alternative: loosen `numpy==2.5.1` to satisfy paddlex. That would have set a
+version nobody measured (Law 24) and left `cleaner`'s deskew assertion — 0.0017 at 32°,
+derived on opencv-python 5.0.0.93 — guarding a library the number was never taken
+against. It would still pass, and it would no longer mean anything.
+
+**Verified after the fix:** `numpy 2.5.1`, `cv2 5.0.0`, and 2057 passed / 25 skipped /
+0 failed locally. The environment now matches the manifest it claims to.
 
 ---
 
@@ -248,6 +272,53 @@ it still needs the deliberately-broken-code proof before promotion.
 
 ---
 
+## F-009 · The OCR path is not proven on CI
+
+| | |
+|---|---|
+| **Severity** | MEDIUM — a real coverage gap, honestly stated |
+| **Status** | ⬜ OPEN · created by the F-002 fix, deliberately |
+| **Found** | 2026-08-05 |
+
+**Description.** 11 of `reader`'s tests exercise real PaddleOCR recognition. PaddleOCR
+cannot share an environment with `requirements-engine1.txt` (F-002), so it lives in
+`requirements-engine1-ocr.txt` and **is not installed on CI**. Those 11 tests skip there.
+
+They skip the same way `test_input_engine_parser.py` skips its 14 Docling measurements,
+with a message that names the missing packages and says outright that the measurements
+are local and are not CI evidence.
+
+**Impact, stated plainly rather than softened.** The OCR path — the one that runs on
+every photographed invoice, which is the primary input this product exists to handle —
+**is not proven where proof lives** (Law 44). A green CI tick on this repository
+currently means the text-layer path works. It says nothing about recognition.
+
+```
+reader tests total        41
+run on CI                 30    text layer, error paths, config refusal
+skipped on CI             11    every test that performs real recognition
+```
+
+**Workaround.** Run them locally in a separate environment:
+```
+python -m venv .venv-ocr && .venv-ocr/bin/pip install -r requirements-engine1-ocr.txt
+```
+
+**Permanent fix — two candidates, neither chosen yet.**
+1. A **separate CI job** for the OCR stack, in its own environment, so the 11 run where
+   they count. This is a `.github` change and needs the owner's approval for that
+   specific change.
+2. Resolve the underlying conflict — a PaddleOCR build that does not pin `numpy<2.4`
+   and does not drag in a second OpenCV, or a measured re-derivation of `cleaner`'s
+   bound against the versions paddlex permits.
+
+Until one lands, **no claim may be made about OCR accuracy, because none is provable.**
+
+---
+
 ## Closed
 
-*(none yet — an entry moves here only when the permanent fix has landed and CI proves it)*
+| ID | Title | Closed | Fix |
+|---|---|---|---|
+| **F-003** | Stale duplicate carrying the inverted `worst_k` row | 2026-08-05 | Deleted after proving nothing depended on it and that its only unique line *was* the bug |
+| **F-002** | Two OpenCV distributions in one environment | 2026-08-05 | OCR stack separated into its own manifest; pinned versions verified actually loaded (`numpy 2.5.1`, `cv2 5.0.0`) |

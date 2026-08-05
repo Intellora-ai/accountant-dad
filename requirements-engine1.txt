@@ -15,60 +15,50 @@
 #                             License :: OSI Approved :: Apache Software License
 #   numpy          2.5.1      BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0
 #                             (License-Expression field)
+#   pymupdf        1.28.0     ⚠️  Dual Licensed - GNU AFFERO GPL 3.0
+#                             or Artifex Commercial License
+#   pillow         12.3.0     MIT-CMU (License-Expression field)
 #
 # EXPLICITLY NOT APPROVED by `docs/TECHNOLOGY_STACK.md` and deliberately absent:
 # Tesseract · EasyOCR · Camelot · Tabula · ImageMagick · Unstructured.
 # A test in `tests/unit/test_input_engine_cleaner.py` asserts their absence from
 # the source rather than trusting this comment.
 #
-# NOT YET WIRED INTO CI. `.github/workflows/testing.yml:26` installs only
-# `requirements-ci.txt`, so `tests/unit/test_input_engine_cleaner.py` cannot run
-# on CI until a step installing this file is added. That is a `.github` change
-# and needs the owner's explicit approval for that specific change.
-
-#   pymupdf        1.28.0    ⚠️  Dual Licensed - GNU AFFERO GPL 3.0
-#                             or Artifex Commercial License
-#                             (read from installed metadata, 2026-08-05)
-#   pillow         12.3.0    MIT-CMU (License-Expression field)
+# ⚠️  PYMUPDF'S LICENCE IS A DECISION THE OWNER HAS NOT YET MADE, recorded here
+# rather than resolved. AGPL-3.0 §13 obliges anyone who lets users interact with
+# the software OVER A NETWORK to offer those users the complete corresponding
+# source, and a hosted accounting platform is exactly that shape.
+# `docs/TECHNOLOGY_STACK.md:28` LOCKS PyMuPDF, and a locked component is not
+# swapped on an engineer's judgement. Two lawful routes exist and both are the
+# owner's to choose: buy the Artifex commercial licence, or amend the locked
+# stack (§M) to a permissively-licensed PDF reader. See KNOWN_FAILURES.md F-001.
 #
-# ⚠️  PYMUPDF'S LICENCE IS A DECISION THE OWNER HAS NOT YET MADE, and it is
-# recorded here rather than resolved, because `docs/TECHNOLOGY_STACK.md:28`
-# LOCKS PyMuPDF as the PDF text-layer tool and a locked component is not
-# swapped on an engineer's judgement.
+# ── WHY PADDLEOCR IS NOT IN THIS FILE ─────────────────────────────────────
 #
-# The concern is concrete, not theoretical. AGPL-3.0 §13 obliges anyone who
-# lets users interact with the software OVER A NETWORK to offer those users
-# the complete corresponding source. A hosted accounting platform is exactly
-# that shape. Two lawful routes exist and both are the owner's to choose:
-# buy the Artifex commercial licence, or amend the locked stack (§M) to a
-# permissively-licensed PDF reader. Nothing here picks one.
+# It cannot be. Its dependency tree is incompatible with two pins above, and CI
+# proved it — `pip` returned ResolutionImpossible, measured, not predicted:
 #
-# Recorded, not silently accepted (Law 26 — never hide a trade-off; Law 27 —
-# always document an irreversible decision).
+#     paddlex requires   numpy<2.4,>=1.24
+#     this file pins     numpy==2.5.1
+#
+# and installing it also drags in `opencv-contrib-python 4.10.0.84` beside
+# `opencv-python 5.0.0.93`. Both provide `cv2`, and install order decides which
+# wins. Locally it was 4.10 that won, silently — `import cv2` reported 4.10.0
+# while this file said 5.0.0.93.
+#
+# THAT MATTERS BECAUSE THE PINS CARRY MEASUREMENTS. `cleaner`'s deskew residual
+# of 0.0017 at 32° was measured against opencv-python 5.0.0.93. Letting a
+# transitive dependency of an OCR package silently replace the library the
+# number was measured on would leave the assertion guarding a different library
+# than the one it was derived from — the test would still pass and would no
+# longer mean what it says.
+#
+# So the OCR stack moved to `requirements-engine1-ocr.txt`, which is exactly
+# what TECHNOLOGY_STACK.md prescribes for engine dependencies. The cost is
+# recorded honestly rather than hidden: reader's OCR tests do not run on CI
+# until that manifest is installed there. See KNOWN_FAILURES.md F-002 and F-009.
 
 opencv-python==5.0.0.93
 numpy==2.5.1
 pymupdf==1.28.0
 pillow==12.3.0
-paddleocr==3.7.0
-paddlepaddle==3.3.1
-
-# ⚠️  PADDLEOCR DRAGS IN A SECOND OPENCV. Installing it also installs
-# `opencv-contrib-python 4.10.0.84` as a transitive dependency, so the
-# environment then holds TWO OpenCV distributions that both provide `cv2`:
-#
-#     opencv-python          5.0.0.93   pinned above, what `cleaner` was measured on
-#     opencv-contrib-python  4.10.0.84  pulled in by paddlex, unpinned by us
-#
-# Which one `import cv2` resolves to is decided by installation order, not by
-# anything in this file. That is a reproducibility hazard, not a style point:
-# `cleaner`'s deskew residual (0.0017 at 32 degrees) was measured against
-# 5.0.0.93, and a silent swap to 4.10 would change the numbers without changing
-# a line of code.
-#
-# MEASURED, NOT ASSUMED: with both present the full unit suite is green -
-# 2068 passed, 14 skipped, 0 failed, locally on 2026-08-05. So this is a latent
-# hazard rather than a live break, and it is recorded here instead of being
-# "fixed" by pinning a version nobody measured (Law 24, Law 52).
-#
-# Local green is not evidence (Law 44). CI decides.

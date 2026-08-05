@@ -44,6 +44,32 @@ import pytest
 
 from accountant_dad.engines.input_engine import reader
 
+# ── which tests can run here ──────────────────────────────────────────────
+#
+# PaddleOCR cannot be installed beside `requirements-engine1.txt`: paddlex
+# requires `numpy<2.4` against a pinned `numpy==2.5.1`, and it also drags in a
+# second OpenCV that silently wins `import cv2`. It therefore lives in
+# `requirements-engine1-ocr.txt`, in its own environment.
+#
+# `reader.py` resolves it lazily, so the module imports without it and every
+# test below that does not perform real recognition still runs. These do
+# perform it, so they are guarded the same way `test_input_engine_parser.py`
+# guards its Docling measurements.
+
+_MISSING_OCR = [
+    name for name in ("paddleocr", "paddlepaddle") if importlib.util.find_spec(name) is None
+]
+needs_the_real_ocr = pytest.mark.skipif(
+    bool(_MISSING_OCR),
+    reason=(
+        f"not installed: {', '.join(_MISSING_OCR)}. PaddleOCR cannot share an "
+        "environment with requirements-engine1.txt (numpy and cv2 both conflict), so "
+        "these measurements are LOCAL and are NOT CI evidence (CLAUDE.md Law 44). "
+        "See KNOWN_FAILURES.md F-009."
+    ),
+)
+
+
 # ── a typed facade for AUTHORING fixtures ─────────────────────────────────
 #
 # PyMuPDF ships `py.typed` with unannotated functions, so `mypy --strict`
@@ -317,6 +343,7 @@ def test_an_image_only_pdf_yields_zero_characters_from_the_text_layer_path() -> 
 # ── blank pages: zero regions, never invented text ────────────────────────
 
 
+@needs_the_real_ocr
 def test_a_blank_pdf_returns_zero_regions_and_no_invented_text() -> None:
     reading = reader.read(
         a_blank_pdf(),
@@ -328,6 +355,7 @@ def test_a_blank_pdf_returns_zero_regions_and_no_invented_text() -> None:
     assert reading.regions == ()
 
 
+@needs_the_real_ocr
 def test_a_blank_image_returns_zero_regions_and_no_invented_text() -> None:
     """`CLAUDE.md` §B.8 - it must NEVER hallucinate. For a reader, this is the test."""
     reading = reader.read(
@@ -344,6 +372,7 @@ def test_a_blank_image_returns_zero_regions_and_no_invented_text() -> None:
 # ── the OCR path (PaddleOCR), on a real render ────────────────────────────
 
 
+@needs_the_real_ocr
 def test_ocr_reads_the_rendered_invoice_and_reports_a_real_per_region_confidence() -> None:
     reading = reader.read(
         an_invoice_png(),
@@ -360,6 +389,7 @@ def test_ocr_reads_the_rendered_invoice_and_reports_a_real_per_region_confidence
         assert Decimal("0") <= region.extraction_confidence <= Decimal("1")
 
 
+@needs_the_real_ocr
 def test_the_ocr_confidences_are_measured_not_a_fabricated_constant() -> None:
     """Falsification: a hard-coded score would be identical on every region.
 
@@ -379,6 +409,7 @@ def test_the_ocr_confidences_are_measured_not_a_fabricated_constant() -> None:
     assert scores != {Decimal("1")}
 
 
+@needs_the_real_ocr
 def test_an_image_only_pdf_falls_through_to_ocr_and_reads_it() -> None:
     """A PDF with no text layer is an image. The router must reach OCR, not give up."""
     reading = reader.read(
@@ -392,6 +423,7 @@ def test_an_image_only_pdf_falls_through_to_ocr_and_reads_it() -> None:
     assert tuple(region.text for region in reading.regions) == INVOICE_LINES
 
 
+@needs_the_real_ocr
 def test_ocr_character_accuracy_on_the_synthetic_invoice_is_total() -> None:
     """Measured, with a unit: characters correct / characters expected."""
     reading = reader.read(
@@ -456,6 +488,7 @@ def test_a_corrupt_image_raises_a_named_error_rather_than_returning_nothing(
         )
 
 
+@needs_the_real_ocr
 def test_a_broken_file_and_a_blank_page_are_distinguishable() -> None:
     """States that must never collapse into each other, asserted side by side."""
     blank = reader.read(
@@ -503,6 +536,7 @@ def test_the_text_layer_path_itself_raises_rather_than_returning_empty(payload: 
 # ── the vision fallback: stubbed, and it refuses loudly ───────────────────
 
 
+@needs_the_real_ocr
 def test_the_vision_fallback_refuses_loudly_when_confidence_is_below_threshold() -> None:
     """There is no API key and no agreed threshold, so the path cannot silently work.
 
@@ -520,6 +554,7 @@ def test_the_vision_fallback_refuses_loudly_when_confidence_is_below_threshold()
         )
 
 
+@needs_the_real_ocr
 def test_the_fallback_never_silently_degrades_to_another_backend() -> None:
     """Inversion: the dangerous failure is a fallback that quietly returns OCR output."""
     with pytest.raises(reader.VisionFallbackUnavailableError):
@@ -531,6 +566,7 @@ def test_the_fallback_never_silently_degrades_to_another_backend() -> None:
         )
 
 
+@needs_the_real_ocr
 def test_the_fallback_is_not_triggered_when_every_region_meets_the_threshold() -> None:
     reading = reader.read(
         an_invoice_png(),
@@ -543,6 +579,7 @@ def test_the_fallback_is_not_triggered_when_every_region_meets_the_threshold() -
     assert len(reading.regions) == len(INVOICE_LINES)
 
 
+@needs_the_real_ocr
 def test_a_blank_page_never_triggers_the_fallback_because_nothing_scored_low() -> None:
     """A page with no regions has no region below the threshold. Zero is not low."""
     reading = reader.read(
