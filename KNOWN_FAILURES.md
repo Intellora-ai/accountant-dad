@@ -176,7 +176,7 @@ with no number anywhere. Only the stated *mechanism* is wrong.
 | | |
 |---|---|
 | **Severity** | MEDIUM |
-| **Status** | ⬜ OPEN · a resolution is chosen, not yet built |
+| **Status** | ✅ **CLOSED 2026-08-05** — `NamedSignal` now carries both fields |
 | **Found** | 2026-08-05 |
 
 **Description.** The owner's A8 requires the raw signal preserved per field, per region,
@@ -189,8 +189,23 @@ artifact.** The measurement log is the right home: append-only, line-delimited, 
 what calibration reads. Amending a frozen contract to solve a problem a new file
 already solves is the worse fix.
 
-**Permanent fix.** `measurement.py` must carry `instrument` and `region` per signal.
-An agent is building exactly that. Until it lands, the raw signal has no home.
+**Permanent fix — LANDED** (`47c4063`). `NamedSignal` in
+`src/accountant_dad/engines/input_engine/measurement.py` now carries:
+
+```python
+name: str
+value: float | None
+instrument: str          # required, non-blank, validated in __post_init__
+region: str | None = None
+```
+
+Both round-trip through the line-delimited JSON. `region` is **omitted from the JSON
+entirely** when absent rather than written as `null` — absent and null-valued are
+different claims, and the distinction is the point of the whole record.
+
+A8's requirement — *preserve the raw signal per field, per region, per instrument,
+with its origin* — is now satisfiable. Before this, it was satisfiable nowhere in the
+system: `FieldConfidence` has no slot for either field and `NamedSignal` had neither.
 
 ---
 
@@ -269,6 +284,53 @@ correct code → prove it FAILS on deliberately broken code → merge → add **
 gate** to the required list → lock. `merge gate` goes required **last**, when it can
 actually pass. **`mutation` is now the next candidate** — it has passed on correct code;
 it still needs the deliberately-broken-code proof before promotion.
+
+---
+
+## F-010 · Two same-day documents disagree on whether classification is authorised
+
+| | |
+|---|---|
+| **Severity** | MEDIUM — a precedence question, resolved by precedence but not reconciled |
+| **Status** | ⬜ OPEN · built on the permitted side; the documents still contradict |
+| **Found** | 2026-08-05, building `classification` |
+
+**Description.** Two documents written on the same day say opposite things.
+
+```
+CLAUDE.md §P Amendment 3     names "document classification" among the
+                             capabilities EXPLICITLY AUTHORISED for Engine 1
+docs/ENGINE_1_ARCHITECTURE.md §G9.5
+                             says document-type detection "is not authorised …
+                             out of scope until the owner rules"
+```
+
+**Root cause.** Amendment 3 is owner-approved and sits in the constitution.
+`ENGINE_1_ARCHITECTURE.md` was drafted by an agent the same day, is not owner-approved,
+and is not frozen. It also arrived **after** code had started, which is the wrong order
+(§F) and was recorded as such rather than backdated.
+
+**Resolution by precedence — CLAUDE.md wins.** `CLAUDE.md` is the constitution and
+Amendment 3 carries the owner's approval and date. G9.5 does not.
+
+**Built on the permitted side of G9.5's own line anyway.** G9.5 draws its line between
+an *observation* ("invoice-like layout") and a *conclusion* ("this is a proforma
+invoice"). `classification.py` produces evidence-carrying observations only: every
+`TypeCandidate` must carry at least one `MatchedCue` naming the literal cue, the
+instrument that saw it and where it was; `UNKNOWN` and `AMBIGUOUS` are first-class
+answers; on ambiguity **every** candidate's evidence survives and no winner is picked.
+It makes no accept decision and produces no score at all.
+
+**Why it needs no threshold.** The three-way outcome is decided by Python structural
+pattern matching on tuple **shape** — `case ()` / `case (only,)` / `case multiple:` —
+never a numeric comparison. So parameter #9 `classification_accept` stays UNSET and
+unused, and there is no cutoff to invent. A test walks the module's AST and fails if
+any numeric comparison appears anywhere; a red-team mutation inserting a
+behaviour-preserving `if len(candidates) == 0:` was caught by that test **alone**.
+
+**Permanent fix.** Reconcile the two documents. Either G9.5 is revised to match
+Amendment 3, or Amendment 3 is narrowed — the owner's call, not an engineer's. Until
+then the contradiction is recorded rather than silently resolved.
 
 ---
 

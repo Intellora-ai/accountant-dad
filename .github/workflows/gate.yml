@@ -23,6 +23,9 @@ jobs:
       - name: install tooling
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
 
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+
       # ─────────────────────────────────────────────────────────────────────
       # LEGACY COMBINED GATE — implemented, deliberately duplicating the four
       # split gates in quality.yml and testing.yml.

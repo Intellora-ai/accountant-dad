@@ -29,12 +29,13 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 
 | ID | Task | Status | Depends on | Phase |
 |---|---|---|---|---|
-| T-010 | **`confidence_report` tests** — 444 lines of source exist, no tests. Agent running. | 🔄 | — | Engine 1 |
-| T-011 | **`config` + `measurement` tests** — 626 + 410 lines exist, no tests. Agent running. | 🔄 | — | Engine 1 |
-| T-012 | **`measurement.py` must carry `instrument` and `region` per signal** — it is the only home the raw signal has. See F-005. | 🔄 | T-011 | Engine 1 |
+| ~~T-010~~ | ~~`confidence_report` tests~~ | ✅ | — | → Completed |
+| ~~T-011~~ | ~~`config` + `measurement` tests~~ | ✅ | — | → Completed |
+| ~~T-012~~ | ~~`instrument` + `region` on every signal~~ | ✅ | — | → Completed · F-005 closed |
 | T-013 | **CI must install Engine 1's dependencies.** `requirements-engine1.txt` now pins opencv, numpy, pymupdf, pillow, paddleocr, paddlepaddle. Four jobs install it; `lint` deliberately does not. Verify the new pins do not break any job. | ⬜ | push | CI |
 | T-014 | **Promote `mutation` to a required check.** It passed on correct code at 99.3%. The lifecycle needs one more step: prove it FAILS on deliberately broken code. Then add **only** that gate. See F-008. | ⬜ | T-013, owner approval for the ruleset change | CI |
-| T-015 | **Engine 1 integration** — the four sub-engines and assembly exist as units. Nothing yet runs a real document end to end through `cleaner → reader → parser → confidence → assembly`. | ⬜ | T-010, T-011 | Engine 1 |
+| T-015 | **Engine 1 pipeline runner** — nothing has ever run a real document through all stages together. Agent building it. | 🔄 | — | Engine 1 |
+| T-016 | **`classification` sub-engine** — document-type detection. On `ENGINE_1_AUTHORIZED` but never written. Agent building it. | 🔄 | — | Engine 1 |
 
 ---
 
@@ -79,4 +80,8 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 | T-104 | **Confidence specification** — 666 lines. The owner's A1–A8 written down, with the no-scalar result proved from a named theorem rather than asserted. | `30f54af` | — |
 | T-105 | **Seven atomic concepts** — GST valuation and place of supply, every citation verified against six independent layers. | `30f54af` | 41/41 documents present |
 | T-106 | **Engine 1 architecture document** (§G). | `30f54af` | — |
-| T-003 | **Deleted the stale `ENGINE_1_CONFIDENCE_PARAMETERS 2.md`.** Both safety checks passed first: nothing depended on it, and `diff` proved its *only* unique line was the inverted `worst_k` row itself. | this commit | F-003 closed |
+| T-003 | **Deleted the stale `ENGINE_1_CONFIDENCE_PARAMETERS 2.md`.** Both safety checks passed first: nothing depended on it, and `diff` proved its *only* unique line was the inverted `worst_k` row itself. | `7279ea6` | F-003 closed |
+| T-010 | **`confidence_report` + 27 tests.** Found a capture-fidelity score that was computed and then discarded, never reaching the report. Red-teamed — and the attack exposed a defect in the no-threshold test itself, which missed constants nested inside `Decimal("...")`. | `a5979ab` | local green |
+| T-011 | **`config` (71 tests) + `measurement` (43).** `config` audited clean, zero defects. `measurement` had a loud-failure path that silently lost its line number, and three UNUSED `type: ignore`s that `warn_unused_ignores` makes hard errors. | `47c4063` | suppressions 124 → 124 |
+| T-012 | **`instrument` + `region` on every `NamedSignal`.** The raw signal had no home anywhere in the system before this. | `47c4063` | F-005 closed |
+| T-107 | **Pinned the parsing stack** — docling, transformers, torch, torchvision, timm, pypdfium2. `timm` was undeclared and its absence was visible to exactly ONE test out of 51. | `fd929c1` | parser 51/51 |
