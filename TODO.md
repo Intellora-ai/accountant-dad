@@ -34,8 +34,9 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 | ~~T-012~~ | ~~`instrument` + `region` on every signal~~ | ✅ | — | → Completed · F-005 closed |
 | T-013 | **CI must install Engine 1's dependencies.** `requirements-engine1.txt` now pins opencv, numpy, pymupdf, pillow, paddleocr, paddlepaddle. Four jobs install it; `lint` deliberately does not. Verify the new pins do not break any job. | ⬜ | push | CI |
 | T-014 | **Promote `mutation` to a required check.** It passed on correct code at 99.3%. The lifecycle needs one more step: prove it FAILS on deliberately broken code. Then add **only** that gate. See F-008. | ⬜ | T-013, owner approval for the ruleset change | CI |
-| T-015 | **Engine 1 pipeline runner** — nothing has ever run a real document through all stages together. Agent building it. | 🔄 | — | Engine 1 |
-| T-016 | **`classification` sub-engine** — document-type detection. On `ENGINE_1_AUTHORIZED` but never written. Agent building it. | 🔄 | — | Engine 1 |
+| T-015 | **Engine 1 pipeline runner** — built, and then made into an actual pipe: `412eed6` rewired `reader` and `parser` to read `cleaned.artifact.payload` and **deleted** the `rasterise_first_page_for_cleaning` adapter. F-012 closed. | ✅ | — | Engine 1 |
+| T-016 | **`classification` sub-engine** — built. Decides on tuple shape, not on a number: zero thresholds anywhere in the module, guarded by an AST test that scans its own source. | ✅ | — | Engine 1 |
+| T-047 | **Prove Engine 1 end to end as a TEST, not by hand.** A real 8-page CBIC PDF ran through and produced 415 regions with its text layer intact — but no test asserts it, so the proof dies with the session. `ROADMAP.md` E1 completion criteria requires it. Agent building it. | 🔄 | — | Engine 1 |
 
 ---
 
@@ -48,7 +49,9 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 | T-022 | **Red-team `cleaner.py`** — hunt information-destroying crops and denoise. Information a cleaner destroys can never be recovered downstream, and nothing later can know it is missing. Agent killed mid-run; probe scripts survive in the scratchpad. | ⏸ | — | Engine 1 |
 | T-023 | **Red-team the citation verifier** — six layers, hunt the case that still slips. Agent killed mid-run. | ⏸ | — | Brain |
 | T-024 | **Full citation sweep** — every claim, every layer, and re-measure the per-parser resolution rates against ICAI 207/207, Act 397/397, Rules 197/202. A moved rate is a regression. | ⏸ | — | Brain |
-| T-025 | **Kill the 9 surviving mutants.** Score is 99.3% against a floor of 93, so this is not blocking — but each survivor is a change to production code no test noticed. | ⬜ | — | testing |
+| T-025 | ~~Kill the 9 surviving mutants~~ — **superseded by T-045.** That 99.3% was measured on a far smaller tree; the whole of Engine 1 landed after it. | ✅ | — | testing |
+| T-045 | **Mutation gate back above 93%.** The last complete run (`2625b58`) read **90.6%** — killed 2178, survived 227, timeout 953. The gate scores `killed / (killed + survived)`, so survivors had to reach **≤ 163**: 64 kills. **114 delivered** across five test files, every one an assertion made stricter or a case added. Awaiting the CI number on `7e0efe2` — until then it is a projection, not a result (Law 44). | 🔄 | CI | testing |
+| T-046 | **74 reader mutants are unreachable without PaddleOCR**, and 23 more across four modules are provably equivalent (measured, not assumed). The 74 close with F-009; the 23 never close and should not be chased. | 🔒 | F-009 | testing |
 | T-026 | **Audit the 23 locked documents for contradictions** — ownership collisions, artifacts with two names, paths `DATA_FLOW.md` does not define, stale counts. Agent killed mid-run. | ⏸ | — | architecture |
 | T-027 | **Suppression audit follow-through** — the report exists (22.6K, in the scratchpad). Count is 124 against a 128 baseline. Act on the STALE and REMOVABLE entries it names. | ⬜ | — | quality |
 | T-028 | **Coverage gap analysis** — branch coverage, and specifically every uncovered FAILURE path. An uncovered `except` is a path nobody has proven works, and it is the one that runs during an incident. | ⏸ | — | testing |

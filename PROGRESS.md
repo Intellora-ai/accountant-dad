@@ -227,3 +227,123 @@ check, which needs the deliberately-broken-code proof first.
 Engine 1 is **four of four sub-engines written**, three of them tested and landed.
 Not integrated. Not measured against ground truth — and by Law 52 no accuracy claim
 about this system is provable yet, so none is made here.
+
+---
+
+## 2026-08-05 (evening) · One pipeline, and 114 mutants killed
+
+### Completed
+
+**The pipeline became a pipe** — `412eed6`. `reader` and `parser` each used to re-open
+the raw document, so cleaning changed nothing downstream (F-012). Both now read
+`cleaned.artifact.payload`. The legacy `rasterise_first_page_for_cleaning` adapter was
+**deleted**, not deprecated, and `_payload_of` **refuses** a missing artifact rather
+than falling back to the original — a fallback would silently reinstate two pipelines
+while every test kept passing.
+
+Three tests replaced the two that died with the adapter. One asserts on `run`'s own
+source (guarded against mutmut instrumentation), so the bypass cannot return quietly.
+
+**114 mutation survivors killed** — `6d76270`, `73b1a0d`, `efddfb6`, `7e0efe2`. Five
+agents, one per test file so none could collide.
+
+| Module | Survivors | Killed | Left alive, and why |
+|---|---|---|---|
+| `cleaner` | 69 | **50** | 19 equivalent — PyMuPDF ignores `filetype` and format-string case for a real stream, measured against the pinned build |
+| `reader` | 101 | **27** | 72 unreachable without PaddleOCR (F-009); 2 equivalent — `.convert("RGB")` guarantees `uint8` regardless of `dtype=` |
+| `measurement` | 24 | **23** | 1 equivalent — `ensure_ascii=False` and `None` are equally falsy inside `json.dumps` |
+| `config` | 8 | **7** | 1 equivalent — `json.loads` cannot produce a dict with a non-`str` key from any valid JSON |
+| `classification` | 7 | **7** | — |
+
+Every kill is an assertion made **stricter** or a case **added**. No file excluded, no
+assertion weakened, no floor touched (Law 4, §J.4, Law 55).
+
+### The root cause of the survivors, named once
+
+Almost every survivor was the same defect wearing a different mask: **a test that
+checked a fragment of a message instead of the message.** `pytest.raises` with no
+`match=`, `assert "no type is guessed" in reasons[0]`, `len(reasons) == 1`. mutmut
+rewords, wraps, re-cases and re-separates string literals; a fragment check sees none
+of it.
+
+### The trap that ate an hour, recorded so it is not re-derived
+
+mutmut's `"XX" + literal + "XX"` mutation is **not** killed by a substring check. The
+wrapped string still *contains* the original contiguously, so `assert "text" in message`
+stays green. Only exact equality catches it. One agent hit this empirically, and the
+finding was relayed to the other three mid-run.
+
+The exception: a multi-occurrence separator such as `", ".join(...)` mutated to
+`"XX, XX".join(...)` **is** caught by a substring check, because the marker lands
+between every pair of items rather than only at the two ends.
+
+### Method, given F-016
+
+Mutation cannot run on macOS at all. Every agent used the same route instead: mutmut
+3.3.1's mutation generator (`mutmut.file_mutation`) is a pure `libcst` transform with
+no fork, so the exact mutant source is producible locally. Applied by hand to the real
+module, RED measured, reverted, GREEN measured — with `src/**/__pycache__` purged
+before **and** after every swap, because a length-preserving mutation restored inside
+one mtime tick leaves a `.pyc` Python happily reuses. That already faked one
+verification pass in an earlier session.
+
+### Files changed
+
+```
+src/accountant_dad/engines/input_engine/pipeline.py      rewired, adapter deleted
+tests/unit/test_input_engine_pipeline.py                 3 tests replace 2
+tests/unit/test_input_engine_cleaner.py                 +175 −1
+tests/unit/test_input_engine_measurement.py             +263
+tests/unit/test_input_engine_reader.py                  +148
+tests/unit/test_input_engine_classification.py           +23 −5
+tests/unit/test_input_engine_config.py                   +68 −1
+```
+
+`src/` was untouched by all five agents — verified byte-identical after every RED/GREEN
+round trip.
+
+### Tests executed — local, therefore provisional (Law 44)
+
+```
+ruff check src tests          All checks passed!
+ruff format --check src tests 86 files already formatted
+mypy src tools/ci tests       Success: no issues found in 92 source files
+pytest tests/unit -q          2361 passed, 11 skipped
+suppressions                  124  (unchanged)
+coverage                      97.6449%  vs a 97.4643% ratchet
+```
+
+### GitHub status — on `7e0efe2`
+
+```
+build · typecheck · lint · unit tests · coverage · dependency scan   pass
+conformance · conformance suite · secret scan · CodeQL               pass
+mutation                                                             RUNNING
+```
+
+### Numbers
+
+| | |
+|---|---|
+| Last complete mutation run | `2625b58` — killed 2178, survived 227, timeout 953, **90.6%** against a floor of 93 |
+| Survivors needed to clear 93% | **≤ 163**, because the gate scores `killed / (killed + survived)` and excludes timeouts |
+| Kills required | **64** |
+| Kills delivered | **114** |
+| Projected score | 2292 / 2405 = **95.3%** — a projection, not a result. It does not exist until CI says it |
+
+### Blockers
+
+Unchanged, all four need the owner: **F-001** PyMuPDF AGPL-3.0 · **F-004** confidence
+gating that A7 forbids · **F-006 / T-004** golden-set size · **T-005** the 16 unset
+confidence parameters.
+
+### Next work
+
+Wait for `mutation` on `7e0efe2`. If it clears, every mandatory gate is green. If it
+does not, read the new survivor list and repeat.
+
+### Overall
+
+Engine 1 is one pipeline for the first time. Its CI obligation is one gate from met.
+Still not measured against ground truth — by Law 52 no accuracy claim is provable, so
+none is made here.
