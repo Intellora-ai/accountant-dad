@@ -748,6 +748,127 @@ def test_measurement_row_rejects_duplicate_signal_names_in_one_category() -> Non
         )
 
 
+def test_the_duplicate_message_names_the_category_and_the_offending_name() -> None:
+    """`pytest.raises(...)` with no `match=` proves only that SOMETHING raised.
+
+    CI's mutation run left seven survivors inside `_no_duplicate_names` for
+    exactly that reason: every mutation to the message, and several to the
+    detection itself, still produced *an* exception, so the test above went on
+    passing. §J.2 — assert the real RESULT, not that a function ran.
+    """
+    with pytest.raises(m.UnrecordableMeasurementError) as raised:
+        m.MeasurementRow(
+            document_id=a_document_id(),
+            source_document_type="invoice",
+            processing_time_ms=1.0,
+            per_field=(
+                m.NamedSignal(name="gstin", value=0.5, instrument="PaddleOCR"),
+                m.NamedSignal(name="gstin", value=0.9, instrument="PDF text layer"),
+            ),
+        )
+
+    message = str(raised.value)
+    assert "per_field" in message, "the category must be named, or the reader cannot tell which one"
+    assert "gstin" in message, "the offending name must be named, or the message is unactionable"
+    assert "names the same signal twice" in message
+
+
+def test_every_duplicated_name_is_reported_and_they_come_back_sorted() -> None:
+    """Two distinct names are each duplicated, and they are supplied in reverse
+    order. Both must appear, and `alpha` must precede `omega` — which is what
+    makes dropping `sorted()` a detectable change rather than a cosmetic one.
+    """
+    with pytest.raises(m.UnrecordableMeasurementError) as raised:
+        m.MeasurementRow(
+            document_id=a_document_id(),
+            source_document_type="invoice",
+            processing_time_ms=1.0,
+            per_field=(
+                m.NamedSignal(name="omega", value=0.1, instrument="PaddleOCR"),
+                m.NamedSignal(name="alpha", value=0.2, instrument="PaddleOCR"),
+                m.NamedSignal(name="omega", value=0.3, instrument="PaddleOCR"),
+                m.NamedSignal(name="alpha", value=0.4, instrument="PaddleOCR"),
+            ),
+        )
+
+    message = str(raised.value)
+    assert "alpha" in message
+    assert "omega" in message
+    assert message.index("alpha") < message.index("omega"), (
+        "duplicates must be sorted: an unsorted report varies with input order, "
+        "so two runs over the same data would disagree about what is wrong"
+    )
+
+
+def test_a_name_repeated_three_times_is_reported_once_not_three_times() -> None:
+    """The set comprehension is doing real work. Without it a name repeated N
+    times is listed N times, which reads as N separate problems.
+    """
+    with pytest.raises(m.UnrecordableMeasurementError) as raised:
+        m.MeasurementRow(
+            document_id=a_document_id(),
+            source_document_type="invoice",
+            processing_time_ms=1.0,
+            per_field=(
+                m.NamedSignal(name="hsn", value=0.1, instrument="PaddleOCR"),
+                m.NamedSignal(name="hsn", value=0.2, instrument="PaddleOCR"),
+                m.NamedSignal(name="hsn", value=0.3, instrument="PaddleOCR"),
+            ),
+        )
+
+    assert str(raised.value).count("hsn") == 1
+
+
+def test_names_that_each_appear_once_are_accepted() -> None:
+    """The boundary on the other side. `names.count(name) > 1` mutated to
+    `>= 1` makes EVERY row with any signal raise, and nothing above would
+    notice, because every test there is asserting that a raise happens.
+    """
+    row = m.MeasurementRow(
+        document_id=a_document_id(),
+        source_document_type="invoice",
+        processing_time_ms=1.0,
+        per_field=(
+            m.NamedSignal(name="gstin", value=0.5, instrument="PaddleOCR"),
+            m.NamedSignal(name="hsn", value=0.9, instrument="PaddleOCR"),
+        ),
+    )
+
+    assert not isinstance(row.per_field, m.AbsentType)
+    assert [signal.name for signal in row.per_field] == ["gstin", "hsn"]
+
+
+def test_exactly_two_occurrences_is_already_a_duplicate() -> None:
+    """The other boundary: `> 1` mutated to `> 2` lets a plain pair through,
+    which is the commonest duplicate there is.
+    """
+    with pytest.raises(m.UnrecordableMeasurementError, match="rate"):
+        m.MeasurementRow(
+            document_id=a_document_id(),
+            source_document_type="invoice",
+            processing_time_ms=1.0,
+            classification=(
+                m.NamedSignal(name="rate", value=0.1, instrument="docling"),
+                m.NamedSignal(name="rate", value=0.2, instrument="docling"),
+            ),
+        )
+
+
+def test_a_single_signal_in_a_category_never_raises() -> None:
+    """One signal cannot duplicate anything. This pins the empty/singleton edge
+    that `if duplicated:` inverted to `if not duplicated:` would break.
+    """
+    row = m.MeasurementRow(
+        document_id=a_document_id(),
+        source_document_type="invoice",
+        processing_time_ms=1.0,
+        table=(m.NamedSignal(name="total", value=0.7, instrument="table-transformer"),),
+    )
+
+    assert not isinstance(row.table, m.AbsentType)
+    assert len(row.table) == 1
+
+
 def test_measurement_row_rejects_a_blank_failed_field_name() -> None:
     with pytest.raises(m.UnrecordableMeasurementError):
         m.MeasurementRow(
