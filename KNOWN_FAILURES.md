@@ -709,6 +709,103 @@ than the engine — then wire only what is required, test-first. In progress.
 
 ---
 
+## F-019 · Engine 1 emits a confident, empty, valid lie
+
+| | |
+|---|---|
+| **Severity** | **CRITICAL** — this is the *"never post a wrong entry"* non-goal failing at the source |
+| **Status** | 🔄 OPEN · agents fixing it in three files |
+| **Found** | 2026-08-06, by two agents investigating different questions who converged on the same three lines |
+
+**Demonstrated, executed against the real modules.**
+
+```
+input : OCR reading, two regions scored 0.31 and 0.28
+output: artifact VALIDATED : True
+        extracted_text     : 'Total 1,18,OOO.00\nGSTIN 27AAEC'
+        confidence_scores  : ()      <-- the 0.31 / 0.28 are gone
+        uncertainty_markers: ()
+        risky_fields       : ()
+```
+
+`1,18,OOO.00` carries letter-`O` where zeros belong — the classic 28%-confidence OCR
+failure. It leaves Engine 1 with **no marker and no score**, inside an object marked
+VALIDATED. Every downstream engine then reasons from it confidently, and nothing in the
+system can tell that it was ever doubtful.
+
+**The sharpest way to see it.** `stub.py`, which reads nothing at all, emits an
+uncertainty marker so its emptiness cannot be mistaken for a real reading.
+`pipeline.run()`, which read a document and got garbage, emits none. The stub's own
+docstring names the exact failure the production pipeline now has.
+
+**Mechanism — three lines, acting jointly.**
+
+```
+pipeline.py:456-460        parser_output() unconditionally returns detected_fields=()
+pipeline.py:565            run() passes a literal () as record_confidence's parsed_fields
+confidence_report.py:378   _field_confidence_scores reads ONLY parsed_fields; the
+                           reader_regions path feeds a marker that fires only when
+                           text is None — never true for a successful read
+pipeline.py:364            filters out 100% of PDF text-layer regions (the MVP's
+                           primary input) before confidence ever sees them
+```
+
+**Root cause — `reader` and `parser` never meet.** Nothing in Engine 1 joins a name to a
+score:
+
+| Producer | Has a NAME | Has a CONFIDENCE |
+|---|---|---|
+| `reader.TextRegion` | ✗ — only a `SourceLocation` | ✅ |
+| `parser.Region` | ✅ `label` | ✗ |
+| `parser.Table` / `Cell` | ✗ | ✗ |
+
+`parser.parse` takes a `Path` and re-opens the document; `reader.Reading` is never an
+input to it. But `SUB_ENGINE_RESPONSIBILITIES.md` §1.3 — **locked, level 2** — states
+parser's input is *"Raw extracted information with source locations from `reader`"* and
+that field mappings *"retain the source reference for every mapped value."* Code and a
+locked document disagree, so **the document wins and the code is wrong** (§M).
+
+**This is the unfixed half of F-012.** `412eed6` fixed `cleaner → {reader, parser}`. The
+`reader → parser` half was never built. F-012's entry is stale in saying otherwise.
+
+**Locked clauses violated** — the four that bite hardest:
+
+- `ENGINE_1_INPUT_ENGINE_RULES.md:245` — *"A value carried without all three is not
+  evidence and must not be emitted."* Engine 1 emits it anyway, as bare `str`.
+- `COMMUNICATION_RULES_INPUT_ENGINE.md:113-119` — source, confidence and uncertainty
+  *"travel with the value permanently."* Zero values carry any of the three.
+- `SYSTEM_INVARIANTS.md` INV-11 — *"No engine may merge these origins into a single
+  anonymous fact."* `document_structure` is exactly that: every region's label, text and
+  box concatenated into one origin-free string.
+- Law 24 — `reliability_information` states *"0 of 0 region(s) reader attempted"* for a
+  reading where `reader` attempted and read **3**. A false number, shipping inside a
+  financial artifact.
+
+**What else this explains.** `evidence.py:337-344` — the artifact's own *"every detected
+field must carry a score"* validator — **has never executed a single iteration**, because
+`detected_fields` is always empty. A green check guarding nothing. The schema is the one
+component in the chain that is right: probed directly, it builds a per-field confidence
+without complaint and *refuses* a field whose score disagrees with its own provenance.
+
+**The pattern, stated as a class.** Every sub-engine individually refuses to lie. Every
+failure is at a **seam**. Nothing guards composition, and an assembly of honest parts
+produced a confident, empty, valid lie. Unit tests are structurally blind to this — each
+imports its own module and proves that module honest.
+
+**Permanent fix**, in dependency order:
+
+1. Give `RegionReading` its third state — *read but unscored* — mirroring the
+   `measurement.AbsentType` precedent that resolved F-005. Stops the loss and removes the
+   false count. Fully authorised, no schema change.
+2. Build the `reader → parser` pipe the locked spec already mandates, joining on the
+   source location. Closes this entirely for the OCR path. Fully authorised.
+3. The text-layer path needs one more thing: `Provenance.confidence` is mandatory and a
+   text-layer value has **no honest score**. Assigning `1.0` is the forbidden default
+   (`ENGINE_1_INPUT_ENGINE_RULES.md:625`); assigning `0.0` is a lie the other way.
+   **This one needs the owner** — it is a §M amendment to a frozen P2 schema.
+
+---
+
 ## F-009 · The OCR path is not proven on CI
 
 | | |
