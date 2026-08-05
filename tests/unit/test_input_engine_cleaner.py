@@ -971,8 +971,182 @@ def test_an_image_carries_a_raster_and_a_passed_through_pdf_does_not() -> None:
 
 
 def test_empty_bytes_are_refused_rather_than_cleaned_into_a_blank_page() -> None:
-    with pytest.raises(cleaner.UndecodableArtifactError, match="nothing to clean"):
+    """Exact message, not a substring: a mutant that wraps the whole string in
+    `XX...XX` markers still CONTAINS "nothing to clean" as a substring, so a
+    loose `match` cannot tell the wrapped string from the real one.
+    """
+    with pytest.raises(cleaner.UndecodableArtifactError) as excinfo:
         cleaner.clean_artifact(b"", cleaner.MediaKind.PDF, a_settings(), render_dpi=150)
+    assert str(excinfo.value) == "no bytes were supplied; there is nothing to clean."
+
+
+# ── mutation-testing hardening (F-017 migration, cleaner.py 90.6% -> 93%) ──
+#
+# `fitz.open(..., filetype=...)` and `Pixmap.tobytes(fmt)` are, in the pinned
+# pymupdf 1.28.0 / MuPDF 1.29.0, PROVEN to ignore their format-hint argument
+# whenever the stream itself is real, recognisable content: measured directly
+# against garbage bytes, a real PNG mislabelled as "pdf", an empty stream and
+# four unrelated extension strings ("docx", "xps", "epub", "notarealformat"),
+# every one opened identically and raised the identical exception type on the
+# identical bad input. `get_text("TEXT")` was measured byte-for-byte identical
+# to `get_text("text")` the same way. A mutant that swaps the case of that
+# literal, or the literal itself, is therefore behaviourally IDENTICAL code —
+# no test, however written, can observe a difference, because the dependency
+# itself throws the argument away. Left undtested rather than faked green.
+
+
+def test_render_dpi_controls_the_rasterised_scanned_pdf_size_end_to_end() -> None:
+    """Differential across `render_dpi`, through the public entry point.
+
+    `clean_artifact` hands `render_dpi` to `_clean_pdf`, which hands it to
+    `_pdf_rebuilt_from_cleaned_pages`, which hands it to `get_pixmap(dpi=...)`.
+    A mutant that drops it to `None` at ANY of those three hops makes every
+    call render at the same fixed size regardless of what the caller asked
+    for — this test changes only `render_dpi` and requires the rasterised
+    page to grow with it, catching a `None` at any of the three hops.
+    """
+    source = a_scanned_pdf()
+    low = cleaner.clean_artifact(source, cleaner.MediaKind.PDF, a_settings(), render_dpi=72)
+    high = cleaner.clean_artifact(source, cleaner.MediaKind.PDF, a_settings(), render_dpi=300)
+
+    assert low.artifact is not None
+    assert high.artifact is not None
+    assert low.artifact.raster is not None
+    assert high.artifact.raster is not None
+    assert high.artifact.raster.shape[0] > low.artifact.raster.shape[0], (
+        "a higher render_dpi did not produce a taller raster"
+    )
+    assert high.artifact.raster.shape[1] > low.artifact.raster.shape[1], (
+        "a higher render_dpi did not produce a wider raster"
+    )
+
+
+def a_zero_page_pdf() -> bytes:
+    """Hand-crafted rather than built with pymupdf: pymupdf's own `tobytes()`
+    refuses to save a zero-page document (`ValueError: cannot save with zero
+    pages`), so the only way to reach `_pdf_rebuilt_from_cleaned_pages`'s own
+    "zero pages" guard is a minimal PDF pymupdf can OPEN but never CREATES.
+    """
+    return (
+        b"%PDF-1.4\n"
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n"
+        b"trailer\n<< /Size 3 /Root 1 0 R >>\n%%EOF\n"
+    )
+
+
+def test_a_zero_page_pdf_is_reported_rather_than_crashed_on() -> None:
+    """No text layer on a document with no pages routes into the rebuild path,
+    whose page loop runs zero times and never sets `first` — the exact branch
+    the specification requires to be reported, not silently returned as a
+    blank document.
+    """
+    with pytest.raises(cleaner.UndecodableArtifactError) as excinfo:
+        cleaner.clean_artifact(
+            a_zero_page_pdf(), cleaner.MediaKind.PDF, a_settings(), render_dpi=150
+        )
+    assert str(excinfo.value) == (
+        "the PDF reports zero pages. Reported rather than returned as a blank "
+        "document, which would read as a page that genuinely held nothing."
+    )
+
+
+def test_a_scanned_pdfs_artifact_raster_matches_the_cleaned_field_and_the_pdf_kind() -> None:
+    """`_pdf_rebuilt_from_cleaned_pages` sets BOTH `CleanedDocument.cleaned` and
+    `CleanedArtifact.raster` from the same `first.cleaned` array. Comparing
+    them to EACH OTHER, rather than to a value chosen in this file, catches
+    `kind` or `raster` silently dropping to `None` without inventing a number
+    of this test's own for what the raster "should" look like.
+    """
+    cleaned = cleaner.clean_artifact(
+        a_scanned_pdf(), cleaner.MediaKind.PDF, a_settings(), render_dpi=150
+    )
+    assert cleaned.artifact is not None
+    assert cleaned.artifact.kind is cleaner.MediaKind.PDF
+    assert cleaned.artifact.raster is not None
+    assert np.array_equal(cleaned.artifact.raster, cleaned.cleaned), (
+        "the artifact's raster and the document's cleaned field must be the same array"
+    )
+
+
+def test_a_text_layer_pdf_passed_through_reports_every_field_exactly() -> None:
+    """`_pdf_passed_through` builds `CleanedDocument` and its one
+    `QualityObservation` directly (not through `replace_artifact`), so nothing
+    already covers it field-by-field. Every value the function sets is
+    asserted here — a mutant that swaps ANY one of them, including the note's
+    wording, is caught; only `raster=None`, the field's own default, is left
+    to survive, because omitting it and stating it produce the identical
+    object.
+    """
+    source = a_text_layer_pdf()
+    result = cleaner.clean_artifact(source, cleaner.MediaKind.PDF, a_settings(), render_dpi=150)
+
+    assert result.original.shape == (1, 1)
+    assert result.original.dtype == np.uint8
+    assert np.array_equal(result.original, np.zeros((1, 1), dtype=np.uint8))
+    assert np.array_equal(result.cleaned, np.zeros((1, 1), dtype=np.uint8))
+
+    assert len(result.quality_observations) == 1
+    observation = result.quality_observations[0]
+    assert observation.name == "text_layer_present"
+    assert observation.stage is cleaner.Stage.ORIGINAL
+    assert observation.value == 1.0
+    assert observation.unit == "boolean"
+    assert observation.note == (
+        "the PDF carries an embedded text layer, so its characters are already "
+        "exact. Deskewing or denoising would mean rasterising them into pixels, "
+        "which destroys the text layer and loses information cleaning may never "
+        "lose. Passed through unchanged."
+    )
+
+    assert result.preservation_status is cleaner.PreservationStatus.ORIGINAL_IS_SAFER
+    assert result.artifact is not None
+    assert result.artifact.kind is cleaner.MediaKind.PDF
+    assert result.artifact.payload == source
+    assert result.artifact.original == source
+    assert result.artifact.raster is None
+
+
+def test_encode_png_raises_the_exact_message_when_the_encoder_reports_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`cv2.imencode` cannot be MADE to return `ok=False` through its real
+    contract on any array this module could legally pass it — measured: a
+    2-channel array, a 5-channel array and a `(0, 0)` array all raise inside
+    cv2 rather than returning `ok=False`. The `if not ok:` branch is real
+    logic guarding a return value cv2's own Python bindings document but this
+    installed build never actually produces on a legal input. Stubbed at the
+    narrowest possible point — `cv2.imencode`'s return value, not its
+    behaviour — so it is `_encode_png`'s OWN logic under test here (§J.7).
+    """
+    monkeypatch.setattr(cv2, "imencode", lambda _ext, _image: (False, np.array([], dtype=np.uint8)))
+    with pytest.raises(cleaner.UndecodableArtifactError) as excinfo:
+        cleaner._encode_png(np.zeros((4, 4), dtype=np.uint8))
+    assert str(excinfo.value) == (
+        "the cleaned image could not be re-encoded. Reported rather than "
+        "silently returning the original, which would claim a cleaning that "
+        "never happened."
+    )
+
+
+def test_the_image_path_artifact_matches_an_independent_clean_call_field_for_field() -> None:
+    """`clean_artifact`'s image path builds `document` with `clean()` and then
+    calls `replace_artifact(document, ...)`. Comparing the result to a
+    SEPARATE, direct `clean()` call on the same bytes and settings is an
+    independent oracle for every field `replace_artifact` is responsible for
+    copying — determinism (`test_cleaning_the_same_page_twice_gives_the_same_bytes`)
+    is what makes the two calls comparable at all.
+    """
+    settings = a_settings()
+    raw = an_image_page()
+    independent = cleaner.clean(cleaner.decode(raw), settings)
+
+    via_artifact = cleaner.clean_artifact(raw, cleaner.MediaKind.IMAGE, settings, render_dpi=150)
+
+    assert np.array_equal(independent.original, via_artifact.original)
+    assert np.array_equal(independent.cleaned, via_artifact.cleaned)
+    assert independent.quality_observations == via_artifact.quality_observations
+    assert independent.preservation_status is via_artifact.preservation_status
 
 
 def test_reader_consumes_cleaner_output_and_the_text_layer_survives() -> None:
