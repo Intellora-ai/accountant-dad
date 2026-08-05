@@ -15,15 +15,28 @@ Updated: **2026-08-05**
 | **F-004** | Three locked documents specify confidence gating that decision **A7 forbids** | Needs a §M amendment carrying the owner's approval and date |
 | **F-006** | Calibration is put at ~100 golden documents; **16** are planned | Spending 6× the labelling effort is a budget decision |
 | **T-005** | All **16** confidence parameters are UNSET | Law 54 — an engineer inventing one is the exact failure the rule prevents |
-| **F-010** | `CLAUDE.md` Amendment 3 and `ENGINE_1_ARCHITECTURE.md` §G9.5 contradict each other on classification | Two documents disagree; reconciling them is an ownership decision |
 
 ## Blocked on nothing — mine to fix, and being fixed
 
 | ID | Blocker | Status |
 |---|---|---|
-| **F-014** | The `mutation` gate's baseline fails in `mutants/`, so nothing scores | 🔄 active |
-| — | Score was **87.7%** against a floor of 93 when it last ran far enough to report | 🔄 behind F-014 |
+| **F-014** | The `mutation` gate's baseline failure is **fixed** — the gate completes and scores | ✅ closed |
+| **F-045** | Score was **90.6%** on the last complete run. 64 kills were needed; **114 delivered**. Awaiting the CI number | 🔄 active |
+| **F-018** | **Three Engine 1 modules are wired to nothing** — `classification`, `config`, `measurement` have zero consumers in `src/`. Same shape as F-012 | 🔄 agent wiring it |
+| **F-010** | Amendment 3 vs `ENGINE_1_ARCHITECTURE.md` §G9.5 on classification — **was listed as owner-blocked; it is not** | ✅ resolved by precedence |
 | **F-016** | Mutation cannot run on macOS — mutmut forks, `fork()` after OpenCV/torch segfaults | ⬜ unfixable locally; CI is the only route |
+
+**Why F-010 moved.** The losing document self-declares *"Status: DRAFT — NOT FROZEN"*
+and *"Where this document contradicts any of them, this document is wrong"*, and it
+appears at **no level** of the precedence ladder in `SYSTEM_INVARIANTS.md:11-18`. §M
+binds *frozen* documents; a draft is revised, not amended. Nothing here was ever the
+owner's to decide.
+
+It was listed here because this file's "Why only the owner" column paraphrased
+`KNOWN_FAILURES.md` — and that entry contradicted itself, resolving the question by
+precedence in one paragraph and calling it *"the owner's call"* four lines later. The
+paraphrase copied the wrong half. This file calls itself *"Index, not a copy"*; the
+column was a copy, so it is now a pointer.
 
 ## Structural, not blocking today
 

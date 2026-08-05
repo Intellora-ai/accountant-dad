@@ -624,9 +624,88 @@ unused, and there is no cutoff to invent. A test walks the module's AST and fail
 any numeric comparison appears anywhere; a red-team mutation inserting a
 behaviour-preserving `if len(candidates) == 0:` was caught by that test **alone**.
 
-**Permanent fix.** Reconcile the two documents. Either G9.5 is revised to match
-Amendment 3, or Amendment 3 is narrowed — the owner's call, not an engineer's. Until
-then the contradiction is recorded rather than silently resolved.
+**Permanent fix — and a correction to what this entry used to say.** This entry
+previously ended *"the owner's call, not an engineer's,"* which contradicted its own
+Resolution-by-precedence paragraph four lines above. The precedence paragraph is right
+and the closing line was wrong, so the closing line is replaced here.
+
+`ENGINE_1_ARCHITECTURE.md` self-declares **"Status: DRAFT — NOT FROZEN"** (`:8`) and
+**"Where this document contradicts any of them, this document is wrong"** (`:5`). It
+does not appear at any level of the precedence ladder in `SYSTEM_INVARIANTS.md:11-18` —
+that ladder lists `ENGINE_1..6_*_RULES.md` at level 3, and this is a different file.
+§M binds **frozen** documents; a draft is revised, not amended. So there is nothing here
+only the owner can decide.
+
+G9.5 also borrows no authority from anywhere else. Its own document's rule (`:1064`)
+is that §G9 binds only where it derives from a locked document, and its three citations
+are a level-5 README "Future Note" (which supports classification), an UNSET parameter
+(which forbids a *threshold*, not a capability), and
+`COMMUNICATION_RULES_INPUT_ENGINE.md:71` (a boundary *test*, not a scope release).
+`ENGINE_1_INPUT_ENGINE_RULES.md` — which IS on the ladder — has zero matches for
+`document type` or `classif`, and none of its fifteen absolute `MUST NEVER` items
+mentions it.
+
+The repository's own guard already behaves as if this were settled:
+`tests/unit/test_package.py:102` lists `engines/input_engine/classification` in
+`ENGINE_1_AUTHORIZED`, commented `# document classification (Amendment 3)`. If G9.5
+governed, that line would be a live freeze violation, and nothing flags it.
+
+**Status: resolved by precedence.** G9.5 is a draft clause that is wrong by its own
+declared rule. It should be revised to match Amendment 3 when
+`ENGINE_1_ARCHITECTURE.md` is next touched.
+
+**Residual, and it is real.** `ClassificationResult.document_type` returns a type rather
+than a cue. Harmless *today* only because the module has zero consumers — see F-018 —
+so its output never reaches the Document Evidence Object. The moment assembly wires it
+in, `COMMUNICATION_RULES_INPUT_ENGINE.md:71` goes live and the field must arrive
+carrying its `MatchedCue`s, never as a bare type.
+
+**The class, not the instance.** An index that restates a conclusion can restate the
+wrong one. `BLOCKERS.md:3-6` calls itself *"Index, not a copy"* while its "Why only the
+owner" column is a copy — and it copied the half of this entry that was wrong. That is
+where the drift entered, and it is why `BLOCKERS.md` now points at entries instead of
+paraphrasing them.
+
+---
+
+## F-018 · Three Engine 1 modules are wired to nothing
+
+| | |
+|---|---|
+| **Severity** | HIGH — three sub-engines are built, tested, mutation-hardened, and never run |
+| **Status** | 🔄 OPEN · agent wiring it |
+| **Found** | 2026-08-06, while verifying F-010's residual |
+
+**Measured.** `pipeline.py:178` imports `assembly, cleaner, confidence_report, parser,
+reader`. Grepping all of `src/` for consumers of the remaining three returns nothing:
+
+```
+classification.py   17.6K   consumers: none
+config.py           27.5K   consumers: none
+measurement.py      22.7K   consumers: none
+```
+
+`PipelineSettings` (`pipeline.py:263`) takes every setting from its caller and never
+loads `config.py`.
+
+**What that means, if the architecture requires them in the pipeline.**
+
+- Document type is never determined for a real document.
+- The 16 named confidence parameters are never loaded on the real path, so the
+  **fail-fast-on-missing-configuration** behaviour `CLAUDE.md` requires never fires
+  where it matters.
+- No measurement is ever recorded, so the raw signal's only home in the entire system
+  stays empty.
+
+**Root cause — the same shape as F-012.** A module that exists, passes its tests and is
+not in the pipe. Unit tests cannot see this: each module's tests import it directly, so
+they prove the module works and say nothing about whether anything calls it. F-012 was
+found the same way, by integration rather than by unit tests, and it took three recorded
+failures before the single cause was named.
+
+**Permanent fix.** Establish per module whether the locked architecture requires it in
+the pipeline — one of the three may legitimately belong to the Application Layer rather
+than the engine — then wire only what is required, test-first. In progress.
 
 ---
 
