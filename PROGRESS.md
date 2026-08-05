@@ -8,6 +8,92 @@ Every number below says which one produced it.
 
 ---
 
+## 2026-08-05 (later) · Engine 1 is built; the mutation gate outgrew its clock
+
+### Completed
+
+**Engine 1 has every module it was authorised to have.** Four sub-engines, the engine's
+own assembly, classification, config, measurement, and a pipeline that runs a real
+document end to end.
+
+```
+cleaner  reader  parser  confidence  assembly  classification  config  measurement  pipeline
+```
+
+**`classification` needs no threshold at all**, which is the nicest result of the day.
+The three-way outcome is decided by structural pattern matching on tuple *shape* —
+`case ()` / `case (only,)` / `case multiple:` — never a numeric comparison. Parameter #9
+`classification_accept` stays UNSET and unused. A red-team mutation inserting a
+*behaviour-preserving* `if len(candidates) == 0:` was caught by the AST test **and by
+nothing else**.
+
+**Integration found four defects that isolation could not.** Every module was green
+alone; the chain is where the truth was:
+
+- **F-011** `cleaner.decode` cannot decode a PDF at all — `cv2.imdecode` returns `None`,
+  so it raises unconditionally on the MVP's primary input. 57 cleaner tests missed it
+  because every one feeds it an image.
+- **F-012** the pipeline is **not a pipe**. `reader` and `parser` each re-open the raw
+  document; neither consumes `cleaner`'s output. Cleaning currently changes nothing
+  downstream — the 0.0017 deskew residual included.
+- **F-013** extraction content can never carry a per-field confidence.
+- **F-015** the Table Transformer is rebuilt **once per table** — 1.68 s per call, warm
+  cache, in production.
+
+**`timm` was undeclared, and exactly one test out of 51 could see it.** With it absent,
+50 parser tests pass and the suite looks healthy; the one that runs the real table model
+raises `ImportError` from inside `transformers`.
+
+**Two false greens withdrawn.** A "2068 passed" I had reported as evidence ran against
+`numpy 2.3.5` and `cv2 4.10.0` while the manifest pinned `2.5.1` and `5.0.0.93` — both
+silently overridden by PaddleOCR's tree. CI refused the same install outright; only CI
+told the truth.
+
+### GitHub status — `42d2aa4`
+
+```
+build                             pass    29s
+typecheck                         pass  2m21s
+lint                              pass    20s
+unit tests                        pass  5m14s
+coverage                          pass  6m34s     97.645% vs a 97.464% ratchet
+dependency scan                   pass    45s
+typecheck · lint · tests · build  pass  5m35s     ← legacy gate, fixed this session
+mutation                          ✗ CANNOT FINISH
+```
+
+### Numbers
+
+| | |
+|---|---|
+| Local suite | 2315 passed · 11 skipped · 0 failed |
+| Coverage | **97.645%**, floor 97.464% (ratchets to `main`) — margin +0.18pp |
+| Suppressions | **124**, unchanged all session |
+| Engine 1 | 4,042+ lines source, ~4,500 lines tests |
+| Mutants | 1593 → **2933** (+84%) |
+| Mutation | ✅ 24m14s / 99.3% at 1593 · ❌ cancelled at 100 min at 2933 |
+
+### Blockers
+
+**F-014 — the mutation gate needs a larger `timeout-minutes`, and that is a number
+standing rule 10 forbids an engineer setting.** Four workarounds were tried and rejected
+first: cache the model (reverted — see below), lazy imports (already correct), exclude
+`parser.py` or drop the Docling tests (**refused** — making a gate pass by measuring
+less), lower the floor (never).
+
+The F-015 caching fix was implemented **twice** and reverted both times. Module-level
+Protocols cost 0.057pp of coverage; moving them under `TYPE_CHECKING` cost 0.66pp
+because the classes then never execute, and the repo forbids a non-empty
+`exclude_lines`. It also does not help the mutation clock — each mutant is a fresh
+process. Correct fix, wrong moment; recorded rather than forced through.
+
+### Next work
+
+Unblocked: T-025 (9 surviving mutants), T-022 (red-team `cleaner`), T-024 (citation
+sweep), Brain expansion. Blocked on the owner: F-014's number, plus the four standing P0s.
+
+---
+
 ## 2026-08-05 · Engine 1 sub-engines land, and the mutation gate finishes for the first time
 
 ### Completed
