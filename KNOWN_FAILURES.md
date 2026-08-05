@@ -287,6 +287,48 @@ it still needs the deliberately-broken-code proof before promotion.
 
 ---
 
+## F-016 · Mutation testing cannot run on macOS at all
+
+| | |
+|---|---|
+| **Severity** | MEDIUM — a workflow constraint, not a product defect |
+| **Status** | ⬜ OPEN · unfixable locally; CI is the only route |
+| **Found** | 2026-08-05 (re-derived the expensive way; first noted earlier the same day) |
+
+**Description.** `mutmut run` on this machine produces **zero usable data**. Measured on a
+scratch copy scoped to Engine 1:
+
+```
+2133 / 2133 mutants     🎉 0 killed   🙁 0 survived   ⏰ 0 timeout
+every single one: segfault
+```
+
+**Root cause.** mutmut calls `multiprocessing.set_start_method('fork')`. On macOS,
+`fork()` without `exec()` in a process that has already initialised OpenCV, torch or
+Accelerate leaves the child with broken thread state, and it dies with SIGSEGV before
+running a single test. Engine 1 imports all three.
+
+**Impact — and this is the part worth internalising.** Law 44 says *"a result exists only
+if GitHub CI produced it."* For mutation that is not a policy preference, it is a hardware
+fact: no amount of local iteration can produce a survivor list. **Every mutation
+hypothesis costs a full CI run.**
+
+At the current scale that is roughly **3+ hours per attempt**, which makes guessing
+expensive and makes the first attempt worth getting right.
+
+**Two dead ends already paid for**, recorded so nobody pays again:
+1. Scoping `paths_to_mutate` to one directory makes mutmut copy *only* that directory, so
+   every sibling import fails and the stats phase reports `failed to collect stats`.
+2. Adding `"src"` to `also_copy` to fix (1) copies the **unmutated** source over the
+   mutated tree, and mutmut refuses to start with `FAILED: Unable to force test failures`
+   — correctly, because no test could ever see a mutant. The fix is to copy each sibling
+   path individually and never the mutation target.
+
+**Permanent fix.** None available locally. Options are a Linux container for local runs,
+or accepting CI as the only source of mutation data.
+
+---
+
 ## F-014 · The mutation gate no longer fits in 100 minutes
 
 | | |
