@@ -78,7 +78,7 @@ dependency so the two never share an environment.
 | | |
 |---|---|
 | **Severity** | HIGH — would cause a wrong sign-off |
-| **Status** | ⬜ OPEN · deletion authorised, agent killed before completing it |
+| **Status** | ✅ **CLOSED 2026-08-05** · deleted after both safety checks passed |
 | **Found** | 2026-08-05, writing the confidence specification |
 
 **Description.** A macOS Finder duplicate (`" 2"` suffix, mode 600 against the real
@@ -95,9 +95,23 @@ arithmetic mean.** `orness(k, n) = (k−1) / (2(n−1))`, so compensation *rises
 the conservative choice, on the one parameter deciding whether a single misread GSTIN
 stays visible or is averaged away. The canonical file was corrected; this one was not.
 
-**Permanent fix.** `git rm "docs/ENGINE_1_CONFIDENCE_PARAMETERS 2.md"` after proving
-(a) nothing references it and (b) it holds no content the canonical file lacks. The
-agent doing this was killed at step (a).
+**Permanent fix — LANDED.** `git rm "docs/ENGINE_1_CONFIDENCE_PARAMETERS 2.md"`, after
+both safety checks passed:
+
+- **(a) Nothing depends on it.** Three files mention the name — `CONFIDENCE_SPECIFICATION.md`,
+  `TODO.md` and this file — and all three cite it *as the defect*, never as a source.
+- **(b) Its only unique content was the bug.** `diff` against the canonical file returned
+  exactly **one** line present in the duplicate and absent from the canonical:
+
+  ```
+  | 15 | worst_k | ... | closer to the true worst case | closer to an average, hiding a single bad field |
+  ```
+
+  That is the inverted row itself. Deleting the file therefore lost nothing but the error.
+
+Canonical `docs/ENGINE_1_CONFIDENCE_PARAMETERS.md:49` verified correct after the
+deletion: **↑ raises k toward an average, hiding a single bad field; ↓ lowers k toward
+the true worst case, and `k=1` IS the minimum.**
 
 ---
 

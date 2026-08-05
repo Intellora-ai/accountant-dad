@@ -19,7 +19,7 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 |---|---|---|---|---|
 | T-001 | **PyMuPDF licence decision** — buy the Artifex commercial licence, or amend the locked stack (§M). AGPL §13 is triggered by a hosted accounting product. See F-001. | 🔒 | owner | Engine 1 |
 | T-002 | **Amendment 4** — three locked docs specify confidence gating that A7 forbids. Draft exists in intent; needs the owner's approval and date. See F-004. | 🔒 | owner | architecture |
-| T-003 | **Delete `docs/ENGINE_1_CONFIDENCE_PARAMETERS 2.md`** — deletion authorised, agent killed mid-check. Needs the two safety checks re-run, then `git rm`. See F-003. | ⏸ | — | docs |
+| ~~T-003~~ | ~~Delete `ENGINE_1_CONFIDENCE_PARAMETERS 2.md`~~ | ✅ | — | → Completed |
 | T-004 | **Golden-set size decision** — 16 planned vs ~100 stated. Re-derive first (T-020), then decide. See F-006. | 🔒 | T-020, owner | P1 |
 | T-005 | **The 16 confidence parameters have no values.** All UNSET by design. Blocks calibration, blocks nothing else. | 🔒 | ground truth | Engine 1 |
 
@@ -79,3 +79,4 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 | T-104 | **Confidence specification** — 666 lines. The owner's A1–A8 written down, with the no-scalar result proved from a named theorem rather than asserted. | `30f54af` | — |
 | T-105 | **Seven atomic concepts** — GST valuation and place of supply, every citation verified against six independent layers. | `30f54af` | 41/41 documents present |
 | T-106 | **Engine 1 architecture document** (§G). | `30f54af` | — |
+| T-003 | **Deleted the stale `ENGINE_1_CONFIDENCE_PARAMETERS 2.md`.** Both safety checks passed first: nothing depended on it, and `diff` proved its *only* unique line was the inverted `worst_k` row itself. | this commit | F-003 closed |
