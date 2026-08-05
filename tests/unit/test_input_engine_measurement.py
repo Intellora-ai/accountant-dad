@@ -773,30 +773,44 @@ def test_the_duplicate_message_names_the_category_and_the_offending_name() -> No
     assert "names the same signal twice" in message
 
 
+#: Six names, deliberately. `sorted()` is the thing under test, and the mutation
+#: that removes it leaves `list(set(...))`, whose order is hash-randomised per
+#: process. With two names that mutant escapes half the time — measured, which
+#: is how it survived the first attempt at this test. With six there are 720
+#: orderings and only one of them is sorted, so the mutant escapes about once in
+#: 720 runs. The test never fails spuriously: with the real `sorted()` the output
+#: is sorted every time.
+DUPLICATED_NAMES = ("qty", "gstin", "tax", "amount", "sgst", "invoice")
+
+
 def test_every_duplicated_name_is_reported_and_they_come_back_sorted() -> None:
-    """Two distinct names are each duplicated, and they are supplied in reverse
-    order. Both must appear, and `alpha` must precede `omega` — which is what
-    makes dropping `sorted()` a detectable change rather than a cosmetic one.
+    """Six names, each duplicated, supplied in an order that is not sorted.
+
+    Dropping `sorted()` leaves a report whose order varies with the process's
+    hash seed — so two runs over identical data would disagree about what is
+    wrong, and neither could be diffed against the other.
     """
+    signals = tuple(
+        m.NamedSignal(name=name, value=0.1, instrument="PaddleOCR")
+        for name in (*DUPLICATED_NAMES, *DUPLICATED_NAMES)
+    )
+
     with pytest.raises(m.UnrecordableMeasurementError) as raised:
         m.MeasurementRow(
             document_id=a_document_id(),
             source_document_type="invoice",
             processing_time_ms=1.0,
-            per_field=(
-                m.NamedSignal(name="omega", value=0.1, instrument="PaddleOCR"),
-                m.NamedSignal(name="alpha", value=0.2, instrument="PaddleOCR"),
-                m.NamedSignal(name="omega", value=0.3, instrument="PaddleOCR"),
-                m.NamedSignal(name="alpha", value=0.4, instrument="PaddleOCR"),
-            ),
+            per_field=signals,
         )
 
     message = str(raised.value)
-    assert "alpha" in message
-    assert "omega" in message
-    assert message.index("alpha") < message.index("omega"), (
-        "duplicates must be sorted: an unsorted report varies with input order, "
-        "so two runs over the same data would disagree about what is wrong"
+    for name in DUPLICATED_NAMES:
+        assert name in message, f"{name} was duplicated and must be reported"
+
+    positions = [message.index(name) for name in sorted(DUPLICATED_NAMES)]
+    assert positions == sorted(positions), (
+        "duplicates must come back sorted. Without `sorted()` the order is the "
+        f"set's, which is hash-seed dependent; got {message!r}"
     )
 
 

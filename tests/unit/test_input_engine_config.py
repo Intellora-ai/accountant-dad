@@ -45,7 +45,16 @@ from decimal import Decimal
 
 import pytest
 
+from accountant_dad.confidence import CONFIDENCE_PLACES, MAX, MIN
 from accountant_dad.engines.input_engine import config as c
+
+# Imported from `accountant_dad.confidence`, NOT reached through `config`.
+# `config` imports them for its own use and does not re-export them, so
+# `MIN` is a `no_implicit_reexport` error under `mypy --strict` — and going
+# to the real source is the honest form anyway: `config`'s own docstring says
+# the bounds are imported "not restated, so this scale and the stored
+# Confidence scale can never silently disagree." A test that read them from a
+# second place would be the drift that sentence exists to prevent.
 
 #: Guards against silent growth or shrinkage of the parameter table itself.
 EXPECTED_PARAMETER_COUNT = 16
@@ -480,6 +489,133 @@ def test_document_score_weights_rejects_an_infinite_weight() -> None:
 
     with pytest.raises(c.ConfigurationError, match=r"finite"):
         c.load_confidence_parameters(env)
+
+
+def test_a_rejected_weight_names_the_field_the_value_and_the_whole_input() -> None:
+    """`match=r"boolean"` passes on a message that says nothing else.
+
+    CI's mutation run left survivors across `_parse_weights` for exactly that
+    reason: the tests above pin ONE word each, so mutating away the field name,
+    the offending value or the raw input still matched. An operator reading
+    `weight must be a number, not a boolean` cannot act on it — WHICH weight?
+    §J.2: assert the real result, not that a function ran.
+    """
+    env = a_valid_env()
+    env[env_var(c.DOCUMENT_SCORE_WEIGHTS)] = '{"gstin": true, "hsn": 0.5}'
+
+    with pytest.raises(c.ConfigurationError) as raised:
+        c.load_confidence_parameters(env)
+
+    message = str(raised.value)
+    assert "gstin" in message, "the offending field must be named"
+    assert "True" in message or "true" in message, "the offending value must be shown"
+    assert "hsn" in message, "the raw input must be echoed so the operator can see context"
+    assert "boolean" in message
+
+
+def test_an_infinite_weight_names_the_field_and_the_value() -> None:
+    env = a_valid_env()
+    # A SECOND field whose name appears nowhere except the raw input. Using a
+    # single-field object would make this test pass even with the raw echo
+    # deleted, because the key and the raw would share the same text — the
+    # exact weakness this test exists to catch.
+    env[env_var(c.DOCUMENT_SCORE_WEIGHTS)] = '{"gstin": Infinity, "sentinel_field": 1}'
+
+    with pytest.raises(c.ConfigurationError) as raised:
+        c.load_confidence_parameters(env)
+
+    message = str(raised.value)
+    assert "gstin" in message
+    assert "Infinity" in message or "inf" in message.lower()
+    assert "finite" in message
+    assert "sentinel_field" in message, "the raw input must be echoed, not just the key"
+
+
+def test_a_non_numeric_weight_names_the_field_and_the_value() -> None:
+    """A string weight reaches neither the boolean nor the float branch — it
+    falls to the `not isinstance(value, (int, Decimal))` guard, which had no
+    test of its own naming what it reports.
+    """
+    env = a_valid_env()
+    env[env_var(c.DOCUMENT_SCORE_WEIGHTS)] = '{"gstin": "heavy"}'
+
+    with pytest.raises(c.ConfigurationError) as raised:
+        c.load_confidence_parameters(env)
+
+    message = str(raised.value)
+    assert "gstin" in message
+    assert "heavy" in message
+    assert "number" in message
+
+
+def test_weights_given_a_json_array_is_refused_and_echoes_the_input() -> None:
+    """Valid JSON, wrong shape. `not isinstance(parsed, dict)` is a different
+    branch from the JSONDecodeError above it, and it echoes the raw input.
+    """
+    env = a_valid_env()
+    env[env_var(c.DOCUMENT_SCORE_WEIGHTS)] = '["gstin", 0.5]'
+
+    with pytest.raises(c.ConfigurationError) as raised:
+        c.load_confidence_parameters(env)
+
+    message = str(raised.value)
+    assert "gstin" in message, "the raw input must be echoed"
+    assert "JSON object" in message
+
+
+def test_an_integer_weight_is_accepted_and_becomes_a_decimal() -> None:
+    """`weights[key] = value if isinstance(value, Decimal) else Decimal(str(value))`
+    is the only line converting an int, and nothing exercised it — a mutation
+    dropping the conversion left an `int` in a `Mapping[str, Decimal]` with no
+    test noticing.
+    """
+    env = a_valid_env()
+    env[env_var(c.DOCUMENT_SCORE_WEIGHTS)] = '{"gstin": 1}'
+
+    parameters = c.load_confidence_parameters(env)
+
+    weight = parameters.document_score_weights["gstin"]
+    assert weight == Decimal("1")
+    assert isinstance(weight, Decimal), "an int weight must be converted, not stored raw"
+
+
+def test_a_probability_at_each_bound_is_accepted_and_just_outside_is_not() -> None:
+    """Both boundaries in one test, so `<=` mutated to `<` at either end is
+    caught. The bounds come from `accountant_dad.confidence`, deliberately not
+    restated here — restating them would let the two scales drift apart.
+    """
+    for edge in (MIN, MAX):
+        env = a_valid_env()
+        env[env_var(c.OCR_REGION_ACCEPT)] = str(edge)
+        parameters = c.load_confidence_parameters(env)
+        assert parameters.ocr_region_accept == edge
+
+    env = a_valid_env()
+    env[env_var(c.OCR_REGION_ACCEPT)] = str(MAX + Decimal("0.0001"))
+    with pytest.raises(c.ConfigurationError) as raised:
+        c.load_confidence_parameters(env)
+    assert str(MIN) in str(raised.value)
+    assert str(MAX) in str(raised.value)
+
+
+def test_too_many_decimal_places_reports_how_many_and_the_agreed_scale() -> None:
+    """The message carries three separate facts, and each was mutable without
+    any test noticing: the count of places given, the agreed count, and the
+    value itself.
+    """
+    # Seven places, so the reported count is a digit that appears NOWHERE in
+    # the value itself. `0.123456` would have made this test pass with the
+    # count deleted, because the value already contains a "6".
+    env = a_valid_env()
+    env[env_var(c.OCR_REGION_ACCEPT)] = "0.1234507"
+
+    with pytest.raises(c.ConfigurationError) as raised:
+        c.load_confidence_parameters(env)
+
+    message = str(raised.value)
+    assert "carries 7 decimal" in message, "the count of places given must be reported"
+    assert str(CONFIDENCE_PLACES) in message, "the agreed scale must be reported"
+    assert "0.1234507" in message, "the offending value must be shown"
 
 
 # ── the pure validators, called directly ───────────────────────────────────
