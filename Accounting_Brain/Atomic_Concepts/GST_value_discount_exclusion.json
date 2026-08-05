@@ -1,0 +1,131 @@
+{
+  "id": "GST-VAL-DISCOUNT",
+  "name": "Discount excluded from value \u2014 the conditions that separate a discount given before or at supply from one given after",
+  "status": "VERIFIED",
+  "definition": "Section 15(3) excludes a discount from the value of supply on two mutually exclusive routes, and each route has its own conditions. ROUTE A, s.15(3)(a) \u2014 the discount is given before or at the time of the supply, AND has been duly recorded in the invoice issued in respect of such supply. ROUTE B, s.15(3)(b) \u2014 the discount is given after the supply has been effected, and BOTH of two conditions hold: (i) the discount is established in terms of an agreement entered into at or before the time of such supply AND is specifically linked to relevant invoices, and (ii) the input tax credit attributable to the discount, on the basis of a document issued by the supplier, has been reversed by the recipient. A discount that satisfies neither route does not reduce the value of supply.",
+  "why_it_exists": "A discount is the one adjustment a business makes constantly and documents loosely. Section 15(3) is where the law converts 'we gave them a rebate' into a testable set of facts. The post-supply route is a CHAIN: timing of the agreement, linkage to specific invoices, and the recipient's credit reversal. Drop any one link and the value of the supply is unchanged \u2014 which means the credit note reduces the books and not the tax, and the difference is an understatement of output tax.",
+  "inputs": [
+    "the amount of the discount",
+    "whether the discount was given before or at the time of the supply, or after the supply was effected",
+    "ROUTE A \u2014 whether the discount is duly recorded in the invoice issued in respect of such supply",
+    "ROUTE B condition (i) \u2014 whether the discount is established in terms of an agreement entered into at or before the time of such supply",
+    "ROUTE B condition (i) \u2014 whether the discount is specifically linked to relevant invoices",
+    "ROUTE B condition (ii) \u2014 whether the supplier has issued a document on the basis of which the credit is reversed",
+    "ROUTE B condition (ii) \u2014 whether the recipient has reversed the input tax credit attributable to the discount"
+  ],
+  "outputs": [
+    "the discount is excluded from the value under ROUTE A",
+    "or the discount is excluded from the value under ROUTE B",
+    "or the discount is NOT excluded, naming the specific condition that failed"
+  ],
+  "preconditions": [
+    "a value of supply exists to which the discount would otherwise attach",
+    "the supply to which the discount relates is identified \u2014 ROUTE A ties the discount to the invoice for that supply, ROUTE B ties it to relevant invoices"
+  ],
+  "rules": [
+    "GST-VALUE-007",
+    "GST-VALUE-008"
+  ],
+  "exceptions": [
+    "ROUTE A CONDITION \u2014 recorded in the invoice: a pre-supply discount not recorded in the invoice is not excluded by s.15(3)(a)",
+    "ROUTE B CONDITION 1 \u2014 agreement timing: the agreement must have been entered into AT OR BEFORE the time of the supply; an agreement made afterwards fails",
+    "ROUTE B CONDITION 2 \u2014 invoice linkage: the discount must be specifically linked to relevant invoices; a lump-sum rebate over a period with no invoice linkage fails",
+    "ROUTE B CONDITION 3 \u2014 supplier's document: the reversal must be on the basis of a document issued by the supplier",
+    "ROUTE B CONDITION 4 \u2014 recipient's reversal: the input tax credit attributable to the discount must have been reversed BY THE RECIPIENT; the supplier cannot satisfy this condition by his own act",
+    "ROUTE B conditions (i) and (ii) are joined by 'and' \u2014 they are cumulative, never alternatives",
+    "UNKNOWN \u2014 notifications made under the Act and the Rules are not held locally. A notification can narrow or displace a limb without the section or rule text changing.",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "reducing the taxable value by a post-supply discount as soon as the credit note is issued, before the recipient has reversed the attributable credit",
+    "treating the four ROUTE B conditions as a general test of commercial reasonableness rather than four separate facts, each of which must be evidenced",
+    "excluding a pre-supply discount that was agreed but never recorded in the invoice \u2014 ROUTE A requires the invoice record",
+    "reading 'established in terms of an agreement entered into at or before the time of such supply' as satisfied by a long-standing trading practice with no agreement",
+    "treating a year-end volume rebate as automatically excludable \u2014 it typically fails invoice linkage as well as agreement timing",
+    "assuming that because the discount is genuine and the credit note is valid, the value must fall \u2014 s.15(3) is the only route, and it is conditional",
+    "confusing the accounting treatment with the valuation treatment \u2014 a discount can reduce revenue in the books and leave the value of supply untouched"
+  ],
+  "dependencies": [
+    "GST-VAL-TRANSACTION-VALUE",
+    "GST-INV-CREDIT-OR-DEBIT-NOTE"
+  ],
+  "related_concepts": [
+    "GST-VALUE-SUPPLY",
+    "GST-VAL-INCLUSIONS",
+    "GST-INV-CREDIT-OR-DEBIT-NOTE",
+    "GST-ITC-CONDITIONS"
+  ],
+  "legal_references": [
+    "CGST Act 2017, s.15(3)(a) \u2014 discount before or at the time of supply",
+    "CGST Act 2017, s.15(3)(b)(i) \u2014 agreement timing and invoice linkage",
+    "CGST Act 2017, s.15(3)(b)(ii) \u2014 the recipient's credit reversal",
+    "UNKNOWN \u2014 section 34, which governs WHEN a credit note may be issued and its time limits, is a separate determination and was not read for this record"
+  ],
+  "icai_references": [
+    "UNKNOWN \u2014 the accounting period in which a discount reduces revenue is a separate question from whether it reduces the value of supply"
+  ],
+  "gst_references": [
+    "CGST Act 2017, s.15(3)",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the invoice, for ROUTE A \u2014 the discount must be visible on it",
+    "the agreement, dated, for ROUTE B condition (i) \u2014 and the date must be at or before the time of supply",
+    "the schedule linking the discount to specific invoices, for ROUTE B condition (i)",
+    "the document issued by the supplier on the basis of which the credit is reversed, for ROUTE B condition (ii)",
+    "evidence from the recipient that the attributable input tax credit has been reversed, for ROUTE B condition (ii)"
+  ],
+  "confidence_factors": [
+    "zero for a post-supply discount until the recipient's input tax credit reversal is evidenced \u2014 this fact lives in a third party's records and cannot be inferred from the supplier's own",
+    "zero where the agreement is undated or its date cannot be established relative to the time of supply",
+    "weak where the discount is stated as a percentage over a period rather than linked to identified invoices",
+    "weak for ROUTE A where the invoice shows a net figure but no discount line, because 'duly recorded in the invoice' is then unproven",
+    "the time of supply is a separate determination \u2014 confidence in ROUTE B condition (i) can be no stronger than confidence in the time of supply it is measured against"
+  ],
+  "validation_checks": [
+    "the route is decided first \u2014 before or at the time of supply, or after \u2014 and recorded",
+    "for ROUTE A: the discount appears in the invoice issued in respect of that supply",
+    "for ROUTE B: the agreement exists AND its date is at or before the time of supply",
+    "for ROUTE B: the discount is linked to identified invoices, not to a period or a turnover band alone",
+    "for ROUTE B: a document issued by the supplier exists as the basis of the reversal",
+    "for ROUTE B: the recipient's reversal of the attributable input tax credit is evidenced before the value is reduced",
+    "a discount failing any condition leaves the value of supply UNCHANGED, and that outcome is recorded rather than treated as an omission"
+  ],
+  "examples": [
+    "a discount agreed before the supply and shown on the face of the invoice \u2014 excluded under s.15(3)(a)",
+    "a quarterly discount fixed in a dated distribution agreement signed before the supplies, applied against listed invoice numbers, with the recipient's credit reversal evidenced \u2014 all ROUTE B conditions met, excluded under s.15(3)(b)"
+  ],
+  "counterexamples": [
+    "a year-end volume rebate issued by credit note where no pre-supply agreement exists \u2014 ROUTE B condition (i) fails, the value of supply is unchanged and the rebate does not reduce the GST",
+    "a rebate under a valid pre-supply agreement, linked to invoices, where the recipient has not reversed the attributable credit \u2014 ROUTE B condition (ii) fails, so the value of supply is unchanged even though every other condition holds",
+    "a discount negotiated before supply but recorded only in a separate letter and not in the invoice \u2014 ROUTE A fails; and because the discount was given before the supply, ROUTE B is not available either"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(3)",
+      "quote": "The value of the supply shall not include any discount which is given",
+      "extraction_note": "The sub-section ends with two dashes in the extraction. The quote stops before them."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(3)(a)",
+      "quote": "before or at the time of the supply if such discount has been duly recorded in the invoice issued in respect of such supply; and"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(3)(b)",
+      "quote": "after the supply has been effected, if"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(3)(b)(i)",
+      "quote": "such discount is established in terms of an agreement entered into at or before the time of such supply and specifically linked to relevant invoices; and"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(3)(b)(ii)",
+      "quote": "input tax credit as is attributable to the discount on the basis of document issued by the supplier has been reversed by the recipient of the supply."
+    }
+  ]
+}

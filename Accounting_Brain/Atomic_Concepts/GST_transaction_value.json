@@ -1,0 +1,104 @@
+{
+  "id": "GST-VAL-TRANSACTION-VALUE",
+  "name": "Transaction value \u2014 the two conditions under which the price IS the value",
+  "status": "VERIFIED",
+  "definition": "Section 15(1) does not say the value is the price. It says the value is the transaction value, defines the transaction value as the price actually paid or payable for the said supply, and then attaches TWO conditions to the whole statement: the supplier and the recipient are not related, AND the price is the sole consideration for the supply. Both must hold. Where either fails, s.15(1) does not produce a value at all and s.15(4) sends the supply to the prescribed Rules. The transaction value so found is a STARTING amount, not the final one \u2014 s.15(2) then adds and s.15(3) then subtracts.",
+  "why_it_exists": "Section 9(1) levies central tax 'on the value determined under section 15'. Section 15(1) is therefore the first fork in every taxable supply: either the invoice price is admissible as the base, or it is not and a Rule must compute one. Stating the two conditions separately is the point \u2014 an engine that checks only relatedness will value a barter at its cash leg, and an engine that checks only sole-consideration will value a transfer to a subsidiary at whatever the group chose to charge.",
+  "inputs": [
+    "the price actually paid or payable for the said supply",
+    "whether the supplier and the recipient of the supply are related (GST-VAL-RELATED-DISTINCT)",
+    "whether the price is the sole consideration for the supply"
+  ],
+  "outputs": [
+    "CONDITION 1 \u2014 not related: satisfied, failed, or unknown",
+    "CONDITION 2 \u2014 price is the sole consideration: satisfied, failed, or unknown",
+    "where BOTH are satisfied: the transaction value, before the s.15(2) additions and the s.15(3) exclusions",
+    "where EITHER fails: no value under s.15(1), and a referral to GST-VAL-CASCADE"
+  ],
+  "preconditions": [
+    "the transaction is a supply under s.7 (GST-SUPPLY-SCOPE)",
+    "a price actually paid or payable for the said supply is identified \u2014 not a list price, not an estimate"
+  ],
+  "rules": [
+    "GST-VALUE-001",
+    "GST-VALUE-011"
+  ],
+  "exceptions": [
+    "CONDITION 1 fails \u2014 supplier and recipient are related within the s.15 Explanation: s.15(1) does not apply, rule 28 governs (GST-VAL-RELATED-DISTINCT)",
+    "CONDITION 2 fails \u2014 consideration not wholly in money: s.15(1) does not apply, rule 27 governs (GST-VAL-NON-MONEY)",
+    "s.15(5) \u2014 for supplies notified by the Government the prescribed manner applies notwithstanding s.15(1), so both conditions being satisfied does not save the transaction value (GST-VAL-CASCADE)",
+    "UNKNOWN \u2014 notifications made under the Act and the Rules are not held locally. A notification can narrow or displace a limb without the section or rule text changing.",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "reading s.15(1) as 'the value is the invoice price' and stopping there \u2014 the conditions and the s.15(2) additions are part of the same sentence and the same section",
+    "testing only relatedness and treating a part-exchange or barter as if the cash leg were the whole price \u2014 CONDITION 2 is independent",
+    "treating the transaction value as the final taxable value \u2014 it is the base to which s.15(2) adds",
+    "reading 'price actually paid or payable' as 'price actually received' \u2014 payable is enough, so an unpaid invoice still carries its value",
+    "assuming the two conditions are alternatives \u2014 the statute joins them with 'and'"
+  ],
+  "dependencies": [
+    "GST-SUPPLY-SCOPE",
+    "GST-VAL-RELATED-DISTINCT"
+  ],
+  "related_concepts": [
+    "GST-VALUE-SUPPLY",
+    "GST-VAL-INCLUSIONS",
+    "GST-VAL-DISCOUNT",
+    "GST-VAL-CASCADE",
+    "GST-VAL-NON-MONEY"
+  ],
+  "legal_references": [
+    "CGST Act 2017, s.15(1) \u2014 transaction value and its two conditions",
+    "CGST Act 2017, s.9(1) \u2014 the levy is on the value determined under section 15",
+    "CGST Act 2017, s.15(4) \u2014 where s.15(1) cannot determine the value"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 s.15(1) fixes a statutory tax base. It is not the accounting measurement of revenue, and the two amounts can legitimately differ on the same transaction"
+  ],
+  "gst_references": [
+    "CGST Act 2017, s.15(1)",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the tax invoice or contract stating the price actually paid or payable",
+    "evidence of the relationship, or its absence, between supplier and recipient",
+    "evidence that nothing beyond the money price moved from recipient to supplier \u2014 no goods taken in exchange, no service rendered back, no obligation discharged"
+  ],
+  "confidence_factors": [
+    "weak when only the invoice is held \u2014 neither condition is visible on the face of an invoice",
+    "zero when the relationship between the parties is unknown, because s.15(1) is conditional on it and an unknown condition is not a satisfied one",
+    "zero when a non-money element of the consideration is suspected but not quantified",
+    "strong only when both conditions are separately evidenced, not inferred from the invoice"
+  ],
+  "validation_checks": [
+    "CONDITION 1 is recorded as an explicit determination, never assumed from the absence of contrary evidence",
+    "CONDITION 2 is recorded as an explicit determination, never assumed from the presence of a money price",
+    "where either condition is unknown, the value is NOT taken from s.15(1)",
+    "the amount produced here is labelled as the transaction value before s.15(2) and s.15(3), not as the taxable value"
+  ],
+  "examples": [
+    "an arm's-length cash sale between two unconnected registered persons at an agreed price \u2014 both conditions satisfied, the transaction value is that price"
+  ],
+  "counterexamples": [
+    "goods sold to a subsidiary at an agreed cash price \u2014 CONDITION 2 is satisfied but CONDITION 1 fails, so s.15(1) does not apply",
+    "a new phone supplied for money plus an old phone taken in exchange \u2014 CONDITION 1 may be satisfied but CONDITION 2 fails, so s.15(1) does not apply and rule 27 governs"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(1)",
+      "quote": "The value of a supply of goods or services or both shall be the transaction value, which is the price actually paid or payable for the said supply of goods or services or both where the supplier and the recipient of the supply are not related and the price is the sole consideration for the supply."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.9(1)",
+      "quote": "on the value determined under section 15"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(4)",
+      "quote": "Where the value of the supply of goods or services or both cannot be determined under sub-section (1), the same shall be determined in such manner as may be prescribed."
+    }
+  ]
+}

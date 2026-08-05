@@ -1,0 +1,133 @@
+{
+  "id": "GST-SUPPLY-INTER-STATE",
+  "name": "Inter-State supply",
+  "status": "VERIFIED",
+  "definition": "A supply is in the course of inter-State trade or commerce when s.7 of the IGST Act says it is. For goods, s.7(1) — subject to s.10 — the location of the supplier and the place of supply are in two different States, two different Union territories, or a State and a Union territory. For services, s.7(3) applies the same three-limb test, subject to s.12. Section 7 also treats as inter-State, without any comparison of locations: goods imported into the territory of India till they cross the customs frontiers of India (s.7(2)); services imported into the territory of India (s.7(4)); and under s.7(5) a supply where the supplier is located in India and the place of supply is outside India, a supply to or by a Special Economic Zone developer or unit, and a supply in the taxable territory not being an intra-State supply and not covered elsewhere in that section.",
+  "why_it_exists": "It is the single fact that decides WHICH tax is charged. IGST s.5(1) levies integrated tax on inter-State supplies; CGST s.9(1) levies central tax on intra-State supplies. Getting this wrong does not misstate an amount — it charges the wrong tax to the wrong government, and no rate check catches it because the number can be identical.",
+  "inputs": [
+    "the location of the supplier",
+    "the place of supply, determined first under s.10 for goods and s.12 for services",
+    "whether the goods were imported into the territory of India and whether they have crossed the customs frontiers of India",
+    "whether the service was imported into the territory of India",
+    "whether either party is a Special Economic Zone developer or a Special Economic Zone unit",
+    "whether the supply is in the taxable territory"
+  ],
+  "outputs": [
+    "a determination that the supply IS or IS NOT in the course of inter-State trade or commerce",
+    "or an escalation, where the location of the supplier or the place of supply cannot be established on the evidence held"
+  ],
+  "preconditions": [
+    "the transaction is a supply under s.7 of the CGST Act (GST-SUPPLY-SCOPE)",
+    "the place of supply has ALREADY been determined — s.7(1) and s.7(3) are expressly subject to s.10 and s.12, so the comparison cannot be made before the place of supply exists (GST-POS-GOODS, GST-POS-SERVICES-INDIA)",
+    "it is known whether the supply is of goods or of services, because s.7(1) and s.7(3) are separate limbs"
+  ],
+  "rules": [],
+  "exceptions": [
+    "goods imported into India, till they cross the customs frontiers of India — s.7(2), inter-State regardless of locations",
+    "services imported into India — s.7(4), inter-State regardless of locations",
+    "supplier in India and place of supply outside India — s.7(5)(a)",
+    "a supply to or by a Special Economic Zone developer or unit — s.7(5)(b), and correspondingly excluded from intra-State supply by the provisos to s.8(1) and s.8(2)",
+    "the residual limb — a supply in the taxable territory, not being an intra-State supply and not covered elsewhere in s.7 — s.7(5)(c)",
+    "UNKNOWN — s.9 of the IGST Act (supplies in territorial waters) is a further special case and has not been extracted here",
+    "UNKNOWN — source is the IGST Act as on 23-05-2025; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "comparing the supplier's State with the RECIPIENT's State — s.7(1) and s.7(3) compare the location of the supplier with the PLACE OF SUPPLY, which is not always where the recipient is",
+    "making the comparison before determining the place of supply — both limbs are expressly subject to s.10 and s.12",
+    "treating a supply to a Special Economic Zone unit inside the same State as intra-State — s.7(5)(b) makes it inter-State and the provisos to s.8 exclude it",
+    "treating imported goods as intra-State because the importer and the port are in one State — s.7(2) settles it before any location is compared",
+    "reading the residual limb in s.7(5)(c) as a general catch-all — it applies only in the taxable territory and only where the supply is not already covered elsewhere in s.7"
+  ],
+  "dependencies": [
+    "GST-POS-GOODS",
+    "GST-POS-SERVICES-INDIA",
+    "GST-POS-LOCATION-SERVICES",
+    "GST-SUPPLY-SCOPE",
+    "UNKNOWN — the IGST Act defines 'location of the supplier of services' (s.2(15)) but defines NO 'location of the supplier of goods'. The goods limb of s.7(1) therefore rests on a term the Act does not define, and no substitute may be invented here."
+  ],
+  "related_concepts": [
+    "GST-SUPPLY-INTRA-STATE",
+    "GST-CHARGE-IGST-OR-CGST-AND-STATE-TAX",
+    "GST-POS-GOODS",
+    "GST-POS-SERVICES-INDIA"
+  ],
+  "legal_references": [
+    "IGST Act, 2017 s.7 — Inter-State supply",
+    "IGST Act, 2017 s.10 — referenced by s.7(1)",
+    "IGST Act, 2017 s.12 — referenced by s.7(3)",
+    "IGST Act, 2017 s.15 — referenced by the proviso to s.8(1); NOT extracted",
+    "IGST Act, 2017 s.9 — supplies in territorial waters; NOT extracted"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE — whether a supply is inter-State is a question of statutory charge, not of accounting measurement. No Accounting Standard speaks to it."
+  ],
+  "gst_references": [
+    "IGST Act, 2017 s.7(1) to s.7(5)"
+  ],
+  "evidence_required": [
+    "the location of the supplier, evidenced by the place of business from which the supply was made",
+    "the place of supply as determined under s.10 or s.12, with the limb relied on named",
+    "for imported goods: the bill of entry and the date the goods crossed the customs frontiers of India",
+    "for a Special Economic Zone counterparty: proof of developer or unit status"
+  ],
+  "confidence_factors": [
+    "zero until the place of supply has been determined — the whole test is subject to s.10 and s.12",
+    "weak for goods, because 'location of the supplier' is undefined in the Act for goods; only 'location of the supplier of services' is defined, at s.2(15)",
+    "weak when Special Economic Zone status is asserted but not evidenced — it flips the answer regardless of geography",
+    "UNKNOWN — s.9 (territorial waters) and s.15 (tourist) were not extracted, so supplies touching them cannot be closed from this concept"
+  ],
+  "validation_checks": [
+    "the place of supply is determined and recorded BEFORE the inter-State test is applied",
+    "the comparison recorded is supplier location against PLACE OF SUPPLY, never against the recipient's address",
+    "a Special Economic Zone supply is never classified intra-State, whatever the two locations are",
+    "an inter-State determination and an intra-State determination are never both recorded for one supply",
+    "the limb of s.7 relied on is named in the determination"
+  ],
+  "examples": [
+    "goods moved from a supplier's place of business in one State to a recipient in another; the place of supply under s.10(1)(a) is where the movement terminates, that State differs from the supplier's, so s.7(1)(a) is satisfied and the supply is inter-State",
+    "goods imported into India and still inside the customs frontiers — s.7(2) treats the supply as inter-State without any location being compared"
+  ],
+  "counterexamples": [
+    "a supplier and a recipient in the same State where the goods are delivered to a third person's principal place of business in another State — the place of supply under s.10(1)(b) is that other State, so the supply is inter-State even though supplier and recipient share a State",
+    "a supply to a Special Economic Zone unit situated in the supplier's own State — the two locations coincide, yet s.7(5)(b) makes it inter-State"
+  ],
+  "evidence": [
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.7, sub-section (1), goods",
+      "quote": "Subject to the provisions of section 10, supply of goods, where the location of the supplier and the place of supply are in–– (a) two different States; (b) two different Union territories; or (c) a State and a Union territory,"
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.7, sub-section (1), closing words",
+      "quote": "shall be treated as a supply of goods in the course of inter -State trade or commerce.",
+      "extraction_note": "The extraction inserts a run of spaces inside the word 'inter-State', which normalisation collapses to a single space; the artifact is in the extraction, not in the Act."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.7, sub-section (2)",
+      "quote": "(2) Supply of goods imported into the territory of India, till they cross the customs frontiers of India, shall be treated to be a supply of goods in the course of inter-State trade or commerce."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.7, sub-section (3), services",
+      "quote": "(3) Subject to the provisions of section 12, supply of services, where the location of the supplier a nd the place of supply are in ––",
+      "extraction_note": "The extraction breaks the word 'and' across a line as 'a nd' and pads before the dash. Quoted exactly as extracted; the artifact is in the extraction, not in the Act."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.7, sub-section (3), closing words",
+      "quote": "shall be treated as a supply of services in the course of inter-State trade or commerce."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.7, sub-section (4)",
+      "quote": "(4) Supply of services imported into the territory of India shall be treated to be a supply of services in the course of inter-State trade or commerce."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.7, sub-section (5)(b) and (c)",
+      "quote": "(b) to or by a Special Economic Zone developer or a Special Economic Zone unit; or (c) in the taxable territory, not being an intra-State supply and not covered elsewhere in this section, shall be treated to be a supply of goods or services or both in the course of inter-State trade or commerce."
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "id": "GST-POS-GOODS",
+  "name": "Place of supply — goods other than goods imported into, or exported from India",
+  "status": "VERIFIED",
+  "definition": "For goods other than goods imported into, or exported from India, s.10(1) of the IGST Act fixes the place of supply by five limbs. Where the supply involves movement of goods, whether by the supplier or the recipient or by any other person, it is the location of the goods at the time at which the movement terminates for delivery to the recipient (s.10(1)(a)). Where goods are delivered on the direction of a third person, that third person is deemed to have received them and the place of supply is that person's principal place of business (s.10(1)(b)). Where the supply does not involve movement, it is the location of the goods at the time of delivery to the recipient (s.10(1)(c)). Where the supply is made to a person other than a registered person, s.10(1)(ca) overrides clauses (a) and (c) and fixes it as the location per the address recorded in the invoice, or the supplier's location where no address is recorded. Where goods are assembled or installed at site, it is the place of installation or assembly (s.10(1)(d)). Where goods are supplied on board a conveyance, it is the location at which they are taken on board (s.10(1)(e)). Where the place of supply cannot be determined, s.10(2) requires it to be determined in such manner as may be prescribed.",
+  "why_it_exists": "The inter-State and intra-State tests in IGST s.7(1) and s.8(1) are both expressly subject to s.10. Nothing about which tax to charge can be decided until this section has produced a single place. It is deliberately not 'where the buyer is' — the limbs turn on movement, direction, assembly and boarding, so the delivery address on an invoice is evidence, not the answer.",
+  "inputs": [
+    "whether the supply involves movement of goods, and by whom",
+    "the location at which that movement terminates for delivery to the recipient",
+    "whether delivery was made on the direction of a third person, and that person's principal place of business",
+    "for a static supply: the location of the goods at the time of delivery",
+    "whether the recipient is a registered person",
+    "the address of the recipient as recorded in the invoice, and whether one is recorded at all",
+    "whether the goods are assembled or installed at site, and where",
+    "whether the goods are supplied on board a conveyance, and where they were taken on board"
+  ],
+  "outputs": [
+    "a single place of supply — a State or Union territory",
+    "or an escalation, where no limb of s.10(1) can be evaluated on the evidence held"
+  ],
+  "preconditions": [
+    "the transaction is a supply under s.7 of the CGST Act (GST-SUPPLY-SCOPE)",
+    "it is classified as a supply of GOODS, not of services",
+    "the goods are NOT imported into, or exported from India — s.11 governs those, and s.10 excludes them by its own title"
+  ],
+  "rules": [],
+  "exceptions": [
+    "goods imported into India, or exported from India — s.11: imported goods take the location of the importer, exported goods a location outside India",
+    "a supply to a person other than a registered person — s.10(1)(ca) applies notwithstanding clause (a) or clause (c)",
+    "the place of supply cannot be determined — s.10(2) refers it to the manner prescribed; the prescribed manner has NOT been extracted here",
+    "UNKNOWN — s.9 of the IGST Act (supplies in territorial waters) has not been extracted",
+    "UNKNOWN — source is the IGST Act as on 23-05-2025; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "using the recipient's billing address as the place of supply — no limb of s.10(1) names a billing address; only s.10(1)(ca), for an unregistered recipient, uses the address recorded in the invoice",
+    "using the point where movement STARTS — s.10(1)(a) names where the movement TERMINATES for delivery to the recipient",
+    "applying s.10(1)(a) to a bill-to-ship-to arrangement — s.10(1)(b) deems the third person to have received the goods and takes his principal place of business instead",
+    "applying s.10(1)(a) or (c) to an unregistered recipient without checking s.10(1)(ca), which overrides both",
+    "for assembled or installed goods, using where the movement ended rather than where the installation occurred — s.10(1)(d) governs",
+    "treating the place of supply as the place the accounting entry is booked — they are different determinations"
+  ],
+  "dependencies": [
+    "GST-SUPPLY-SCOPE",
+    "UNKNOWN — CGST Schedule II is not extracted here, so the goods-versus-services branch cannot be closed from this concept",
+    "UNKNOWN — the manner prescribed under s.10(2) has not been extracted, so a supply whose place cannot be determined cannot be closed here"
+  ],
+  "related_concepts": [
+    "GST-POS-SERVICES-INDIA",
+    "GST-SUPPLY-INTER-STATE",
+    "GST-SUPPLY-INTRA-STATE",
+    "GST-INV-TAX-INVOICE"
+  ],
+  "legal_references": [
+    "IGST Act, 2017 s.10 — Place of supply of goods other than supply of goods imported into, or exported from India",
+    "IGST Act, 2017 s.11 — Place of supply of goods imported into, or exported from India",
+    "IGST Act, 2017 s.7(1) and s.8(1) — both expressly subject to s.10"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE — place of supply is a statutory charge question. It is not the location at which revenue is recognised, and the two must never be conflated."
+  ],
+  "gst_references": [
+    "IGST Act, 2017 s.10(1)(a), (b), (c), (ca), (d), (e) and s.10(2); s.11(a) and s.11(b)"
+  ],
+  "evidence_required": [
+    "the tax invoice, including the recipient's address as recorded on it",
+    "transport documentation showing where the movement of goods terminated for delivery",
+    "for a bill-to-ship-to arrangement: the direction of the third person and his principal place of business",
+    "the recipient's registration status",
+    "for assembled or installed goods: the site of assembly or installation",
+    "for goods supplied on board: the location at which they were taken on board"
+  ],
+  "confidence_factors": [
+    "weak when only the invoice is held — s.10(1)(a) needs the point at which movement terminated, which an invoice does not state",
+    "weak when the recipient's registration status is unverified, because s.10(1)(ca) overrides clauses (a) and (c) for an unregistered recipient",
+    "weak when a third person's direction is suspected but not evidenced — s.10(1)(b) changes the answer entirely",
+    "zero where no limb applies, because the manner prescribed under s.10(2) is not held locally"
+  ],
+  "validation_checks": [
+    "exactly one limb of s.10(1) is named in the determination",
+    "for an unregistered recipient, s.10(1)(ca) is considered before clauses (a) and (c)",
+    "for imported or exported goods, s.11 is applied and s.10 is not",
+    "the place of supply is recorded as a State or Union territory, not as an address",
+    "the place of supply is recorded separately from the recipient's billing address, and the two are never reconciled by changing one to match the other"
+  ],
+  "examples": [
+    "goods dispatched by the supplier and delivered to the recipient's factory, where the movement ends — s.10(1)(a) gives the location of that factory",
+    "goods sold to an unregistered person whose address is recorded in the invoice — s.10(1)(ca) gives the location as per that address, notwithstanding clauses (a) and (c)"
+  ],
+  "counterexamples": [
+    "a machine dispatched to a site and erected there — s.10(1)(d) gives the place of installation, so the point at which the transport ended is not the place of supply even though the supply involved movement",
+    "goods sold to an unregistered person with no address recorded in the invoice — s.10(1)(ca) gives the location of the SUPPLIER, so the place of supply is where the seller is, not where the buyer is"
+  ],
+  "evidence": [
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.10(1), opening words",
+      "quote": "(1) The place of supply of goods, other than supply of goods imported into, or exported f rom India, shall be as under,",
+      "extraction_note": "The extraction breaks the word 'from' across a line as 'f rom' and pads inside the sentence. Quoted exactly as extracted; the artifact is in the extraction, not in the Act."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.10(1)(a)",
+      "quote": "(a) where the supply involves movement of goods, whether by the supplier or the recipient or by any other person, the place of supply of such goods shall be the location of the goods at the time at which the movement of goods terminates for delivery to the recipient;"
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.10(1)(b)",
+      "quote": "(b) where the goods are delivered by the supplier to a recipient or any other person on the direction of a third person, whether acting as an agent or otherwise, before or during movement of goods, either by way of transfer of documents of title to the goods or otherwise, it shall be deemed that the said third person has received the goods and the place of supply of such goods shall be the principal place of business of such person;"
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.10(1)(c)",
+      "quote": "(c) where the supply does not involve movement of goods, whether by the supplier or the recipient, the place of supply shall be the location of such goods at the time of the delivery to the recipient;"
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.10(1)(ca)",
+      "quote": "1[(ca) where the supply of goods is made to a person other than a registered person, the place of supply shall, notwithstanding anything contrary contained in clause (a) or clause (c), be the location as per the address of the said person recorded in the invoice issued in respect of the said supply and the location of the supplier where the address of the said person is not recorded in the invoice.",
+      "extraction_note": "The leading '1[' is the amendment bracket carried into the extraction — clause (ca) was inserted by Act 31 of 2023, s. 4 (w.e.f. 1-10-2023). Quoted exactly as extracted."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.10(1)(ca), Explanation",
+      "quote": "Explanation.—For the purposes of this clause, recording of the name of the State of the said person in the invoice shall be deemed to be the recording of the address of the said person;]"
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.10(1)(d)",
+      "quote": "(d) where the goods are assembled or installed at site, the place of supply shall be the place of such installation or assembly;"
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.10(1)(e)",
+      "quote": "(e) where the goods are supplied on board a conveyance, including a vessel, an aircraft, a train or a motor vehicle, the place of supply shall be the location at which such goods are taken on board."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.10(2)",
+      "quote": "(2) Where the place of supply of goods cannot be determined, the place of supply shall be determined in such manner as may be prescribed."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.11",
+      "quote": "(a) imported into India shall be the location of the importer; (b) exported from India shall be the location outside India."
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "id": "GST-VAL-INCLUSIONS",
+  "name": "What section 15(2) ADDS to the value of supply",
+  "status": "VERIFIED",
+  "definition": "Section 15(2) lists five amounts the value of supply shall include, (a) to (e). They are additions to the transaction value, not alternatives to it, and they are mandatory \u2014 the sub-section says 'shall include'. (a) other statutory levies charged separately, with the four GST Acts carved out. (b) an amount the supplier was liable to pay but the recipient incurred, and which is not already in the price. (c) incidental expenses including commission and packing, and anything the supplier charges for anything done at or before delivery. (d) interest or late fee or penalty for delayed payment of any consideration. (e) subsidies directly linked to the price, other than subsidies provided by the Central Government and State Governments. An Explanation to the sub-section places a subsidy in the value of the supplier who RECEIVES it.",
+  "why_it_exists": "The invoice total and the taxable value are different numbers, and s.15(2) is the whole of the difference on the additive side. Every limb names an amount a bookkeeper would naturally post somewhere other than sales \u2014 a recovery, a reimbursement, finance income, a grant. Left off the base, each one understates output tax on every invoice that carries it.",
+  "inputs": [
+    "taxes, duties, cesses, fees and charges charged separately on the invoice, and the law each is levied under",
+    "amounts the supplier was liable to pay in relation to the supply that the recipient incurred instead",
+    "whether such an amount is already included in the price actually paid or payable",
+    "incidental expenses charged by the supplier, including commission and packing",
+    "amounts charged for anything done by the supplier at the time of, or before, delivery of goods or supply of services",
+    "interest, late fee or penalty charged for delayed payment of any consideration",
+    "subsidies received, who provided them, and whether they are directly linked to the price"
+  ],
+  "outputs": [
+    "the amount to be added under s.15(2)(a)",
+    "the amount to be added under s.15(2)(b)",
+    "the amount to be added under s.15(2)(c)",
+    "the amount to be added under s.15(2)(d)",
+    "the amount to be added under s.15(2)(e)",
+    "for each limb, an explicit NIL where the limb was considered and does not apply"
+  ],
+  "preconditions": [
+    "a transaction value exists under s.15(1) (GST-VAL-TRANSACTION-VALUE), or a value has been determined under the Rules to which the same additions apply"
+  ],
+  "rules": [
+    "GST-VALUE-002",
+    "GST-VALUE-003",
+    "GST-VALUE-004",
+    "GST-VALUE-005",
+    "GST-VALUE-006"
+  ],
+  "exceptions": [
+    "s.15(2)(a) excludes tax charged under this Act, the State Goods and Services Tax Act, the Union Territory Goods and Services Tax Act and the Goods and Services Tax (Compensation to States) Act \u2014 GST is not charged on GST",
+    "s.15(2)(b) applies only where the amount is NOT already included in the price actually paid or payable \u2014 adding it twice is the error the limb's own words guard against",
+    "s.15(2)(e) excludes subsidies provided by the Central Government and State Governments",
+    "rule 33 \u2014 a payment made as a pure agent is excluded from value even though it looks like an incidental expense under s.15(2)(c) (GST-VAL-PURE-AGENT)",
+    "rule 32A \u2014 Kerala Flood Cess is not included in the value determined in terms of section 15",
+    "UNKNOWN \u2014 notifications made under the Act and the Rules are not held locally. A notification can narrow or displace a limb without the section or rule text changing.",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "taking the invoice total as the value without walking all five limbs",
+    "excluding packing and commission as recoveries \u2014 s.15(2)(c) names commission and packing expressly",
+    "treating interest on a late-paid invoice as finance income outside GST \u2014 s.15(2)(d) puts it in the value of the supply",
+    "treating a late fee or a penalty for delayed payment as a damages receipt outside GST \u2014 s.15(2)(d) names late fee and penalty alongside interest",
+    "assuming every subsidy is excluded \u2014 only Central and State Government subsidies are, and only those directly linked to the price were ever in scope",
+    "putting a subsidy into the value of the wrong party \u2014 the Explanation puts it in the value of the supplier who receives it",
+    "charging GST on the GST shown separately \u2014 the four GST Acts are carved out of s.15(2)(a), other statutory levies are not",
+    "treating a limb as inapplicable silently instead of recording a considered NIL"
+  ],
+  "dependencies": [
+    "GST-VAL-TRANSACTION-VALUE"
+  ],
+  "related_concepts": [
+    "GST-VALUE-SUPPLY",
+    "GST-VAL-DISCOUNT",
+    "GST-VAL-PURE-AGENT",
+    "GST-VAL-TAX-INCLUSIVE"
+  ],
+  "legal_references": [
+    "CGST Act 2017, s.15(2)(a) to (e)",
+    "CGST Act 2017, s.15(2), Explanation \u2014 whose value a subsidy enters"
+  ],
+  "icai_references": [
+    "UNKNOWN \u2014 whether an amount added by s.15(2) is also revenue for accounting purposes is a separate question under AS 9 and was not determined here"
+  ],
+  "gst_references": [
+    "CGST Act 2017, s.15(2)",
+    "CGST Rules 2017, rule 33 \u2014 the pure agent exclusion, which removes an amount s.15(2)(c) would otherwise reach",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the tax invoice showing every separately charged line and the law each levy arises under",
+    "the contract or purchase order, to identify obligations of the supplier discharged by the recipient",
+    "the debit note or interest advice for any delayed-payment charge",
+    "the subsidy sanction document naming the provider and the basis of the subsidy"
+  ],
+  "confidence_factors": [
+    "weak when only the invoice is held \u2014 s.15(2)(b) turns on a liability that never appears on the supplier's own invoice",
+    "weak when a separately charged levy cannot be traced to the law it is levied under, because the four-Act carve-out cannot then be applied",
+    "weak for s.15(2)(e) until the provider of the subsidy is identified, because the exclusion depends on the provider",
+    "an interest or late fee charged in a later period still belongs to the value of the original supply \u2014 confidence is weak where the two are recorded independently"
+  ],
+  "validation_checks": [
+    "each of the five limbs (a) to (e) has been considered and carries either an amount or a recorded NIL",
+    "no amount charged under the CGST, SGST, UTGST or Compensation Cess Acts has been added under s.15(2)(a)",
+    "an amount added under s.15(2)(b) is confirmed NOT to be already inside the price actually paid or payable",
+    "commission and packing charged to the recipient are inside the value, not netted off elsewhere",
+    "interest, late fee and penalty for delayed payment are inside the value of the original supply",
+    "a subsidy is added to the value of the supplier who received it, and only where it is directly linked to the price and not provided by the Central or a State Government"
+  ],
+  "examples": [
+    "unrelated parties, price the sole consideration, packing charged separately \u2014 the packing charge is added under s.15(2)(c)",
+    "an invoice carrying a separately charged levy under a non-GST law \u2014 added under s.15(2)(a); the CGST and SGST on the same invoice are not"
+  ],
+  "counterexamples": [
+    "interest on a customer's overdue account posted to finance income and left out of the taxable value \u2014 s.15(2)(d) puts it in",
+    "a subsidy provided by a State Government and directly linked to the price, added to the value \u2014 s.15(2)(e) expressly excludes it"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(2)",
+      "quote": "The value of supply shall include",
+      "extraction_note": "The sub-section ends with three dashes in the extraction. The quote stops before them."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(2)(a)",
+      "quote": "any taxes, duties, cesses, fees and charges levied under any law for the time being in force other than this Act, the State Goods and Services Tax Act, the Union Territory Goods and Services Tax Act and the Goods and Services Tax (Compensation to States) Act, if charged separately by the supplier;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(2)(b)",
+      "quote": "any amount that the supplier is liable to pay in relation to such supply but which has been incurred by the recipient of the supply and not included in the price actually paid or payable for the goods or services or both;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(2)(c)",
+      "quote": "incidental expenses, including commission and packing, charged by the",
+      "extraction_note": "A page break and a running header interrupt this clause in the extracted text, so the remainder is quoted separately."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(2)(c)",
+      "quote": "supplier to the recipient of a supply and any amount charged for anything done by the supplier in respect of the supply of goods or services or both at the time of, or before delivery of goods or supply of services;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(2)(d)",
+      "quote": "interest or late fee or penalty for delayed payment of any consideration for any supply; and"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(2)(e)",
+      "quote": "subsidies directly linked to the price excluding subsidies provided by the Central Government and State Governments."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(2), Explanation",
+      "quote": "For the purposes of this sub-section, the amount of subsidy shall be included in the value of supply of the supplier who receives the subsidy."
+    }
+  ]
+}
