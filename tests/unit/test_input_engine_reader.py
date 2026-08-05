@@ -340,6 +340,51 @@ def test_an_image_only_pdf_yields_zero_characters_from_the_text_layer_path() -> 
     assert "".join(region.text for region in reading.regions) == ""
 
 
+def test_a_whitespace_only_span_is_skipped_not_emitted_as_an_empty_region() -> None:
+    """PyMuPDF really does report a span for text that is nothing but spaces
+    (measured directly against a fixture built the same way `an_invoice_pdf`
+    is) - it is not a reading, so `read_pdf_text_layer` must drop it rather
+    than emit a region carrying no evidence between two real ones.
+    """
+    doc = open_pdf()
+    page = doc.new_page(width=595, height=842)
+    page.insert_text((60, 90), "HELLO", fontname="helv", fontsize=13)
+    page.insert_text((60, 130), "   ", fontname="helv", fontsize=13)
+    page.insert_text((60, 170), "WORLD", fontname="helv", fontsize=13)
+    data = bytes(doc.tobytes())
+    doc.close()
+
+    reading = reader.read_pdf_text_layer(data)
+
+    assert tuple(region.text for region in reading.regions) == ("HELLO", "WORLD")
+
+
+# ── `_render_pdf_pages`: PyMuPDF only, reachable without a recogniser ──────
+#
+# `reader.read` only reaches this function after the text layer comes back
+# empty, and it is followed immediately by `read_by_ocr`, which needs
+# PaddleOCR (absent here). Called directly, `_render_pdf_pages` performs no
+# recognition at all - it rasterises with PyMuPDF, exactly as `cleaner`'s own
+# PDF workaround does - so it is real logic tested for real, without the OCR
+# guard.
+
+
+def test_render_pdf_pages_rasterises_every_page_to_a_real_png() -> None:
+    pages = reader._render_pdf_pages(an_image_only_pdf(), render_dpi=FIXTURE_DPI)
+
+    assert len(pages) == 1
+    assert pages[0].startswith(b"\x89PNG\r\n\x1a\n"), "not a real, decodable PNG"
+
+
+def test_render_pdf_pages_raises_on_an_unopenable_pdf() -> None:
+    """Tested on its own, not only through the router - the same falsification
+    `test_the_text_layer_path_itself_raises_rather_than_returning_empty`
+    above already applies to `read_pdf_text_layer`.
+    """
+    with pytest.raises(reader.UnreadableDocumentError):
+        reader._render_pdf_pages(b"not a pdf at all", render_dpi=FIXTURE_DPI)
+
+
 # ── blank pages: zero regions, never invented text ────────────────────────
 
 
@@ -421,6 +466,26 @@ def test_an_image_only_pdf_falls_through_to_ocr_and_reads_it() -> None:
 
     assert reading.backend is reader.Backend.OCR
     assert tuple(region.text for region in reading.regions) == INVOICE_LINES
+
+
+def test_an_image_only_pdf_reaches_the_ocr_path_before_failing_on_missing_paddleocr() -> None:
+    """Falsification of the router, run WITHOUT the OCR guard: a PDF with no
+    text layer must not just stop at the text-layer path - it must actually
+    rasterise and call the recogniser. PaddleOCR is genuinely absent in this
+    environment (`KNOWN_FAILURES.md` F-002), exactly as
+    `test_input_engine_pipeline.py`'s
+    `test_reader_failing_after_cleaner_preserves_cleaners_work_and_names_reader`
+    already measures for the same reason, so the real, unmocked failure this
+    test asserts is `ModuleNotFoundError` - never reached if the router gave
+    up at the text-layer stage instead of continuing to the rasteriser.
+    """
+    with pytest.raises(ModuleNotFoundError, match="paddleocr"):
+        reader.read(
+            an_image_only_pdf(),
+            media_type=reader.MediaType.PDF,
+            render_dpi=FIXTURE_DPI,
+            vision_fallback_threshold=NO_FALLBACK,
+        )
 
 
 @needs_the_real_ocr
@@ -534,6 +599,45 @@ def test_the_text_layer_path_itself_raises_rather_than_returning_empty(payload: 
 
 
 # ── the vision fallback: stubbed, and it refuses loudly ───────────────────
+#
+# `reader.read` only reaches `_vision_fallback` after a real OCR pass that
+# actually found a region below threshold - unreachable here without
+# PaddleOCR. Called directly with a synthetic `Reading`, it takes no
+# recogniser at all: real `Decimal` arithmetic (a genuine `min()` over real
+# scores) and a real message, so it is tested for real without the OCR guard.
+
+
+def test_vision_fallback_names_the_lowest_score_and_the_threshold() -> None:
+    low = reader.TextRegion(
+        text="a",
+        location=reader.SourceLocation(page_index=0, left=0.0, top=0.0, right=1.0, bottom=1.0),
+        extraction_confidence=Decimal("0.2000"),
+    )
+    high = reader.TextRegion(
+        text="b",
+        location=reader.SourceLocation(page_index=0, left=0.0, top=2.0, right=1.0, bottom=3.0),
+        extraction_confidence=Decimal("0.9000"),
+    )
+    reading = reader.Reading(regions=(low, high), backend=reader.Backend.OCR, pages_read=1)
+
+    with pytest.raises(reader.VisionFallbackUnavailableError) as raised:
+        reader._vision_fallback(reading, Decimal("0.5000"))
+
+    # the LOWEST score, not the first, not the highest, not an average
+    assert "0.2000" in str(raised.value)
+    assert "0.5000" in str(raised.value)
+
+
+def test_vision_fallback_reports_no_lowest_score_when_no_region_scored() -> None:
+    """`min(..., default=None)` on an empty reading - the router never actually
+    calls this with zero regions (nothing would be 'below threshold'), but the
+    function's own contract is real logic and is tested directly rather than
+    only through a caller that happens never to exercise it this way.
+    """
+    reading = reader.Reading(regions=(), backend=reader.Backend.OCR, pages_read=1)
+
+    with pytest.raises(reader.VisionFallbackUnavailableError, match="None"):
+        reader._vision_fallback(reading, Decimal("0.5000"))
 
 
 @needs_the_real_ocr

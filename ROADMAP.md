@@ -114,17 +114,30 @@ Authorised by **Amendment 3** (2026-08-05). Nothing outside Engine 1 is authoris
 
 **Deliverables.**
 
-| Sub-engine | State |
+| Component | State |
 |---|---|
-| `cleaner` §1.1 | ✅ landed · deskew residual **0.0017 at 32°** |
-| `reader` §1.2 | ✅ landed · PyMuPDF text layer, PaddleOCR otherwise |
-| `parser` §1.3 | ✅ landed · Docling structure, never meaning |
-| `confidence` §1.4 | 🔄 source written, tests in flight |
+| `cleaner` §1.1 | ✅ landed · deskew residual **0.0017 at 32°** — but see F-012 |
+| `reader` §1.2 | ✅ landed · PyMuPDF text layer works; **OCR path unproven on CI** (F-009) |
+| `parser` §1.3 | ✅ landed · Docling + Table Transformer, 51/51 |
+| `confidence` §1.4 | ✅ landed · a recorder, not a gate · 27 tests |
 | engine assembly | ✅ landed · four parts → Document Evidence Object |
-| `config` | 🔄 source written, tests in flight |
-| `measurement` | 🔄 source written, tests in flight — **the only home the raw signal has** |
-| integration | ⬜ **nothing yet runs a real document through all five** |
+| `classification` | ✅ landed · **zero thresholds** — decides on tuple shape, not a number |
+| `config` | ✅ landed · 16 parameters, no defaults, fails fast · 71 tests |
+| `measurement` | ✅ landed · carries `instrument` + `region` — the raw signal's only home |
+| `pipeline` | ✅ landed · bytes → Document Evidence Object, end to end · 30 tests |
 | benchmarks | ⏸ partial |
+
+**Local: 2280 passed, 11 skipped, 0 failed. 4,042+ lines across Engine 1.**
+
+**But integration found what isolation could not**, and these are architecture gaps, not
+bugs — every one is recorded in `KNOWN_FAILURES.md` rather than patched:
+
+- **F-011** `cleaner.decode` cannot decode a PDF at all — the MVP's primary input
+- **F-012** the pipeline is **not a pipe**: `reader` and `parser` each re-open the raw
+  document and neither consumes `cleaner`'s output, so cleaning currently changes nothing
+  downstream
+- **F-013** extraction content can never carry a per-field confidence — the number
+  Engine 5 will eventually need
 
 **Dependencies.** The locked architecture (`a47271d`) and the P2 artifact schemas. **Not
 P1** — the blueprint makes Engine 1 depend on the Application Layer and the schemas, both

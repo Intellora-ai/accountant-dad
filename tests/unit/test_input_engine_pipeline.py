@@ -447,6 +447,34 @@ def test_parser_failing_after_cleaner_and_reader_preserves_both_and_names_parser
     assert raised.value.preserved.confidence is None
 
 
+def test_assembly_failing_last_preserves_every_earlier_stage_and_names_assembly() -> None:
+    """`cleaner`, `reader`, `parser` and `confidence` all genuinely succeed on
+    a real PDF - `assembly.assemble` is the one that fails, on a real caller
+    mistake `DocumentIntake` does not itself refuse: two identical source
+    references. `DocumentIntake.__post_init__` only checks for AT LEAST ONE
+    (`test_a_document_intake_with_no_source_reference_fails_at_construction`);
+    the duplicate check belongs to `DocumentEvidenceObject`'s own schema
+    (`accountant_dad.artifacts.evidence`, INV-11), reached only inside
+    `assembly.assemble`, so this is the one input shape that runs all four
+    sub-engines for real and still fails at the last stage.
+    """
+    intake = pipeline.DocumentIntake(
+        document=an_invoice_pdf(),
+        media_type=reader.MediaType.PDF,
+        source_references=("upload:dup.pdf", "upload:dup.pdf"),
+    )
+
+    with pytest.raises(pipeline.PipelineStageError) as raised:
+        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+
+    assert raised.value.stage == "assembly"
+    assert "assembly" in str(raised.value)
+    assert raised.value.preserved.cleaned is not None
+    assert raised.value.preserved.reading is not None
+    assert raised.value.preserved.parsed is not None
+    assert raised.value.preserved.confidence is not None
+
+
 # ── confidence is never raised anywhere along the chain ────────────────
 
 
@@ -553,6 +581,40 @@ def test_region_readings_excludes_a_text_layer_region_but_keeps_a_scored_one() -
     # the unscored region's text is not lost from the artifact: it still
     # reaches `raw_extracted_text` through `reader_output`, independently.
     assert "read from a PDF text layer" in pipeline.reader_output(reading).raw_extracted_text
+
+
+# ── table bands render too, when a table structure detector found any ─────
+
+
+def test_document_structure_text_renders_every_band_a_table_structure_detector_found() -> None:
+    """`table.bands` is the one collection `document_structure_text` had no
+    fixture exercising: through THIS pipeline `parser.parse` never receives a
+    `table_structure` setting (defect 1 - every number here is the caller's,
+    and this pipeline supplies none), so a `Table` carrying a band is built
+    directly, the same way `test_table_transformer_reports_bands_when_the_
+    caller_supplies_the_numbers` proves the real detector produces one.
+    """
+    box = parser.BoundingBox(page=1, left=0.0, top=0.0, right=10.0, bottom=10.0)
+    structure = parser.ParsedStructure(
+        source_reference="upload:x.pdf",
+        page_count=1,
+        regions=(),
+        tables=(
+            parser.Table(
+                detector="table-transformer:test",
+                box=box,
+                row_count=1,
+                column_count=1,
+                cells=(),
+                bands=(parser.Band(label="table row", score=0.87, box=box),),
+            ),
+        ),
+    )
+
+    text = pipeline.document_structure_text(structure)
+
+    assert "band label='table row'" in text
+    assert "score=0.87" in text
 
 
 # ── defect 4, proven directly: no invented field name or confidence ───

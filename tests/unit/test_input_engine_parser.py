@@ -39,6 +39,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 import inspect
+import os
 import pathlib
 from dataclasses import fields
 from typing import TYPE_CHECKING
@@ -383,6 +384,18 @@ def test_a_missing_dependency_is_named_not_swallowed() -> None:
     assert "a_module_that_is_definitely_not_installed" in str(raised.value)
 
 
+def test_a_path_with_no_file_at_it_is_refused_before_any_model_loads(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Checked before `_convert` ever runs — this needs no Docling model and
+    no `@needs_the_real_tools` guard, and runs everywhere in CI.
+    """
+    missing = tmp_path / "never-written.pdf"
+
+    with pytest.raises(parser.DocumentUnreadableError, match="no file exists"):
+        parser.parse(missing, source_reference=A_REFERENCE)
+
+
 @pytest.mark.parametrize(
     ("page", "left", "top", "right", "bottom"),
     [
@@ -448,6 +461,27 @@ def test_a_cell_reporting_a_read_zero_is_kept() -> None:
     assert cell.text == "0"
 
 
+def test_a_cell_with_no_text_reported_at_all_is_accepted() -> None:
+    """`None` — "the detector located this cell and reported no text" — is
+    the third state alongside `""` (refused above) and a real reading.
+    Nothing here calls `_reject_blank`, and this is the one case that proves
+    it: a blank check applied to `None` would either skip it correctly or
+    crash trying to `.strip()` it, and only a real construction tells them
+    apart.
+    """
+    cell = parser.Cell(
+        text=None,
+        row_start=0,
+        row_end=1,
+        column_start=0,
+        column_end=1,
+        is_column_header=False,
+        is_row_header=False,
+        box=_a_box(),
+    )
+    assert cell.text is None
+
+
 @pytest.mark.parametrize(
     ("row_start", "row_end", "column_start", "column_end"),
     [(1, 1, 0, 1), (0, 1, 2, 2), (-1, 1, 0, 1), (0, 1, -1, 1), (2, 1, 0, 1)],
@@ -476,6 +510,55 @@ def test_a_region_may_not_report_an_empty_string_either() -> None:
 def test_a_region_must_say_which_detector_produced_it() -> None:
     with pytest.raises(ValueError, match="detector"):
         parser.Region(label="text", text="x", box=_a_box(), detector="  ")
+
+
+def test_a_band_score_must_be_finite() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        parser.Band(label="table row", score=float("nan"), box=_a_box())
+    with pytest.raises(ValueError, match="finite"):
+        parser.Band(label="table row", score=float("inf"), box=_a_box())
+
+
+def test_a_table_cannot_have_a_negative_shape() -> None:
+    with pytest.raises(ValueError, match="impossible"):
+        parser.Table(detector="docling", box=_a_box(), row_count=-1, column_count=1, cells=())
+
+
+def test_a_table_refuses_a_cell_that_spans_outside_its_own_grid() -> None:
+    """A cell's own span passed `Cell.__post_init__`'s check in isolation —
+    `row_end=2` is a legal half-open span — but the TABLE it belongs to only
+    has one row, so the table, not the cell, is what refuses it."""
+    cell = parser.Cell(
+        text="x",
+        row_start=0,
+        row_end=2,
+        column_start=0,
+        column_end=1,
+        is_column_header=False,
+        is_row_header=False,
+        box=_a_box(),
+    )
+    with pytest.raises(ValueError, match="outside the"):
+        parser.Table(detector="docling", box=_a_box(), row_count=1, column_count=1, cells=(cell,))
+
+
+def test_a_parsed_structure_cannot_have_a_negative_page_count() -> None:
+    with pytest.raises(ValueError, match="page count"):
+        parser.ParsedStructure(
+            source_reference="upload:x.pdf", page_count=-1, regions=(), tables=()
+        )
+
+
+def test_an_unknown_coordinate_origin_is_refused_rather_than_assumed() -> None:
+    """`_to_top_left_box` is called for every region and every table cell;
+    it is tested directly here because the only two origins a real Docling
+    conversion ever reports are the two this function already accepts (see
+    `test_the_known_table_comes_back_exactly_as_it_was_drawn` below) — a
+    third one is a real caller mistake, never something the fixtures could
+    produce.
+    """
+    with pytest.raises(ValueError, match="unknown coordinate origin"):
+        parser._to_top_left_box((0.0, 0.0, 1.0, 1.0), page=1, page_height=100.0, origin="SIDEWAYS")
 
 
 # ── the measurement: real Docling, real PDF, exact counts ─────────────────
@@ -625,6 +708,32 @@ def test_a_blank_page_yields_an_empty_structure(documents: dict[str, pathlib.Pat
     assert structure.page_count == ONE_PAGE
     assert structure.tables == ()
     assert structure.regions == ()
+
+
+@needs_the_real_tools
+def test_docling_raising_outright_is_wrapped_the_same_as_a_graceful_failure(
+    tmp_path: pathlib.Path,
+) -> None:
+    """`documents["corrupt"]` (below) drives Docling's OWN graceful failure —
+    it returns a non-SUCCESS status, caught by the `if status != "SUCCESS"`
+    branch. This drives the OTHER branch: an unreadable file makes
+    `DocumentConverter().convert()` raise directly, despite
+    `raises_on_error=False`, which is the `except Exception` around the call
+    itself. Measured directly: a file with its read permission removed is
+    what reaches it — `PermissionError` surfaces from Docling's own I/O,
+    before its graceful per-format error handling ever gets a chance to run.
+    """
+    unreadable = tmp_path / "no-read-permission.pdf"
+    unreadable.write_bytes(b"%PDF-1.4\nsome bytes\n")
+    unreadable.chmod(0o000)
+    if os.access(unreadable, os.R_OK):
+        pytest.skip("running with a privilege that ignores file permissions (e.g. root)")
+
+    try:
+        with pytest.raises(parser.DocumentUnreadableError, match="PermissionError"):
+            parser.parse(unreadable, source_reference=A_REFERENCE)
+    finally:
+        unreadable.chmod(0o644)
 
 
 @needs_the_real_tools

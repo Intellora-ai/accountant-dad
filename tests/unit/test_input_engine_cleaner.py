@@ -752,6 +752,40 @@ def test_the_result_is_frozen() -> None:
         setattr(result, frozen_field, cleaner.PreservationStatus.ORIGINAL_IS_SAFER)
 
 
+# ── the four measurements' own size guards, called directly ───────────────
+#
+# `clean()` cannot reach these degenerate cases through the public API:
+# `_receive` already refuses anything shorter than `denoise_search_window`
+# (itself bounded below by `_MIN_SIDE_FOR_NOISE`), so the ORIGINAL grey array
+# can never be small enough, and `_crop_to_ink` never produces a
+# zero-pixel crop (a bounding box of at least one ink pixel always has
+# positive width and height; a blank page is returned uncropped). These four
+# functions' own size guards are real logic with a real, meaningful contract
+# — "unmeasurable, not zero" — so they are tested directly with real,
+# degenerate `numpy` arrays rather than left unexercised because the one
+# caller in this file happens never to build a degenerate array itself.
+
+
+def test_measure_noise_is_unmeasurable_below_the_three_pixel_minimum() -> None:
+    tiny: Image = np.zeros((2, 5), dtype=np.uint8)
+    assert cleaner._measure_noise(tiny) is None
+
+
+def test_measure_sharpness_is_unmeasurable_below_the_three_pixel_minimum() -> None:
+    tiny: Image = np.zeros((1, 10), dtype=np.uint8)
+    assert cleaner._measure_sharpness(tiny) is None
+
+
+def test_measure_contrast_is_unmeasurable_on_an_empty_array() -> None:
+    empty: Image = np.zeros((0, 5), dtype=np.uint8)
+    assert cleaner._measure_contrast(empty) is None
+
+
+def test_measure_ink_fraction_is_unmeasurable_on_an_empty_array() -> None:
+    empty: Image = np.zeros((5, 0), dtype=np.uint8)
+    assert cleaner._measure_ink_fraction(empty) is None
+
+
 # ── the boundary the module must never cross ──────────────────────────────
 
 

@@ -39,6 +39,7 @@ be exactly the drift Law 19 forbids.
 
 from __future__ import annotations
 
+import dataclasses
 import re
 from decimal import Decimal
 
@@ -481,6 +482,60 @@ def test_document_score_weights_rejects_an_infinite_weight() -> None:
         c.load_confidence_parameters(env)
 
 
+# ── the pure validators, called directly ───────────────────────────────────
+#
+# `_probability_problem` and `_weights_problem` are this module's own private
+# functions, imported nowhere else - every case above reaches them only
+# through a raw string and `_parse_probability` / `_parse_weights` first.
+# Called directly, they are the real logic (real `Decimal` arithmetic) rather
+# than a stand-in for it, and it is the only way to reach a few of the
+# problems below without a raw string that would ALSO have to defeat an
+# earlier check first.
+
+
+def test_probability_problem_reports_a_non_finite_value_as_the_specific_reason() -> None:
+    """`Decimal.is_finite()` is false for NaN and both infinities - a case
+    `_parse_probability` itself can never reach from a raw string, because
+    `Decimal("NaN")` and `Decimal("Infinity")` both parse successfully before
+    this check ever runs, unlike `float`'s JSON constants (see
+    `_parse_weights` below, where exactly that gap is why `float` is refused
+    explicitly).
+    """
+    assert c._probability_problem(Decimal("NaN")) == "must be finite; got NaN."
+    problem = c._probability_problem(Decimal("Infinity"))
+    assert problem is not None
+    assert "must be finite" in problem
+
+
+def test_weights_problem_names_which_field_carries_the_bad_weight() -> None:
+    """Falsification: a bare 'weight out of range' message would not say
+    WHICH of several weights was the offender. This checks the field name is
+    actually threaded through, not just that some message comes back.
+    """
+    problem = c._weights_problem({"gstin": Decimal("2.0000")})
+    assert problem is not None
+    assert "gstin" in problem
+    assert "must lie in" in problem
+
+
+def test_parse_weights_refuses_a_json_value_that_is_not_an_object() -> None:
+    with pytest.raises(c._ParameterValueError, match=r"JSON object"):
+        c._parse_weights("[1, 2, 3]")
+
+
+def test_parse_weights_refuses_a_weight_that_is_not_a_number_at_all() -> None:
+    """`null`, a JSON array, a nested object - none is a number, a boolean or
+    a string; the `float` case (JSON's `Infinity`/`NaN` constants) is refused
+    by name earlier and is covered by
+    `test_document_score_weights_rejects_an_infinite_weight`, so this covers
+    what remains: nothing about the value's own JSON type says 'number'.
+    """
+    with pytest.raises(c._ParameterValueError, match=r"must be a number"):
+        c._parse_weights('{"gstin": null}')
+    with pytest.raises(c._ParameterValueError, match=r"must be a number"):
+        c._parse_weights('{"gstin": [1, 2]}')
+
+
 # ── document_score_rule: the tension left visible on purpose ──────────────
 
 
@@ -551,3 +606,36 @@ def test_direct_construction_with_every_valid_value_succeeds() -> None:
     )
 
     assert reconstructed == valid
+
+
+def test_direct_construction_with_an_impossible_count_raises_by_name() -> None:
+    """The loader itself never lets a caller reach this: `_parse_worst_k`
+    already refuses `worst_k=0` before `ConfidenceParameters` is ever built
+    (`test_worst_k_zero_is_refused_below_its_lower_boundary_of_one`). This is
+    `__post_init__`'s OWN count check, reachable only by direct construction -
+    the defence-in-depth `cleaner.CleanerSettings` uses for the identical
+    reason: a caller that already has typed values and skips the loader must
+    still be refused.
+    """
+    valid = c.load_confidence_parameters(a_valid_env())
+
+    with pytest.raises(c.ImpossibleParameterError, match=re.escape(c.WORST_K)):
+        dataclasses.replace(valid, worst_k=0)
+
+
+def test_direct_construction_with_weights_that_do_not_sum_to_one_raises_by_name() -> None:
+    """The mirror of the count test above, for `document_score_weights`'s own
+    arithmetic rather than a single field's range.
+    """
+    valid = c.load_confidence_parameters(a_valid_env())
+
+    with pytest.raises(c.ImpossibleParameterError, match=re.escape(c.DOCUMENT_SCORE_WEIGHTS)):
+        dataclasses.replace(valid, document_score_weights={})
+
+
+# ── `_env_var`: every catalog name resolves, and nothing else does ────────
+
+
+def test_env_var_of_an_unknown_parameter_name_raises_key_error() -> None:
+    with pytest.raises(KeyError, match=r"not a parameter"):
+        c._env_var("not_a_real_parameter_name")

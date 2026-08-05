@@ -361,6 +361,122 @@ def test_a_malformed_category_names_its_line_number(tmp_path: Path) -> None:
         m.read_all(store)
 
 
+def test_a_signal_that_is_not_a_json_object_names_its_line_number(tmp_path: Path) -> None:
+    """`_signal_from_json`'s own type check - the caller's `per_region_ocr`
+    entry is valid JSON and a valid array, but the array holds a bare number
+    rather than an object with `name`/`instrument`.
+    """
+    bad_row = {
+        "document_id": str(uuid.uuid4()),
+        "source_document_type": "invoice",
+        "processing_time_ms": 1.0,
+        "correctness": "unlabelled",
+        "per_region_ocr": [123],
+    }
+    store = tmp_path / "store.jsonl"
+    store.write_text(json.dumps(bad_row) + "\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError, match=r"line 1"):
+        m.read_all(store)
+
+
+def test_a_signal_with_a_non_string_name_is_refused(tmp_path: Path) -> None:
+    bad_row = {
+        "document_id": str(uuid.uuid4()),
+        "source_document_type": "invoice",
+        "processing_time_ms": 1.0,
+        "correctness": "unlabelled",
+        "per_region_ocr": [{"name": 123, "instrument": "PaddleOCR"}],
+    }
+    store = tmp_path / "store.jsonl"
+    store.write_text(json.dumps(bad_row) + "\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError, match=r"name.*must be a string"):
+        m.read_all(store)
+
+
+def test_a_signal_with_a_non_string_region_is_refused(tmp_path: Path) -> None:
+    bad_row = {
+        "document_id": str(uuid.uuid4()),
+        "source_document_type": "invoice",
+        "processing_time_ms": 1.0,
+        "correctness": "unlabelled",
+        "per_region_ocr": [{"name": "r0", "instrument": "PaddleOCR", "region": 123}],
+    }
+    store = tmp_path / "store.jsonl"
+    store.write_text(json.dumps(bad_row) + "\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError, match=r"region.*must be"):
+        m.read_all(store)
+
+
+def test_a_signal_value_of_true_is_refused_as_a_boolean_not_a_number(tmp_path: Path) -> None:
+    """`bool` is a subclass of `int` in Python - `isinstance(True, int)` is
+    true, so the boolean case must be checked, and refused, before the
+    numeric-type check would silently accept it as `1.0`.
+    """
+    bad_row = {
+        "document_id": str(uuid.uuid4()),
+        "source_document_type": "invoice",
+        "processing_time_ms": 1.0,
+        "correctness": "unlabelled",
+        "per_region_ocr": [{"name": "r0", "instrument": "PaddleOCR", "value": True}],
+    }
+    store = tmp_path / "store.jsonl"
+    store.write_text(json.dumps(bad_row) + "\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError, match=r"not a boolean"):
+        m.read_all(store)
+
+
+def test_a_signal_value_that_is_neither_a_number_nor_a_string_is_refused(
+    tmp_path: Path,
+) -> None:
+    bad_row = {
+        "document_id": str(uuid.uuid4()),
+        "source_document_type": "invoice",
+        "processing_time_ms": 1.0,
+        "correctness": "unlabelled",
+        "per_region_ocr": [{"name": "r0", "instrument": "PaddleOCR", "value": [1, 2]}],
+    }
+    store = tmp_path / "store.jsonl"
+    store.write_text(json.dumps(bad_row) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        m.MalformedMeasurementRecordError, match=r"a number, a numeric string, or null"
+    ):
+        m.read_all(store)
+
+
+def test_a_line_that_is_valid_json_but_not_an_object_names_its_line_number(
+    tmp_path: Path,
+) -> None:
+    """Different from `test_a_malformed_json_line_names_its_line_number`
+    above: that line is not valid JSON at all. This line parses fine — it is
+    a JSON array — and is refused because `_row_from_json` needs an object.
+    """
+    store = tmp_path / "store.jsonl"
+    store.write_text("[1, 2, 3]\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError, match=r"line 1"):
+        m.read_all(store)
+
+
+def test_failed_fields_that_is_not_a_json_array_is_refused(tmp_path: Path) -> None:
+    bad_row = {
+        "document_id": str(uuid.uuid4()),
+        "source_document_type": "invoice",
+        "processing_time_ms": 1.0,
+        "correctness": "unlabelled",
+        "failed_fields": "gstin",
+    }
+    store = tmp_path / "store.jsonl"
+    store.write_text(json.dumps(bad_row) + "\n", encoding="utf-8")
+
+    with pytest.raises(m.MalformedMeasurementRecordError, match=r"'failed_fields' must be a"):
+        m.read_all(store)
+
+
 def test_a_malformed_line_is_never_silently_skipped(tmp_path: Path) -> None:
     """A store that drops an unparseable row is a store lying about how many
     documents were measured - the exact failure the module's docstring names."""
@@ -665,3 +781,10 @@ def test_absent_cannot_be_used_in_an_if_not_check() -> None:
     itself explode rather than silently treating ABSENT as falsy."""
     with pytest.raises(TypeError):
         _ = not m.ABSENT
+
+
+def test_absent_reprs_as_absent_not_as_the_default_object_repr() -> None:
+    """A debugger or a failed-assertion message that printed
+    `<accountant_dad.engines.input_engine.measurement.AbsentType object at
+    0x...>` would tell an operator nothing; `ABSENT` names itself."""
+    assert repr(m.ABSENT) == "ABSENT"
