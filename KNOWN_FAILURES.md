@@ -806,6 +806,159 @@ imports its own module and proves that module honest.
 
 ---
 
+## F-020 · `pip install accountant-dad` ships an unimportable Engine 1
+
+| | |
+|---|---|
+| **Severity** | HIGH — Law 18, hidden dependencies, and the `build` gate is structurally blind to it |
+| **Status** | 🔄 OPEN · agent fixing it |
+| **Found** | 2026-08-06 |
+
+`pyproject.toml:11-15` declares **only `pydantic`**. But `cleaner.py:96-98` imports cv2 and
+numpy at module scope, `reader.py:101-104` imports pymupdf, PIL and numpy, and
+`pipeline.py:171` imports pymupdf.
+
+Measured on a stdlib-only interpreter: `import accountant_dad` succeeds;
+`import ...input_engine.cleaner` → `No module named 'cv2'`;
+`import ...input_engine.pipeline` → `No module named 'pymupdf'`.
+
+**Why no gate catches it.** `quality.yml:47` imports the **top-level package only**, which
+has no heavy imports. The gate is green while the installable artifact is broken for
+anyone who installs it the declared way.
+
+**Same class as a defect already paid for.** `reader.py` once resolved PaddleOCR at module
+scope, making the whole Input Engine unimportable and killing every gate at collection.
+That one was loud because it broke everything. This one is quiet — it breaks only on
+install, which nobody currently does.
+
+---
+
+## F-021 · The build freeze checks filenames, not code
+
+| | |
+|---|---|
+| **Severity** | HIGH — the guard Amendment 3 rests on enforces a naming convention |
+| **Status** | 🔄 OPEN · agent fixing it |
+| **Found** | 2026-08-06 |
+
+`tests/unit/test_package.py:183` checks module **filenames** against `FROZEN_MARKERS`
+(`:66`). It opens no file and inspects no import. Demonstration: a file named
+`engines/input_engine/gst_rates.py`, full of tax logic, **passes**.
+
+Amendment 3 states *"No accounting reasoning is permitted inside Engine 1"* and lists among
+its binding guards *"a new test proves no module **named** for accounting, tax, LLM, brain
+or Tally enters it."* **Named** is doing all the work. Anyone writing forbidden logic under
+an innocent filename passes.
+
+Two more holes in the same file:
+
+- **Only 1 of 9 Engine 1 modules has a cross-engine import guard**
+  (`test_input_engine_parser.py:357`). All five sibling *stubs* have one — **the stubs are
+  better protected than the engine.**
+- **`AL-INV-5` appears nowhere in `conformance.py` or `conformance_registry.py`.** It is
+  prose in docstrings, enforced by nothing.
+
+**The honest limit, to be stated in the fix rather than papered over:** no static check can
+prove the absence of accounting reasoning. A guard claiming to is a worse lie than the
+filename check.
+
+---
+
+## F-022 · There is no accounting document in this repository
+
+| | |
+|---|---|
+| **Severity** | HIGH — blocks the ROADMAP's *"a real document runs end to end"* in its intended sense |
+| **Status** | 🔒 OPEN · needs real documents, which must be obtained |
+| **Found** | 2026-08-06 |
+
+Measured: **40 PDFs · 55,526,251 bytes · 5,678 pages · 12.9 M characters · every one with a
+text layer · 0 image files of any format.**
+
+All 40 are statutes, rules, circulars, notifications and ICAI standards — law *about*
+accounting. **No invoice, receipt, bill, voucher or bank statement exists.** This is Engine
+3 and Brain feedstock, not Engine 1 feedstock.
+
+| Provable today | Not provable |
+|---|---|
+| text-layer PDF extraction | OCR — there are zero scans |
+| very long documents (880pp Income-tax Act) | photographs, deskew on paper, handwriting |
+| legislative rate tables · large files | rotation, multi-invoice pages, non-English |
+| | **all nine negative controls** |
+
+**Every document the suite reads is generated in memory.** Three generators are shaped like
+real-document coverage and must never be cited as such:
+`test_input_engine_reader.py:177` (`an_image_only_pdf` — a clean 300-dpi Helvetica render,
+no noise, no skew, no artefacts), `test_input_engine_cleaner.py:865` (`a_scanned_pdf`), and
+`test_input_engine_reader.py:118-130` (`INVOICE_LINES` — a hardcoded fake invoice that
+**also serves as its own ground truth**, which is §J trap (b) exactly).
+
+**On the 16-vs-100 conflict recorded in `BLOCKERS.md`: the two documents do not contradict
+each other.** `GOLDEN_DATASET.md` plans 16 golden (10 dev + 6 held-out) + 9 negative = 25,
+and separately says ~100 is what *calibration* needs, sequencing them at `:168`:
+*"Twenty-five is enough to kill; a hundred is what you need to tune."* The gap is real; the
+contradiction is not. `KNOWN_FAILURES.md:217,234` already names the right next step —
+**re-derive the number**, which is a measurement, not a budget decision.
+
+**The number that actually blocks is 0.** The storage layout at `GOLDEN_DATASET.md:177-188`
+does not exist — no `src/tests/golden/`, and **zero non-`.py` files anywhere under
+`tests/`**. `:79` requires all 25 collected and frozen *before any engine is built*. Engine
+1 is built.
+
+---
+
+## F-023 · F-002 is recorded RESOLVED and is half resolved
+
+| | |
+|---|---|
+| **Severity** | HIGH — a pinned version can be violated while every check reports green |
+| **Status** | 🔄 OPEN · agent building the guard that does not exist |
+| **Found** | 2026-08-06 |
+
+The combined resolve genuinely fails. The **sequential** install does not:
+
+```
+pip install numpy==2.5.1 opencv-python==5.0.0.93   → numpy 2.5.1 · cv2 5.0.0
+pip install -r requirements-engine1-ocr.txt        → numpy downgraded to 2.3.5,
+                                                     opencv-contrib-python added,
+                                                     exit 0, no error, no warning
+```
+
+```
+importlib.metadata.version("opencv-python") → '5.0.0.93'   # a pin assertion PASSES
+cv2.__version__                            → '4.10.0'     # the actual library
+```
+
+**A metadata-based guard reports green while the pin is violated.** No such guard exists
+anyway — nothing in `tests/`, `src/` or `tools/` asserts `cv2.__version__`, while
+`cleaner.py` uses cv2 throughout.
+
+**It has already happened here.** The repo's `.venv` holds 13 packages unreachable from any
+manifest root; **13 of 13 are OCR-tree packages.** F-002's recorded verification fixed two
+version numbers and never checked the environment was clean.
+
+**What that costs.** `ROADMAP.md` records a measured deskew residual of *"0.0017 at 32°"*.
+cv2 measured it. Nothing in the repository can currently establish which cv2. The claim is
+not disproven — it is **unverifiable**, which under Law 52 is the same as not having it.
+
+**Reproducibility fails too.** 151 of 175 packages (86%) are unpinned; no lockfile, no
+hashes. Measured drift on the same commit: `pydantic` 2.12.3 → **2.13.4**, plus
+`docling-parse`, `pydantic-core`, `pyyaml`. `pydantic` is pinned in `requirements-ci.txt`
+and unpinned in `requirements-engine1.txt`, so **the version of the library that validates
+every artifact depends on manifest install order.**
+
+**Licences, swept properly:** 175 packages, all 41 distinct licence strings reviewed. Six
+copyleft packages; **PyMuPDF is the only one with a network clause.** `python-bidi`
+(LGPL-3.0) and `crc32c` (LGPL-2.1-or-later) arrive through the OCR tree — nil obligation for
+pure SaaS, live if anything ships on-premises, and `TECHNOLOGY_STACK.md:131` records Tally
+as on-prem Windows. Owner's call. One claimed exposure was **falsified and withdrawn**:
+`docutils` carries a GPL classifier but its only GPL file is not shipped in the wheel.
+
+Also: **`rapidocr==3.9.2` resolves into the engine1 tree transitively via `docling`** — a
+second OCR engine, against `TECHNOLOGY_STACK.md`'s one-tool-per-capability lock.
+
+---
+
 ## F-009 · The OCR path is not proven on CI
 
 | | |

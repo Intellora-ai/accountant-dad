@@ -23,7 +23,7 @@ Updated: **2026-08-05**
 | **F-014** | The `mutation` gate's baseline failure is **fixed** — the gate completes and scores | ✅ closed |
 | **F-045** | Score was **90.6%** on the last complete run. 64 kills were needed; **114 delivered**. Awaiting the CI number | 🔄 active |
 | **F-018** | **Three Engine 1 modules are wired to nothing** — `classification`, `config`, `measurement` have zero consumers in `src/`. Same shape as F-012 | 🔄 agent wiring it |
-| **F-010** | Amendment 3 vs `ENGINE_1_ARCHITECTURE.md` §G9.5 on classification — **was listed as owner-blocked; it is not** | ✅ resolved by precedence |
+| **F-010** | Classification's authorisation — **half resolved, half re-opened.** See below | 🔒 owner, on the narrower question |
 | **F-016** | Mutation cannot run on macOS — mutmut forks, `fork()` after OpenCV/torch segfaults | ⬜ unfixable locally; CI is the only route |
 
 **Why F-010 moved.** The losing document self-declares *"Status: DRAFT — NOT FROZEN"*
