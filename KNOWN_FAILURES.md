@@ -287,6 +287,103 @@ it still needs the deliberately-broken-code proof before promotion.
 
 ---
 
+## F-014 · The mutation gate no longer fits in 100 minutes
+
+| | |
+|---|---|
+| **Severity** | HIGH — blocks the merge |
+| **Status** | 🔒 **BLOCKED · needs a number from the owner** |
+| **Found** | 2026-08-05, after Engine 1 landed |
+
+**Description.** The `mutation` job was cancelled at the 100-minute cap on `ed5d504`.
+It is not failing on score — it cannot finish.
+
+**Two things changed at once, and they multiply.**
+
+```
+mutant population   1593 → 2933      +84%   the seven new Engine 1 modules
+suite wall-clock     7 s  → 72 s     ~10×   parser's 14 Docling / Table-Transformer
+                                             measurements now RUN (they used to skip,
+                                             because docling was never pinned)
+```
+
+Every mutant re-runs the tests covering the function it mutated. For `parser.py`'s
+mutants that now means loading real models.
+
+**The measured history:**
+
+| Commit | Mutants | Result |
+|---|---|---|
+| `d85861c` | 1593 | ✅ **24m14s · 99.3%** (floor 93) — killed 1364, survived 9 |
+| `ed5d504` | 2933 | ❌ **cancelled at 100 min** |
+| `27b44b3` | 2933 + 35 more tests | running; strictly slower than the run that already failed |
+
+**Workarounds attempted and rejected — every one, before reporting this.**
+
+1. **Cache the Table Transformer.** `_bands_for` calls `from_pretrained` **once per
+   table** and never caches, unlike `reader._recogniser()` which caches for exactly this
+   stated reason. Measured cost: **1.68 s per call, warm cache, forever.** Implemented,
+   then **reverted** — making it type-safe under `mypy --strict` needs Protocols that
+   erode the `float()`/`int()` conversions at the call site, and `disallow_any_explicit`
+   rules out the easy route. Trading correctness in production code for CI minutes is a
+   bad trade. **Recorded separately below as a real defect worth fixing on its own
+   merits, not as a CI expedient.**
+2. **Lazy imports.** Already correct — `parser.py` uses `importlib` + `TYPE_CHECKING`.
+   Not the cause.
+3. **Exclude `parser.py` from mutation**, or drop the Docling tests. **Refused.** Both
+   make the gate pass by measuring *less*, which is Law 4 and §J.4 outright.
+4. **Lower the floor.** Never.
+
+**What is needed.** A larger `timeout-minutes` for the `mutation` job in
+`.github/workflows/testing.yml`. **That is a number, and standing rule 10 forbids an
+engineer setting a number the owner did not give.**
+
+**Evidence for choosing one.** 1593 mutants took 24m14s. 2933 did not finish in 100. The
+relationship is worse than linear because mutmut sorts ascending by estimated cost, so
+the added Engine 1 mutants land in the expensive tail — the same effect measured earlier
+at 3.45× the work in 60% as many mutants.
+
+---
+
+## F-015 · The Table Transformer is rebuilt once per table
+
+| | |
+|---|---|
+| **Severity** | MEDIUM — real production cost, not just CI |
+| **Status** | ⬜ OPEN · fix identified, blocked on typing |
+| **Found** | 2026-08-05 |
+
+**Description.** `parser.py:580-581` calls `AutoImageProcessor.from_pretrained` and
+`TableTransformerForObjectDetection.from_pretrained` inside `_bands_for`, which runs
+**once per table**. A three-table invoice constructs the model three times.
+
+**Measured on this machine, weights already in the HuggingFace cache so no download is
+involved:**
+
+```
+AutoImageProcessor.from_pretrained     3.06 s   first
+TableTransformerForObjectDetection     0.78 s   first
+both again, warm                       1.68 s   ← paid on EVERY call, forever
+```
+
+`model.eval()` is also re-asserted per call, though inference mode is a property of the
+instance and does not change.
+
+**This is not merely a CI problem.** In production every table in every document pays
+1.68 s of pure setup. `reader._recogniser()` documents precisely this hazard for
+PaddleOCR and caches with `@cache`; `parser.require_module` is `@functools.cache`d for
+the same reason. This one call site was missed.
+
+**Permanent fix.** `@functools.cache` on a `_table_structure_model()` helper. Attempted
+and reverted: `transformers` is reached through `require_module` and typed `ModuleType`,
+so today the objects are implicitly `Any` and the call site relies on that for
+`float(score)`, `int(label)` and `model.config.id2label`. Annotating a cached function's
+return re-types them, and `disallow_any_explicit` blocks the shortcut. The clean fix is
+narrow Protocols in `reader.py`'s style — worth doing deliberately, not wedged in to
+save CI minutes.
+
+---
+
 ## F-011 · `cleaner.decode` cannot decode a PDF — Engine 1's own primary input
 
 | | |
