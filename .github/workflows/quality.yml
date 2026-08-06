@@ -42,7 +42,7 @@ jobs:
           # brings pydantic_core, annotated-types, typing-extensions and
           # typing-inspection with it - all wheels, no sdists, so nothing is
           # compiled at install time.
-          /tmp/fresh/bin/pip download --quiet --dest dist pydantic==2.12.3
+          /tmp/fresh/bin/pip download --quiet --dest dist dist/accountant_dad-*.whl
           /tmp/fresh/bin/pip install --quiet --no-index --find-links dist accountant-dad
           /tmp/fresh/bin/python -c "import accountant_dad; print(accountant_dad.__version__)"
 
