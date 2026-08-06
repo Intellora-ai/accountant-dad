@@ -1072,6 +1072,24 @@ def test_the_module_still_exposes_no_way_to_read_what_it_removed() -> None:
         result.observed("content_lost_to_crop", cleaner.Stage.CLEANED)
 
 
+# ══ the content box's own degenerate case, called directly ══════════════
+#
+# `clean()` cannot reach this through the public API — `_receive` refuses
+# anything shorter than `denoise_search_window`, so the grey array is never
+# empty. The guard is real logic with a real contract — "no box, so crop
+# nothing" — and the module answers `None` rather than raising on the maximum
+# of an empty profile. Tested directly with real degenerate arrays, exactly as
+# this module's other measurement guards are, rather than left unexercised
+# because one caller happens never to build a degenerate array.
+
+
+def test_a_page_with_no_pixels_at_all_has_no_content_box() -> None:
+    """Zero rows and zero columns, both ways round. `None`, never a crash and
+    never a box of nothing that would crop a document out of existence."""
+    assert cleaner._content_box(np.zeros((0, 5), dtype=np.uint8)) is None
+    assert cleaner._content_box(np.zeros((5, 0), dtype=np.uint8)) is None
+
+
 # ══ PART FOUR — a figure that lies in the REASSURING direction ═══════════
 #
 # The three defects above are each a quantity that under-reports damage. This
