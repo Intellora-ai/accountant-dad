@@ -11,8 +11,7 @@ not blocking · **P3** recorded so it is not lost.
 
 Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅ done
 
-**Measurement state.** HEAD is `e921c3c`, **24 commits ahead of `origin/ci/mutation-runs`
-and unpushed.** Every gate value at HEAD is **UNMEASURED**; the last CI numbers belong to
+**Measurement state.** HEAD is `addcae3`, **pushed**; CI is judging it now. Every gate value at HEAD is **UNMEASURED**; the last CI numbers belong to
 `7e0efe2` / `f31e3cd` and are **EXPIRED** because `src/` moved `+2591 / −300` lines after
 them (Law 56).
 
@@ -39,9 +38,9 @@ them (Law 56).
 | ~~T-010~~ | ~~`confidence_report` tests~~ | ✅ | — | → Completed |
 | ~~T-011~~ | ~~`config` + `measurement` tests~~ | ✅ | — | → Completed |
 | ~~T-012~~ | ~~`instrument` + `region` on every signal~~ | ✅ | — | → Completed · F-005 closed |
-| **T-050** | **🔴 THE REPOSITORY DOES NOT BUILD.** `e921c3c` imports `Exclusion` from `accountant_dad.conformance` at `test_conformance_registry.py:74` and the dataclass was never written. `pytest tests/` dies at collection — **not one test runs.** Law 1. Write the dataclass the docstring (`conformance.py:100`) and the `Uncovered` enum (`:148`) already describe, or remove the import. See F-024. | ⬜ | — | conformance |
-| **T-051** | **🔴 39 red tests, one cause.** `pipeline.run` gained a required keyword-only `recorded_at`; `test_input_engine_pipeline_redteam.py` (1081 lines) and `test_input_engine_ablation.py` (631 lines) were recovered at `211c6b0` from a session that predates it and mention `recorded_at` **zero times**. Those two files guard F-012's `reader → parser` pipe and Engine 1's identity-leak boundary, and neither is running. See F-025. | ⬜ | — | Engine 1 |
-| **T-052** | **Push the branch and let CI judge it.** 24 commits ahead of `origin`; GitHub 422s on the SHA. Nothing after `f31e3cd` has a CI result, so **no mandatory gate has a current value** and Law 55 cannot even be evaluated. Blocked behind T-050 and T-051 — pushing red is what `211c6b0` correctly refused to do. | 🔒 | T-050, T-051 | CI |
+| ~~T-050~~ | ~~THE REPOSITORY DOES NOT BUILD~~ — **STALE, never true at a landed commit.** Measured at `e921c3c`, which was a mid-cherry-pick tree where `conformance.py` still held conflict markers. Re-verified at `addcae3`: `Exclusion` is present, `conformance` and `conformance_registry` both import, **3264 tests collect**. See F-024. | ✅ | — | conformance |
+| T-051 | **24 red tests, one cause** — down from 39. `pipeline.run` and `parser.parse` changed shape; `test_input_engine_pipeline_redteam.py` predates both, so its spy carries the old signature and six of its tests still expect a raise where an unreadable document now crosses as an artifact. Measured at `addcae3`: **3229 passed · 24 failed**, LOCAL ONLY — NOT AUTHORITATIVE. Owned by the F-019 agent, since it is the same change set. See F-025. | 🔄 | — | Engine 1 |
+| T-052 | **Push the branch and let CI judge it** — **done.** `f31e3cd..addcae3` pushed, 25 commits, `src/` +2973/−363. The cheap gates judge the real tree while the 24 red tests are fixed in parallel; a red suite makes `unit tests` red, which is honest and is evidence. Merging red is what is forbidden (Law 55), not measuring red. | ✅ | — | CI |
 | ~~T-013~~ | ~~CI must install Engine 1's dependencies~~ | ✅ | — | → Completed |
 | T-014 | **Promote `mutation` to a required check.** It passed on correct code — 95.3% @ commit `7e0efe2`, floor 93 — but that number is **EXPIRED** (source moved) and the current score is **UNMEASURED**. Two steps remain: re-measure at a pushed HEAD, and prove it FAILS on deliberately broken code. Then add **only** that gate. See F-008. | 🔒 | T-052, owner approval for the ruleset change | CI |
 | T-015 | **Engine 1 pipeline runner** — built, then made an actual pipe. `412eed6` rewired `reader`/`parser` onto `cleaned.artifact.payload`; `6b32425`/`41b23e6`/`d29985a` built the `reader → parser` half. F-012 closed. | ✅ | — | Engine 1 |
