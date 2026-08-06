@@ -1,10 +1,19 @@
-# Architecture Amendments — PROPOSED, NOT APPLIED
+# Architecture Amendments
 
-> **No locked document has been modified.** Every amendment below is a **proposal**
-> awaiting explicit approval. Locked documents are updated only after architectural
-> review and your written approval, per `CLAUDE.md` §M.
+> **Status is stated per amendment. Read it — the amendments are not all in the same state.**
+> Locked documents are updated only after architectural review and written approval, per
+> `CLAUDE.md` §M.
+
+> ### ⚠️ CORRECTION 2026-08-06 — this header used to say "PROPOSED, NOT APPLIED"
 >
-> **Status is stated per amendment.** Some are now approved; check each one.
+> It also said *"No locked document has been modified."* **That is no longer true, and leaving
+> it would have been a fabricated status** (Law 24). **Amendment 5**, below, is applied: it
+> modified `ENGINE_1_INPUT_ENGINE_RULES.md`, a locked level-3 specification, additively and
+> under the owner's delegated authority of 2026-08-06.
+>
+> Amendments **2** and **3** are unchanged and remain unapplied. Amendment **4** was already
+> approved and applied on 2026-08-03 while the header still claimed otherwise — so the header
+> was already stale before Amendment 5 made it wrong.
 
 > ### ⚠️ NUMBERING COLLISION — flagged, not resolved
 >
@@ -24,7 +33,7 @@ Previously the intent was to write amendments directly into the locked documents
 
 > *"Keeps the locked documents actually locked. Gives you one review point before changing the constitution."*
 
-**Nothing here is in force.** Documents that depend on these amendments say so explicitly, and describe the current locked behaviour alongside the proposed behaviour.
+**Corrected 2026-08-06.** This line used to read *"Nothing here is in force."* It was true when written and is not true now — Amendment 4 is applied and Amendment 5 is applied. **Read the Status row of each amendment; do not read a blanket claim from this section.** Amendments that are still proposals say so, and the documents depending on them describe the current locked behaviour alongside the proposed behaviour.
 
 ---
 
@@ -234,4 +243,100 @@ Applied     : ✅ FORWARD_DEPENDENCY_INVENTORY.md:94 moved Unsettled → Settled
               ✅ ARCHITECTURE_AUDIT.md Issue 1 closed
               ✅ APPLICATION_LAYER_RESPONSIBILITY_MATRIX.md conflict section closed
               ⬜ SYSTEM_INVARIANTS.md — DELIBERATELY UNTOUCHED
+```
+
+---
+
+# Amendment 5 — "Exactly four sub-engines": the membership test, stated
+
+| | |
+|---|---|
+| **Status** | ✅ **APPLIED 2026-08-06** — by delegated engineering authority, see Approval |
+| **Affects** | `ENGINE_1_INPUT_ENGINE_RULES.md` §7 and §10 — **additive only** |
+| **Raised** | 2026-08-06, resolving `KNOWN_FAILURES.md` **F-010** |
+
+## What changed
+
+**Old rule** — `ENGINE_1_INPUT_ENGINE_RULES.md:353`, unchanged and still in force:
+
+> *"The Input Engine contains **exactly four** sub-engines"* — Cleaner · Reader · Parser · Confidence.
+> *"Do not add new sub-engines. Do not remove sub-engines. Do not merge responsibilities."*
+
+**New rule** — nothing above is altered. One section is **added** to §7, and one checklist line to §10:
+
+> **A component is a sub-engine if, and only if, it produces one of the four parts the parent engine combines into the Document Evidence Object.**
+>
+> Every Engine 1 component is exactly one of: a **sub-engine** · the **parent engine's own machinery** · an **engine-level facility**.
+
+**This subtracts nothing.** The count stays four, the prohibition on adding a fifth stays absolute, and no component is reclassified into the sub-engine set. What is added is the predicate that decides membership — which the document previously left unstated.
+
+## Why
+
+The clause stated a count without stating what it counted. That is Law 52 unmet inside a locked document: a number with no procedure for obtaining it. Two readings were both defensible from the text, and the repository sat on the ambiguity for a day.
+
+**The test is not invented here. It is quoted.** `:399` already labels the four output contracts *"the four parts the parent engine combines."* The amendment promotes that sentence from a table caption to the membership rule it always implied.
+
+## What failure forced it
+
+Engine 1 ships **nine** source files. Read as a sub-engine count, that is five too many and a level-3 lock is violated. The reading was never sound, and three independent facts kill it:
+
+| Fact | Where |
+|---|---|
+| The document forbids implementation outright — *"Specification only — no implementation. No code, no libraries … no pipelines"* | `ENGINE_1_INPUT_ENGINE_RULES.md:8` |
+| Engine-level work that is **not** sub-engine work already exists by construction: assembly must happen, and *"No new assembler sub-engine is created"* | `ENGINE_1_INPUT_ENGINE_RULES.md:384` · `SUB_ENGINE_RESPONSIBILITIES.md` §1 boxed note |
+| The parent is a fifth **row** in the Decision Authority table with its own `Owns` column — a component, and not a sub-engine | `ENGINE_1_INPUT_ENGINE_RULES.md:95` |
+
+A count written by a document that forbids code from existing cannot have been a count of code.
+
+## What decides the hard case
+
+`classification` is the one that could not be settled by inspection alone. It is authorised by name (`CLAUDE.md` §P Amendment 3) yet appears in no sub-engine map. The artifact settles it:
+
+```
+DocumentEvidenceObject  =  identity · document_id · source_references
+                           structured_document · human_business_context? · confidence_report
+```
+
+**No document-type field. No fifth component.** Its output therefore cannot be one of the four parts, so it is not a sub-engine — it is a facility, alongside configuration loading and the calibration record.
+
+## The trade-off
+
+| Gained | Lost |
+|---|---|
+| The count becomes **checkable** rather than arguable, and a test now enforces it | `ENGINE_1_INPUT_ENGINE_RULES.md` is no longer byte-identical to its 2026-08-05 lock |
+| No code is deleted to make a number match — working, mutation-hardened modules stay | "Facility" is a third category the architecture did not previously name, and a cheap one to abuse |
+| A tenth module can no longer appear without an explicit, reviewed decision | — |
+
+## What would prove this wrong
+
+**A document-type field appearing in the Document Evidence Object.** That would make cue detection a producer of a fifth part — a fifth sub-engine in all but name — and this amendment would be wrong rather than merely incomplete. Checked: `src/accountant_dad/artifacts/evidence.py` has zero matches for `document_type`, and `ENGINE_1_INPUT_ENGINE_RULES.md` has **zero matches** for `classif` or `document type` anywhere in its 669 lines.
+
+Second falsifier, weaker: a sub-engine that produces none of the four parts. None exists — `cleaner`, `reader`, `parser` and `confidence` each map to exactly one row of the `:403-408` table.
+
+## What now guards it
+
+| Guard | Where |
+|---|---|
+| Every Engine 1 module carries exactly one of the three classifications, or the suite fails | `tests/unit/test_package.py::test_every_engine_1_module_carries_exactly_one_architectural_classification` |
+| The sub-engine set is pinned to the four the locked document names — a fifth fails | `tests/unit/test_package.py::test_the_sub_engine_set_is_exactly_the_four_the_locked_specification_names` |
+| A tenth module cannot appear without a decision | `tests/unit/test_package.py::test_no_engine_1_module_exists_without_an_architectural_decision` |
+| The three categories cannot overlap | `tests/unit/test_package.py::test_the_three_architectural_categories_are_disjoint` |
+
+## Approval
+
+```
+Proposed by : Claude, 2026-08-06
+Approved by : The owner, 2026-08-06, by delegated engineering authority
+              — "Determine which is correct: the implementation, or the
+                 specification. ... Do not leave them inconsistent. The
+                 repository must have one source of truth."
+Applied     : ✅ ENGINE_1_INPUT_ENGINE_RULES.md §7 — membership test added
+              ✅ ENGINE_1_INPUT_ENGINE_RULES.md §10 — checklist line added
+              ✅ ENGINE_1_ARCHITECTURE.md G9.5 — revised (draft, not an amendment)
+              ✅ tests/unit/test_package.py — four guards added
+              ✅ KNOWN_FAILURES.md F-010 — closed
+              ⬜ SUB_ENGINE_RESPONSIBILITIES.md — DELIBERATELY UNTOUCHED. Its §1
+                 boxed note already states the engine-level-assembly rule, and
+                 ENGINE_1_INPUT_ENGINE_RULES.md:10 makes that document the
+                 deeper authority for Input Engine specifics. Nothing to change.
 ```
