@@ -409,11 +409,13 @@ def test_the_only_aggregation_in_the_recorder_counts_regions_and_never_combines_
     """
     tree = ast.parse(inspect.getsource(recorder_module))
     called = {
-        node.func.id for node in ast.walk(tree) if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
+        node.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
     } | {
-        node.func.attr for node in ast.walk(tree) if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Attribute)
+        node.func.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
     }
     forbidden = {"min", "max", "mean", "median", "fmean", "fsum", "prod", "average"}
     assert called & forbidden == set(), f"aggregation called: {sorted(called & forbidden)}"
@@ -958,9 +960,7 @@ def test_a_human_note_never_raises_a_single_document_field_score() -> None:
         reader_regions=(),
         parsed_fields=fields,
         missing_fields=(),
-        human_capture=HumanCaptureEvidence(
-            submitted_text=typed, stored=a_human_note(text=typed)
-        ),
+        human_capture=HumanCaptureEvidence(submitted_text=typed, stored=a_human_note(text=typed)),
     )
 
     document_scores = {

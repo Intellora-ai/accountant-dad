@@ -757,9 +757,7 @@ def test_an_unreadable_field_keeps_none_and_is_never_filled_in() -> None:
     convert an admitted unknown into a read value, which is the invention
     prohibition exactly.
     """
-    unreadable = a_detected_field(
-        name="Date", value=None, provenance=a_provenance(confidence=MIN)
-    )
+    unreadable = a_detected_field(name="Date", value=None, provenance=a_provenance(confidence=MIN))
     result = assemble(
         parts=parts_carrying(
             detected_fields=(unreadable,),
@@ -983,9 +981,7 @@ def test_supplying_a_human_note_raises_no_confidence_anywhere_in_the_artifact() 
     )
     identity = an_identity()
 
-    without_note = assemble(
-        parts=parts, identity=identity, source_references=("upload:x.pdf",)
-    )
+    without_note = assemble(parts=parts, identity=identity, source_references=("upload:x.pdf",))
     with_note = assemble(
         parts=parts,
         identity=identity,

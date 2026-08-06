@@ -147,9 +147,9 @@ class _AuthoringDocument(Protocol):
 
 
 class _OpenDocument(Protocol):
-    def __call__(self, *args: str | bytes, stream: bytes = ..., filetype: str = ...) -> (
-        _AuthoringDocument
-    ): ...
+    def __call__(
+        self, *args: str | bytes, stream: bytes = ..., filetype: str = ...
+    ) -> _AuthoringDocument: ...
 
 
 open_document = cast(_OpenDocument, pymupdf.open)
@@ -570,9 +570,7 @@ def test_parser_produces_the_same_structure_when_run_first_instead_of_third(
     source = tmp_path / "isolated.pdf"
     source.write_bytes(document)
 
-    isolated = parser.parse(
-        source, source_reference="upload:observed.pdf", table_structure=None
-    )
+    isolated = parser.parse(source, source_reference="upload:observed.pdf", table_structure=None)
 
     assert isolated == observed_run.parsed
 

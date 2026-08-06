@@ -77,9 +77,16 @@ from accountant_dad.engines.input_engine import reader
 # perform it, so they are guarded the same way `test_input_engine_parser.py`
 # guards its Docling measurements.
 
-_MISSING_OCR = [
-    name for name in ("paddleocr", "paddlepaddle") if importlib.util.find_spec(name) is None
-]
+# `find_spec` takes a MODULE name, not a distribution name. `paddlepaddle` is
+# what you `pip install`; the module it ships is `paddle`. Asking for a spec
+# named `paddlepaddle` therefore returned `None` in EVERY environment that can
+# exist — including one with the full OCR stack installed — so this guard
+# skipped unconditionally and the eleven tests below had never run anywhere.
+#
+# That is the second half of F-009, and the environment conflict hid it: the
+# dependency fix alone would have changed nothing, because the skip never
+# depended on the dependency.
+_MISSING_OCR = [name for name in ("paddleocr", "paddle") if importlib.util.find_spec(name) is None]
 needs_the_real_ocr = pytest.mark.skipif(
     bool(_MISSING_OCR),
     reason=(
@@ -1428,7 +1435,11 @@ def test_a_recognised_region_is_located_by_its_whole_outline_not_its_first_corne
         (region.location.left, region.location.top, region.location.right, region.location.bottom)
         for region in reading.regions
     ]
-    assert corners == [(10.0, 10.0, 110.0, 30.0), (10.0, 30.0, 110.0, 50.0), (10.0, 50.0, 110.0, 70.0)]
+    assert corners == [
+        (10.0, 10.0, 110.0, 30.0),
+        (10.0, 30.0, 110.0, 50.0),
+        (10.0, 50.0, 110.0, 70.0),
+    ]
     assert all(region.location.page_index == 0 for region in reading.regions)
 
 

@@ -234,7 +234,7 @@ def test_the_status_tracks_distinct_types_only_never_the_amount_of_evidence(
 
 
 def test_five_pieces_of_evidence_for_one_type_do_not_outrank_one_for_another() -> None:
-    """"Most cues wins" is the tie-break this module claims not to have, and it
+    """ "Most cues wins" is the tie-break this module claims not to have, and it
     is the one a reader would most plausibly add later. Measured directly: the
     lopsided candidate does not win, is not listed first, and loses no evidence.
     """
@@ -247,8 +247,13 @@ def test_five_pieces_of_evidence_for_one_type_do_not_outrank_one_for_another() -
 
     assert result.status is ClassificationStatus.AMBIGUOUS
     assert result.document_type is None
-    evidence = {candidate.document_type: len(candidate.matched_cues) for candidate in result.candidates}
-    assert evidence == {DocumentType.TAX_INVOICE: 1, DocumentType.QUOTATION: LOPSIDED_EVIDENCE_COUNT}
+    evidence = {
+        candidate.document_type: len(candidate.matched_cues) for candidate in result.candidates
+    }
+    assert evidence == {
+        DocumentType.TAX_INVOICE: 1,
+        DocumentType.QUOTATION: LOPSIDED_EVIDENCE_COUNT,
+    }
     # catalogue order, not evidence order: TAX_INVOICE is first in DocumentType
     assert [candidate.document_type for candidate in result.candidates] == [
         DocumentType.TAX_INVOICE,
@@ -357,7 +362,7 @@ def test_all_eight_catalogued_types_at_once_survive_intact_and_in_catalogue_orde
 
 
 def test_ambiguity_order_follows_the_catalogue_not_the_order_the_document_printed() -> None:
-    """"First one seen wins" is the other tie-break a later reader might add.
+    """ "First one seen wins" is the other tie-break a later reader might add.
     QUOTATION is printed first here and is still listed second, because
     `DocumentType`'s own order — not the document's — decides.
     """
@@ -652,7 +657,7 @@ def test_classify_survives_hostile_text_without_raising_or_guessing() -> None:
     hostile = a_reading(
         "\x00\x01\x02",
         "\x1b[31m\x1b[0m",
-        "!@#$%^&*()_+{}|:\"<>?",
+        '!@#$%^&*()_+{}|:"<>?',
         "x" * A_LONG_REGION,
         *(["nothing catalogued here"] * MANY_REGIONS),
     )
