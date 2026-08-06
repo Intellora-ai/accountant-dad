@@ -988,8 +988,35 @@ imports its own module and proves that module honest.
 | | |
 |---|---|
 | **Severity** | HIGH — Law 18, hidden dependencies, and the `build` gate is structurally blind to it |
-| **Status** | 🔄 OPEN · agent fixing it |
+| **Status** | ✅ **CLOSED 2026-08-06** · `839645a` + the `pyproject.toml` declaration |
 | **Found** | 2026-08-06 |
+
+**Permanent fix — LANDED.** `pyproject.toml` now declares every third-party module Engine
+1 imports **at module scope**, each pinned to the version already in
+`requirements-engine1.txt`, copied character for character, none chosen here:
+`pydantic`, `opencv-python`, `numpy`, `pymupdf`, `pillow`. Deliberately **not** declared:
+`docling`, `pypdfium2`, `torch`, `transformers`, `paddleocr` — those resolve through
+`require_module()` and `importlib.import_module()` *inside a function*, so the package
+imports without them, and making them install-time requirements would put ~2 GB of ML
+wheels behind `import accountant_dad` to no purpose.
+
+**Guarding test — `tests/unit/test_declared_dependencies.py`, 337 lines, new.** It derives
+the module-scope import set **structurally from the code** and fails naming anything
+imported but undeclared. A hand-maintained list would drift; a derived one cannot.
+
+**The one `.github` line, approved by the owner 2026-08-06 and reported before and after.**
+`.github/workflows/quality.yml:42`:
+
+```
+-  /tmp/fresh/bin/pip download --quiet --dest dist pydantic==2.12.3
++  /tmp/fresh/bin/pip download --quiet --dest dist dist/accountant_dad-*.whl
+```
+
+The gate pre-downloaded only `pydantic`, so an offline `--no-index` install could not
+resolve the rest. Reading the closure from the wheel's own metadata means this line never
+goes stale again when a dependency changes. **One line, no other change.**
+
+**Original description, kept.**
 
 `pyproject.toml:11-15` declares **only `pydantic`**. But `cleaner.py:96-98` imports cv2 and
 numpy at module scope, `reader.py:101-104` imports pymupdf, PIL and numpy, and
@@ -1015,8 +1042,31 @@ install, which nobody currently does.
 | | |
 |---|---|
 | **Severity** | HIGH — the guard Amendment 3 rests on enforces a naming convention |
-| **Status** | 🔄 OPEN · agent fixing it |
+| **Status** | ✅ **CLOSED 2026-08-06** · the guard now reads code, by AST |
 | **Found** | 2026-08-06 |
+
+**Permanent fix — LANDED.** `tests/unit/test_package.py` grew by 408 lines and now parses
+every Engine 1 module with `ast` instead of inspecting filenames. Three new tests, each
+naming what it proves:
+
+```
+test_engine_1_reaches_for_nothing_outside_its_own_boundary
+test_engine_1_imports_no_ai_vendor_package
+test_engine_1_defines_no_accounting_or_tax_computation_identifier
+```
+
+The helpers `imported_names`, `_dynamic_import_target` and `declared_identifiers` walk
+`ast.Import`, `ast.ImportFrom`, `ast.Call` (so `importlib.import_module("x")` is caught
+too), `ast.FunctionDef`, `ast.ClassDef`, `ast.Name`, `ast.Attribute`, `ast.arg`,
+`ast.keyword` and `ast.alias`. `gst_rates.py` full of tax logic no longer passes because it
+is spelled innocently — it is refused on what it *contains*.
+
+**The honest limit is stated in the fix, not papered over.** No static check can prove the
+absence of accounting reasoning. These three prove specific, checkable things: no
+cross-boundary import, no AI vendor package, no accounting or tax identifier declared. They
+do not prove the general claim, and the file says so.
+
+**Original description, kept.**
 
 `tests/unit/test_package.py:183` checks module **filenames** against `FROZEN_MARKERS`
 (`:66`). It opens no file and inspects no import. Demonstration: a file named
@@ -1089,8 +1139,25 @@ does not exist — no `src/tests/golden/`, and **zero non-`.py` files anywhere u
 | | |
 |---|---|
 | **Severity** | HIGH — a pinned version can be violated while every check reports green |
-| **Status** | 🔄 OPEN · agent building the guard that does not exist |
+| **Status** | 🔄 **HALF CLOSED 2026-08-06** · the guard exists; the unpinned tree does not |
 | **Found** | 2026-08-06 |
+
+**What closed — the metadata-vs-runtime hole.** `5066576` and `202bed4` landed
+`tests/unit/test_runtime_library_versions.py` (434 lines, new) and
+`tools/ci/assert_imports_match_pins.sh`. The guard asserts the version the **imported
+library reports about itself** (`cv2.__version__`), not the version
+`importlib.metadata` claims, so the exact `5.0.0.93` / `4.10.0` divergence this entry
+demonstrated now fails a test. `tests/unit/test_runtime_library_versions.py:360` also
+asserts that packages which must be **absent** really are absent.
+
+**What is still OPEN, and it is the larger half.** 151 of 175 packages unpinned, no
+lockfile, no hashes; `pydantic` pinned in `requirements-ci.txt` and unpinned in
+`requirements-engine1.txt`, so the version of the library that validates every artifact
+still depends on manifest install order. `rapidocr` still arrives transitively through
+`docling`, a second OCR engine against `TECHNOLOGY_STACK.md`'s one-tool-per-capability
+lock. None of that is fixed by a version assertion.
+
+**Original description, kept.**
 
 The combined resolve genuinely fails. The **sequential** install does not:
 
@@ -1140,13 +1207,51 @@ second OCR engine, against `TECHNOLOGY_STACK.md`'s one-tool-per-capability lock.
 
 | | |
 |---|---|
-| **Severity** | MEDIUM — a real coverage gap, honestly stated |
-| **Status** | ⬜ OPEN · created by the F-002 fix, deliberately |
+| **Severity** | **HIGH** — re-rated 2026-08-06. It was worse than this entry said |
+| **Status** | ⬜ OPEN · the guard is fixed; the OCR path is still unproven on CI |
 | **Found** | 2026-08-05 |
 
-**Description.** 11 of `reader`'s tests exercise real PaddleOCR recognition. PaddleOCR
-cannot share an environment with `requirements-engine1.txt` (F-002), so it lives in
-`requirements-engine1-ocr.txt` and **is not installed on CI**. Those 11 tests skip there.
+### CORRECTION, 2026-08-06 — those 11 tests had never run ANYWHERE
+
+This entry described a deliberate, bounded gap: 11 tests skip **on CI** and run locally in
+a separate environment. The second half was false.
+
+```python
+# the guard, as written
+[name for name in ("paddleocr", "paddlepaddle") if find_spec(name) is None]
+```
+
+`find_spec` takes a **module** name. `paddlepaddle` is a **distribution** name; the module
+it installs is `paddle`. Measured with `paddlepaddle 3.3.1` actually present:
+
+```
+find_spec("paddlepaddle")  ->  None    # the distribution is not importable by that name
+find_spec("paddle")        ->  a spec
+```
+
+So the guard reported *missing* in **every possible environment**, including the OCR venv
+built specifically to run them. **The 11 tests had never executed on any machine** — the
+documented workaround in this entry could not have worked, and nobody noticed because a
+skip is green.
+
+**Fixed at `202bed4`.** `tests/unit/test_input_engine_reader.py:89` now reads
+`("paddleocr", "paddle")`, with the distribution-vs-module distinction written down at
+`:80` so it is not re-derived. `tools/ci/run_ocr_tests.sh:318,329` states the same rule and
+resolves an isolated interpreter for the OCR stack.
+
+**What this does NOT fix.** Whether those 11 tests now *pass* is **UNMEASURED** — they have
+never run, so there is no prior result to compare against, and CI still does not install
+the OCR stack. **The claim in the next paragraph stands unchanged: no OCR accuracy claim is
+provable.**
+
+**The class, not the instance.** A skip guard is a test that can only be green. Nothing in
+the suite asserted the guard's own premise, so a guard that always fired was
+indistinguishable from a guard that never needed to. Same shape as F-018: a thing that
+passes its own tests and is never actually exercised.
+
+**Original description, kept.** 11 of `reader`'s tests exercise real PaddleOCR recognition.
+PaddleOCR cannot share an environment with `requirements-engine1.txt` (F-002), so it lives
+in `requirements-engine1-ocr.txt` and **is not installed on CI**. Those 11 tests skip there.
 
 They skip the same way `test_input_engine_parser.py` skips its 14 Docling measurements,
 with a message that names the missing packages and says outright that the measurements
