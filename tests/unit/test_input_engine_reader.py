@@ -61,7 +61,7 @@ from typing import Protocol, cast
 import numpy
 import pymupdf
 import pytest
-from authored_source import authored_path, authored_source
+from authored_source import authored_path, authored_source, authored_tree
 from PIL import Image
 
 from accountant_dad.engines.input_engine import reader
@@ -1093,16 +1093,7 @@ def test_every_vendor_call_in_the_reader_sits_inside_a_total_error_boundary() ->
     Falsify it by deleting any `except Exception` in `reader.py`, or by
     narrowing one back to a named type: this turns red and names the call.
     """
-    source = pathlib.Path(reader.__file__).read_text(encoding="utf-8")
-    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
-        pytest.skip(
-            "mutmut rewrote this module in its `mutants/` copy, so the source read "
-            "here is mutmut's instrumentation rather than ours. Asserting on it "
-            "measures the mutation tool, not the code under test — and a structural "
-            "assertion about OUR source cannot be evaluated against a file we did "
-            "not write. Skipped under mutation only; it runs in every ordinary suite."
-        )
-    tree = ast.parse(source)
+    tree = authored_tree(reader)
     handlers = _enclosing_handlers(tree)
 
     unguarded: list[str] = []
