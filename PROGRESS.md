@@ -347,3 +347,189 @@ does not, read the new survivor list and repeat.
 Engine 1 is one pipeline for the first time. Its CI obligation is one gate from met.
 Still not measured against ground truth — by Law 52 no accuracy claim is provable, so
 none is made here.
+
+---
+
+## 2026-08-06 · The mutation gate went green and the number expired the same day
+
+### The one sentence that matters
+
+**Every number this repository could quote is now EXPIRED, and HEAD does not build.**
+
+### Completed
+
+**The mutation gate cleared its floor.**
+
+```
+Mutation
+95.3%                       killed 2324 · survived 115 · 919 not scoreable
+Commit : 7e0efe2
+Source : GitHub Actions run 31041552213, job 92426852650
+Runtime: 3h 21m 01s
+Status : VERIFIED — and now EXPIRED
+```
+
+That closes **F-014**. The cap had been the blocker; `66ab8cd` raised
+`timeout-minutes` to 500 on the owner's number and the job finished. It has **no guarding
+test** — a CI `timeout-minutes` is configuration and nothing in `tests/` asserts it — which
+is recorded as a finding under Law 3 rather than glossed as done (`T-055`).
+
+**Law 56 landed, and immediately invalidated the number above.** `6a5dbb3` and `c1eb9be`.
+A measurement is bound to the exact commit that produced it; the instant source changes it
+expires and may never be reused, quoted as current, or used for a decision. Seven
+enforcement layers, including a `PreToolUse` hook that refuses an uncited metric **before
+the write lands**. Owner-approved, 2026-08-06. Recorded as **D-007**.
+
+What forced it: the 95.3% above is real, CI-produced and correct, and it stayed quotable
+while ~3,000 lines of source moved under it. *"Nothing was wrong with the number.
+Everything was wrong with quoting it."*
+
+**Seven defects fixed, each with a commit and a guarding test.**
+
+| | Fixed at | Guarded by |
+|---|---|---|
+| **F-014** mutation cap | `66ab8cd` | ❌ none — a finding |
+| **F-020** the wheel shipped an unimportable Engine 1 | `839645a` | `test_declared_dependencies.py` — derives the import set from the AST |
+| **F-021** the build freeze checked filenames, not code | — | `test_package.py`, three named AST tests |
+| **F-023** a pinned version could be violated while every check was green | `5066576` | `test_runtime_library_versions.py`, `tools/ci/assert_imports_match_pins.sh` |
+| **F-009** the OCR skip guard | `202bed4` | `test_input_engine_reader.py:89` |
+| **F-012** the pipeline was not a pipe | `412eed6`, `6b32425`, `41b23e6`, `d29985a` | `test_input_engine_pipeline.py` |
+| **D1–D4** four `cleaner` content-destruction defects | `1e0df65`, `590c6bb` | `test_input_engine_cleaner_redteam.py` — 22 tests |
+
+**F-009 was worse than it had been recorded.** The skip guard called
+`find_spec("paddlepaddle")` — a **distribution** name. The module is `paddle`. So it
+reported *missing* in **every possible environment**, including the OCR venv built
+specifically to run those 11 tests. They had **never executed on any machine**, and nobody
+noticed because a skip is green. Re-rated MEDIUM → HIGH.
+
+**`cleaner`'s four defects were one class, and the class was fixed.** *A destructive step,
+or the audit that reports on it, consulted the rule that caused the damage.* The crop's
+retention was counted with the same Otsu mask that drew the box, so it could only ever
+report 1.0. The box is now drawn from the line profiles and the retention counted at Otsu's
+split — two independent rules, so the figure can move. Measured at `1e0df65` on a 600×900
+scan at sigma 14: `ink_kept_by_crop = 0.9998077292828302`, which is `46800/46809` to the
+bit; the same page without the margin mark returns exactly `1.0` on all 14 seeds tried.
+**Recorded as D-013.**
+
+**Engine 1 stopped raising where its contract says emit** — `1e65b91`. A business outcome
+(*this scan is unreadable*) was indistinguishable from a crash (*the code is broken*), so
+the Application Layer could not route them differently. The business/runtime line was
+**read** off three locked documents, not invented. `VisionFallbackUnavailableError` and
+`ParserDependencyMissingError` deliberately still raise: **a missing tool is not a bad
+document**, and saying *"unreadable"* about a fine file is worse than crashing. **D-009.**
+
+**Conformance: a crash stopped counting as an enforcement** — `e921c3c`. A negative control
+that crashed had been scoring as `ENFORCED`; `Attribution.CONTROL_CRASHED` is the fourth
+outcome. And the registry's honest gap was measured: **45 hand-listed rules against 143
+prohibition clauses in `docs/`**, with nothing comparing the two. Every clause must now be
+cited or excluded with a written reason. **D-012** — and that decision **shipped
+incomplete**, see below.
+
+### Red — and both are at HEAD
+
+**1. The repository does not build.** `e921c3c` imports `Exclusion` from
+`accountant_dad.conformance` at `test_conformance_registry.py:74`. The dataclass was never
+written: the docstring explains it at `conformance.py:100`, the `Uncovered` enum that gives
+it its reasons is at `:148`, and the class itself is absent. `pytest tests/` dies at
+collection — **not one test runs.** Its parent `b3c1b51` does not import the name, so the
+commit introduced it. **Law 1. Recorded as F-024, T-050.**
+
+**2. Thirty-nine red tests, one cause.** `pipeline.run` gained a required keyword-only
+`recorded_at`. `b3c1b51` fixed the Application Layer's side — *"two agents changed opposite
+sides of the same call and neither saw the other"* — but two files recovered at `211c6b0`
+predate the change and mention `recorded_at` **zero times**:
+
+```
+test_input_engine_pipeline_redteam.py   1081 lines   recorded_at: 0   NOT RUNNING
+test_input_engine_ablation.py            631 lines   recorded_at: 0   NOT RUNNING
+test_input_engine_pipeline.py                        recorded_at: 24  updated
+test_engine1_end_to_end.py                           recorded_at: 4   updated
+```
+
+Those two files are what guards F-012's `reader → parser` pipe and Engine 1's identity-leak
+boundary. They cannot fail, so they prove nothing. **F-025, T-051.** The general rule is
+**D-015**: recovered work is untrusted until it has **run**, not until it is committed.
+
+### Tests executed — LOCAL ONLY, NOT AUTHORITATIVE (Law 44)
+
+```
+Commit: e921c3c
+pytest tests/                        1 error during collection, interrupted   (F-024)
+pytest tests/ --ignore=<that file>   17 failed · 2565 passed · 11 skipped · 23 errors
+                                     273.97s
+```
+
+Of the 40 failures and errors: **39** are `TypeError: run() missing 1 required keyword-only
+argument: 'recorded_at'`, and **1** is a correct test failing against a real defect —
+`test_every_extracted_value_that_crosses_the_boundary_carries_source_confidence_and_uncertainty`.
+That one must not be eased (Law 4, §J.4).
+
+### GitHub status
+
+**There is none for HEAD.** Measured against the API on 2026-08-06:
+
+```
+origin/ci/mutation-runs   f31e3cd
+local HEAD                e921c3c        24 commits ahead, unpushed
+GET /commits/e921c3c/check-runs    422  "No commit found for SHA"
+GET /commits/0babf47/check-runs    422  "No commit found for SHA"
+```
+
+On `f31e3cd`, the last commit GitHub has judged — and which is **docs-only** against
+`7e0efe2`, so the source it measured is identical:
+
+```
+GREEN   build · typecheck · lint · unit tests · coverage · dependency scan
+        mutation · conformance · conformance suite · secret scan · CodeQL
+        typecheck · lint · tests · build   (legacy combined gate)
+RED     adversarial tests · docker build · end-to-end · golden dataset
+        integration tests · license scan · merge gate · negative controls
+        negative controls 9 of 9 · performance · semgrep
+```
+
+**Required checks re-verified against ruleset `20249495`:** still exactly six — `build`,
+`typecheck`, `lint`, `unit tests`, `coverage`, `dependency scan`. Eleven red checks bind
+nothing. **`license scan` and `semgrep` are two reds F-008 never listed.**
+
+### Numbers — every one with the commit that produced it
+
+| Metric | Value | Commit | Source | Status |
+|---|---|---|---|---|
+| Mutation | 95.3% — killed 2324, survived 115, 919 not scoreable | `7e0efe2` | GitHub Actions run 31041552213 | **EXPIRED** |
+| Mutation runtime | 3h 21m 01s | `7e0efe2` | GitHub Actions, same job | **EXPIRED** |
+| Coverage | 97.64%, effective floor 97.46% | `f31e3cd` | GitHub Actions run 31047186940 | **EXPIRED** |
+| `src/` churn since | +2591 / −300 lines, 10 files | `7e0efe2`→`e921c3c` | `git diff --shortstat` | measured |
+| `tests/` churn since | +13335 / −148 lines, 18 files | `7e0efe2`→`e921c3c` | `git diff --shortstat` | measured |
+| Mutation · coverage · every gate at HEAD | — | `e921c3c` | — | **UNMEASURED** |
+
+Previous measurements expired because source changed after commit `7e0efe2`. Stated
+proactively, per Law 56, not on request.
+
+### Blockers
+
+**Engineering, and nothing else unblocks them:** `T-050` the build · `T-051` the 39 red
+tests · then `T-052` push, so CI can produce a current number for anything at all.
+
+**The owner, and these are genuinely his:**
+- **T-048 / F-019** — `Provenance.confidence` needs an absent-measurement state. A PDF text
+  layer has no honest score, `1.0000` is the forbidden default and `0.0000` is a lie the
+  other way. §M amendment to a frozen P2 schema. **This is the MVP's primary input.**
+- **T-049 / F-010** — `ENGINE_1_INPUT_ENGINE_RULES.md:352` says *"exactly four"* sub-engines;
+  Engine 1 ships nine modules. That document **is** on the precedence ladder, so unlike the
+  §G9.5 conflict this cannot be settled by precedence.
+- Unchanged: **F-001** PyMuPDF AGPL-3.0 · **F-004** confidence gating A7 forbids ·
+  **F-006/T-004** golden-set size · **T-005** the 16 unset parameters.
+
+### Next work
+
+Fix the build. Fix the signature. Push. Then, and only then, a number exists again.
+
+### Overall
+
+The honest summary is that this session **fixed seven real defects and ended with a
+repository that does not compile its own test suite**. Both halves are true and the second
+one governs: by Law 55 merge is not discussable, and at HEAD not one mandatory gate even has
+a value to compare against its threshold.
+
+Still not measured against ground truth. By Law 52 no accuracy claim about this system is
+provable, so none is made here.
