@@ -107,6 +107,59 @@ def walk(graph: Graph, entry: str) -> frozenset[str]:
     return frozenset(seen)
 
 
+def containing_packages(dotted: str, graph: Graph) -> frozenset[str]:
+    """Every ancestor package of `dotted` that is a module in `graph`.
+
+    `accountant_dad.services.pipeline` yields `accountant_dad.services` and
+    `accountant_dad`, when each has an `__init__.py`.
+    """
+    parts = dotted.split(".")
+    return frozenset(
+        ancestor for index in range(1, len(parts)) if (ancestor := ".".join(parts[:index])) in graph
+    )
+
+
+def reached(graph: Graph, entries: Iterable[str]) -> frozenset[str]:
+    """Every module a run from any of `entries` actually EXECUTES.
+
+    Two things `walk` alone does not give, and both are needed before the
+    reachability question can be asked of the whole package rather than of one
+    engine.
+
+    SEVERAL ENTRY POINTS. `services/pipeline.py` is the only thing that drives a
+    document, and it is not the only thing that runs: the `conformance` gate
+    imports `accountant_dad.conformance_registry` directly and executes it. A
+    module reached from a gate is a module that runs, and reporting it as an
+    orphan would be a false alarm on correct code — the failure L-014 says gets
+    a validator weakened.
+
+    A PACKAGE WHOSE SUBMODULE RUNS, RUNS. Importing
+    `accountant_dad.services.pipeline` executes `accountant_dad/__init__.py` and
+    `accountant_dad/services/__init__.py` — Python guarantees it. The import
+    GRAPH does not show that: nothing edges to a parent package unless some
+    statement names it directly, so a bare walk reports all five `__init__.py`
+    files in this package as orphans. Every one of them is a walk artifact, and
+    five false orphans in a report of six is a report nobody reads.
+    """
+    visited: set[str] = set()
+    for entry in entries:
+        if entry not in graph:
+            raise UnknownModuleError(f"{entry!r} is not a module in {first_party.PACKAGE}")
+        visited |= walk(graph, entry)
+    return (
+        frozenset(visited).union(*(containing_packages(dotted, graph) for dotted in visited))
+        if visited
+        else frozenset()
+    )
+
+
+def unreachable_from_any(
+    graph: Graph, entries: Iterable[str], scope: Iterable[str]
+) -> tuple[str, ...]:
+    """Which of `scope` no run from any of `entries` ever executes, sorted."""
+    return tuple(sorted(set(scope) - reached(graph, entries)))
+
+
 def reachable_from(entry: str) -> frozenset[str]:
     """Every first-party module reached from `entry` on the real tree."""
     graph = import_graph()
