@@ -406,9 +406,124 @@ def test_the_same_input_twice_is_identical_content_but_the_second_run_is_a_new_v
 # ── a stage failing mid-pipeline: named, loud, and nothing later runs ──
 
 
-def test_cleaner_failing_first_preserves_nothing_and_names_itself() -> None:
+def test_a_zero_byte_document_crosses_the_boundary_as_an_artifact_not_an_error() -> None:
+    """A CORRECTED EXPECTATION (§J.4, Law 4, §M — the documents win).
+
+    This test used to be `test_cleaner_failing_first_preserves_nothing_and_
+    names_itself` and asserted that zero bytes raise `PipelineStageError`. It
+    pinned behaviour that three locked documents forbid:
+
+      `APPLICATION_LAYER_CONTRACTS.md:30` — *"**Business** — unreadable,
+      corrupt, zero-byte: an object is produced recording the failure.
+      **Runtime** — engine crash: nothing produced"*
+      `APPLICATION_LAYER_CONTRACTS.md:27` — *"a document that cannot be read
+      produces an object recording that failure, never a fabricated one"*
+      `COMMUNICATION_RULES_INPUT_ENGINE.md:159` — *"The Input Engine does not
+      halt the pipeline. Unreadable regions, damaged artifacts and failed
+      extractions cross the boundary as low confidence and named uncertainty,
+      not as errors."*
+
+    WHY IT MATTERS RATHER THAN BEING A TECHNICALITY. Raising made a BUSINESS
+    outcome — this scan is unreadable — indistinguishable from a CRASH — the
+    code is broken. The Application Layer cannot route what it cannot tell
+    apart, so an unreadable receipt that should become a clarification question
+    looked exactly like an outage.
+
+    THE JOB WAS ALREADY ASSIGNED TO THIS MODULE, IN WRITING.
+    `parser.DocumentUnreadableError`'s own docstring: *"The Input Engine PARENT
+    is what must not halt the pipeline (COMMUNICATION_RULES_INPUT_ENGINE.md:159);
+    it converts this into low confidence and a named uncertainty. The parser
+    cannot do that itself, because only the `confidence` sub-engine may produce
+    a score."* `pipeline.run` is that parent. It never implemented its half.
+
+    NOT A WEAKENING: the assertion count goes UP, and the artifact is checked
+    for what it must NOT contain as hard as for what it must.
+    """
     intake = pipeline.DocumentIntake(
         document=b"", media_type=reader.MediaType.IMAGE, source_references=("upload:empty",)
+    )
+
+    evidence = pipeline.run(
+        intake,
+        identity=an_identity(),
+        settings=a_pipeline_settings(),
+        recorded_at=RECORDED_AT,
+    )
+
+    # it crossed, as an artifact
+    assert isinstance(evidence, DocumentEvidenceObject)
+    assert evidence.source_references == ("upload:empty",)
+
+    # nothing was read, and nothing was invented in its place
+    assert evidence.structured_document.extracted_text == ""
+    assert evidence.structured_document.detected_fields == ()
+    assert evidence.structured_document.detected_tables == ()
+    assert evidence.confidence_report.confidence_scores == ()
+    assert evidence.confidence_report.risky_fields == ()
+
+    # and the failure is NAMED, not merely implied by emptiness
+    (marker,) = evidence.confidence_report.uncertainty_markers
+    assert marker.subject == "upload:empty"
+    assert marker.reason.startswith("this document could not be read at the 'cleaner' stage:")
+    # the real cause travels verbatim; no summary stands in for it. Pinned to
+    # cleaner's own exact words, measured, not paraphrased.
+    assert "no bytes were supplied; there is nothing to clean." in marker.reason
+    assert "none is invented in its place" in marker.reason
+
+    # and the report says what happened, including which stages got as far as
+    # completing — "none", here, because cleaner is the first
+    reliability = evidence.confidence_report.reliability_information
+    assert "Engine 1 stopped at the 'cleaner' stage" in reliability
+    assert "Stages that completed first: none." in reliability
+    assert "No confidence score is reported because nothing was measured" in reliability
+
+
+def test_a_corrupt_pdf_crosses_as_an_artifact_too_naming_its_own_cause() -> None:
+    """The second of the three conditions `APPLICATION_LAYER_CONTRACTS.md:30`
+    names as business — *corrupt* — on a real corrupt PDF, not a mock of one.
+
+    Measured: PyMuPDF raises `FileDataError` on these bytes. That class is
+    PyMuPDF's own verdict about the FILE, not a crash in our code, which is why
+    it counts as business here — see `pipeline.BUSINESS_FAILURE`.
+    """
+    intake = pipeline.DocumentIntake(
+        document=b"%PDF-1.4 garbage not a pdf at all",
+        media_type=reader.MediaType.PDF,
+        source_references=("upload:corrupt.pdf",),
+    )
+
+    evidence = pipeline.run(
+        intake,
+        identity=an_identity(),
+        settings=a_pipeline_settings(),
+        recorded_at=RECORDED_AT,
+    )
+
+    assert evidence.structured_document.detected_fields == ()
+    assert evidence.confidence_report.confidence_scores == ()
+    (marker,) = evidence.confidence_report.uncertainty_markers
+    assert marker.subject == "upload:corrupt.pdf"
+    assert "cleaner" in marker.reason
+
+
+def test_a_runtime_failure_still_raises_and_is_never_dressed_as_a_business_outcome() -> None:
+    """THE OTHER SIDE OF THE LINE, AND THE ONE THAT MATTERS MOST.
+
+    `APPLICATION_LAYER_CONTRACTS.md:30` keeps two events apart: a document that
+    cannot be read (emit an artifact) and an engine that crashed (produce
+    nothing). Collapsing them in the EMIT direction is the worse error of the
+    two: it would report "this document is unreadable" when the truth is "our
+    OCR is not installed" — a false statement about the user's document, and
+    exactly the fabrication `ENGINE_1_INPUT_ENGINE_RULES.md:337` forbids.
+
+    PaddleOCR's absence is real here (`KNOWN_FAILURES.md` F-002) and is used as
+    the failure rather than mocked (§J.6). The document itself is a perfectly
+    good PNG — `cleaner` succeeds on it first.
+    """
+    intake = pipeline.DocumentIntake(
+        document=a_tiny_png(),
+        media_type=reader.MediaType.IMAGE,
+        source_references=("upload:hi.png",),
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
@@ -419,9 +534,10 @@ def test_cleaner_failing_first_preserves_nothing_and_names_itself() -> None:
             recorded_at=RECORDED_AT,
         )
 
-    assert raised.value.stage == "cleaner"
-    assert "cleaner" in str(raised.value)
-    assert raised.value.preserved == pipeline.PipelinePartialResult()
+    assert raised.value.stage == "reader"
+    assert isinstance(raised.value.cause, ModuleNotFoundError)
+    # and the partial work is still preserved for the runtime case, unchanged
+    assert raised.value.preserved.cleaned is not None
 
 
 def test_reader_failing_after_cleaner_preserves_cleaners_work_and_names_reader() -> None:
@@ -1561,8 +1677,25 @@ def test_run_requires_a_document_intake_a_settings_object_and_an_identity() -> N
 
 
 def test_pipeline_stage_error_message_names_the_stage_and_carries_the_cause() -> None:
+    """UNCHANGED SUBJECT, CORRECTED TRIGGER (§J.4). What this test is ABOUT —
+    that `PipelineStageError` names its stage in its own message and carries
+    the real cause object — is still exactly right and is asserted more
+    strictly than before.
+
+    Only the input changed, and it had to. This used to force the error with
+    zero bytes, which `APPLICATION_LAYER_CONTRACTS.md:30` classifies as a
+    BUSINESS failure; that input now correctly produces an artifact rather than
+    an exception (`test_a_zero_byte_document_crosses_the_boundary_as_an_
+    artifact_not_an_error`). A test for the RUNTIME path therefore needs a
+    RUNTIME failure, and PaddleOCR's real absence is one (F-002) — a genuinely
+    missing dependency, not a mock of one (§J.6). The document itself is a
+    valid PNG, so `cleaner` succeeds and `reader` is unambiguously the stage
+    that failed.
+    """
     intake = pipeline.DocumentIntake(
-        document=b"", media_type=reader.MediaType.IMAGE, source_references=("upload:empty",)
+        document=a_tiny_png(),
+        media_type=reader.MediaType.IMAGE,
+        source_references=("upload:hi.png",),
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
@@ -1573,9 +1706,15 @@ def test_pipeline_stage_error_message_names_the_stage_and_carries_the_cause() ->
             recorded_at=RECORDED_AT,
         )
 
-    assert raised.value.stage in str(raised.value)
-    assert isinstance(raised.value.cause, cleaner.UndecodableArtifactError)
+    # stricter than `stage in str(...)`: the stage is named, and it is the
+    # right one — the old form passed for any stage whose name appeared at all
+    assert raised.value.stage == "reader"
+    assert "'reader'" in str(raised.value)
+    assert isinstance(raised.value.cause, ModuleNotFoundError)
     assert isinstance(raised.value.preserved, pipeline.PipelinePartialResult)
+    # a runtime failure is NOT quietly turned into an artifact: the type this
+    # module chose to raise is the one that reaches the caller
+    assert not isinstance(raised.value.cause, pipeline.BUSINESS_FAILURE)
 
 
 def test_pipeline_partial_result_defaults_to_nothing_completed() -> None:

@@ -218,9 +218,12 @@ from accountant_dad.artifacts.evidence import (
     Corroborated,
     DetectedField,
     DocumentEvidenceObject,
+    DocumentId,
     HumanBusinessContext,
     Provenance,
     SourceType,
+    StructuredDocument,
+    UncertaintyMarker,
 )
 from accountant_dad.engines.input_engine import assembly, cleaner, confidence_report, parser, reader
 from accountant_dad.identity import IdentityEnvelope
@@ -264,6 +267,48 @@ _TEMP_FILE_SUFFIX: dict[reader.MediaType, str] = {
     reader.MediaType.PDF: ".pdf",
     reader.MediaType.IMAGE: ".png",
 }
+
+
+#: THE LINE BETWEEN "THIS DOCUMENT IS BAD" AND "THIS ENGINE IS BROKEN".
+#:
+#: `APPLICATION_LAYER_CONTRACTS.md:30` draws it and names both sides:
+#: *"**Business** — unreadable, corrupt, zero-byte: an object is produced
+#: recording the failure. **Runtime** — engine crash: nothing produced,
+#: Application Layer restarts."* Every type below is a sub-engine's OWN
+#: declared verdict about the DOCUMENT, read off its own docstring — none of
+#: this taxonomy is invented here:
+#:
+#:   `cleaner.UnusableArtifactError`   *"An artifact this module cannot clean
+#:                                     without changing what it contains"* —
+#:                                     and its subclass `UndecodableArtifact
+#:                                     Error`, *"Bytes that are not a decodable
+#:                                     image"*, which is the zero-byte case
+#:   `reader.UnreadableDocumentError`  *"The document could not be opened or
+#:                                     decoded at all"*
+#:   `parser.DocumentUnreadableError`  *"The artifact could not be parsed at
+#:                                     all"* — whose docstring assigns the
+#:                                     conversion to THIS module by name
+#:   `pymupdf.FileDataError`           PyMuPDF's own verdict that the FILE's
+#:                                     data is broken. Measured: this is what a
+#:                                     corrupt PDF raises through the defect-2
+#:                                     render step. It is a statement about the
+#:                                     document, not a crash in our code, which
+#:                                     is the whole test for membership here.
+#:
+#: EVERYTHING ELSE RAISES, AND THE OMISSIONS ARE DELIBERATE.
+#: `VisionFallbackUnavailableError` and `ParserDependencyMissingError` mean a
+#: TOOL is missing, not that the document is bad — emitting "unreadable" for
+#: those would assert something false about the user's document, which is worse
+#: than crashing and is the fabrication `ENGINE_1_INPUT_ENGINE_RULES.md:337`
+#: forbids. `ImpossibleSettingError` is a caller mistake.
+#: `MalformedSignalError` and `MissingSubEngineOutputError` are Engine 1's own
+#: machinery contradicting itself. None of those is a fact about the document.
+BUSINESS_FAILURE: tuple[type[Exception], ...] = (
+    cleaner.UnusableArtifactError,
+    reader.UnreadableDocumentError,
+    parser.DocumentUnreadableError,
+    pymupdf.FileDataError,
+)
 
 
 class PipelineError(RuntimeError):
@@ -700,6 +745,156 @@ def _human_capture_evidence(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class _RunInputs:
+    """The three things `run` was GIVEN that do not change as it proceeds.
+
+    Bundled for the same stated reason `DocumentIntake` above is bundled: to
+    keep the two helpers below inside this repository's `PLR0913` argument
+    ceiling without folding unrelated concerns together. These three are one
+    concern — what the caller supplied — as distinct from `preserved`, which is
+    what the run has produced so far and changes at every stage.
+    """
+
+    intake: DocumentIntake
+    identity: IdentityEnvelope
+    human_business_context: HumanBusinessContext | None
+
+
+def _failure_artifact(
+    stage: str,
+    exc: Exception,
+    preserved: PipelinePartialResult,
+    given: _RunInputs,
+) -> DocumentEvidenceObject:
+    """The Document Evidence Object that RECORDS a business failure.
+
+    `APPLICATION_LAYER_CONTRACTS.md:27` — *"a document that cannot be read
+    produces an object recording that failure, never a fabricated one."* Both
+    halves are load-bearing and both are honoured here: an object IS produced,
+    and every slot in it is either something that genuinely happened or an
+    explicit emptiness. Nothing is filled in.
+
+    WHY THIS DOES NOT GO THROUGH `assembly.assemble`, STATED RATHER THAN
+    HIDDEN (Law 14, Law 26). `assemble` requires all four sub-engine outputs to
+    be present and raises `MissingSubEngineOutputError` naming the first that
+    is not — that check IS its purpose: it proves all four sub-engines ran. On
+    a business failure at least one did not. Reaching `assemble`'s packaging
+    would mean handing it a manufactured `CleanerOutput` for a `cleaner` that
+    never completed, which is precisely the fabricated object line 27 forbids,
+    and it would destroy the one guarantee `assemble` exists to give. So the
+    fifteen lines of packaging are written again here for a genuinely different
+    event, rather than the guarantee being weakened to allow reuse. Law 14
+    governs duplicated LOGIC; "combine four completed outputs" and "record that
+    a document could not be read" are two different jobs with two different
+    preconditions.
+
+    WHAT EACH SLOT CARRIES, AND WHY IT IS HONEST.
+        extracted_text      whatever `reader` ACTUALLY produced if `reader`
+                            completed before a later stage failed — real text,
+                            really read, never dropped merely because the run
+                            ended badly — and `""` when `reader` never ran.
+        detected_fields     always empty. A field needs all three of source,
+                            confidence and uncertainty
+                            (`ENGINE_1_INPUT_ENGINE_RULES.md:245`) and a failed
+                            run measured no confidence for anything.
+        detected_tables     always empty, for the same reason.
+        confidence_scores   always empty. NOTHING WAS MEASURED, so there is no
+                            number to report and none is minted — not `0.0000`,
+                            which would assert a measured worthlessness nobody
+                            measured, and not a default, which
+                            `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids
+                            outright. This is the same discipline the text-layer
+                            path follows in `detected_fields` above.
+        uncertainty_markers exactly one, naming the document, the stage, and
+                            the sub-engine's OWN message verbatim. This is the
+                            *"named uncertainty"* half of
+                            `COMMUNICATION_RULES_INPUT_ENGINE.md:159`, and it
+                            carries no score, only a fact — which is why it
+                            does not trespass on the `confidence` sub-engine's
+                            sole authority to score
+                            (`ENGINE_1_INPUT_ENGINE_RULES.md:109`).
+        risky_fields        empty, unchanged from every other path — deciding a
+                            field is risky is interpretation this engine may
+                            not do.
+
+    `preserved` is read for WHICH stages completed and for `reader`'s real
+    text. It is never edited, and nothing in it is recomputed.
+    """
+    completed = tuple(
+        name
+        for name, produced in (
+            ("cleaner", preserved.cleaned),
+            ("reader", preserved.reading),
+            ("parser", preserved.parsed),
+        )
+        if produced is not None
+    )
+    extracted = (
+        "" if preserved.reading is None else reader_output(preserved.reading).raw_extracted_text
+    )
+
+    return DocumentEvidenceObject(
+        identity=given.identity,
+        document_id=DocumentId.new(),
+        source_references=given.intake.source_references,
+        structured_document=StructuredDocument(
+            extracted_text=extracted,
+            detected_fields=(),
+            document_structure=(
+                f"not parsed: Engine 1 stopped at the {stage!r} stage because the "
+                "document could not be read."
+            ),
+            detected_tables=(),
+        ),
+        human_business_context=given.human_business_context,
+        confidence_report=ConfidenceReport(
+            confidence_scores=(),
+            uncertainty_markers=(
+                UncertaintyMarker(
+                    subject=given.intake.source_references[0],
+                    reason=(
+                        f"this document could not be read at the {stage!r} stage: "
+                        f"{exc} No value was extracted from it and none is "
+                        "invented in its place; this artifact records the "
+                        "failure so the transaction can be routed rather than "
+                        "crashing (APPLICATION_LAYER_CONTRACTS.md:30, "
+                        "COMMUNICATION_RULES_INPUT_ENGINE.md:159)."
+                    ),
+                ),
+            ),
+            reliability_information=(
+                f"no field was extracted: Engine 1 stopped at the {stage!r} stage "
+                f"because the document could not be read ({exc}). "
+                f"Stages that completed first: {', '.join(completed) if completed else 'none'}. "
+                "No confidence score is reported because nothing was measured; "
+                "the absence is recorded rather than filled in."
+            ),
+            risky_fields=(),
+        ),
+    )
+
+
+def _stopped(
+    stage: str,
+    exc: Exception,
+    preserved: PipelinePartialResult,
+    given: _RunInputs,
+) -> DocumentEvidenceObject:
+    """One stage could not complete. Decide which KIND of event that was, and
+    act on it — the single place the business/runtime line is applied.
+
+    A BUSINESS failure returns an artifact recording it. A RUNTIME failure
+    raises `PipelineStageError`, unchanged, carrying every earlier stage's real
+    output on `preserved`. Written once rather than three times so the two
+    cannot drift apart per stage, which is exactly how a boundary like this
+    normally rots.
+    """
+    if isinstance(exc, BUSINESS_FAILURE):
+        return _failure_artifact(stage, exc, preserved, given)
+    raise PipelineStageError(stage, exc, preserved) from exc
+
+
 def run(
     intake: DocumentIntake,
     *,
@@ -744,6 +939,9 @@ def run(
     source passes through untouched".
     """
     preserved = PipelinePartialResult()
+    given = _RunInputs(
+        intake=intake, identity=identity, human_business_context=human_business_context
+    )
 
     try:
         cleaned = cleaner.clean_artifact(
@@ -753,7 +951,7 @@ def run(
             render_dpi=settings.render_dpi,
         )
     except Exception as exc:
-        raise PipelineStageError("cleaner", exc, preserved) from exc
+        return _stopped("cleaner", exc, preserved, given)
     preserved = replace(preserved, cleaned=cleaned)
 
     # THE ONE PIPELINE. Everything below reads the CLEANED artifact, never
@@ -772,13 +970,13 @@ def run(
             vision_fallback_threshold=settings.vision_fallback_threshold,
         )
     except Exception as exc:
-        raise PipelineStageError("reader", exc, preserved) from exc
+        return _stopped("reader", exc, preserved, given)
     preserved = replace(preserved, reading=reading)
 
     try:
         parsed = _parse_document(cleaned_document, intake, settings, extracted_regions(reading))
     except Exception as exc:
-        raise PipelineStageError("parser", exc, preserved) from exc
+        return _stopped("parser", exc, preserved, given)
     preserved = replace(preserved, parsed=parsed)
 
     try:
