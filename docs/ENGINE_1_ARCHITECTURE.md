@@ -659,16 +659,40 @@ Amendment 3 authorised Engine 1 and nothing else. This architecture describes En
 logic, AI/LLM calls and Tally posting remain frozen** (`CLAUDE.md` §P). Where §G10 finds a conflict inside another engine's
 document, it is **named and left for its owner**, never fixed here.
 
-## G9.5 One open question this document does not answer
+## G9.5 Document-type detection — REVISED 2026-08-06, no longer open
+
+> **This clause used to say document-type detection was "not authorised … out of scope until the owner rules."
+> That was wrong when written and is corrected here.** The ruling it waited for already existed: `CLAUDE.md` §P
+> **Amendment 3**, owner-approved 2026-08-05, names *"document classification"* among the capabilities released
+> for Engine 1. This document is a **draft** and states at `:5` that where it contradicts a lock, **this document
+> is wrong** — so this is a revision, not an amendment. See `KNOWN_FAILURES.md` **F-010**.
 
 [`src/engines/input_engine/README.md:119`](../src/engines/input_engine/README.md) records a future note:
 *"document-type detection likely belongs here, as a property of the artifact, not as a business conclusion."*
+**That note is correct, and Amendment 3 authorises it.**
 
-**It is not authorised.** `classification_accept` is `UNSET` ([`ENGINE_1_CONFIDENCE_PARAMETERS.md:43`](ENGINE_1_CONFIDENCE_PARAMETERS.md)),
-and the line between *"this artifact is a scanned image with an invoice-like layout"* (an observation) and *"this is a proforma
-invoice"* (a conclusion that decides whether anything posts — negative control N1,
-[`GOLDEN_DATASET.md`](GOLDEN_DATASET.md)) is exactly the boundary `COMMUNICATION_RULES_INPUT_ENGINE.md:71` polices.
-**Out of scope until the owner rules on which side of that line document-type detection sits.**
+**Authorised — as a facility, never as a fifth sub-engine.** [`ENGINE_1_INPUT_ENGINE_RULES.md`](ENGINE_1_INPUT_ENGINE_RULES.md)
+§7 *"What is and is not a sub-engine"* settles the shape question that this clause conflated with the capability
+question: a component is a sub-engine **only if it produces one of the four parts the parent combines into the
+Document Evidence Object.** Document-type cue detection produces none of them — the Document Evidence Object has
+no document-type component and gains none — so it is an engine-level facility, and the *"exactly four"* count at
+§7 is untouched.
+
+**The line this clause drew is the right line, and it still binds.** *"This artifact is a scanned image with an
+invoice-like layout"* is an observation and is permitted. *"This is a proforma invoice"* is a conclusion that
+decides whether anything posts — negative control N1, [`GOLDEN_DATASET.md`](GOLDEN_DATASET.md) — and remains
+forbidden, by Rule 1 of `COMMUNICATION_RULES_INPUT_ENGINE.md`. What may travel is **matched cues carrying their
+locations**, never a bare type.
+
+**No threshold, and none is invented.** `classification_accept` stays `UNSET`
+([`ENGINE_1_CONFIDENCE_PARAMETERS.md:43`](ENGINE_1_CONFIDENCE_PARAMETERS.md)) and no cutoff is chosen here. A
+facility that scores nothing and gates nothing needs none — Law 52, and `CLAUDE.md` §P: *"never fabricate a
+number, including a threshold."*
+
+**The residual is real and is tracked, not closed.** Emitting a bare document type into the Document Evidence
+Object would create a fifth part and violate the count. Nothing consumes the facility today, so nothing violates
+it today — see `KNOWN_FAILURES.md` **F-018**, three Engine 1 modules wired to nothing. The check falls due the
+moment anything wires it in.
 
 ---
 
