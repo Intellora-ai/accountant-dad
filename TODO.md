@@ -4,12 +4,17 @@ The living engineering backlog. Every task carries an ID, priority, status,
 dependency and phase. **Completed tasks move to the Completed section — history is
 never deleted.**
 
-Last updated: **2026-08-05**
+Last updated: **2026-08-06**
 
 Priority: **P0** blocks everything · **P1** on the critical path · **P2** real work,
 not blocking · **P3** recorded so it is not lost.
 
 Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅ done
+
+**Measurement state.** HEAD is `e921c3c`, **24 commits ahead of `origin/ci/mutation-runs`
+and unpushed.** Every gate value at HEAD is **UNMEASURED**; the last CI numbers belong to
+`7e0efe2` / `f31e3cd` and are **EXPIRED** because `src/` moved `+2591 / −300` lines after
+them (Law 56).
 
 ---
 
@@ -22,6 +27,8 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 | ~~T-003~~ | ~~Delete `ENGINE_1_CONFIDENCE_PARAMETERS 2.md`~~ | ✅ | — | → Completed |
 | T-004 | **Golden-set size decision** — 16 planned vs ~100 stated. Re-derive first (T-020), then decide. See F-006. | 🔒 | T-020, owner | P1 |
 | T-005 | **The 16 confidence parameters have no values.** All UNSET by design. Blocks calibration, blocks nothing else. | 🔒 | ground truth | Engine 1 |
+| T-048 | **`Provenance.confidence` needs an absent-measurement state** — a §M amendment to a frozen P2 schema. A PDF text layer has no honest score: `1.0000` is the default `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids, `0.0000` asserts a worthlessness nobody measured, and none of the 16 parameters covers it. **This is the last open half of F-019 and it is the MVP's primary input.** Precedent to mirror: `measurement.AbsentType`, which resolved F-005. | 🔒 | owner | Engine 1 |
+| T-049 | **`ENGINE_1_INPUT_ENGINE_RULES.md:352` says "exactly four sub-engines"; Engine 1 ships nine modules.** That document IS on the precedence ladder at level 3, so unlike G9.5 this cannot be settled by precedence. Either `classification`/`config`/`measurement`/`assembly`/`pipeline` are not sub-engines, or the clause is violated. See F-010. | 🔒 | owner | architecture |
 
 ---
 
@@ -32,11 +39,15 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 | ~~T-010~~ | ~~`confidence_report` tests~~ | ✅ | — | → Completed |
 | ~~T-011~~ | ~~`config` + `measurement` tests~~ | ✅ | — | → Completed |
 | ~~T-012~~ | ~~`instrument` + `region` on every signal~~ | ✅ | — | → Completed · F-005 closed |
-| T-013 | **CI must install Engine 1's dependencies.** `requirements-engine1.txt` now pins opencv, numpy, pymupdf, pillow, paddleocr, paddlepaddle. Four jobs install it; `lint` deliberately does not. Verify the new pins do not break any job. | ⬜ | push | CI |
-| T-014 | **Promote `mutation` to a required check.** It passed on correct code at 99.3%. The lifecycle needs one more step: prove it FAILS on deliberately broken code. Then add **only** that gate. See F-008. | ⬜ | T-013, owner approval for the ruleset change | CI |
-| T-015 | **Engine 1 pipeline runner** — built, and then made into an actual pipe: `412eed6` rewired `reader` and `parser` to read `cleaned.artifact.payload` and **deleted** the `rasterise_first_page_for_cleaning` adapter. F-012 closed. | ✅ | — | Engine 1 |
+| **T-050** | **🔴 THE REPOSITORY DOES NOT BUILD.** `e921c3c` imports `Exclusion` from `accountant_dad.conformance` at `test_conformance_registry.py:74` and the dataclass was never written. `pytest tests/` dies at collection — **not one test runs.** Law 1. Write the dataclass the docstring (`conformance.py:100`) and the `Uncovered` enum (`:148`) already describe, or remove the import. See F-024. | ⬜ | — | conformance |
+| **T-051** | **🔴 39 red tests, one cause.** `pipeline.run` gained a required keyword-only `recorded_at`; `test_input_engine_pipeline_redteam.py` (1081 lines) and `test_input_engine_ablation.py` (631 lines) were recovered at `211c6b0` from a session that predates it and mention `recorded_at` **zero times**. Those two files guard F-012's `reader → parser` pipe and Engine 1's identity-leak boundary, and neither is running. See F-025. | ⬜ | — | Engine 1 |
+| **T-052** | **Push the branch and let CI judge it.** 24 commits ahead of `origin`; GitHub 422s on the SHA. Nothing after `f31e3cd` has a CI result, so **no mandatory gate has a current value** and Law 55 cannot even be evaluated. Blocked behind T-050 and T-051 — pushing red is what `211c6b0` correctly refused to do. | 🔒 | T-050, T-051 | CI |
+| ~~T-013~~ | ~~CI must install Engine 1's dependencies~~ | ✅ | — | → Completed |
+| T-014 | **Promote `mutation` to a required check.** It passed on correct code — 95.3% @ commit `7e0efe2`, floor 93 — but that number is **EXPIRED** (source moved) and the current score is **UNMEASURED**. Two steps remain: re-measure at a pushed HEAD, and prove it FAILS on deliberately broken code. Then add **only** that gate. See F-008. | 🔒 | T-052, owner approval for the ruleset change | CI |
+| T-015 | **Engine 1 pipeline runner** — built, then made an actual pipe. `412eed6` rewired `reader`/`parser` onto `cleaned.artifact.payload`; `6b32425`/`41b23e6`/`d29985a` built the `reader → parser` half. F-012 closed. | ✅ | — | Engine 1 |
 | T-016 | **`classification` sub-engine** — built. Decides on tuple shape, not on a number: zero thresholds anywhere in the module, guarded by an AST test that scans its own source. | ✅ | — | Engine 1 |
-| T-047 | **Prove Engine 1 end to end as a TEST, not by hand.** A real 8-page CBIC PDF ran through and produced 415 regions with its text layer intact — but no test asserts it, so the proof dies with the session. `ROADMAP.md` E1 completion criteria requires it. Agent building it. | 🔄 | — | Engine 1 |
+| T-047 | **Prove Engine 1 end to end as a TEST.** `tests/integration/test_engine1_end_to_end.py` now exists — 893 lines. **Not done:** one of its tests is RED against a real defect (F-019's text-layer half, blocked on T-048), so the end-to-end claim is not yet provable. Do not ease the test (Law 4). | 🔄 | T-048 | Engine 1 |
+| T-053 | **Wire `classification`, `config` and `measurement` into the pipeline, or establish that they belong to the Application Layer.** Re-measured at `e921c3c`: still **zero consumers** in `src/`. `pipeline.py` gained 688 lines after `7e0efe2` and gained none of the three. F-018, unchanged since it was raised. | ⬜ | T-049 | Engine 1 |
 
 ---
 
@@ -46,12 +57,12 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 |---|---|---|---|---|
 | T-020 | **Re-derive the calibration sample size** given A5 removed the document scalar. Must account for within-document clustering — the honest answer may still be "16 is not enough". | ⏸ | — | P1 |
 | T-021 | **Benchmark harness for Engine 1** — partial work exists in a worktree. No performance number for Engine 1 exists, so no performance claim is provable. | ⏸ | — | Engine 1 |
-| T-022 | **Red-team `cleaner.py`** — hunt information-destroying crops and denoise. Information a cleaner destroys can never be recovered downstream, and nothing later can know it is missing. Agent killed mid-run; probe scripts survive in the scratchpad. | ⏸ | — | Engine 1 |
+| T-022 | **Red-team `cleaner.py`** — done. Four content-destroying defects found and fixed as **one class**: a destructive step or its audit consulted the rule that caused the damage. `tests/unit/test_input_engine_cleaner_redteam.py`, 1053 lines, 22 tests, all green. See D1–D4 and D-013. | ✅ | — | → Completed |
 | T-023 | **Red-team the citation verifier** — six layers, hunt the case that still slips. Agent killed mid-run. | ⏸ | — | Brain |
 | T-024 | **Full citation sweep** — every claim, every layer, and re-measure the per-parser resolution rates against ICAI 207/207, Act 397/397, Rules 197/202. A moved rate is a regression. | ⏸ | — | Brain |
-| T-025 | ~~Kill the 9 surviving mutants~~ — **superseded by T-045.** That 99.3% was measured on a far smaller tree; the whole of Engine 1 landed after it. | ✅ | — | testing |
-| T-045 | **Mutation gate back above 93%.** The last complete run (`2625b58`) read **90.6%** — killed 2178, survived 227, timeout 953. The gate scores `killed / (killed + survived)`, so survivors had to reach **≤ 163**: 64 kills. **114 delivered** across five test files, every one an assertion made stricter or a case added. Awaiting the CI number on `7e0efe2` — until then it is a projection, not a result (Law 44). | 🔄 | CI | testing |
-| T-046 | **74 reader mutants are unreachable without PaddleOCR**, and 23 more across four modules are provably equivalent (measured, not assumed). The 74 close with F-009; the 23 never close and should not be chased. | 🔒 | F-009 | testing |
+| ~~T-025~~ | ~~Kill the 9 surviving mutants~~ — **superseded by T-045** | ✅ | — | → Completed |
+| ~~T-045~~ | ~~Mutation gate back above its floor~~ — **CI answered.** 95.3% @ commit `7e0efe2`, floor 93. Now EXPIRED; re-measurement is T-014. | ✅ | — | → Completed |
+| T-046 | **74 reader mutants are unreachable without PaddleOCR**, and 23 more across four modules are provably equivalent (measured, not assumed). The 74 close with F-009; the 23 never close and should not be chased. **Note:** F-009's skip guard could never be satisfied in *any* environment, so the 74 were unreachable for a second, different reason as well. | 🔒 | F-009 | testing |
 | T-026 | **Audit the 23 locked documents for contradictions** — ownership collisions, artifacts with two names, paths `DATA_FLOW.md` does not define, stale counts. Agent killed mid-run. | ⏸ | — | architecture |
 | T-027 | **Suppression audit follow-through** — the report exists (22.6K, in the scratchpad). Count is 124 against a 128 baseline. Act on the STALE and REMOVABLE entries it names. | ⬜ | — | quality |
 | T-028 | **Coverage gap analysis** — branch coverage, and specifically every uncovered FAILURE path. An uncovered `except` is a path nobody has proven works, and it is the one that runs during an incident. | ⏸ | — | testing |
@@ -67,7 +78,9 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 | T-040 | **GSTIN check-digit algorithm** — no authoritative government publication of it was found. An honest gap was recorded rather than a third-party page. Revisit. | ⬜ | — | Brain |
 | T-041 | **Brain expansion** — reverse charge, invoice field validations, blocked credits §17(5), ITC rules. All four agents were killed mid-write; several had already verified citations. | ⏸ | — | Brain |
 | T-042 | **`merge gate` promotion** — the only job that polls every other gate. Goes required LAST, when it can actually pass. Eight placeholders `exit 1` by design. | 🔒 | every other gate | CI |
-| T-043 | **15 stale agent worktrees** in `.claude/worktrees/`. One (`agent-ad81016cdd833789f`) holds **unmerged `.github/` conflicts** from an earlier session — do not touch without reading it first. | ⬜ | — | housekeeping |
+| T-043 | **Stale agent worktrees** in `.claude/worktrees/` — **74 directories as of 2026-08-06**, up from 15; `git worktree list` reports 7 as `locked`. One (`agent-ad81016cdd833789f`) holds **unmerged `.github/` conflicts** from an earlier session. Do not touch any without reading it first (D-006: state on disk is state). | ⬜ | — | housekeeping |
+| T-054 | **`cleaner.py` cites `KNOWN_FAILURES.md` D2, D3 and D4** at `:212`, `:446`, `:709`, `:1227` — IDs that did not exist in that file until 2026-08-06. Now recorded under the IDs the source uses. Decide whether to renumber them to the `F-nnn` convention (a code change) or keep the source's prefix (no code change, one inconsistent prefix). | ⬜ | — | quality |
+| T-055 | **A CI `timeout-minutes` has no guarding test.** F-014 closed on a config value nothing asserts; lowering it back to 100 produces no signal until a run is cancelled hours later. Writing the guard is a `.github` change and needs the owner's approval for that specific change. | 🔒 | owner | CI |
 | T-044 | **Dependency + licence audit of the full transitive tree.** F-001 and F-002 were both found by hand; nobody has swept the whole tree. | ⏸ | — | quality |
 
 ---
@@ -88,3 +101,14 @@ Status: ⬜ not started · 🔄 in progress · ⏸ paused · 🔒 blocked · ✅
 | T-011 | **`config` (71 tests) + `measurement` (43).** `config` audited clean, zero defects. `measurement` had a loud-failure path that silently lost its line number, and three UNUSED `type: ignore`s that `warn_unused_ignores` makes hard errors. | `47c4063` | suppressions 124 → 124 |
 | T-012 | **`instrument` + `region` on every `NamedSignal`.** The raw signal had no home anywhere in the system before this. | `47c4063` | F-005 closed |
 | T-107 | **Pinned the parsing stack** — docling, transformers, torch, torchvision, timm, pypdfium2. `timm` was undeclared and its absence was visible to exactly ONE test out of 51. | `fd929c1` | parser 51/51 |
+| T-013 | **CI installs Engine 1's dependencies**, and the OCR stack runs in an isolated interpreter of its own. | `5066576` | `tools/ci/run_ocr_tests.sh` |
+| T-025 | **Superseded by T-045** and closed with it. That earlier score was measured on a far smaller tree; all of Engine 1 landed after it. | — | see T-045 |
+| T-045 | **Mutation gate back above its floor.** 114 survivors killed across five test files, every one an assertion made stricter or a case added — no file excluded, no assertion weakened, no floor touched. CI then answered on `7e0efe2`: **95.3%**, floor 93 — killed 2324, survived 115, 919 not scoreable. **Now EXPIRED** (source moved `+2591 / −300`); re-measurement is T-014. | `7e0efe2` | GitHub Actions run 31041552213, job 92426852650 · 3h 21m 01s |
+| T-022 | **`cleaner` red-teamed.** Four content-destruction defects (D1–D4) found and fixed as one class. The D1 test holds both halves — the damage must not recur **and** the figure that would report it must stay able to — because half one alone would pass against a retention hardwired to 1.0. One surviving mutation is recorded in the docstring rather than papered over. | `1e0df65`, `590c6bb` | `test_input_engine_cleaner_redteam.py` — 1053 lines, 22 tests green |
+| T-108 | **F-014 closed** — mutation cap raised to 500 minutes on the owner's number, and a run has since finished. | `66ab8cd` | run completed in 3h 21m 01s @ commit `7e0efe2` |
+| T-109 | **F-020 closed** — the wheel now declares every module-scope import, each pinned to the value already in `requirements-engine1.txt`. One approved `.github` line resolves the install closure from the wheel's own metadata. | `839645a` | `tests/unit/test_declared_dependencies.py` — 337 lines, derives the set from the AST |
+| T-110 | **F-021 closed** — the build-freeze guard reads code by AST instead of matching filenames, so `gst_rates.py` full of tax logic no longer passes on its name. The honest limit is written into the fix. | — | `test_package.py` +408 lines · three named AST tests |
+| T-111 | **F-009's skip guard fixed** — `find_spec` was called on a *distribution* name, so the 11 OCR tests skipped in **every** environment and had never run anywhere. Whether they now pass is UNMEASURED. | `202bed4` | `test_input_engine_reader.py:80,89` · `tools/ci/run_ocr_tests.sh:318` |
+| T-112 | **F-023's runtime-version guard built** — asserts what the imported library reports about itself, not what packaging metadata claims, so the `5.0.0.93` vs `4.10.0` divergence now fails a test. The unpinned-tree half stays open. | `5066576` | `test_runtime_library_versions.py` — 434 lines · `tools/ci/assert_imports_match_pins.sh` |
+| T-113 | **Law 56 written and enforced** — commit-bound measurements, seven layers, owner-approved 2026-08-06. | `6a5dbb3`, `c1eb9be` | `CLAUDE.md` §C.56 · `ENGINEERING_RULES.md` · `PreToolUse` hook · `LESSONS.md` L-011 |
+| T-114 | **Engine 1 emits an artifact for an unreadable document** instead of raising, so the Application Layer can route a bad scan differently from an outage. A missing *tool* still raises — that is not a bad document. | `1e65b91`, `b3c1b51` | `test_a_document_engine_1_cannot_read_stops_the_run_loudly`, rewritten stricter: four claims where there was one |
