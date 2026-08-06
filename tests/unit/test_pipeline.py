@@ -49,17 +49,19 @@ from __future__ import annotations
 import ast
 import inspect
 import itertools
-import pathlib
+import sys
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Protocol, cast
 
+import first_party
 import pymupdf
 import pytest
+from authored_source import authored_source
 
-from accountant_dad.artifacts.decision import DecisionStatus
+from accountant_dad.artifacts.decision import AccountingDecision, DecisionStatus, JournalLine
 from accountant_dad.artifacts.evidence import (
     Corroborated,
     HumanBusinessContext,
@@ -67,12 +69,16 @@ from accountant_dad.artifacts.evidence import (
     SourceType,
 )
 from accountant_dad.artifacts.execution import ExecutionAttemptId, ExecutionId
+from accountant_dad.artifacts.validation import ValidationDecision, ValidationStatus
+from accountant_dad.engines.accounting_engine import stub as accounting_stub
 from accountant_dad.engines.input_engine import cleaner, config, reader
 from accountant_dad.engines.input_engine import pipeline as input_engine
-from accountant_dad.identity import ArtifactId, TransactionId
+from accountant_dad.engines.validation_engine import stub as validation_stub
+from accountant_dad.identity import ArtifactId, IdentityEnvelope, TransactionId
 from accountant_dad.services.audit import AuditTrail, Transition
 from accountant_dad.services.pipeline import (
     ApplicationLayer,
+    ApprovedWithWarningHasNoStateError,
     ClarificationCycleExhaustedError,
     PipelineConfig,
     RunResult,
@@ -81,8 +87,35 @@ from accountant_dad.services.pipeline import (
 from accountant_dad.services.state import TransactionState
 from accountant_dad.services.store import TransactionStore
 
-ENGINES = pathlib.Path(__file__).resolve().parents[2] / "src/accountant_dad/engines"
-SERVICES = pathlib.Path(__file__).resolve().parents[2] / "src/accountant_dad/services"
+#: The AUTHORED package, never this file's own location (L-013, L-006).
+#:
+#: These two constants used to read
+#:
+#:     pathlib.Path(__file__).resolve().parents[2] / "src/accountant_dad/engines"
+#:
+#: which is the third spelling `authored_repo_root`'s docstring names: no module
+#: object and no `inspect` call, just the test file asking where IT is. Under
+#: `mutmut run` this file lives in `mutants/`, so `parents[2]` is the mutation
+#: copy and both constants pointed at INSTRUMENTED source — and five structural
+#: guards below (`test_the_application_layer_does_not_import_the_input_engine_
+#: stub`, `test_the_application_layer_is_the_only_source_of_the_transaction_id`,
+#: `test_no_engine_imports_another_engine`, `test_no_engine_observes_workflow_
+#: state`, `test_the_application_layer_never_queries_the_brain`) asked their
+#: question about the repository and read mutmut's rewrite instead.
+#:
+#: They agreed anyway, because mutmut's dispatcher adds `import os` and
+#: `from mutmut.__main__ import ...` and none of the five looks for those names.
+#: That is luck, not design — L-013 states it about the `do_not_mutate` list in
+#: exactly these words — and `engines/input_engine/*.py` and `services/state.py`
+#: ARE mutated, so the luck is not even uniform across what these constants walk.
+#:
+#: `first_party.package_root()` resolves through `authored_source.authored_path`,
+#: so the tree is authored BY CONSTRUCTION rather than by a path that happens to
+#: be right. It is also read rather than restated: where the package sits on disk
+#: is `first_party`'s answer, not a second copy of the layout here (Law 19).
+_PACKAGE = first_party.package_root()
+ENGINES = _PACKAGE / "engines"
+SERVICES = _PACKAGE / "services"
 
 #: The one hardcoded document P3 runs on. A supplier's bill — the thing a small
 #: business books most often, and the first shape the owner named.
@@ -454,6 +487,53 @@ def test_the_application_layer_routes_what_the_real_engine_read(one_run: _Canoni
     assert evidence.source_references == THE_ONE_DOCUMENT
 
 
+def test_the_five_source_readers_below_walk_the_authored_tree() -> None:
+    """THE PRECONDITION FOR EVERY STRUCTURAL GUARD IN THIS FILE.
+
+    Five tests below answer a question about THIS REPOSITORY by parsing files
+    under `ENGINES` and `SERVICES`. That is only an answer about the repository
+    while those two constants name the AUTHORED tree. Until this was fixed they
+    read
+
+        pathlib.Path(__file__).resolve().parents[2] / "src/accountant_dad/engines"
+
+    — the third spelling `authored_repo_root`'s docstring names, and the one
+    L-013 says cost a whole mutation run. Under `mutmut run` this file lives in
+    `mutants/`, so `parents[2]` IS the mutation copy and all five guards walked
+    instrumented source.
+
+    Checked by reading this file's own AUTHORED source rather than by comparing
+    paths: on an ordinary run the authored tree and the mutation copy do not
+    both exist, so a path comparison could not fail and would be a test that
+    cannot fail (§J.3). The assignment either mentions `__file__` or it does
+    not, and that is true on every run.
+
+    Reverting either constant to a `__file__`-rooted expression turns this red.
+    """
+    assignments = {
+        target.id: ast.unparse(node.value)
+        for node in ast.parse(authored_source(sys.modules[__name__])).body
+        if isinstance(node, ast.Assign)
+        for target in node.targets
+        if isinstance(target, ast.Name) and target.id in {"ENGINES", "SERVICES", "_PACKAGE"}
+    }
+    assert set(assignments) == {"_PACKAGE", "ENGINES", "SERVICES"}, (
+        f"the constants this guard exists to pin were renamed or removed: {sorted(assignments)}"
+    )
+    rooted_in_this_file = sorted(
+        f"{name} = {expression}"
+        for name, expression in assignments.items()
+        if "__file__" in expression
+    )
+    assert rooted_in_this_file == [], (
+        "these name a source tree derived from this test file's own location, "
+        "which is `mutants/` under mutation — so the five structural guards "
+        "below would parse mutmut's rewrite and report about it. Use "
+        "`first_party.package_root()`, which resolves through "
+        "`authored_source.authored_path`:\n  " + "\n  ".join(rooted_in_this_file)
+    )
+
+
 def test_the_application_layer_does_not_import_the_input_engine_stub() -> None:
     """Law 38 — "Never let temporary solutions become permanent architecture."
 
@@ -589,6 +669,169 @@ def test_a_document_engine_1_cannot_read_crosses_as_evidence_not_as_an_exception
     assert evidence.structured_document.detected_fields == ()
     assert report.confidence_scores == ()
     assert fixture.store.state_of(fixture.transaction_id) is not TransactionState.FAILED
+
+
+# ── permission to execute, and the one status that has nowhere to wait ────
+#
+# `services/state.py` owns a refusal — `approved_with_warning_has_no_state()` —
+# written for one call site in the Application Layer and, until now, called from
+# NOWHERE in `src/`. Meanwhile `run` read `APPROVING_STATUSES`, which holds
+# `Approved With Warning` as well as `Approved`, and advanced straight to
+# `Execution`. The guard existed; the path went round it.
+#
+# The P3 validation stub returns `Rejected` for every input, on purpose, so no
+# test could reach the branch through the real engine — which is exactly why it
+# went unnoticed. Both tests below therefore replace Engine 5's verdict, and
+# only Engine 5's: Engine 1 still reads a real document, the artifacts handed
+# back are real, schema-validated `ValidationDecision`s built by the same model
+# the engine uses, and `test_the_application_layer_routes_what_the_real_engine_
+# read` still guards the input side. The trade-off is stated rather than hidden
+# (§J.6): substituting the engine is the only way to exercise a status the
+# current stub cannot emit, and the alternative is not testing it at all.
+#
+# The pair is the point. Refusing everything would pass the first test alone.
+
+
+def a_complete_decision(transaction_id: TransactionId) -> AccountingDecision:
+    """A decision the clarification loop lets through — balanced, and complete.
+
+    The accounting stub always answers `INCOMPLETE_INFORMATION_REQUIRED`, so a
+    run never leaves the Accounting stage. Debit equals credit exactly, because
+    `decision.py` enforces the conservation law and a decision that failed it
+    would never reach Validation for a different reason than the one under test.
+    """
+    return AccountingDecision(
+        identity=IdentityEnvelope(
+            artifact_id=ArtifactId(uuid.UUID(int=7_001)),
+            version=1,
+            parent_versions=(),
+            transaction_id=transaction_id,
+        ),
+        decision_status=DecisionStatus.COMPLETE,
+        accounting_treatment="Laptop purchased on credit; capitalised as a fixed asset.",
+        ledger_classification="Fixed Assets, Computers. The vendor is a trade creditor.",
+        debit_entries=(JournalLine(ledger="Computers", amount=Decimal("50000.00")),),
+        credit_entries=(JournalLine(ledger="ABC Traders", amount=Decimal("50000.00")),),
+        journal_structure="One purchase voucher carrying two lines.",
+        tax_treatment="GST 18 percent, input credit eligible, intra-state supply.",
+        accounting_assumptions=(),
+        risk_indicators=(),
+        decision_confidence=Decimal("0.8200"),
+        supporting_reasoning="The invoice names a laptop and a vendor, and the amount agrees.",
+        unresolved_doubts=(),
+    )
+
+
+def a_verdict(status: ValidationStatus, transaction_id: TransactionId) -> ValidationDecision:
+    """A real Validation Decision carrying `status`, built by the real model.
+
+    No issue lists: `validation.py` requires findings only of a NON-approving
+    status, and both statuses under test approve. Nothing here is constructed
+    around a validator.
+    """
+    return ValidationDecision(
+        identity=IdentityEnvelope(
+            artifact_id=ArtifactId(uuid.UUID(int=7_002)),
+            version=1,
+            parent_versions=(),
+            transaction_id=transaction_id,
+        ),
+        related_decision_id=ArtifactId(uuid.UUID(int=7_001)),
+        related_artifact_version=1,
+        validation_status=status,
+        validation_findings=(),
+        validation_errors=(),
+        validation_warnings=(),
+        validation_risks=(),
+        failed_validation_rules=(),
+        supporting_evidence_references=("module:test_pipeline",),
+        validation_confidence=Decimal("0.9000"),
+        validation_reasoning="Supplied by this test; Engine 5 is a stub that cannot approve.",
+        validation_timestamp=datetime(2026, 8, 6, 9, 0, tzinfo=UTC),
+    )
+
+
+def _reaching_validation_with(
+    monkeypatch: pytest.MonkeyPatch, status: ValidationStatus, fixture: _Fixture
+) -> None:
+    """Point Engines 3 and 5 at real artifacts so the run reaches the verdict.
+
+    Patched on the engine modules the Application Layer already imports, so the
+    call site under test is untouched — `run` still resolves them exactly as it
+    does in production.
+    """
+    monkeypatch.setattr(
+        accounting_stub, "decide", lambda _story, _id: a_complete_decision(fixture.transaction_id)
+    )
+    monkeypatch.setattr(
+        validation_stub,
+        "validate",
+        lambda _decision, /, **_kwargs: a_verdict(status, fixture.transaction_id),
+    )
+
+
+def test_an_approved_with_warning_verdict_is_refused_rather_than_executed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INV-8 and `ARCHITECTURE_AMENDMENTS.md:66-69` — the work waits for a human.
+
+    `Approved With Warning` is in `APPROVING_STATUSES`, and that set's own
+    comment says it goes forward *"after the Application Layer releases it"*.
+    Nothing releases it and the locked state machine has nowhere for it to wait,
+    so `run` used to advance it to `Execution` on the strength of the membership
+    test alone — posting unattended work, which is the outcome
+    `approved_with_warning_has_no_state()` was written to prevent and was never
+    called to prevent.
+
+    Asserted on the RESULT, not on "something raised" (§J.2): the transaction is
+    left where it actually is, Engine 6 never ran, and every artifact already
+    produced survives the refusal.
+    """
+    fixture = _Fixture()
+    _reaching_validation_with(monkeypatch, ValidationStatus.APPROVED_WITH_WARNING, fixture)
+
+    with pytest.raises(ApprovedWithWarningHasNoStateError) as raised:
+        fixture.run(intake=an_intake(document=b""))
+
+    # The refusal is `services/state.py`'s, verbatim — one author, not two.
+    assert "WaitingForApproval is PROPOSED, not approved" in str(raised.value)
+
+    preserved = raised.value.preserved
+    assert preserved.execution is None, "Engine 6 ran on work that must wait for a human"
+    assert preserved.validation is not None
+    assert preserved.validation.validation_status is ValidationStatus.APPROVED_WITH_WARNING
+
+    # Left in Validation, which is where it is. Never `Failed` — no runtime
+    # failure occurred — and never `Execution`, which is the defect itself.
+    assert fixture.store.state_of(fixture.transaction_id) is TransactionState.VALIDATION
+    reached = {entry.to_state for entry in fixture.audit.history(fixture.transaction_id)}
+    assert TransactionState.EXECUTION not in reached
+    assert TransactionState.COMPLETED not in reached
+
+    # Nothing already produced is discarded (`APPLICATION_LAYER.md:153`).
+    assert preserved.evidence is not None
+    assert preserved.understanding is not None
+    assert preserved.decisions, "the Accounting Decision was thrown away with the refusal"
+
+
+def test_a_plain_approved_verdict_still_reaches_execution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """THE NEGATIVE CONTROL. A guard that refused both approving statuses would
+    pass the test above and would have broken the only route to `Execution` the
+    locked state machine draws.
+
+    `Approved` needs no release: `COMMUNICATION_RULES_VALIDATION_ENGINE.md:61`
+    attaches that condition to `Approved With Warning` alone.
+    """
+    fixture = _Fixture()
+    _reaching_validation_with(monkeypatch, ValidationStatus.APPROVED, fixture)
+
+    produced = fixture.run(intake=an_intake(document=b""))
+
+    assert produced.execution is not None
+    assert produced.final_state is TransactionState.COMPLETED
+    assert fixture.store.state_of(fixture.transaction_id) is TransactionState.COMPLETED
 
 
 # ── the Transaction ID is intact ──────────────────────────────────────────

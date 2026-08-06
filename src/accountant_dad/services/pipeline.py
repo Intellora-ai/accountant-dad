@@ -61,6 +61,24 @@ THE CLARIFICATION CYCLE HAS NO DOCUMENTED BOUND, SO THE CALLER SUPPLIES ONE.
     Engine 1's own `PipelineStageError.preserved` is the identical shape for
     the identical reason.
 
+APPROVING IS NOT RELEASED, AND THIS MODULE USED TO READ THEM AS ONE.
+    `APPROVING_STATUSES` holds two statuses. Its own comment, imported with it,
+    says the second — `Approved With Warning` — goes forward *"after the
+    Application Layer releases it"* (`COMMUNICATION_RULES_VALIDATION_ENGINE.md
+    :61`). Nothing releases it. `run` tested membership of that set and advanced
+    to `Execution`, which posts unattended work that four locked documents say
+    must wait for a human (`ARCHITECTURE_AMENDMENTS.md:66-69`).
+
+    The refusal already existed and had never been called.
+    `services/state.py`'s `approved_with_warning_has_no_state()` was written for
+    this one call site, names the four documents, names `WaitingForApproval` as
+    PROPOSED rather than approved, and had **no caller anywhere in `src/`** —
+    F-018's shape one level below a module: a guard that exists and never runs.
+    `run` now calls it and raises `ApprovedWithWarningHasNoStateError` carrying
+    the same preserved `RunResult` the clarification bound does. No state is
+    invented (AL-INV-13); the transaction is left in `Validation`, which is
+    where it is.
+
 ENGINE 1 IS THE REAL ENGINE, AND IT READS THE CALLER'S ACTUAL DOCUMENT.
     `APPLICATION_LAYER.md:251` — step 1 of engine sequencing passes *"raw
     document(s) + Transaction ID"*. `APPLICATION_LAYER_CONTRACTS.md:24` names
@@ -122,7 +140,11 @@ from accountant_dad.artifacts.understanding import BusinessUnderstandingObject
 
 # `APPROVING_STATUSES` is imported rather than retyped, so this module and the
 # artifact cannot disagree about which statuses go forward (Law 19).
-from accountant_dad.artifacts.validation import APPROVING_STATUSES, ValidationDecision
+from accountant_dad.artifacts.validation import (
+    APPROVING_STATUSES,
+    ValidationDecision,
+    ValidationStatus,
+)
 from accountant_dad.engines.accounting_engine import stub as accounting
 from accountant_dad.engines.clarification_engine import stub as clarification
 
@@ -135,7 +157,11 @@ from accountant_dad.engines.understanding_engine import stub as understanding
 from accountant_dad.engines.validation_engine import stub as validation
 from accountant_dad.identity import ArtifactId, IdentityEnvelope, TransactionId
 from accountant_dad.services.audit import AuditTrail, Transition
-from accountant_dad.services.state import TransactionState
+from accountant_dad.services.state import (
+    TransactionState,
+    TransitionRejectedError,
+    approved_with_warning_has_no_state,
+)
 from accountant_dad.services.store import TransactionStore
 
 
@@ -150,6 +176,42 @@ class ClarificationCycleExhaustedError(Exception):
     `APPLICATION_LAYER.md:153`, *"Completed artifacts PRESERVED"*. Discarding
     them would throw away a real Document Evidence Object because a later stage
     could not finish, which is the one thing §8 says a stopped run must not do.
+    """
+
+    def __init__(self, message: str, preserved: RunResult) -> None:
+        self.preserved = preserved
+        super().__init__(message)
+
+
+class ApprovedWithWarningHasNoStateError(Exception):
+    """An `Approved With Warning` verdict reached the Application Layer.
+
+    THE HOLE THIS CLOSES. `APPROVING_STATUSES` holds both `Approved` and
+    `Approved With Warning`, and its own comment says the second one *"goes
+    forward, AFTER the Application Layer releases it"*
+    (`COMMUNICATION_RULES_VALIDATION_ENGINE.md:61`). `run` read that set and
+    advanced straight to `Execution` — no release, no hold, nothing to release
+    it. Four locked documents require the work to wait for a human, quoted at
+    `ARCHITECTURE_AMENDMENTS.md:66-69`, and the locked state machine has nowhere
+    for it to wait.
+
+    `services/state.py` already owned that refusal, in
+    `approved_with_warning_has_no_state()`, written for this exact call site and
+    with **no caller anywhere in `src/`** — the F-018 shape one level down from a
+    module: a guard that exists and never runs. `run` now calls it, so the
+    refusal has exactly one author and this class only carries the result.
+
+    Deliberately NOT a state, for the same reason as
+    `ClarificationCycleExhaustedError` above: `AL-INV-13` — *"If a state is not
+    in the locked state machine, it does not exist."* The transaction is left in
+    `Validation`, which is where it actually is, and `WaitingForApproval` stays
+    what `ARCHITECTURE_AMENDMENTS.md:37` records it as — PROPOSED, not approved.
+    Adding it here would be an amendment made in code (§M).
+
+    `preserved` carries every artifact the run had already produced, including
+    the Validation Decision itself — `APPLICATION_LAYER.md:153`, *"Completed
+    artifacts PRESERVED"*. `execution` is honestly `None`: Engine 6 never ran,
+    and that is the whole point.
     """
 
     def __init__(self, message: str, preserved: RunResult) -> None:
@@ -407,6 +469,40 @@ class ApplicationLayer:
                 validation=verdict,
                 execution=None,
             )
+
+        # APPROVING IS NOT THE SAME AS RELEASED, AND THIS MODULE USED TO TREAT
+        # THEM AS ONE. `APPROVING_STATUSES` holds two statuses and the second
+        # one, `Approved With Warning`, may only go forward *"after the
+        # Application Layer releases it"* — this module's own imported comment,
+        # from `COMMUNICATION_RULES_VALIDATION_ENGINE.md:61`. Nothing releases
+        # it, so reading membership of that set as permission to advance posted
+        # unattended work the four documents at `ARCHITECTURE_AMENDMENTS.md:66-69`
+        # say must wait for a human.
+        #
+        # The refusal is `services/state.py`'s, not this module's: it names the
+        # four documents, names the unapproved amendment, and is the ONE place
+        # that decision is made (INV-10). It had no caller anywhere in `src/`.
+        # Calling it is the fix; re-deciding it here would be a second author.
+        if verdict.validation_status is ValidationStatus.APPROVED_WITH_WARNING:
+            try:
+                approved_with_warning_has_no_state()
+            except TransitionRejectedError as exc:
+                raise ApprovedWithWarningHasNoStateError(
+                    f"{exc} The transaction is left in "
+                    f"{self._store.state_of(transaction_id).value}, which is where it is, "
+                    "and every artifact already produced — the Validation Decision "
+                    "included — is on this exception's `preserved` attribute.",
+                    RunResult(
+                        transaction_id=transaction_id,
+                        final_state=self._store.state_of(transaction_id),
+                        evidence=evidence,
+                        understanding=story,
+                        decisions=tuple(decisions),
+                        clarifications=tuple(requests),
+                        validation=verdict,
+                        execution=None,
+                    ),
+                ) from exc
 
         self._advance(transaction_id, TransactionState.EXECUTION, engine="validation", attempt=1)
         posted = execution_engine.report_nothing_posted(
