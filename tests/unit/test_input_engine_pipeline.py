@@ -38,7 +38,9 @@ WHAT WOULD PROVE THIS WRONG, AND WHY EACH TEST IS SHAPED THE WAY IT IS.
 
 from __future__ import annotations
 
+import ast
 import inspect
+import pathlib
 from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -49,6 +51,7 @@ import numpy as np
 import numpy.typing as npt
 import pymupdf
 import pytest
+from pydantic import ValidationError
 
 from accountant_dad.artifacts.evidence import (
     ConfidenceReport,
@@ -72,6 +75,13 @@ from accountant_dad.identity import (
 Image = npt.NDArray[np.uint8]
 
 WHEN = datetime(2026, 8, 5, 9, 0, tzinfo=UTC)
+
+#: The clock `run` is GIVEN. A distinct instant from `WHEN` on purpose: `WHEN`
+#: is the human note's own provenance timestamp, this is the pipeline's, and a
+#: test that asserted one while meaning the other would pass by coincidence.
+#: `pipeline.run` takes this rather than reading a clock — see
+#: `test_run_reads_no_clock_of_its_own` for what that buys.
+RECORDED_AT = datetime(2026, 8, 6, 11, 30, tzinfo=UTC)
 
 #: A test parameter, not a product default: `pipeline.PipelineSettings` still
 #: requires the caller to supply this, and this is this file's own choice of
@@ -266,6 +276,7 @@ def end_to_end_result() -> DocumentEvidenceObject:
         intake,
         identity=an_identity(),
         settings=a_pipeline_settings(),
+        recorded_at=RECORDED_AT,
         human_business_context=a_human_business_context(),
     )
 
@@ -340,7 +351,9 @@ def test_an_unknown_survives_the_whole_pipeline_and_is_not_silently_dropped() ->
         cleaner_settings=a_cleaner_settings(denoise_strength=40.0, max_ink_loss_fraction=0.0)
     )
 
-    result = pipeline.run(intake, identity=an_identity(), settings=strict_settings)
+    result = pipeline.run(
+        intake, identity=an_identity(), settings=strict_settings, recorded_at=RECORDED_AT
+    )
 
     markers = result.confidence_report.uncertainty_markers
     assert any(marker.subject == "the document as cleaned" for marker in markers)
@@ -365,7 +378,9 @@ def test_the_same_input_twice_is_identical_content_but_the_second_run_is_a_new_v
     settings = a_pipeline_settings()
 
     first_identity = an_identity(version=FIRST_VERSION)
-    first = pipeline.run(intake, identity=first_identity, settings=settings)
+    first = pipeline.run(
+        intake, identity=first_identity, settings=settings, recorded_at=RECORDED_AT
+    )
 
     second_identity = an_identity(
         version=CORRECTED_VERSION,
@@ -373,7 +388,9 @@ def test_the_same_input_twice_is_identical_content_but_the_second_run_is_a_new_v
             ParentVersion(artifact_id=first_identity.artifact_id, version=FIRST_VERSION),
         ),
     )
-    second = pipeline.run(intake, identity=second_identity, settings=settings)
+    second = pipeline.run(
+        intake, identity=second_identity, settings=settings, recorded_at=RECORDED_AT
+    )
 
     assert first.structured_document == second.structured_document
     assert first.confidence_report == second.confidence_report
@@ -395,7 +412,12 @@ def test_cleaner_failing_first_preserves_nothing_and_names_itself() -> None:
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake,
+            identity=an_identity(),
+            settings=a_pipeline_settings(),
+            recorded_at=RECORDED_AT,
+        )
 
     assert raised.value.stage == "cleaner"
     assert "cleaner" in str(raised.value)
@@ -416,7 +438,12 @@ def test_reader_failing_after_cleaner_preserves_cleaners_work_and_names_reader()
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake,
+            identity=an_identity(),
+            settings=a_pipeline_settings(),
+            recorded_at=RECORDED_AT,
+        )
 
     assert raised.value.stage == "reader"
     assert "reader" in str(raised.value)
@@ -438,7 +465,12 @@ def test_parser_failing_after_cleaner_and_reader_preserves_both_and_names_parser
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake,
+            identity=an_identity(),
+            settings=a_pipeline_settings(),
+            recorded_at=RECORDED_AT,
+        )
 
     assert raised.value.stage == "parser"
     assert raised.value.preserved.cleaned is not None
@@ -465,7 +497,12 @@ def test_assembly_failing_last_preserves_every_earlier_stage_and_names_assembly(
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake,
+            identity=an_identity(),
+            settings=a_pipeline_settings(),
+            recorded_at=RECORDED_AT,
+        )
 
     assert raised.value.stage == "assembly"
     assert "assembly" in str(raised.value)
@@ -487,11 +524,16 @@ def test_a_real_region_reading_with_a_score_still_carries_no_document_level_scor
     reads ONLY `parsed_fields`; `reader_regions` feeds `_unread_region_markers`
     exclusively (fires only when `text is None`, never true for a real
     reading). So a `RegionReading` carrying real text AND a real score is a
-    genuine reading — it is simply inert to `confidence_scores`, on either
-    side of the boundary this pipeline builds. Combined with defect 4 (no
-    `ParsedField` is buildable from today's real `reader` + `parser`), this is
-    why the end-to-end fixture's `confidence_scores` carries only the optional
-    Human Business Context's capture-fidelity entry, never a document field.
+    genuine reading — it is simply inert to `confidence_scores`.
+
+    STILL TRUE AFTER THE F-019 FIX, AND THAT IS THE POINT OF KEEPING IT. The
+    route that DOES produce a document field's score is `parsed_fields`, built
+    from `parser`'s mapped fields, and it is passed as the THIRD argument here.
+    This call passes `()` there deliberately: it proves the score still cannot
+    arrive by the `reader_regions` door, so the fix went through the arrow the
+    specification draws rather than round the back.
+    `test_a_scored_reading_reaches_the_artifact_with_its_score_on_both_sides`
+    is the same modules with that argument supplied, and it is the contrast.
     """
     region = reader.TextRegion(
         text="Amount 100.00",
@@ -583,6 +625,491 @@ def test_region_readings_excludes_a_text_layer_region_but_keeps_a_scored_one() -
     assert "read from a PDF text layer" in pipeline.reader_output(reading).raw_extracted_text
 
 
+# ── F-019: the reader -> parser pipe, and what now crosses the boundary ───
+#
+# `parser.py`'s own types are exercised here rather than in
+# `tests/unit/test_input_engine_parser.py` because THIS is the pipe: every one
+# of them exists to carry `reader`'s output into `parser` and out the far side
+# as evidence, and a test that built an `ExtractedRegion` in isolation would
+# prove the dataclass, not the arrow.
+
+
+def test_extracted_regions_carries_readers_text_location_and_score_unchanged() -> None:
+    """The arrow itself. Every value is `reader`'s, and the score is asserted
+    by IDENTITY, not equality — an equal-but-recomputed `Decimal` would mean
+    something in between had touched it (INV-2).
+    """
+    score = Decimal("0.3100")
+    region = reader.TextRegion(
+        text="Total 1,18,OOO.00",
+        location=reader.SourceLocation(page_index=0, left=60.0, top=76.0, right=142.0, bottom=94.0),
+        extraction_confidence=score,
+    )
+    reading = reader.Reading(regions=(region,), backend=reader.Backend.OCR, pages_read=1)
+
+    (carried,) = pipeline.extracted_regions(reading)
+
+    assert carried.text == "Total 1,18,OOO.00"
+    assert carried.box.left == region.location.left
+    assert carried.box.top == region.location.top
+    assert carried.box.right == region.location.right
+    assert carried.box.bottom == region.location.bottom
+    assert carried.extraction_confidence is score
+
+
+def test_extracted_regions_converts_a_zero_based_page_index_into_a_one_based_page() -> None:
+    """The one number this pipeline changes, and it is a UNIT not a value:
+    `reader.SourceLocation.page_index` counts from 0, `parser.BoundingBox.page`
+    counts from 1. Page three must arrive as page three.
+    """
+    third_page_index = 2
+    third_page_number = 3
+    region = reader.TextRegion(
+        text="Amount 19800.00",
+        location=reader.SourceLocation(
+            page_index=third_page_index, left=1.0, top=2.0, right=3.0, bottom=4.0
+        ),
+        extraction_confidence=None,
+    )
+    reading = reader.Reading(regions=(region,), backend=reader.Backend.PDF_TEXT_LAYER, pages_read=3)
+
+    (carried,) = pipeline.extracted_regions(reading)
+
+    assert carried.box.page == third_page_number
+
+
+def test_extracted_regions_hands_on_an_unscored_region_rather_than_filtering_it_out() -> None:
+    """`region_readings` DROPS an unscored region, because
+    `confidence_report.RegionReading` cannot represent one. `extracted_regions`
+    must NOT: `parser` maps geometry and text, neither of which needs a score,
+    and dropping it here would lose the region's name and location as well as
+    its (absent) score. What cannot be built from it is decided once, later.
+    """
+    scored = reader.TextRegion(
+        text="scored by OCR",
+        location=reader.SourceLocation(page_index=0, left=0.0, top=0.0, right=1.0, bottom=1.0),
+        extraction_confidence=Decimal("0.7500"),
+    )
+    unscored = reader.TextRegion(
+        text="read from a PDF text layer",
+        location=reader.SourceLocation(page_index=0, left=0.0, top=2.0, right=1.0, bottom=3.0),
+        extraction_confidence=None,
+    )
+    reading = reader.Reading(
+        regions=(scored, unscored), backend=reader.Backend.PDF_TEXT_LAYER, pages_read=1
+    )
+
+    carried = pipeline.extracted_regions(reading)
+    both_regions = 2
+
+    assert len(carried) == both_regions
+    assert [region.text for region in carried] == ["scored by OCR", "read from a PDF text layer"]
+    assert carried[1].extraction_confidence is None
+    # and the contrast that makes the asymmetry deliberate rather than accidental
+    assert len(pipeline.region_readings(reading)) == 1
+
+
+def test_parser_numbers_mapped_fields_within_each_page_in_readers_own_order() -> None:
+    """`parser` assigns the name, and the name is the place. The ordinal
+    restarts on each page: two pages, two "region 1"s, and no collision.
+
+    `reader`'s order is preserved exactly — §1.2 forbids reordering, and a
+    mapping that sorted would attach page 2's score to page 1's value.
+    """
+    regions = tuple(
+        parser.ExtractedRegion(
+            text=text,
+            box=parser.BoundingBox(page=page, left=0.0, top=top, right=10.0, bottom=top + 5.0),
+            extraction_confidence=None,
+        )
+        for text, page, top in (
+            ("TAX INVOICE", 1, 0.0),
+            ("GSTIN 27AAECS1234F1Z5", 1, 10.0),
+            ("Amount 19800.00", 2, 0.0),
+        )
+    )
+
+    mapped = parser.map_fields(regions)
+
+    assert [field.name for field in mapped] == [
+        "page 1 region 1",
+        "page 1 region 2",
+        "page 2 region 1",
+    ]
+    assert [field.value for field in mapped] == [
+        "TAX INVOICE",
+        "GSTIN 27AAECS1234F1Z5",
+        "Amount 19800.00",
+    ]
+    # the source reference §1.3 requires every mapping to retain
+    assert mapped[2].source_location == repr(regions[2].box)
+
+
+def test_a_mapped_field_name_names_no_business_concept() -> None:
+    """§1.3's boundary: *"it may identify a field labelled 'Supplier', it may
+    not conclude that party is a supplier."* The name `parser` assigns is a
+    locator, so it cannot be wrong about the business at all — asserted against
+    the same forbidden vocabulary `test_input_engine_parser.py` applies to
+    parser's own output types.
+    """
+    forbidden = (
+        "account",
+        "ledger",
+        "debit",
+        "credit",
+        "supplier",
+        "vendor",
+        "customer",
+        "total",
+        "tax",
+        "gst",
+        "amount",
+        "invoice",
+    )
+    region = parser.ExtractedRegion(
+        text="Supplier: Acme Traders",
+        box=parser.BoundingBox(page=1, left=0.0, top=0.0, right=10.0, bottom=10.0),
+        extraction_confidence=None,
+    )
+
+    (mapped,) = parser.map_fields((region,))
+
+    for word in forbidden:
+        assert word not in mapped.name.lower(), (
+            f"the mapped field name {mapped.name!r} contains {word!r}. parser reports "
+            "structure; what a value MEANS is the Understanding Engine's."
+        )
+    # ... while the value it names is the document's own text, untouched
+    assert mapped.value == "Supplier: Acme Traders"
+
+
+def test_two_mapped_fields_sharing_a_name_are_refused_at_the_structure() -> None:
+    """A repeated name makes "which score belongs to which value?" unanswerable.
+    `StructuredDocument` and `ConfidenceReport` each already refuse it; this
+    refuses it at the sub-engine that produced it, which is where the mistake
+    is fixable.
+    """
+    box = parser.BoundingBox(page=1, left=0.0, top=0.0, right=1.0, bottom=1.0)
+    twice = tuple(
+        parser.MappedField(
+            name="page 1 region 1",
+            value=value,
+            source_location=repr(box),
+            extraction_confidence=None,
+        )
+        for value in ("first", "second")
+    )
+
+    with pytest.raises(ValueError, match="two mapped fields share one name"):
+        parser.ParsedStructure(
+            source_reference="upload:x.pdf",
+            page_count=1,
+            regions=(),
+            tables=(),
+            mapped_fields=twice,
+        )
+
+
+@pytest.mark.parametrize(
+    ("name", "value", "source_location"),
+    [
+        ("   ", "Amount 19800.00", "BoundingBox(page=1)"),
+        ("page 1 region 1", "   ", "BoundingBox(page=1)"),
+        ("page 1 region 1", "Amount 19800.00", "   "),
+    ],
+)
+def test_a_mapped_field_missing_any_of_name_value_or_source_is_refused(
+    name: str, value: str, source_location: str
+) -> None:
+    """`ENGINE_1_INPUT_ENGINE_RULES.md:245` — a value carried without all three
+    is not evidence. Blank-after-stripping counts as missing: a padded blank
+    claims a traceability it does not have, which is worse than admitting none.
+    """
+    with pytest.raises(ValueError, match="must not be empty or blank"):
+        parser.MappedField(
+            name=name, value=value, source_location=source_location, extraction_confidence=None
+        )
+
+
+def test_an_extracted_region_with_no_text_is_refused_rather_than_mapped_as_empty() -> None:
+    """ABSENT and READ-AND-EMPTY are two states
+    (`ENGINE_1_INPUT_ENGINE_RULES.md:569`). `reader` never emits a blank span,
+    so this refuses a caller's mistake before it becomes an evidence value that
+    asserts a reading nobody made.
+    """
+    with pytest.raises(ValueError, match="must not be empty or blank"):
+        parser.ExtractedRegion(
+            text="   ",
+            box=parser.BoundingBox(page=1, left=0.0, top=0.0, right=1.0, bottom=1.0),
+            extraction_confidence=None,
+        )
+
+
+def test_parsed_fields_mirrors_the_exact_score_object_and_the_name_parser_gave() -> None:
+    score = Decimal("0.2800")
+    box = parser.BoundingBox(page=1, left=0.0, top=0.0, right=1.0, bottom=1.0)
+    structure = parser.ParsedStructure(
+        source_reference="upload:scan.png",
+        page_count=1,
+        regions=(),
+        tables=(),
+        mapped_fields=(
+            parser.MappedField(
+                name="page 1 region 1",
+                value="GSTIN 27AAEC",
+                source_location=repr(box),
+                extraction_confidence=score,
+            ),
+        ),
+    )
+
+    (built,) = pipeline.parsed_fields(structure)
+
+    assert built.field_name == "page 1 region 1"
+    assert built.extraction_confidence is score
+
+
+def test_an_unscored_reading_is_skipped_rather_than_given_an_invented_score() -> None:
+    """THE TEXT-LAYER GAP, PINNED AS THE HONEST STATE IT IS.
+
+    `reader.read_pdf_text_layer` scores nothing — no recogniser ran — and
+    `Provenance.confidence` is mandatory with no member meaning "not measured".
+    `1.0000` is the default `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids and
+    `0.0000` asserts a measurement nobody made, so
+    `ENGINE_1_INPUT_ENGINE_RULES.md:245` applies: not all three, therefore not
+    emitted.
+
+    This test goes RED the day someone makes an unscored mapping produce a
+    field, which is exactly right — that change needs a §M amendment to a
+    frozen schema, and it must not arrive quietly. Until then the SCORED
+    mapping beside it must still come through, so "skipped" can never
+    degenerate into "nothing works".
+    """
+    box = parser.BoundingBox(page=1, left=0.0, top=0.0, right=1.0, bottom=1.0)
+    structure = parser.ParsedStructure(
+        source_reference="upload:mixed.pdf",
+        page_count=1,
+        regions=(),
+        tables=(),
+        mapped_fields=(
+            parser.MappedField(
+                name="page 1 region 1",
+                value="read from a PDF text layer",
+                source_location=repr(box),
+                extraction_confidence=None,
+            ),
+            parser.MappedField(
+                name="page 1 region 2",
+                value="scored by OCR",
+                source_location=repr(box),
+                extraction_confidence=Decimal("0.7500"),
+            ),
+        ),
+    )
+
+    scored = pipeline.parsed_fields(structure)
+    fields = pipeline.detected_fields(structure, recorded_at=RECORDED_AT)
+
+    assert [field.field_name for field in scored] == ["page 1 region 2"]
+    assert [field.name for field in fields] == ["page 1 region 2"]
+    assert [field.value for field in fields] == ["scored by OCR"]
+
+
+def test_detected_fields_carry_the_source_the_score_and_the_callers_own_clock() -> None:
+    """Rule 4's three requirements, each asserted against the sub-engine that
+    owns it — and the timestamp asserted against the caller's instant, because
+    a clock read inside `pipeline` would make two identical runs differ.
+    """
+    score = Decimal("0.3100")
+    box = parser.BoundingBox(page=2, left=60.0, top=76.0, right=142.0, bottom=94.0)
+    structure = parser.ParsedStructure(
+        source_reference="upload:scan.png",
+        page_count=2,
+        regions=(),
+        tables=(),
+        mapped_fields=(
+            parser.MappedField(
+                name="page 2 region 1",
+                value="Total 1,18,OOO.00",
+                source_location=repr(box),
+                extraction_confidence=score,
+            ),
+        ),
+    )
+
+    (field,) = pipeline.detected_fields(structure, recorded_at=RECORDED_AT)
+
+    assert field.name == "page 2 region 1"
+    assert field.value == "Total 1,18,OOO.00"
+    assert field.provenance.source_type is SourceType.DOCUMENT
+    assert field.provenance.source_id == "upload:scan.png"
+    assert field.provenance.evidence_reference == repr(box)
+    assert field.provenance.confidence is score
+    assert field.provenance.timestamp == RECORDED_AT
+    assert field.provenance.corroborated is Corroborated.NOT_ASSESSED
+
+
+def test_a_scored_reading_reaches_the_artifact_with_its_score_on_both_sides() -> None:
+    """`KNOWN_FAILURES.md` F-019, ITS OWN DEMONSTRATION, RUN THE OTHER WAY.
+
+    F-019 recorded this exact input — an OCR reading whose two regions scored
+    0.3100 and 0.2800, one of them the classic low-confidence misread
+    `1,18,OOO.00` with letter-O where zeros belong — producing an artifact with
+    `confidence_scores=()`, `uncertainty_markers=()` and `risky_fields=()`. The
+    reading arrived confident and empty and nothing downstream could tell it
+    had ever been doubtful.
+
+    Every module below is the real one. PaddleOCR is genuinely absent here
+    (F-002), so `reader.read` cannot produce this reading in this environment —
+    the reading is therefore CONSTRUCTED from `reader`'s own real types and run
+    through the real `parser`, `confidence_report` and `assembly`, including
+    `DocumentEvidenceObject`'s own validators. That is the honest maximum: the
+    absent thing is the recogniser, and nothing stands in for it (§J.6).
+    """
+    lower, higher = Decimal("0.2800"), Decimal("0.3100")
+    misread = "Total 1,18,OOO.00"
+    reading = reader.Reading(
+        regions=(
+            reader.TextRegion(
+                text=misread,
+                location=reader.SourceLocation(
+                    page_index=0, left=60.0, top=76.0, right=142.0, bottom=94.0
+                ),
+                extraction_confidence=higher,
+            ),
+            reader.TextRegion(
+                text="GSTIN 27AAEC",
+                location=reader.SourceLocation(
+                    page_index=0, left=60.0, top=110.0, right=231.0, bottom=128.0
+                ),
+                extraction_confidence=lower,
+            ),
+        ),
+        backend=reader.Backend.OCR,
+        pages_read=1,
+    )
+
+    structure = parser.ParsedStructure(
+        source_reference="upload:scan.png",
+        page_count=1,
+        regions=(),
+        tables=(),
+        mapped_fields=parser.map_fields(pipeline.extracted_regions(reading)),
+    )
+    report = confidence_report_module.record_confidence(
+        a_cleaned_document(),
+        pipeline.region_readings(reading),
+        pipeline.parsed_fields(structure),
+        pipeline.missing_fields(structure),
+    )
+    artifact = assembly.assemble(
+        parts=assembly.SubEngineOutputs(
+            cleaner=pipeline.cleaner_output(a_cleaned_document()),
+            reader=pipeline.reader_output(reading),
+            parser=pipeline.parser_output(structure, recorded_at=RECORDED_AT),
+            confidence=pipeline.confidence_output(report),
+        ),
+        identity=an_identity(),
+        source_references=("upload:scan.png",),
+    )
+
+    # the two scores are IN the artifact, on the values they were measured on
+    fields = artifact.structured_document.detected_fields
+    assert [field.value for field in fields] == [misread, "GSTIN 27AAEC"]
+    assert [field.provenance.confidence for field in fields] == [higher, lower]
+    # ... and the same two numbers, under the same two names, in the report
+    assert [
+        (score.field_name, score.confidence)
+        for score in artifact.confidence_report.confidence_scores
+    ] == [("page 1 region 1", higher), ("page 1 region 2", lower)]
+    # every one of them locatable on the page it was read from
+    for field in fields:
+        assert "BoundingBox(page=1" in field.provenance.evidence_reference
+    # and the count reader actually attempted, not the "0 of 0" F-019 recorded
+    assert "0 of 2 region(s) reader attempted" in (
+        artifact.confidence_report.reliability_information
+    )
+    assert "2 field(s) carry a confidence score from parser" in (
+        artifact.confidence_report.reliability_information
+    )
+
+
+def test_a_field_whose_provenance_disagrees_with_the_report_is_refused_by_the_schema() -> None:
+    """FALSIFICATION: the agreement above must be enforced, not merely produced.
+
+    `evidence.py`'s `_every_reading_is_scored_and_the_scores_agree` had never
+    executed one iteration before this fix, because `detected_fields` was always
+    empty (F-019). It is live now, so it is attacked here: a field built with
+    one score and a report built with another must be refused, loudly, rather
+    than reconciled.
+    """
+    box = parser.BoundingBox(page=1, left=0.0, top=0.0, right=1.0, bottom=1.0)
+    structure = parser.ParsedStructure(
+        source_reference="upload:scan.png",
+        page_count=1,
+        regions=(),
+        tables=(),
+        mapped_fields=(
+            parser.MappedField(
+                name="page 1 region 1",
+                value="Amount 19800.00",
+                source_location=repr(box),
+                extraction_confidence=Decimal("0.3100"),
+            ),
+        ),
+    )
+    disagreeing = ConfidenceReport(
+        confidence_scores=(
+            FieldConfidence(field_name="page 1 region 1", confidence=Decimal("0.9900")),
+        ),
+        uncertainty_markers=(),
+        reliability_information="a report whose score disagrees with the field's own",
+        risky_fields=(),
+    )
+
+    with pytest.raises(ValidationError, match="disagree"):
+        assembly.assemble(
+            parts=assembly.SubEngineOutputs(
+                cleaner=pipeline.cleaner_output(a_cleaned_document()),
+                reader=pipeline.reader_output(
+                    reader.Reading(regions=(), backend=reader.Backend.OCR, pages_read=0)
+                ),
+                parser=pipeline.parser_output(structure, recorded_at=RECORDED_AT),
+                confidence=pipeline.confidence_output(disagreeing),
+            ),
+            identity=an_identity(),
+            source_references=("upload:scan.png",),
+        )
+
+
+def test_pipeline_reads_no_clock_of_its_own() -> None:
+    """The structural half of the reproducibility claim. A behavioural test
+    cannot see a `datetime.now()` called once per run and compared against
+    nothing, so the module's own CODE is read — the same technique
+    `test_the_pipeline_reads_the_cleaned_document_not_the_original` uses, for
+    the same reason.
+
+    Parsed rather than grepped, deliberately: this module's docstrings discuss
+    `datetime.now()` at length precisely because it is forbidden, and a string
+    search would fail on the explanation instead of on a call. The AST sees
+    code only.
+    """
+    tree = ast.parse(pathlib.Path(inspect.getfile(pipeline)).read_text(encoding="utf-8"))
+    clocks = sorted(
+        {
+            node.attr
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Attribute) and node.attr in {"now", "utcnow", "today"}
+        }
+    )
+
+    assert clocks == [], (
+        f"`pipeline` reaches for a clock ({clocks}). Every timestamp it writes into "
+        "a Provenance must be the caller's, or two runs of one document produce two "
+        "different artifacts (services/pipeline.py, `Sources`)."
+    )
+
+
 # ── table bands render too, when a table structure detector found any ─────
 
 
@@ -648,13 +1175,70 @@ def test_parser_output_never_invents_a_named_field_even_when_parser_found_struct
         ),
     )
 
-    output = pipeline.parser_output(structure)
+    output = pipeline.parser_output(structure, recorded_at=RECORDED_AT)
 
+    # LAYOUT ALONE NAMES NOTHING. This structure has a region carrying text and
+    # a table carrying a cell, and no `mapped_fields` at all — because no
+    # reading was supplied to map. A detected field here could only have been
+    # invented, and none is.
+    assert structure.mapped_fields == ()
     assert output.detected_fields == ()
     assert output.detected_tables == ()
     # but nothing found is lost: it is rendered into the one channel available
     assert "Amount 4500.00" in output.document_structure
     assert "4500.00" in output.document_structure
+
+
+def test_a_table_cell_still_becomes_no_detected_table_however_well_it_is_laid_out() -> None:
+    """The half of defect 4 the F-019 fix did NOT close, pinned so it cannot
+    quietly change. A `parser.Cell` carries a row, a column and a box; no
+    sub-engine gives it a name or a score, so a `DetectedTable` — which needs a
+    complete `Provenance` (INV-11) — could only be built by inventing both.
+
+    A mapped, SCORED field is present here on purpose: it proves the empty
+    `detected_tables` is a fact about tables rather than about this structure
+    being empty.
+    """
+    box = parser.BoundingBox(page=1, left=0.0, top=0.0, right=10.0, bottom=10.0)
+    structure = parser.ParsedStructure(
+        source_reference="upload:x.pdf",
+        page_count=1,
+        regions=(),
+        tables=(
+            parser.Table(
+                detector="docling",
+                box=box,
+                row_count=1,
+                column_count=1,
+                cells=(
+                    parser.Cell(
+                        text="4500.00",
+                        row_start=0,
+                        row_end=1,
+                        column_start=0,
+                        column_end=1,
+                        is_column_header=False,
+                        is_row_header=False,
+                        box=box,
+                    ),
+                ),
+            ),
+        ),
+        mapped_fields=(
+            parser.MappedField(
+                name="page 1 region 1",
+                value="4500.00",
+                source_location=repr(box),
+                extraction_confidence=Decimal("0.9100"),
+            ),
+        ),
+    )
+
+    output = pipeline.parser_output(structure, recorded_at=RECORDED_AT)
+
+    assert len(output.detected_fields) == 1
+    assert output.detected_tables == ()
+    assert "cell rows=0:1" in output.document_structure
 
 
 def test_missing_fields_maps_what_parser_actually_reports_absent() -> None:
@@ -809,6 +1393,7 @@ class _LooseRun(Protocol):
         *,
         identity: IdentityEnvelope = ...,
         settings: pipeline.PipelineSettings = ...,
+        recorded_at: datetime = ...,
         human_business_context: HumanBusinessContext | None = ...,
     ) -> DocumentEvidenceObject: ...
 
@@ -818,17 +1403,35 @@ run_as_a_careless_caller_would = cast(_LooseRun, pipeline.run)
 
 def test_omitting_settings_raises_naming_settings_before_any_stage_runs() -> None:
     with pytest.raises(TypeError, match="settings"):
-        run_as_a_careless_caller_would(a_document_intake(), identity=an_identity())
+        run_as_a_careless_caller_would(
+            a_document_intake(), identity=an_identity(), recorded_at=RECORDED_AT
+        )
 
 
 def test_omitting_identity_raises_naming_identity_before_any_stage_runs() -> None:
     with pytest.raises(TypeError, match="identity"):
-        run_as_a_careless_caller_would(a_document_intake(), settings=a_pipeline_settings())
+        run_as_a_careless_caller_would(
+            a_document_intake(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
+        )
 
 
 def test_omitting_intake_raises_naming_intake_before_any_stage_runs() -> None:
     with pytest.raises(TypeError, match="intake"):
-        run_as_a_careless_caller_would(identity=an_identity(), settings=a_pipeline_settings())
+        run_as_a_careless_caller_would(
+            identity=an_identity(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
+        )
+
+
+def test_omitting_recorded_at_raises_naming_it_before_any_stage_runs() -> None:
+    """The clock is the caller's, and omitting it must fail rather than fall
+    back to `datetime.now()`. A "now" default would look harmless in the
+    signature and would silently make two runs of the same document differ —
+    see `detected_fields` in `pipeline.py` for the measured consequence.
+    """
+    with pytest.raises(TypeError, match="recorded_at"):
+        run_as_a_careless_caller_would(
+            a_document_intake(), identity=an_identity(), settings=a_pipeline_settings()
+        )
 
 
 def test_a_document_intake_with_no_source_reference_fails_at_construction() -> None:
@@ -863,9 +1466,18 @@ def test_run_requires_a_document_intake_a_settings_object_and_an_identity() -> N
     assert parameters["intake"].default is inspect.Parameter.empty
     assert parameters["identity"].default is inspect.Parameter.empty
     assert parameters["settings"].default is inspect.Parameter.empty
+    assert parameters["recorded_at"].default is inspect.Parameter.empty
     # the one parameter that IS allowed a default, and only because
     # ENGINE_1_INPUT_ENGINE_RULES.md:138 requires Engine 1 to work without one
     assert parameters["human_business_context"].default is None
+    # ... and it is the ONLY one. Enumerated rather than spot-checked, so a
+    # parameter added later with a quiet default cannot slip past this test.
+    defaulted = [
+        name
+        for name, parameter in parameters.items()
+        if parameter.default is not inspect.Parameter.empty
+    ]
+    assert defaulted == ["human_business_context"]
 
 
 # ── PipelineStageError names the actual failing stage, not a generic one ──
@@ -877,7 +1489,12 @@ def test_pipeline_stage_error_message_names_the_stage_and_carries_the_cause() ->
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake,
+            identity=an_identity(),
+            settings=a_pipeline_settings(),
+            recorded_at=RECORDED_AT,
+        )
 
     assert raised.value.stage in str(raised.value)
     assert isinstance(raised.value.cause, cleaner.UndecodableArtifactError)

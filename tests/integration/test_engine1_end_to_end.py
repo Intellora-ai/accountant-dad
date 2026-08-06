@@ -78,6 +78,13 @@ Image = npt.NDArray[np.uint8]
 
 WHEN = datetime(2026, 8, 5, 9, 0, tzinfo=UTC)
 
+#: The clock `pipeline.run` is GIVEN, and the instant every detected field's
+#: provenance must therefore carry. Deliberately not `WHEN`: that one is the
+#: human note's own timestamp, and a test asserting one while meaning the other
+#: would pass by coincidence. `run` reads no clock of its own — a module that
+#: called `datetime.now()` could not produce the same artifact twice.
+RECORDED_AT = datetime(2026, 8, 6, 11, 30, tzinfo=UTC)
+
 #: This file's own choice, not a product default — `PipelineSettings` requires
 #: the caller to supply it and `pipeline.py` invents no number of its own.
 RENDER_DPI = 150
@@ -368,6 +375,7 @@ def engine1_artifact() -> DocumentEvidenceObject:
         intake,
         identity=an_identity(),
         settings=a_pipeline_settings(),
+        recorded_at=RECORDED_AT,
         human_business_context=a_human_business_context(),
     )
 
@@ -434,7 +442,12 @@ def test_a_scanned_pdf_is_rebuilt_as_a_pdf_then_stops_at_reader_without_ocr() ->
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake,
+            identity=an_identity(),
+            settings=a_pipeline_settings(),
+            recorded_at=RECORDED_AT,
+        )
 
     assert raised.value.stage == "reader"
     cause = raised.value.cause
@@ -476,7 +489,12 @@ def test_an_image_is_cleaned_into_an_image_then_stops_at_reader_without_ocr() ->
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake,
+            identity=an_identity(),
+            settings=a_pipeline_settings(),
+            recorded_at=RECORDED_AT,
+        )
 
     assert raised.value.stage == "reader"
     cause = raised.value.cause
@@ -664,10 +682,27 @@ def test_reader_produced_a_source_location_for_every_region_and_the_boundary_dro
     `StructuredDocument` from `raw_extracted_text` ALONE: the schema has no
     slot for a location, so every one of them stops at the engine boundary.
 
-    Pinned in this direction deliberately. If someone later wires locations
-    through, this test goes red — which is the correct outcome, because the
-    contract test below would then need to change too, and neither should
-    move silently.
+    WHAT CHANGED WITH THE F-019 FIX, AND WHY THIS STILL READS THE SAME. The
+    `reader → parser` pipe now exists: `parser` maps every region `reader`
+    extracted, keeps its source location, and `pipeline.detected_fields` turns
+    each SCORED mapping into a real `DetectedField` carrying that location on
+    its provenance —
+    `test_an_ocr_reading_crosses_the_boundary_with_all_three_intact` proves it
+    against the real modules. This document is a PDF TEXT LAYER, and
+    `reader.read_pdf_text_layer` scores nothing: no recogniser ran, so there is
+    no measurement (`reader.py`, "THE CONFIDENCE OF A TEXT LAYER IS `None`").
+    `Provenance.confidence` is mandatory, `1.0000` is the default
+    `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids and `0.0000` is a lie the other
+    way, so `ENGINE_1_INPUT_ENGINE_RULES.md:245` leaves exactly one honest
+    option and the pipeline takes it: no field is emitted for an unscored value.
+
+    So the loss is no longer "the boundary drops locations". It is now exactly
+    one thing, named: **this schema cannot say "read, and not measured"**, which
+    is a §M amendment to a frozen P2 schema and the owner's to make.
+
+    Pinned in this direction deliberately, and the pin is now SHARPER: it
+    asserts the absence of a score is the reason, so a change that gives the
+    text-layer path a fabricated confidence turns this red rather than green.
     """
     reading = reader.read(
         a_two_page_text_layer_pdf(),
@@ -683,7 +718,15 @@ def test_reader_produced_a_source_location_for_every_region_and_the_boundary_dro
     # and the PDF text layer scores nothing, honestly: no recogniser ran
     assert set(carried.extraction_confidence) == {"None"}
 
-    # none of it survives the boundary
+    # the pipe to `parser` DOES exist now, and it carries every region across
+    # with its location intact — the mapping is not where anything is lost
+    mapped = parser.map_fields(pipeline.extracted_regions(reading))
+    assert len(mapped) == len(ALL_LINES)
+    assert [field.value for field in mapped] == list(ALL_LINES)
+    assert all(field.source_location.startswith("BoundingBox(") for field in mapped)
+
+    # what stops is the FIELD, and for exactly one stated reason: no score
+    assert all(field.extraction_confidence is None for field in mapped)
     emitted = engine1_artifact.structured_document
     assert "SourceLocation(" not in emitted.extracted_text
     assert "SourceLocation(" not in emitted.document_structure
@@ -738,3 +781,106 @@ def test_every_extracted_value_that_crosses_the_boundary_carries_source_confiden
             "Report, so requirement 3 of Rule 4 — whether, and why, doubt "
             "exists — is unanswerable for it."
         )
+
+
+def test_an_ocr_reading_crosses_the_boundary_with_all_three_intact() -> None:
+    """THE SAME CONTRACT, ON THE ONE ROUTE THAT CAN SATISFY IT TODAY, AND THE
+    EXACT INPUT `KNOWN_FAILURES.md` F-019 WAS RECORDED FROM.
+
+    F-019's demonstration: an OCR reading whose two regions scored 0.3100 and
+    0.2800 — one of them `Total 1,18,OOO.00`, letter-O where zeros belong,
+    which is what a 28%-confidence misread looks like — produced an artifact
+    with `confidence_scores=()`, `uncertainty_markers=()` and
+    `risky_fields=()`. The doubt was gone by the time anything downstream could
+    see it. That is the whole of the *"never post a wrong entry"* non-goal
+    failing at the source.
+
+    THE ABSENT THING IS THE RECOGNISER, AND NOTHING STANDS IN FOR IT (§J.6).
+    PaddleOCR is genuinely unavailable here and in CI — this file measures that
+    twice above as a real `ModuleNotFoundError` — so `reader.read` cannot
+    produce a scored reading in this environment and no amount of test wiring
+    can make it. The reading below is therefore built from `reader`'s OWN real
+    types and pushed through the real `pipeline`, the real `parser`, the real
+    `confidence_report` and the real `assembly`, including every
+    `DocumentEvidenceObject` validator. Mocking PaddleOCR would have proved the
+    mock; this proves the boundary.
+
+    WHAT WOULD PROVE THIS WRONG: a field arriving without its location, a score
+    arriving different from the one measured, or the two copies of the score
+    disagreeing. All three are asserted, by identity where identity is the
+    stronger claim.
+    """
+    lower, higher = Decimal("0.2800"), Decimal("0.3100")
+    misread = "Total 1,18,OOO.00"
+    reading = reader.Reading(
+        regions=(
+            reader.TextRegion(
+                text=misread,
+                location=reader.SourceLocation(
+                    page_index=0, left=60.0, top=76.0, right=142.0, bottom=94.0
+                ),
+                extraction_confidence=higher,
+            ),
+            reader.TextRegion(
+                text="GSTIN 27AAEC",
+                location=reader.SourceLocation(
+                    page_index=0, left=60.0, top=110.0, right=231.0, bottom=128.0
+                ),
+                extraction_confidence=lower,
+            ),
+        ),
+        backend=reader.Backend.OCR,
+        pages_read=1,
+    )
+    cleaned = cleaner.clean_artifact(
+        a_scanned_page_png(), cleaner.MediaKind.IMAGE, a_cleaner_settings(), render_dpi=RENDER_DPI
+    )
+    structure = parser.ParsedStructure(
+        source_reference="upload:scan.png",
+        page_count=1,
+        regions=(),
+        tables=(),
+        mapped_fields=parser.map_fields(pipeline.extracted_regions(reading)),
+    )
+
+    report = confidence_report.record_confidence(
+        cleaned,
+        pipeline.region_readings(reading),
+        pipeline.parsed_fields(structure),
+        pipeline.missing_fields(structure),
+    )
+    artifact = assembly.assemble(
+        parts=assembly.SubEngineOutputs(
+            cleaner=pipeline.cleaner_output(cleaned),
+            reader=pipeline.reader_output(reading),
+            parser=pipeline.parser_output(structure, recorded_at=RECORDED_AT),
+            confidence=pipeline.confidence_output(report),
+        ),
+        identity=an_identity(),
+        source_references=("upload:scan.png",),
+    )
+
+    emitted = artifact.structured_document
+    assert emitted.extracted_text != ""
+    assert emitted.detected_fields, (
+        "values crossed inside extracted_text and not one became a detected "
+        "field, which is the F-019 state this test exists to keep closed."
+    )
+
+    scores = {
+        score.field_name: score.confidence for score in artifact.confidence_report.confidence_scores
+    }
+    for field in emitted.detected_fields:
+        # 1. SOURCE — where in the artifact it came from
+        assert field.provenance.source_id == "upload:scan.png"
+        assert field.provenance.evidence_reference.startswith("BoundingBox(page=1")
+        assert field.provenance.source_type is SourceType.DOCUMENT
+        # 2. CONFIDENCE — how reliable the extraction is, and the same number twice
+        assert scores[field.name] == field.provenance.confidence
+        # 3. UNCERTAINTY — answerable, because the name is in the report at all
+        assert field.name in scores
+
+    # the exact values F-019 recorded as lost, in the artifact, on the right values
+    by_value = {field.value: field.provenance.confidence for field in emitted.detected_fields}
+    assert by_value == {misread: higher, "GSTIN 27AAEC": lower}
+    assert by_value[misread] is higher  # the object reader measured, not an equal copy

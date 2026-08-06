@@ -14,23 +14,40 @@ hands what they produced to `assembly.assemble`. Nothing here reasons about a
 transaction, routes to another engine, or decides anything `cleaner`, `reader`,
 `parser` or `confidence` did not already decide.
 
-FOUR REAL DEFECTS, FOUND BY ACTUALLY WIRING THESE MODULES TOGETHER, NONE FIXED
-HERE (`CLAUDE.md` §E.7 — report, do not fix a module outside the current
-mission). Every one is measured below, not assumed.
+FOUR REAL DEFECTS, FOUND BY ACTUALLY WIRING THESE MODULES TOGETHER. DEFECT 1 IS
+NOW FIXED AND DEFECT 4 IS HALF FIXED; 2 AND 3 STAND. Every one is measured
+below, not assumed.
 
-  1. `reader` AND `parser` EACH RE-OPEN THE RAW DOCUMENT; NEITHER CONSUMES THE
-     OTHER'S OUTPUT, OR `cleaner`'S. The diagram this module implements shows a
-     chain — cleaned document into `reader`, `reader`'s reading into `parser`.
-     The real modules do not compose that way: `reader.read` takes the
-     document's raw `bytes` and opens the PDF itself (`reader.py`, "WHERE THE
-     INPUT COMES FROM" — it takes bytes because `cleaner` did not exist when it
-     was written). `parser.parse` takes a `pathlib.Path` and opens the SAME
-     document a third time through Docling (`parser.py`, "WHERE THIS DEPARTS
-     FROM THE LOCKED SPECIFICATION" — its own docstring calls this "a real
-     departure" and says "it must not stay that way"). This module therefore
-     runs the three extraction sub-engines independently, on the same source,
-     rather than piping one's return value into the next — there is currently
-     no other way to call the real code.
+  1. FIXED — `reader`'S READING IS NOW `parser`'S INPUT (`KNOWN_FAILURES.md`
+     F-019, the unfixed half of F-012). It used to read: "`reader` AND `parser`
+     EACH RE-OPEN THE RAW DOCUMENT; NEITHER CONSUMES THE OTHER'S OUTPUT", and
+     the consequence was that no producer in Engine 1 held a NAME and a
+     CONFIDENCE for the same value — `reader.TextRegion` had the score and no
+     name, `parser.Region` had a label and no score — so `parser_output`
+     returned `detected_fields=()` and every extracted value crossed the
+     Input → Understanding boundary as a bare `str` inside `extracted_text`,
+     carrying no source, no confidence and no uncertainty of its own. That is
+     what `COMMUNICATION_RULES_INPUT_ENGINE.md:111` forbids stripping and what
+     `ENGINE_1_INPUT_ENGINE_RULES.md:245` forbids emitting.
+
+     `run` now converts `reader`'s regions with `extracted_regions` below and
+     hands them to `parser.parse`, which is `SUB_ENGINE_RESPONSIBILITIES.md`
+     §1.3's stated input — *"raw extracted information with source locations
+     from `reader`"* — and `parser` maps each into a named `MappedField` that
+     *"retains the source reference for every mapped value"* (§1.3 Failure
+     Behaviour). `detected_fields` below then builds a real
+     `evidence.DetectedField` per mapped value, and `parsed_fields` builds the
+     matching `confidence_report.ParsedField`, so the score on a field's own
+     provenance and the score in the Confidence Report are the SAME object.
+     `DocumentEvidenceObject._every_reading_is_scored_and_the_scores_agree`
+     refuses the artifact if they ever stop being.
+
+     WHAT IS STILL NOT PIPED, STATED PLAINLY: `parser.parse` still ALSO opens
+     the document, because `reader` reports spans and Docling reports layout,
+     and only Docling reports the layout. `reader.read` still takes `bytes`
+     rather than `cleaner`'s object. Neither costs traceability any more — the
+     values that cross now carry their own origin — and both are recorded in
+     `parser.py`'s own docstring as work outstanding.
 
   2. `cleaner.decode` CANNOT DECODE A PDF AT ALL. Measured directly against a
      PDF built the same way `test_input_engine_parser.py` builds its fixtures:
@@ -95,29 +112,49 @@ mission). Every one is measured below, not assumed.
      document_level_score` in the test file, so a future change to either
      module that quietly closes or widens this gap is noticed.
 
-  4. `assembly.ParserOutput.detected_fields` / `.detected_tables` NEED A
-     `Provenance`, WHICH NEEDS A `Confidence`, AND NEITHER `reader` NOR `parser`
-     PRODUCES ONE ATTACHED TO A NAME. `evidence.DetectedField` and
-     `DetectedTable` each require complete `Provenance` (INV-11, no optional
-     field) — a `Confidence` value among them. `parser.Region` / `Table` /
-     `Cell` carry geometry and text, deliberately with NO confidence at all
-     (`parser.py`, "CONFIDENCE IS NOT PRODUCED HERE, AT ALL" — only `confidence`
-     may produce one, `ENGINE_1_INPUT_ENGINE_RULES.md:109`), and they carry no
-     field NAME either — a `Cell` knows its row and column, not that it holds
-     an amount. `reader.TextRegion` carries a confidence but, symmetrically, no
-     name. Building a `DetectedField` from either would mean this module
-     inventing the missing half itself — a field name parser never assigned, or
-     a confidence parser never measured — which is the interpretation
-     `ENGINE_1_INPUT_ENGINE_RULES.md:558-562` forbids happening inside
-     extraction. `stub.py` already established the honest answer for "nothing
-     nameable and scored exists": zero detected fields, not an invented one
-     with a guessed name (`stub.py`, "NOT ONE DETECTED FIELD IS EMITTED"). This
-     module does the same — `parser_output` below always returns
-     `detected_fields=()` and `detected_tables=()` — while `parser`'s actual
-     structural findings (every region's label, text and box; every table's
-     cells and bands) still reach the artifact in full through
-     `StructuredDocument.document_structure`, rendered as a complete, traceable
-     string rather than silently dropped.
+  4. HALF FIXED — A NAMED, SCORED FIELD NOW EXISTS. A TABLE STILL DOES NOT, AND
+     NEITHER DOES AN UNSCORED READING.
+
+     `evidence.DetectedField` and `DetectedTable` each require a complete
+     `Provenance` (INV-11, no optional field), a `Confidence` value among them.
+     Defect 1's fix supplies both halves for a value `reader` SCORED: `parser`
+     assigns the name, `reader` measured the score, and `detected_fields` below
+     builds the field from those two without inventing either. Nothing here
+     mints a number — `ENGINE_1_INPUT_ENGINE_RULES.md:109` gives only
+     `confidence` that authority, and this module carries the exact `Decimal`
+     `reader` returned.
+
+     TABLES ARE UNCHANGED. `parser.Cell` knows its row, its column and its box;
+     it does not know it holds an amount, and no sub-engine scores it. So
+     `parser_output` still returns `detected_tables=()`, for exactly the reason
+     it used to return no fields, and every table's cells and bands still reach
+     the artifact through `StructuredDocument.document_structure`.
+
+     AN UNSCORED READING STILL CANNOT BECOME A FIELD, AND THIS IS THE ONE THAT
+     MATTERS FOR THE MVP. `reader.read_pdf_text_layer` sets
+     `extraction_confidence=None` on every region by design (`reader.py`, "THE
+     CONFIDENCE OF A TEXT LAYER IS `None`" — the absence of a measurement, not
+     zero and not full), and a PDF text layer is the MVP's primary input.
+     `Provenance.confidence` is mandatory and `accountant_dad.confidence
+     .Confidence` has no member meaning "not measured", so there is no honest
+     value to put there: `1.0000` is the default
+     `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids ("never to a default 'good
+     enough' value") and `0.0000` asserts a measured worthlessness nobody
+     measured. `ENGINE_1_INPUT_ENGINE_RULES.md:245` settles what to do about it
+     — *"a value carried without all three is not evidence and must not be
+     emitted"* — so `detected_fields` and `parsed_fields` below both skip an
+     unscored mapping rather than guess a number for it. `ENGINE_1_CONFIDENCE_
+     PARAMETERS.md` lists sixteen parameters awaiting a value and none of them
+     covers this case, so the number cannot be looked up either.
+
+     THE CONSEQUENCE, STATED RATHER THAN HIDDEN: on the text-layer route the
+     text still crosses inside `extracted_text` while `detected_fields` is
+     empty, which is the state `KNOWN_FAILURES.md` F-019 names and which this
+     module cannot close on its own. Closing it needs a §M amendment to a frozen
+     P2 schema — an absent-measurement state on `Provenance.confidence`,
+     mirroring the `measurement.AbsentType` precedent that resolved F-005 — and
+     that is the owner's decision, not this module's. Pinned as
+     `test_an_unscored_reading_is_skipped_rather_than_given_an_invented_score`.
 
 THE BOUNDARIES THIS MODULE HOLDS ITSELF TO.
     Internal orchestration only. This file calls Engine 1's own four
@@ -130,11 +167,18 @@ THE BOUNDARIES THIS MODULE HOLDS ITSELF TO.
 
     Transforms nothing. Every function below that touches a sub-engine's real
     output (`cleaner_output`, `reader_output`, `parser_output`,
-    `confidence_output`, `region_readings`, `missing_fields`) repackages a
-    value into the shape the next call needs; none of them rounds, clamps,
+    `confidence_output`, `region_readings`, `extracted_regions`,
+    `parsed_fields`, `detected_fields`, `missing_fields`) repackages a value
+    into the shape the next call needs; none of them rounds, clamps,
     reinterprets or recomputes a value a sub-engine produced. `region_readings`
     drops nothing it CAN honestly carry (see defect 3); it never edits what it
-    does carry.
+    does carry. `extracted_regions` performs the one conversion in this file
+    that changes a number — `page_index + 1` — and that is a change of UNITS
+    between two modules' conventions, not a change of value; it is made once,
+    and `parser.BoundingBox` refuses a page below 1 so omitting it fails loudly.
+    `detected_fields` and `parsed_fields` put the identical `Decimal` object
+    `reader` measured on both the field's provenance and the Confidence Report,
+    so the two agree by construction rather than by care.
 
     No numeric literal is used as a threshold anywhere in this file.
     `PipelineSettings` carries every number this module passes to a
@@ -164,6 +208,7 @@ from __future__ import annotations
 
 import tempfile
 from dataclasses import dataclass, replace
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Protocol, cast
@@ -172,8 +217,12 @@ import pymupdf
 
 from accountant_dad.artifacts.evidence import (
     ConfidenceReport,
+    Corroborated,
+    DetectedField,
     DocumentEvidenceObject,
     HumanBusinessContext,
+    Provenance,
+    SourceType,
 )
 from accountant_dad.engines.input_engine import assembly, cleaner, confidence_report, parser, reader
 from accountant_dad.identity import IdentityEnvelope
@@ -365,6 +414,142 @@ def region_readings(reading: reader.Reading) -> tuple[confidence_report.RegionRe
     )
 
 
+def extracted_regions(reading: reader.Reading) -> tuple[parser.ExtractedRegion, ...]:
+    """`reader`'s regions, in `reader`'s own order, shaped as `parser`'s input.
+
+    THE ARROW F-019 SAYS WAS NEVER BUILT. `SUB_ENGINE_RESPONSIBILITIES.md` §1.3
+    gives `parser` one input — *"raw extracted information with source locations
+    from `reader`"* — and this is it, mapped in exactly one place, the same way
+    `region_readings` above maps the same objects onto `confidence_report`'s own
+    contract.
+
+    Every value is `reader`'s, unchanged: the text character for character, the
+    four edges as floats already are, and `extraction_confidence` as the exact
+    `Decimal` object or the exact `None`. Nothing is rounded, clamped or
+    defaulted.
+
+    The ONE conversion is a unit, not a value: `reader.SourceLocation.page_index`
+    is a 0-based index and `parser.BoundingBox.page` is a 1-based page number, so
+    `page_index + 1` is the same page written in the other module's units.
+    `parser.BoundingBox` refuses `page < 1`, which makes a forgotten `+ 1` a
+    loud failure rather than an off-by-one nobody notices.
+
+    Nothing is filtered. Even a region `reader` scored `None` is handed on, so
+    `parser` maps it and its text is nameable and locatable; what cannot be built
+    from it is a `DetectedField`, and that decision is made once, later, by
+    `detected_fields` — not silently here by dropping the region.
+    """
+    return tuple(
+        parser.ExtractedRegion(
+            text=region.text,
+            box=parser.BoundingBox(
+                page=region.location.page_index + 1,
+                left=region.location.left,
+                top=region.location.top,
+                right=region.location.right,
+                bottom=region.location.bottom,
+            ),
+            extraction_confidence=region.extraction_confidence,
+        )
+        for region in reading.regions
+    )
+
+
+def parsed_fields(parsed: parser.ParsedStructure) -> tuple[confidence_report.ParsedField, ...]:
+    """`parser`'s mapped fields that carry a score, shaped as `confidence`'s input.
+
+    `confidence_report.record_confidence` turns each of these into one
+    `FieldConfidence` under the same name, which is what makes a field's score
+    findable in the Confidence Report at all. Before this existed `run` passed a
+    literal `()` here (F-019, mechanism line 2 of 3) and no document field was
+    ever scored.
+
+    A mapping `reader` did not score is EXCLUDED rather than given a number —
+    see defect 4 in the module docstring for why no honest number exists, and
+    why inventing one is forbidden rather than merely undesirable. Its text is
+    not lost: it still reaches `StructuredDocument.extracted_text` through
+    `reader_output`.
+
+    The confidence carried is the identical object `reader` produced.
+    `_field_confidence_scores` then mirrors it into the report unmodified, and
+    `detected_fields` below puts the SAME object on the field's own provenance,
+    so the two can never disagree by construction rather than by care.
+    """
+    return tuple(
+        confidence_report.ParsedField(
+            field_name=field.name, extraction_confidence=field.extraction_confidence
+        )
+        for field in parsed.mapped_fields
+        if field.extraction_confidence is not None
+    )
+
+
+def detected_fields(
+    parsed: parser.ParsedStructure, *, recorded_at: datetime
+) -> tuple[DetectedField, ...]:
+    """`parser`'s mapped fields that carry a score, as real Document Evidence.
+
+    THE THREE THINGS RULE 4 REQUIRES, EACH FROM THE SUB-ENGINE THAT OWNS IT:
+
+        source       `provenance.source_id` is `parser`'s own
+                     `source_reference` — WHICH artifact — and
+                     `provenance.evidence_reference` is the mapped field's
+                     `source_location`, `reader`'s own coordinates — WHERE
+                     within it. `ENGINE_1_INPUT_ENGINE_RULES.md:511`: a source
+                     location is emitted even for a low-confidence extraction,
+                     "that is what makes a later human check possible."
+        confidence   `reader`'s measured score, the exact object, never
+                     recomputed here (`ENGINE_1_INPUT_ENGINE_RULES.md:109`).
+        uncertainty  answerable because the same name carries a
+                     `FieldConfidence` in the Confidence Report — see
+                     `parsed_fields` above, and
+                     `DocumentEvidenceObject._every_reading_is_scored_and_the_
+                     scores_agree`, which refuses the artifact if a detected
+                     field's name is missing from the report or its score
+                     disagrees with the report's.
+
+    `source_type` is `Document` because every one of these was read off the
+    artifact. A human note is never routed here: `StructuredDocument`'s own
+    `_reject_human_origin` refuses a `Human` provenance among detected fields,
+    which is `ENGINE_1_INPUT_ENGINE_RULES.md:233`'s no-merge rule made
+    structural.
+
+    `corroborated` is `not assessed`, verbatim, because Engine 1 cannot assess
+    whether another source supports a value — deciding that is interpretation
+    (`ENGINE_1_INPUT_ENGINE_RULES.md:295`).
+
+    `recorded_at` is the caller's clock, never `datetime.now()` reached for
+    here. `services/pipeline.py`'s `Sources` already fixed that rule for this
+    repository — *"a module calling `uuid4()` or `datetime.now()` cannot offer
+    [reproducibility], and nothing downstream could tell a real difference from
+    a fresh random number."* Measured consequence, not a stylistic one: with a
+    clock read inside this function, two runs of the identical document produce
+    two different `StructuredDocument`s, and
+    `test_the_same_input_twice_is_identical_content_but_the_second_run_is_a_
+    new_version` goes red.
+
+    A mapping with no score yields no field at all, for the reason defect 4
+    gives. That is the disjunction `ENGINE_1_INPUT_ENGINE_RULES.md:245` states:
+    all three, or it is not evidence.
+    """
+    return tuple(
+        DetectedField(
+            name=field.name,
+            value=field.value,
+            provenance=Provenance(
+                source_type=SourceType.DOCUMENT,
+                source_id=parsed.source_reference,
+                evidence_reference=field.source_location,
+                timestamp=recorded_at,
+                confidence=field.extraction_confidence,
+                corroborated=Corroborated.NOT_ASSESSED,
+            ),
+        )
+        for field in parsed.mapped_fields
+        if field.extraction_confidence is not None
+    )
+
+
 def missing_fields(parsed: parser.ParsedStructure) -> tuple[confidence_report.MissingField, ...]:
     """`parser`'s missing field information, mapped into `confidence_report`'s
     own contract.
@@ -443,19 +628,23 @@ def reader_output(reading: reader.Reading) -> assembly.ReaderOutput:
     )
 
 
-def parser_output(parsed: parser.ParsedStructure) -> assembly.ParserOutput:
+def parser_output(
+    parsed: parser.ParsedStructure, *, recorded_at: datetime
+) -> assembly.ParserOutput:
     """`parser`'s real output, packaged for `assembly.SubEngineOutputs`.
 
-    `detected_fields` and `detected_tables` are always empty — see the module
-    docstring, defect 4: neither `reader` nor `parser` produces a name and a
-    confidence attached to the same value, and inventing either half here
-    would be exactly the interpretation Engine 1 is forbidden to perform.
-    `parser`'s actual findings are not lost; they are rendered in full by
-    `document_structure_text`.
+    `detected_fields` now carries one field per SCORED mapped value — see
+    `detected_fields` above, and defect 1 in the module docstring for the arrow
+    that made a scored, named value exist at all.
+
+    `detected_tables` is still always empty, and defect 4 says why: a
+    `parser.Cell` carries no name and no score, so building one would mean
+    inventing both halves. `parser`'s table findings are not lost; every cell
+    and band is rendered by `document_structure_text`.
     """
     return assembly.ParserOutput(
         document_structure=document_structure_text(parsed),
-        detected_fields=(),
+        detected_fields=detected_fields(parsed, recorded_at=recorded_at),
         detected_tables=(),
     )
 
@@ -495,6 +684,7 @@ def run(
     *,
     identity: IdentityEnvelope,
     settings: PipelineSettings,
+    recorded_at: datetime,
     human_business_context: HumanBusinessContext | None = None,
 ) -> DocumentEvidenceObject:
     """Run Engine 1's four sub-engines, in order, on one document, and return
@@ -503,6 +693,11 @@ def run(
 
         bytes -> cleaner -> reader -> parser -> confidence_report -> assembly
 
+    `reader`'s reading is `parser`'s input, not merely something that happened
+    before it: `extracted_regions(reading)` is handed to `parser.parse`, which
+    is the arrow `SUB_ENGINE_RESPONSIBILITIES.md` §1.3 draws and
+    `KNOWN_FAILURES.md` F-019 recorded as never built. See defect 1.
+
     Each of the five stages runs inside its own `try`/`except`. The first one
     to raise stops the pipeline immediately and re-raises as
     `PipelineStageError`, naming that stage and carrying every earlier stage's
@@ -510,15 +705,22 @@ def run(
     section) — no stage after the failure ever runs, and nothing is invented
     to let it.
 
-    `intake` and `settings` are both required, with no default: omitting
-    either raises `TypeError` naming the missing parameter, before any
-    sub-engine is called. `intake` itself refuses at construction if it names
-    no source reference (`DocumentIntake.__post_init__`) — also before any
-    sub-engine runs. `human_business_context` defaults to `None` because the
-    Human Business Description is optional and Engine 1 must work correctly
-    without one (`ENGINE_1_INPUT_ENGINE_RULES.md:138`); when supplied, it is
-    never handed to `cleaner`, `reader` or `parser` — see the module
-    docstring, "a provided source passes through untouched".
+    `intake`, `settings` and `recorded_at` are all required, with no default:
+    omitting one raises `TypeError` naming it, before any sub-engine is called.
+    `recorded_at` is the timestamp every detected field's `Provenance` carries,
+    and it is the caller's clock rather than one read here — see
+    `detected_fields` for the measured reason, which is reproducibility, not
+    testing convenience. It is deliberately NOT given a "now" default: a
+    default clock is exactly the reach-for-entropy `services/pipeline.py`
+    forbids, wearing a signature that looks safe.
+
+    `intake` itself refuses at construction if it names no source reference
+    (`DocumentIntake.__post_init__`) — also before any sub-engine runs.
+    `human_business_context` defaults to `None` because the Human Business
+    Description is optional and Engine 1 must work correctly without one
+    (`ENGINE_1_INPUT_ENGINE_RULES.md:138`); when supplied, it is never handed
+    to `cleaner`, `reader` or `parser` — see the module docstring, "a provided
+    source passes through untouched".
     """
     preserved = PipelinePartialResult()
 
@@ -553,7 +755,7 @@ def run(
     preserved = replace(preserved, reading=reading)
 
     try:
-        parsed = _parse_document(cleaned_document, intake, settings)
+        parsed = _parse_document(cleaned_document, intake, settings, extracted_regions(reading))
     except Exception as exc:
         raise PipelineStageError("parser", exc, preserved) from exc
     preserved = replace(preserved, parsed=parsed)
@@ -562,7 +764,7 @@ def run(
         report = confidence_report.record_confidence(
             cleaned,
             region_readings(reading),
-            (),
+            parsed_fields(parsed),
             missing_fields(parsed),
             _human_capture_evidence(human_business_context),
         )
@@ -574,7 +776,7 @@ def run(
         parts = assembly.SubEngineOutputs(
             cleaner=cleaner_output(cleaned),
             reader=reader_output(reading),
-            parser=parser_output(parsed),
+            parser=parser_output(parsed, recorded_at=recorded_at),
             confidence=confidence_output(report),
         )
         return assembly.assemble(
@@ -588,15 +790,23 @@ def run(
 
 
 def _parse_document(
-    document: bytes, intake: DocumentIntake, settings: PipelineSettings
+    document: bytes,
+    intake: DocumentIntake,
+    settings: PipelineSettings,
+    regions: tuple[parser.ExtractedRegion, ...],
 ) -> parser.ParsedStructure:
-    """Materialise the CLEANED document and hand it to `parser.parse`.
+    """Materialise the CLEANED document and hand it, and `reader`'s regions, to
+    `parser.parse`.
 
     `document` is `CleanedArtifact.payload`, never `intake.document` — that is
     the whole point of the F-017 migration and the reason this parameter
     exists at all. Docling needs a real path, so the bytes are written to a
     temporary file; that is a filesystem detail of this call, not a second
     pipeline. The file is removed whether `parser.parse` succeeds or raises.
+
+    `regions` is what `reader` already extracted from that same cleaned
+    payload. Passing it is defect 1's fix: `parser` maps `reader`'s values
+    instead of only laying out a document it opened for itself.
     """
     with tempfile.NamedTemporaryFile(
         suffix=_TEMP_FILE_SUFFIX[intake.media_type], delete=False
@@ -607,6 +817,7 @@ def _parse_document(
         return parser.parse(
             temp_path,
             source_reference=intake.source_references[0],
+            extracted_regions=regions,
             table_structure=settings.table_structure,
         )
     finally:

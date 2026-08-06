@@ -79,18 +79,55 @@ WHICH FIELDS A DOCUMENT MUST CARRY IS KNOWLEDGE, AND IT IS NOT HELD HERE.
 
 WHERE THIS DEPARTS FROM THE LOCKED SPECIFICATION, STATED NOT HIDDEN.
     `SUB_ENGINE_RESPONSIBILITIES.md` 1.3 gives the parser one input: *"Raw
-    extracted information with source locations from `reader`."* No `reader`
-    exists in this repository yet, so `parse` opens the artifact itself. That
-    is a real departure and it has a real consequence: the text on a `Cell` or
-    a `Region` here was produced by Docling, not by `reader`, so this module is
-    currently doing a part of `reader`'s job as well as its own.
+    extracted information with source locations from `reader`."* `parse` also
+    opens the artifact itself, to recover its LAYOUT. That is still a real
+    departure and it still has a real consequence: the text on a `Cell` or a
+    `Region` here was produced by Docling, not by `reader`, so this module is
+    still doing a part of `reader`'s job as well as its own.
 
     It must not stay that way. `ENGINE_1_INPUT_ENGINE_RULES.md:113` — *"`parser`
-    consumes `reader`'s extraction; it cannot re-read it."* When `reader`
-    lands, text must come from `reader`'s spans and this module must keep only
-    the geometry, so that no reading has two authors. The seam is small on
-    purpose: every text value in the output passes through `reported_text`, and
-    the only caller of it is `_convert`.
+    consumes `reader`'s extraction; it cannot re-read it."* Text must come from
+    `reader`'s spans and this module must keep only the geometry, so that no
+    reading has two authors. The seam is small on purpose: every text value in
+    the LAYOUT output passes through `reported_text`, and the only caller of it
+    is `_convert`.
+
+    The half that IS now built is the input arrow: `parse` accepts
+    `ExtractedRegion`s — reader's extraction, with its source locations — and
+    maps each into a named `MappedField`. See FIELD MAPPING below.
+
+FIELD MAPPING, AND THE NAME THIS MODULE IS ALLOWED TO ASSIGN.
+    §1.3's output is *"structured fields · field mappings · missing field
+    information"*, and its Failure Behaviour is explicit about what a mapping
+    must keep: *"Field mappings retain the source reference for every mapped
+    value, so a wrong mapping can be traced."* `MappedField` is that mapping.
+    One per `ExtractedRegion`, in reader's own order, with reader's text
+    verbatim, reader's location as the source reference, and reader's own
+    extraction-confidence SIGNAL carried through untouched — never produced
+    here (`ENGINE_1_INPUT_ENGINE_RULES.md:109`, and see CONFIDENCE IS NOT
+    PRODUCED HERE above; carrying a number `reader` measured is the opposite of
+    minting one, and `confidence_report.ParsedField` already models exactly
+    this hand-off).
+
+    THE NAME IS THE PLACE, AND DELIBERATELY NOTHING MORE. `_field_name` returns
+    `page {p} region {n}` — reader's own page and reader's own order within
+    that page. It is a locator, so it cannot be wrong about the business, which
+    is the whole of §1.3's boundary: *"it may identify a field labelled
+    'Supplier', it may not conclude that party is a supplier."*
+
+    WHY DOCLING'S LAYOUT LABEL IS NOT USED AS THE NAME, MEASURED RATHER THAN
+    ASSUMED. On the two-page fixture in `tests/integration/`, reader reports
+    five spans and Docling reports three layout regions; the three spans on
+    page 1 all fall inside ONE `section_header`. So the label is many-to-one
+    and cannot name a field uniquely — and `StructuredDocument` refuses two
+    detected fields sharing a name. Worse, attaching the label at all needs a
+    box-to-box test, and the boxes do not nest: reader's first span on page 1
+    spans top 76.025 to 93.887 while Docling's region containing it starts at
+    80.666. Any rule joining them needs an overlap tolerance, and no document
+    in this repository states one, so choosing one would be exactly the
+    invented number Law 52 and Law 54 forbid. The layout label is therefore
+    reported in full through `Region`, where it belongs, and is not smuggled
+    into a field name it cannot support.
 """
 
 from __future__ import annotations
@@ -103,6 +140,7 @@ from types import ModuleType
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from decimal import Decimal
     from pathlib import Path
 
 #: The one Table Transformer checkpoint used. The DETECTION checkpoint,
@@ -362,6 +400,110 @@ class Region:
 
 
 @dataclass(frozen=True, slots=True)
+class ExtractedRegion:
+    """§1.3's INPUT, one region of it: *"Raw extracted information with source
+    locations from `reader`."*
+
+    Declared here rather than imported from `reader`, for the reason
+    `confidence_report.RegionReading` gives about the identical hand-off: this
+    is read off §1.2's OUTPUT prose — *"raw extracted information · source
+    locations · extraction confidence"* — so the two sub-engines stay
+    independently replaceable (`CLAUDE.md` Law 21) and neither acquires the
+    other's dependencies. `pipeline` maps `reader.TextRegion` onto this, in one
+    place, exactly as it already maps it onto `RegionReading`.
+
+    `box` reuses this module's own `BoundingBox` rather than a second geometry
+    type (Law 15). Note the unit: `BoundingBox.page` is the 1-based page NUMBER
+    and `reader.SourceLocation.page_index` is 0-based; the conversion is
+    `pipeline`'s, made once, and is not repeated here.
+
+    `extraction_confidence` is `reader`'s own signal or `None` when the backend
+    performed no recognition and therefore reported no score. `None` is not
+    zero and not full — it is the absence of a measurement, and only
+    `confidence` may decide what that is worth (`ENGINE_1_INPUT_ENGINE_RULES.md
+    :109`). Nothing in this module reads its value; it is carried.
+    """
+
+    text: str
+    box: BoundingBox
+    extraction_confidence: Decimal | None
+
+    def __post_init__(self) -> None:
+        # The same rule `reported_text` applies to a laid-out region, applied to
+        # an incoming one: a blank string would assert a reading that was never
+        # made, and ABSENT and READ-AND-EMPTY must stay distinguishable
+        # (`ENGINE_1_INPUT_ENGINE_RULES.md:569`). `reader` never emits one — it
+        # skips whitespace-only spans — so this refuses a caller's mistake, not
+        # a document's.
+        _reject_blank(self.text, "extracted region text")
+
+
+@dataclass(frozen=True, slots=True)
+class MappedField:
+    """One value `reader` extracted, named by `parser`, keeping where it came from.
+
+    §1.3's *"field mappings"*, and its Failure Behaviour's requirement that they
+    *"retain the source reference for every mapped value, so a wrong mapping can
+    be traced."* `source_location` is that retained reference — where WITHIN the
+    artifact, which is a different fact from `ParsedStructure.source_reference`,
+    which names WHICH artifact.
+
+    `value` is `reader`'s text, character for character. `extraction_confidence`
+    is `reader`'s signal, carried through unchanged — see FIELD MAPPING in the
+    module docstring, and `confidence_report.ParsedField`, which is the shape
+    this one feeds and which already documents the same hand-off.
+    """
+
+    name: str
+    value: str
+    source_location: str
+    extraction_confidence: Decimal | None
+
+    def __post_init__(self) -> None:
+        _reject_blank(self.name, "mapped field name")
+        _reject_blank(self.value, "mapped field value")
+        _reject_blank(self.source_location, "mapped field source location")
+
+
+def _field_name(page: int, ordinal: int) -> str:
+    """The name `parser` assigns one mapped value: where it is, and nothing else.
+
+    A locator cannot be wrong about the business, which is precisely §1.3's
+    boundary. See WHY DOCLING'S LAYOUT LABEL IS NOT USED AS THE NAME in the
+    module docstring for the measurement that ruled the richer name out.
+    """
+    return f"page {page} region {ordinal}"
+
+
+def map_fields(regions: tuple[ExtractedRegion, ...]) -> tuple[MappedField, ...]:
+    """One `MappedField` per extracted region, in `reader`'s own order.
+
+    A pure function of `reader`'s output, so the mapping is testable without a
+    document and without a model — the same reason `reported_text` is separate.
+
+    `ordinal` counts within a page rather than across the document, because the
+    page is where a human looking for the value will start. Nothing is sorted,
+    merged, split or dropped: §1.2 forbids reordering, and a mapping that lost a
+    region would lose the only evidence the region was ever read.
+    """
+    ordinals: dict[int, int] = {}
+    mapped: list[MappedField] = []
+    for region in regions:
+        page = region.box.page
+        ordinal = ordinals.get(page, 0) + 1
+        ordinals[page] = ordinal
+        mapped.append(
+            MappedField(
+                name=_field_name(page, ordinal),
+                value=region.text,
+                source_location=repr(region.box),
+                extraction_confidence=region.extraction_confidence,
+            )
+        )
+    return tuple(mapped)
+
+
+@dataclass(frozen=True, slots=True)
 class MissingFieldInformation:
     """What the parser can say about absence, which here is nothing, plus why."""
 
@@ -440,11 +582,31 @@ class ParsedStructure:
     #: none of the numbers it needs. Recorded rather than implied: "no bands"
     #: and "the detector was never run" are different facts.
     table_structure_detector: str | None = None
+    #: §1.3's *"field mappings"* — one per region `reader` extracted, or empty
+    #: because `parse` was given no extraction to map. Last in the field order
+    #: deliberately: every earlier position is one an existing caller may already
+    #: be filling positionally, and inserting into that order would silently
+    #: rebind their arguments (Law 33).
+    mapped_fields: tuple[MappedField, ...] = ()
 
     def __post_init__(self) -> None:
         _reject_blank(self.source_reference, "source reference")
         if self.page_count < 0:
             raise ValueError(f"page count cannot be negative, got {self.page_count}")
+        names = [field.name for field in self.mapped_fields]
+        duplicated = sorted({name for name in names if names.count(name) > 1})
+        if duplicated:
+            # `StructuredDocument` keys detected fields by name and
+            # `ConfidenceReport` keys scores by name, so two mappings sharing one
+            # name make "which score belongs to which value?" unanswerable. Both
+            # of those schemas already refuse it; refusing here too means the
+            # caller learns which SUB-ENGINE produced the collision, at the point
+            # it was produced, rather than three hops later.
+            raise ValueError(
+                f"two mapped fields share one name: {', '.join(duplicated)}. "
+                "A field name is the key a confidence score is filed under, so a "
+                "repeated name makes traceability unanswerable."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -613,6 +775,7 @@ def parse(
     source: Path,
     *,
     source_reference: str,
+    extracted_regions: tuple[ExtractedRegion, ...] = (),
     table_structure: TableStructureSettings | None = None,
 ) -> ParsedStructure:
     """Recover the document's structure. Decide nothing about what it says.
@@ -620,6 +783,14 @@ def parse(
     `source_reference` is the caller's name for the artifact and travels with
     the structure, so a value found here can be traced back to the thing it was
     read off (`COMMUNICATION_RULES_INPUT_ENGINE.md` Rule 4).
+
+    `extracted_regions` is §1.3's own input — *"raw extracted information with
+    source locations from `reader`"* — and each one becomes a `MappedField` on
+    the returned structure. Empty means no extraction was supplied, so nothing
+    is mapped: that is the same "this input was not given" default
+    `table_structure=None` already uses, never a decision about the document.
+    A caller with a reading and no wish to map it does not exist — `pipeline`
+    always supplies what `reader` returned.
 
     `table_structure` defaults to `None`, meaning Table Transformer does not
     run. That is not a convenience default: the model needs three numbers this
@@ -659,4 +830,5 @@ def parse(
         tables=tables,
         missing_field_information=NO_EXPECTED_FIELD_LIST_WAS_SUPPLIED,
         table_structure_detector=detector,
+        mapped_fields=map_fields(extracted_regions),
     )
