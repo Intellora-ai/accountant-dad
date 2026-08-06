@@ -183,6 +183,25 @@ HAIRLINE_INK_PIXELS = 22620
 #: Measured: 4520 content pixels on the edge page, all three marks intact.
 EDGE_PAGE_CONTENT_PIXELS = 4520
 
+# ── the page that is destroyed outright, for the fraction invariant ───────
+
+#: A strength that removes the hairline rules ENTIRELY rather than thinning
+#: them. `ERASING_DENOISE_STRENGTH` above is the weaker attack that erases
+#: isolated marks; this one leaves nothing. An input, never a threshold.
+ANNIHILATING_DENOISE_STRENGTH = 60.0
+#: Mid-scale, so it sits far below the paper at 235 and far above anything a
+#: smoothed page produces. Only real marks are this dark, and unlike Otsu it is
+#: a FIXED intensity, so it cannot move with the content of the page.
+DARK_MARK = 128
+#: Measured: the hairline page carries 22620 pixels at or below `DARK_MARK`, and
+#: at strength 60.0 it delivers 0 of them. Numerically equal to
+#: `HAIRLINE_INK_PIXELS` and kept separate anyway: the two are arrived at by
+#: different rules and only coincide because every rule on this page is painted
+#: at intensity 20, far below both. A page where they diverged would need two
+#: names, and a constant shared for today's arithmetic is a constant that hides
+#: tomorrow's disagreement.
+HAIRLINE_DARK_PIXELS = 22620
+
 
 def settings(**changes: float | int) -> cleaner.CleanerSettings:
     """The baseline with named fields replaced, so one attack changes one thing."""
@@ -1051,3 +1070,67 @@ def test_the_module_still_exposes_no_way_to_read_what_it_removed() -> None:
     assert cleaner.INK_KEPT_BY_CROP in names
     with pytest.raises(KeyError):
         result.observed("content_lost_to_crop", cleaner.Stage.CLEANED)
+
+
+# ══ PART FOUR — a figure that lies in the REASSURING direction ═══════════
+#
+# The three defects above are each a quantity that under-reports damage. This
+# one is the general case of that, and it is stated as an INVARIANT over every
+# observation this module emits rather than as a test of one name, because the
+# instance was cheap to delete and the CLASS is what recurs (§J.9).
+
+
+def test_no_fraction_this_module_reports_can_exceed_the_whole_it_is_a_fraction_of() -> None:
+    """A retention above 1.0 is a number lying in the reassuring direction.
+
+    THE DEFECT THIS TRAPS, MEASURED. `content_kept` counted the pixels departing
+    from a page's median by more than that page's own noise, before against
+    after. Denoising COLLAPSES the noise, which collapses the bound, so the
+    count rose as the page was smoothed — whatever the smoothing cost the
+    document. Across 189 page-and-setting combinations it exceeded 1.0 in 162,
+    peaking at 36.9934: a quantity carrying the unit *"fraction of content
+    pixels"* reported at 3699%. On the six runs where every mark had genuinely
+    been erased from the page it read between 15.04 and 18.09.
+
+    WHY THIS IS WORSE THAN NO MEASUREMENT AT ALL. `preservation_status` exists
+    so a caller can be told the original is the safer basis for reading. A
+    figure that goes UP as a page is destroyed does not merely fail to raise
+    that flag — it argues against it, inside the artifact, in the caller's own
+    units. Law 24: never fabricate a metric. A metric that is real arithmetic
+    over a quantity the pipeline does not conserve is fabricated all the same.
+
+    STATED OVER EVERY OBSERVATION, NOT OVER ONE NAME. Deleting `content_kept`
+    fixes the instance and guards nothing. What must not recur is any figure
+    denominated as a share of a whole that is free to exceed that whole, and
+    `unit` is where this module declares that intent — so `unit` is what this
+    reads. A new observation reporting a fraction is covered the day it is
+    added, without this test being touched.
+
+    THE PAGE IS ONE BEING ACTIVELY DESTROYED, because that is where the sign of
+    the error matters and where the deleted figure was at its worst. Asserted
+    first, from an oracle this module never sees: at strength 60 the hairline
+    rules are entirely gone — every pixel a human could read as a mark, zero
+    left — so no honest retention here has any business being above 1.0.
+    """
+    page = a_hairline_page()
+    destroyed = cleaner.clean(page, settings(denoise_strength=ANNIHILATING_DENOISE_STRENGTH))
+
+    # The oracle is this file's own: a fixed intensity the paper never reaches,
+    # so it needs neither Otsu nor the module's noise estimate to be believed.
+    assert int(np.count_nonzero(page <= DARK_MARK)) == HAIRLINE_DARK_PIXELS
+    assert int(np.count_nonzero(destroyed.cleaned <= DARK_MARK)) == 0, (
+        "the attack is void unless the page really was destroyed"
+    )
+
+    fractions = [
+        observation
+        for observation in destroyed.quality_observations
+        if observation.unit.startswith("fraction")
+    ]
+    assert fractions, "no fraction is reported at all, so this invariant guards nothing"
+    for observation in fractions:
+        assert observation.value is not None
+        assert 0.0 <= observation.value <= 1.0, (
+            f"{observation.name} reports {observation.value} of a whole — a share above "
+            "1.0 tells the caller more survived than existed"
+        )
