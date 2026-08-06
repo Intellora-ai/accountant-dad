@@ -1514,7 +1514,7 @@ EXCLUSIONS: tuple[Exclusion, ...] = (
         "for, and NOT enforced.",
     ),
     _not_a_prohibition(
-        "docs/CONFIDENCE_SPECIFICATION.md:445",
+        "docs/CONFIDENCE_SPECIFICATION.md:489",
         "a hazard-table row that quotes INV-8 as its authority. The rule is at "
         "SYSTEM_INVARIANTS.md:209 and is listed there; this row cites it.",
     ),

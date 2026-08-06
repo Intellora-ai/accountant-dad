@@ -110,11 +110,11 @@ below, not assumed.
      level_score`, so a future change that quietly closes or widens that gap
      is noticed.
 
-  4. HALF FIXED — A NAMED, SCORED FIELD NOW EXISTS. A TABLE STILL DOES NOT, AND
-     NEITHER DOES AN UNSCORED READING.
+  4. FIXED FOR FIELDS BY AMENDMENT 5 — AN UNSCORED READING NOW CROSSES, AND
+     SAYS IT WAS NEVER SCORED. TABLES STILL DO NOT.
 
      `evidence.DetectedField` and `DetectedTable` each require a complete
-     `Provenance` (INV-11, no optional field), a `Confidence` value among them.
+     `Provenance` (INV-11, no optional field), a confidence value among them.
      Defect 1's fix supplies both halves for a value `reader` SCORED: `parser`
      assigns the name, `reader` measured the score, and `detected_fields` below
      builds the field from those two without inventing either. Nothing here
@@ -122,37 +122,69 @@ below, not assumed.
      `confidence` that authority, and this module carries the exact `Decimal`
      `reader` returned.
 
-     TABLES ARE UNCHANGED. `parser.Cell` knows its row, its column and its box;
-     it does not know it holds an amount, and no sub-engine scores it. So
-     `parser_output` still returns `detected_tables=()`, for exactly the reason
-     it used to return no fields, and every table's cells and bands still reach
-     the artifact through `StructuredDocument.document_structure`.
-
-     AN UNSCORED READING STILL CANNOT BECOME A FIELD, AND THIS IS THE ONE THAT
-     MATTERS FOR THE MVP. `reader.read_pdf_text_layer` sets
-     `extraction_confidence=None` on every region by design (`reader.py`, "THE
-     CONFIDENCE OF A TEXT LAYER IS `None`" — the absence of a measurement, not
-     zero and not full), and a PDF text layer is the MVP's primary input.
-     `Provenance.confidence` is mandatory and `accountant_dad.confidence
-     .Confidence` has no member meaning "not measured", so there is no honest
-     value to put there: `1.0000` is the default
-     `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids ("never to a default 'good
-     enough' value") and `0.0000` asserts a measured worthlessness nobody
-     measured. `ENGINE_1_INPUT_ENGINE_RULES.md:245` settles what to do about it
+     THE UNSCORED READING WAS THE ONE THAT MATTERED FOR THE MVP, AND IT USED TO
+     BE DROPPED. This entry read: "AN UNSCORED READING STILL CANNOT BECOME A
+     FIELD." `reader.read_pdf_text_layer` sets `extraction_confidence=None` on
+     every region by design (`reader.py`, "THE CONFIDENCE OF A TEXT LAYER IS
+     `None`" — the absence of a measurement, not zero and not full), and a PDF
+     text layer is the MVP's primary input. `Provenance.confidence` was
+     mandatory and `Confidence` had no member meaning "not measured", so there
+     was no honest value to put there, and `ENGINE_1_INPUT_ENGINE_RULES.md:245`
      — *"a value carried without all three is not evidence and must not be
-     emitted"* — so `detected_fields` and `parsed_fields` below both skip an
-     unscored mapping rather than guess a number for it. `ENGINE_1_CONFIDENCE_
-     PARAMETERS.md` lists sixteen parameters awaiting a value and none of them
-     covers this case, so the number cannot be looked up either.
+     emitted"* — made dropping it the only honest option available.
 
-     THE CONSEQUENCE, STATED RATHER THAN HIDDEN: on the text-layer route the
-     text still crosses inside `extracted_text` while `detected_fields` is
-     empty, which is the state `KNOWN_FAILURES.md` F-019 names and which this
-     module cannot close on its own. Closing it needs a §M amendment to a frozen
-     P2 schema — an absent-measurement state on `Provenance.confidence`,
-     mirroring the `measurement.AbsentType` precedent that resolved F-005 — and
-     that is the owner's decision, not this module's. Pinned as
-     `test_an_unscored_reading_is_skipped_rather_than_given_an_invented_score`.
+     `ARCHITECTURE_AMENDMENTS.md` **Amendment 5** (approved 2026-08-06) removed
+     the cause rather than the symptom: `Provenance.confidence` and
+     `FieldConfidence.confidence` are now `ConfidenceOrUnmeasured`, so the
+     absence of a measurement is a value the schema can hold. `_recorded_
+     confidence` below is the single place that decision is made — `reader`'s
+     exact `Decimal` when it measured one, `UNMEASURED` when it did not — and
+     `detected_fields` and `unmeasured_field_scores` both read it, so a field's
+     own provenance and its Confidence Report entry cannot disagree about
+     whether a measurement exists.
+
+     STILL NO NUMBER IS INVENTED, AND THAT IS THE POINT. `1.0000` is the
+     default `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids by name; `0.0000`
+     asserts a measured worthlessness nobody measured; none of the sixteen
+     parameters in `ENGINE_1_CONFIDENCE_PARAMETERS.md` covers the case. The
+     amendment named the absence instead of filling it (Law 54), and
+     `DocumentEvidenceObject`'s agreement check now REFUSES an artifact whose
+     report claims a number for a reading the provenance says was never scored.
+
+     MEASURED, BEFORE AND AFTER, ON THE TEXT-LAYER ROUTE: `detected_fields` went
+     from 0 to one field per mapped region, and the artifact went from ZERO
+     `Provenance` objects to one per region. Three tests that were red on
+     `99f62bf` are green — the two conformance-registry provenance tests and
+     the end-to-end boundary contract.
+
+     TABLES ARE UNCHANGED, AND THE REASON IS DIFFERENT FROM THE ONE ABOVE.
+     `parser.Cell` knows its row, its column and its box; it does not know it
+     holds an amount, and NO SUB-ENGINE NAMES IT. Amendment 5 supplies a
+     confidence state, not a name, so `parser_output` still returns
+     `detected_tables=()` — every table's cells and bands still reach the
+     artifact through `StructuredDocument.document_structure`.
+
+  5. `ConfidenceReport.confidence_scores` NOW HAS TWO PRODUCERS, AND THIS IS A
+     COST, NOT A DESIGN.
+
+     `confidence_report.ParsedField.extraction_confidence` is typed
+     `Confidence` — `Decimal` only — so it cannot carry `UNMEASURED`, and the
+     `confidence` sub-engine therefore cannot build the report entry for an
+     unscored field. `unmeasured_field_scores` below builds those entries here
+     instead, and `confidence_output` appends them to what `record_confidence`
+     produced.
+
+     WHAT KEEPS THE TWO FROM DRIFTING, structurally rather than by care:
+     `ConfidenceReport._each_name_is_scored_once` refuses the artifact if the
+     two producers ever emit the same name, and
+     `DocumentEvidenceObject._every_reading_is_scored_and_the_scores_agree`
+     refuses it if any entry disagrees with its field's own provenance. Both
+     guards already existed; neither was added or weakened for this.
+
+     It is still two producers for one component, which is an INV-10 cost.
+     Recorded as open item **O11** in `CONFIDENCE_SPECIFICATION.md` §9 and in
+     Amendment 5 itself, with the one-annotation fix that closes it. Named
+     rather than hidden (Law 26).
 
 THE BOUNDARIES THIS MODULE HOLDS ITSELF TO.
     Internal orchestration only. This file calls Engine 1's own four
@@ -166,10 +198,15 @@ THE BOUNDARIES THIS MODULE HOLDS ITSELF TO.
     Transforms nothing. Every function below that touches a sub-engine's real
     output (`cleaner_output`, `reader_output`, `parser_output`,
     `confidence_output`, `region_readings`, `extracted_regions`,
-    `parsed_fields`, `detected_fields`, `missing_fields`) repackages a value
+    `parsed_fields`, `unmeasured_field_scores`, `_recorded_confidence`,
+    `detected_fields`, `missing_fields`) repackages a value
     into the shape the next call needs; none of them rounds, clamps,
     reinterprets or recomputes a value a sub-engine produced. `region_readings`
-    drops nothing at all (see defect 3); it never edits what it carries.
+    drops nothing at all (see defect 3), and neither does `detected_fields` any
+    more (defect 4); neither edits what it carries. `_recorded_confidence`
+    turns `reader`'s `None` into `UNMEASURED`, which is the same fact written
+    in the type the artifact schema can hold — the absence of a measurement on
+    both sides, never a value becoming another value.
     `extracted_regions` performs the one conversion in this file
     that changes a number — `page_index + 1` — and that is a change of UNITS
     between two modules' conventions, not a change of value; it is made once,
@@ -219,12 +256,14 @@ from accountant_dad.artifacts.evidence import (
     DetectedField,
     DocumentEvidenceObject,
     DocumentId,
+    FieldConfidence,
     HumanBusinessContext,
     Provenance,
     SourceType,
     StructuredDocument,
     UncertaintyMarker,
 )
+from accountant_dad.confidence import UNMEASURED, ConfidenceOrUnmeasured, UnmeasuredType
 from accountant_dad.engines.input_engine import assembly, cleaner, confidence_report, parser, reader
 from accountant_dad.identity import IdentityEnvelope
 
@@ -512,9 +551,11 @@ def extracted_regions(reading: reader.Reading) -> tuple[parser.ExtractedRegion, 
     loud failure rather than an off-by-one nobody notices.
 
     Nothing is filtered. Even a region `reader` scored `None` is handed on, so
-    `parser` maps it and its text is nameable and locatable; what cannot be built
-    from it is a `DetectedField`, and that decision is made once, later, by
-    `detected_fields` — not silently here by dropping the region.
+    `parser` maps it and its text is nameable and locatable. Since Amendment 5
+    it also becomes a real `DetectedField` — `detected_fields` carries the
+    absence of a score rather than dropping the value — so this function's
+    refusal to filter is no longer merely the least-bad option here; it is what
+    makes the value emittable at all.
     """
     return tuple(
         parser.ExtractedRegion(
@@ -532,6 +573,33 @@ def extracted_regions(reading: reader.Reading) -> tuple[parser.ExtractedRegion, 
     )
 
 
+def _recorded_confidence(field: parser.MappedField) -> ConfidenceOrUnmeasured:
+    """What the artifact records about ONE mapped value's reliability.
+
+    THE SINGLE PLACE THIS DECISION IS MADE, and that is the whole reason it is a
+    function rather than two inline conditionals. `detected_fields` puts the
+    result on the field's own `Provenance`; `unmeasured_field_scores` decides
+    from the same result whether the Confidence Report needs an entry this
+    module must supply. Two call sites, one rule — so the provenance and the
+    report cannot disagree about whether a measurement exists, by construction
+    rather than by care.
+
+    `reader`'s `None` becomes `UNMEASURED`: the SAME fact, in the type the
+    artifact schema can hold since Amendment 5. It is not a conversion of a
+    value into another value — there is no value on either side. `reader.py`
+    already states what its `None` means (*"NOT zero confidence and NOT full
+    confidence - it is the absence of a measurement"*) and this carries exactly
+    that, unchanged, across the one boundary where the old schema lost it.
+
+    A score `reader` DID measure is returned as the identical `Decimal` object,
+    never rounded, re-typed or re-derived (`ENGINE_1_INPUT_ENGINE_RULES.md:109`
+    — only `confidence` may set a score, and this module sets none).
+    """
+    if field.extraction_confidence is None:
+        return UNMEASURED
+    return field.extraction_confidence
+
+
 def parsed_fields(parsed: parser.ParsedStructure) -> tuple[confidence_report.ParsedField, ...]:
     """`parser`'s mapped fields that carry a score, shaped as `confidence`'s input.
 
@@ -541,11 +609,14 @@ def parsed_fields(parsed: parser.ParsedStructure) -> tuple[confidence_report.Par
     literal `()` here (F-019, mechanism line 2 of 3) and no document field was
     ever scored.
 
-    A mapping `reader` did not score is EXCLUDED rather than given a number —
-    see defect 4 in the module docstring for why no honest number exists, and
-    why inventing one is forbidden rather than merely undesirable. Its text is
-    not lost: it still reaches `StructuredDocument.extracted_text` through
-    `reader_output`.
+    A mapping `reader` did not score is excluded HERE and picked up by
+    `unmeasured_field_scores` below — it is no longer dropped from the artifact,
+    it simply takes the other of the two routes into the same report.
+    `confidence_report.ParsedField.extraction_confidence` is typed `Confidence`,
+    `Decimal` only, so it cannot carry `UNMEASURED` and the `confidence`
+    sub-engine cannot build that entry. See defect 5 in the module docstring,
+    and open item O11: closing it is one annotation in a file this change does
+    not own.
 
     The confidence carried is the identical object `reader` produced.
     `_field_confidence_scores` then mirrors it into the report unmodified, and
@@ -558,6 +629,38 @@ def parsed_fields(parsed: parser.ParsedStructure) -> tuple[confidence_report.Par
         )
         for field in parsed.mapped_fields
         if field.extraction_confidence is not None
+    )
+
+
+def unmeasured_field_scores(parsed: parser.ParsedStructure) -> tuple[FieldConfidence, ...]:
+    """One Confidence Report entry per mapped value NOBODY SCORED, each saying so.
+
+    THE ALTERNATIVE WAS SILENCE, AND SILENCE IS THE WORSE FAILURE. Every
+    detected field must appear in the Confidence Report or
+    `DocumentEvidenceObject` refuses the artifact (`evidence.py:337-344`).
+    Since Amendment 5 an unscored reading DOES become a detected field, so
+    without these entries the artifact would be refused outright — and the way
+    to make it pass without them would be to exempt unscored fields from the
+    check, which is concealed uncertainty about precisely the fields whose
+    reliability is least established (`ENGINE_1_ARCHITECTURE.md` P-F3).
+
+    NO NUMBER IS PRODUCED HERE AND NONE COULD BE. Every entry carries the
+    `UNMEASURED` sentinel, which is not a score and cannot be compared with
+    one: `UnmeasuredType.__bool__` raises rather than reading as falsy, so a
+    caller writing `if not score.confidence:` gets a `TypeError` instead of
+    silently treating "nobody measured this" as "this measured zero". This
+    module therefore does not trespass on the `confidence` sub-engine's sole
+    authority to score (`ENGINE_1_INPUT_ENGINE_RULES.md:109`) — it records that
+    no score exists, which is a fact about what the sub-engines produced.
+
+    The membership test is `_recorded_confidence`'s own result, not a second
+    reading of `extraction_confidence`, so this can never disagree with what
+    `detected_fields` put on the provenance.
+    """
+    return tuple(
+        FieldConfidence(field_name=field.name, confidence=UNMEASURED)
+        for field in parsed.mapped_fields
+        if isinstance(_recorded_confidence(field), UnmeasuredType)
     )
 
 
@@ -575,14 +678,17 @@ def detected_fields(
                      within it. `ENGINE_1_INPUT_ENGINE_RULES.md:511`: a source
                      location is emitted even for a low-confidence extraction,
                      "that is what makes a later human check possible."
-        confidence   `reader`'s measured score, the exact object, never
-                     recomputed here (`ENGINE_1_INPUT_ENGINE_RULES.md:109`).
+        confidence   `_recorded_confidence`'s answer: `reader`'s measured
+                     score, the exact object, never recomputed here
+                     (`ENGINE_1_INPUT_ENGINE_RULES.md:109`) — or `UNMEASURED`
+                     when `reader` scored nothing. Both are statements about
+                     reliability; neither is a number this module chose.
         uncertainty  answerable because the same name carries a
                      `FieldConfidence` in the Confidence Report — see
-                     `parsed_fields` above, and
+                     `parsed_fields` and `unmeasured_field_scores` above, and
                      `DocumentEvidenceObject._every_reading_is_scored_and_the_
                      scores_agree`, which refuses the artifact if a detected
-                     field's name is missing from the report or its score
+                     field's name is missing from the report or its entry
                      disagrees with the report's.
 
     `source_type` is `Document` because every one of these was read off the
@@ -605,9 +711,22 @@ def detected_fields(
     `test_the_same_input_twice_is_identical_content_but_the_second_run_is_a_
     new_version` goes red.
 
-    A mapping with no score yields no field at all, for the reason defect 4
-    gives. That is the disjunction `ENGINE_1_INPUT_ENGINE_RULES.md:245` states:
-    all three, or it is not evidence.
+    NOTHING IS FILTERED, AND THE FILTER THAT USED TO BE HERE IS THE DEFECT
+    AMENDMENT 5 REMOVED. This function once read `if field.extraction_
+    confidence is not None`, dropping every mapping `reader` had not scored.
+    That was correct under the old schema and wrong about the world: it dropped
+    EVERY field on the MVP's primary input, because a PDF text layer is
+    transcribed rather than recognised and scores nothing at all. The artifact
+    carried zero `Provenance` objects and every extracted value crossed the
+    Input -> Understanding boundary as a bare `str` inside `extracted_text`,
+    stripped of the three things `COMMUNICATION_RULES_INPUT_ENGINE.md:111`
+    forbids stripping.
+
+    The disjunction `ENGINE_1_INPUT_ENGINE_RULES.md:245` states — all three, or
+    it is not evidence — is now satisfied by CARRYING all three rather than by
+    emitting none. The third is carried honestly: "no instrument scored this"
+    is what the artifact says, and it says it in a type that cannot be mistaken
+    for a number.
     """
     return tuple(
         DetectedField(
@@ -618,12 +737,11 @@ def detected_fields(
                 source_id=parsed.source_reference,
                 evidence_reference=field.source_location,
                 timestamp=recorded_at,
-                confidence=field.extraction_confidence,
+                confidence=_recorded_confidence(field),
                 corroborated=Corroborated.NOT_ASSESSED,
             ),
         )
         for field in parsed.mapped_fields
-        if field.extraction_confidence is not None
     )
 
 
@@ -693,11 +811,13 @@ def reader_output(reading: reader.Reading) -> assembly.ReaderOutput:
     `raw_extracted_text` joins every region's text `reader` returned, in
     `reader`'s own order (`reader.py` §1.2 — reordering is forbidden, and this
     never sorts). It is the channel that carries a text-layer region's text
-    into `StructuredDocument.extracted_text`. It is no longer the ONLY one that
-    mentions such a region: since the `region_readings` filter was removed
-    (defect 3) each also reaches the Confidence Report as an
-    `UncertaintyMarker` naming its location. What it still cannot become is a
-    `DetectedField` — defect 4 — because that needs a score nobody measured.
+    into `StructuredDocument.extracted_text`. It is no longer the only channel
+    such a region has, and no longer the last one it lost: since the
+    `region_readings` filter was removed (defect 3) each also reaches the
+    Confidence Report as an `UncertaintyMarker` naming its location, and since
+    Amendment 5 (defect 4) each also becomes a real `DetectedField` carrying
+    `UNMEASURED`. This function is now one of three routes rather than the only
+    one, and it is the only one that carries the text verbatim.
     """
     return assembly.ReaderOutput(
         raw_extracted_text="\n".join(region.text for region in reading.regions),
@@ -713,13 +833,15 @@ def parser_output(
 ) -> assembly.ParserOutput:
     """`parser`'s real output, packaged for `assembly.SubEngineOutputs`.
 
-    `detected_fields` now carries one field per SCORED mapped value — see
-    `detected_fields` above, and defect 1 in the module docstring for the arrow
-    that made a scored, named value exist at all.
+    `detected_fields` now carries one field per mapped value, scored or not —
+    see `detected_fields` above, defect 1 in the module docstring for the arrow
+    that made a named value exist at all, and defect 4 for the amendment that
+    let an unscored one be emitted rather than dropped.
 
-    `detected_tables` is still always empty, and defect 4 says why: a
-    `parser.Cell` carries no name and no score, so building one would mean
-    inventing both halves. `parser`'s table findings are not lost; every cell
+    `detected_tables` is still always empty, and the reason is NOT the one
+    defect 4 fixed: a `parser.Cell` carries no NAME, and Amendment 5 supplied a
+    confidence state, not a name. Building one would still mean inventing the
+    half nobody produced. `parser`'s table findings are not lost; every cell
     and band is rendered by `document_structure_text`.
     """
     return assembly.ParserOutput(
@@ -729,15 +851,35 @@ def parser_output(
     )
 
 
-def confidence_output(report: ConfidenceReport) -> assembly.ConfidenceOutput:
-    """`confidence`'s real output, packaged for `assembly.SubEngineOutputs`.
+def confidence_output(
+    report: ConfidenceReport, unmeasured: tuple[FieldConfidence, ...] = ()
+) -> assembly.ConfidenceOutput:
+    """`confidence`'s real output, packaged for `assembly.SubEngineOutputs`,
+    plus the entries for values NOBODY SCORED, which `confidence` cannot build.
 
-    Every field is `report`'s own value, carried through unchanged — this is
-    the one place a caller might be tempted to round a score or drop a marker
-    that looks redundant, and this function does neither.
+    Every value `report` carries is passed through unchanged — this is the one
+    place a caller might be tempted to round a score or drop a marker that
+    looks redundant, and this function does neither. Nothing is removed,
+    reordered or rewritten.
+
+    `unmeasured` is APPENDED, never merged into or reconciled with what
+    `record_confidence` produced. It comes from `unmeasured_field_scores`,
+    which reads the same `_recorded_confidence` decision `detected_fields`
+    used, and it exists here only because
+    `confidence_report.ParsedField.extraction_confidence` is typed `Confidence`
+    and cannot hold `UNMEASURED` — see defect 5 in the module docstring and
+    open item O11. It defaults to `()` so every existing caller keeps its exact
+    previous behaviour.
+
+    THE TWO PRODUCERS CANNOT OVERLAP SILENTLY. A name emitted by both would
+    make `ConfidenceReport._each_name_is_scored_once` refuse the artifact, and
+    an entry disagreeing with its field's own provenance would make
+    `DocumentEvidenceObject._every_reading_is_scored_and_the_scores_agree`
+    refuse it. Neither guard was added or relaxed for this; both already
+    existed, and both fail loudly rather than picking a winner.
     """
     return assembly.ConfidenceOutput(
-        confidence_scores=report.confidence_scores,
+        confidence_scores=report.confidence_scores + unmeasured,
         uncertainty_markers=report.uncertainty_markers,
         reliability_information=report.reliability_information,
         risky_fields=report.risky_fields,
@@ -808,18 +950,28 @@ def _failure_artifact(
                             completed before a later stage failed — real text,
                             really read, never dropped merely because the run
                             ended badly — and `""` when `reader` never ran.
-        detected_fields     always empty. A field needs all three of source,
-                            confidence and uncertainty
-                            (`ENGINE_1_INPUT_ENGINE_RULES.md:245`) and a failed
-                            run measured no confidence for anything.
+        detected_fields     always empty, and this is UNAFFECTED by Amendment 5.
+                            A field needs all three of source, confidence and
+                            uncertainty (`ENGINE_1_INPUT_ENGINE_RULES.md:245`),
+                            and on this path `parser` never ran, so there is no
+                            named value and no source location for one — the
+                            missing half is the VALUE, which no sentinel
+                            supplies. "Read but not scored" and "never read"
+                            stay two different facts here exactly as they do
+                            everywhere else.
         detected_tables     always empty, for the same reason.
-        confidence_scores   always empty. NOTHING WAS MEASURED, so there is no
-                            number to report and none is minted — not `0.0000`,
-                            which would assert a measured worthlessness nobody
+        confidence_scores   always empty, and NOT because a score is missing —
+                            because there is no NAMED THING to score. A failed
+                            run produced no mapped field, so there is nothing
+                            for an entry to be about. `UNMEASURED` would be the
+                            wrong answer here rather than a safer one: it
+                            asserts that a specific value was read and not
+                            scored, and on this path no value was read at all.
+                            Nothing is minted either — not `0.0000`, which
+                            would assert a measured worthlessness nobody
                             measured, and not a default, which
                             `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids
-                            outright. This is the same discipline the text-layer
-                            path follows in `detected_fields` above.
+                            outright.
         uncertainty_markers exactly one, naming the document, the stage, and
                             the sub-engine's OWN message verbatim. This is the
                             *"named uncertainty"* half of
@@ -1010,7 +1162,7 @@ def run(
             cleaner=cleaner_output(cleaned),
             reader=reader_output(reading),
             parser=parser_output(parsed, recorded_at=recorded_at),
-            confidence=confidence_output(report),
+            confidence=confidence_output(report, unmeasured_field_scores(parsed)),
         )
         return assembly.assemble(
             parts=parts,
