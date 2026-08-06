@@ -745,6 +745,45 @@ def test_a_report_that_erases_a_real_measurement_is_refused_too() -> None:
     ]
 
 
+def test_two_separately_built_absences_agree_and_the_artifact_is_accepted() -> None:
+    """FOUND BY RED-TEAM, NOT BY WRITING THE TEST ALONGSIDE THE CODE.
+
+    Replacing `records_the_same_measurement(...)` in `evidence.py` with a plain
+    `scores[name] != field.provenance.confidence` SURVIVED the whole suite —
+    180 tests, all green. `!=` reaches the right answer for every case the
+    other tests cover, but it reaches it BY ACCIDENT: `Decimal` and the
+    sentinel each return `NotImplemented`, Python falls back to identity, and
+    identity happens to be correct while one singleton is the only instance in
+    play.
+
+    It diverges in exactly one place, and this is it. Two SEPARATELY BUILT
+    absences are the same fact and must agree; under `!=` they are two
+    different objects and the artifact is refused — a valid document rejected
+    because of which instance a caller happened to construct.
+
+    This is reachable, not hypothetical: the validator returns whatever
+    instance it was given, so anything that rebuilds a `Provenance` or a
+    `FieldConfidence` from parts — a deserialiser, a second module importing
+    the class rather than the singleton — produces a fresh one. Identity is
+    deliberately NOT load-bearing (`confidence.py`), and this is the test that
+    makes that claim true rather than merely written down.
+    """
+    one, another = UnmeasuredType(), UnmeasuredType()
+    assert one is not another, "two constructions must be two objects, or this proves nothing"
+    assert one is not UNMEASURED
+
+    evidence = an_evidence_object(
+        structured_document=a_structured_document(
+            detected_fields=(a_detected_field(confidence=one),),
+        ),
+        confidence_report=a_confidence_report(
+            confidence_scores=(FieldConfidence(field_name="Amount", confidence=another),),
+        ),
+    )
+    assert evidence.structured_document.detected_fields[0].provenance.confidence is one
+    assert evidence.confidence_report.confidence_scores[0].confidence is another
+
+
 def test_a_measured_and_an_unmeasured_field_coexist_in_one_artifact() -> None:
     # A mixed document is the realistic case — a scanned page beside a text
     # layer — and each field must keep its own state. If the schema collapsed
