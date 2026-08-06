@@ -121,3 +121,37 @@ fresh process.
 
 **Rule:** confirm the fix addresses the actual constraint before paying for it. Recorded
 as F-015 and left undone deliberately.
+
+---
+
+## L-011 · A measured number belongs to the commit that produced it
+
+The mutation gate read **95.3% on `7e0efe2`** — killed 2324, survived 115, floor 93. Real,
+CI-produced, and correct. Within the next few hours roughly **3,000 lines of source**
+changed across `cleaner.py`, `classification.py`, `measurement.py`, `config.py`,
+`confidence_report.py` and `pyproject.toml`.
+
+That score did not survive any of it. Not because it was wrong — because it was measured
+on a tree that no longer exists.
+
+The dangerous shape is not a red number. It is a **green number attached to code that has
+since moved**, sitting in a report, read by someone deciding to merge. Law 44 says a result
+exists only if CI produced it; the corollary is that it exists only **for the tree CI ran
+on**. Law 52's *"never claim an improvement without before/after numbers"* fails identically
+when the "after" is stale.
+
+**Rule.** Every number carries its commit — `95.3% on 7e0efe2`, never `95.3%`. When source
+lands after a measurement, say the number has expired **in the same message, unprompted**,
+before anyone can act on it. Never carry a figure forward across a source change; re-measure
+or call it unmeasured, and an unmeasured gate is not a passing gate.
+
+**The corollary that costs real time.** Re-measuring mutation is **~3.4 hours**. That is not
+a footnote, it is a scheduling constraint: expensive gates get **batched to the end of a
+change set** so the cost is paid once instead of per commit, while cheap ones — lint,
+typecheck, tests — re-run freely after every change. Sequencing work to measure once is a
+design decision, and it has to be made before the changes land, not after.
+
+Applies to documents too. A number written into `ROADMAP.md` or `PROGRESS.md` without its
+commit is a claim nobody can check.
+
+**Owner's standing instruction, 2026-08-06:** do this every time anything changes.
