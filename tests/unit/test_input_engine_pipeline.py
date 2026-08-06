@@ -648,8 +648,11 @@ def test_region_readings_carries_an_unscored_text_layer_region_and_marks_it() ->
 
     readings = pipeline.region_readings(reading)
 
-    # nothing is filtered, and reader's own order is kept
-    assert len(readings) == 2
+    # nothing is filtered, and reader's own order is kept. Asserted against
+    # reader's OWN count rather than a literal: "one carried per region reader
+    # produced" is the property, and a literal would still pass if a future
+    # change dropped one region and duplicated another.
+    assert len(readings) == len(reading.regions)
     assert [carried.text for carried in readings] == [
         "scored by OCR",
         "read from a PDF text layer",
@@ -667,9 +670,7 @@ def test_region_readings_carries_an_unscored_text_layer_region_and_marks_it() ->
     # the absence is REPORTED, not merely tolerated: one marker, naming the
     # unscored region's own location, and none for the scored one.
     report = confidence_report_module.record_confidence(a_cleaned_document(), readings, (), ())
-    assert [marker.subject for marker in report.uncertainty_markers] == [
-        repr(unscored.location)
-    ]
+    assert [marker.subject for marker in report.uncertainty_markers] == [repr(unscored.location)]
     assert "no per-region extraction score" in report.uncertainty_markers[0].reason
     # and the count it publishes has the true denominator, not 0 of 0
     assert "0 of 2 region(s) reader attempted" in report.reliability_information
@@ -734,11 +735,26 @@ def test_extracted_regions_converts_a_zero_based_page_index_into_a_one_based_pag
 
 
 def test_extracted_regions_hands_on_an_unscored_region_rather_than_filtering_it_out() -> None:
-    """`region_readings` DROPS an unscored region, because
-    `confidence_report.RegionReading` cannot represent one. `extracted_regions`
-    must NOT: `parser` maps geometry and text, neither of which needs a score,
-    and dropping it here would lose the region's name and location as well as
-    its (absent) score. What cannot be built from it is decided once, later.
+    """`extracted_regions` hands on EVERY region `reader` produced, scored or
+    not: `parser` maps geometry and text, neither of which needs a score, and
+    dropping an unscored region here would lose its name and its location as
+    well as its (absent) score. What cannot be built from it is decided once,
+    later, by `detected_fields`.
+
+    A CORRECTED PREMISE, NOT AN EASED ASSERTION (§J.4, Law 4). This docstring
+    used to open "`region_readings` DROPS an unscored region, because
+    `confidence_report.RegionReading` cannot represent one", and the last line
+    asserted that drop as the deliberate contrast. Both halves have stopped
+    being true: `ReadingState.READ_BUT_UNSCORED` landed, `RegionReading`
+    represents exactly that region, and `region_readings`' filter was removed
+    because its only reason had expired.
+
+    So there is no longer an asymmetry to contrast, and the corrected
+    assertion is STRONGER than the one it replaces: not "one function filters
+    and the other does not", but "NEITHER filters, and both keep reader's
+    count and reader's order". A regression in either function now fails here,
+    where before a regression in `region_readings` towards carrying MORE would
+    have failed a test that was pinning the wrong behaviour.
     """
     scored = reader.TextRegion(
         text="scored by OCR",
@@ -755,13 +771,19 @@ def test_extracted_regions_hands_on_an_unscored_region_rather_than_filtering_it_
     )
 
     carried = pipeline.extracted_regions(reading)
-    both_regions = 2
 
-    assert len(carried) == both_regions
+    assert len(carried) == len(reading.regions)
     assert [region.text for region in carried] == ["scored by OCR", "read from a PDF text layer"]
     assert carried[1].extraction_confidence is None
-    # and the contrast that makes the asymmetry deliberate rather than accidental
-    assert len(pipeline.region_readings(reading)) == 1
+    # NEITHER conversion filters: both keep reader's count and reader's order,
+    # so an unscored region is nameable and locatable on both routes.
+    also_carried = pipeline.region_readings(reading)
+    assert len(also_carried) == len(reading.regions)
+    assert [region.text for region in also_carried] == [
+        "scored by OCR",
+        "read from a PDF text layer",
+    ]
+    assert also_carried[1].extraction_confidence is None
 
 
 def test_parser_numbers_mapped_fields_within_each_page_in_readers_own_order() -> None:

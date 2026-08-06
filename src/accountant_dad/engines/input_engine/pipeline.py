@@ -169,7 +169,8 @@ THE BOUNDARIES THIS MODULE HOLDS ITSELF TO.
     `parsed_fields`, `detected_fields`, `missing_fields`) repackages a value
     into the shape the next call needs; none of them rounds, clamps,
     reinterprets or recomputes a value a sub-engine produced. `region_readings`
-    drops nothing at all (see defect 3); it never edits what it carries. `extracted_regions` performs the one conversion in this file
+    drops nothing at all (see defect 3); it never edits what it carries.
+    `extracted_regions` performs the one conversion in this file
     that changes a number — `page_index + 1` — and that is a change of UNITS
     between two modules' conventions, not a change of value; it is made once,
     and `parser.BoundingBox` refuses a page below 1 so omitting it fails loudly.
