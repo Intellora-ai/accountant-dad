@@ -7,7 +7,31 @@ visible, not when a gate goes green for some other reason.
 Append-only in spirit: an entry changes only its **Status** line, and a closed entry
 keeps its history.
 
-Last updated: **2026-08-05**
+Last updated: **2026-08-06**
+
+---
+
+## Measurement state of this file — Law 56
+
+**HEAD is `e921c3c`. Every metric below carries the commit that produced it, or says
+UNMEASURED.**
+
+`origin/ci/mutation-runs` is at `f31e3cd`. HEAD is **24 commits ahead and unpushed**, and
+GitHub returns *"No commit found for SHA"* for `0babf47` and `e921c3c`. **No CI evidence
+exists for any commit after `f31e3cd`** — see F-026.
+
+Source churn `7e0efe2` → `e921c3c`: `src/` 10 files **+2591 / −300**; `tests/` 18 files
+**+13335 / −148**. Every measurement taken at or before `f31e3cd` is therefore EXPIRED
+for HEAD.
+
+| Metric | Value | Commit | Source | Status |
+|---|---|---|---|---|
+| Mutation | 95.3% — killed 2324, survived 115, 919 not scoreable | `7e0efe2` | GitHub Actions run 31041552213, job 92426852650 | **EXPIRED** — source moved |
+| Mutation runtime | 3h 21m 01s | `7e0efe2` | GitHub Actions, same job | **EXPIRED** |
+| Coverage | 97.64%, effective floor 97.46% | `f31e3cd` | GitHub Actions run 31047186940, job 92445466419 | **EXPIRED** — source moved |
+| Mutation · coverage · anything at HEAD | — | `e921c3c` | — | **UNMEASURED** |
+
+Previous measurements expired because source changed after commit `7e0efe2`.
 
 ---
 
@@ -43,8 +67,17 @@ judgement, and `CLAUDE.md` §E.8 forbids removing what the owner specified.
 | | |
 |---|---|
 | **Severity** | HIGH — it was silently active, not latent |
-| **Status** | ✅ **RESOLVED 2026-08-05** by separating the manifests |
+| **Status** | ⚠️ **PARTLY RESOLVED 2026-08-05** — see the correction below and F-023 |
 | **Found** | 2026-08-05, installing PaddleOCR |
+
+> **STATUS CORRECTED 2026-08-06.** This entry read ✅ RESOLVED. F-023 then measured that
+> the *combined* resolve fails but the *sequential* install still silently downgrades
+> numpy and adds `opencv-contrib-python`, and that
+> `importlib.metadata.version("opencv-python")` reports `5.0.0.93` while
+> `cv2.__version__` reports `4.10.0`. The manifest split was necessary and is not
+> undone; it was never sufficient. A guard now exists (`202bed4`, `5066576` —
+> `tests/unit/test_runtime_library_versions.py`, `tools/ci/assert_imports_match_pins.sh`),
+> so the remaining exposure is tracked under F-023, not here.
 
 **Description.**
 
@@ -240,7 +273,7 @@ is a measurement, not a decision. The agent doing it was killed mid-run.
 
 | | |
 |---|---|
-| **Severity** | LOW now, rising |
+| **Severity** | **MEDIUM, and rising fast** — re-rated 2026-08-06 on measurement |
 | **Status** | ⬜ OPEN · flagged, deliberately not changed |
 | **Found** | 2026-08-05, first completed mutation run |
 
@@ -249,14 +282,24 @@ is a measurement, not a decision. The agent doing it was killed mid-run.
 The first completed run:
 
 ```
-killed 1364 · survived 9 · timeout 220 · score 99.3% (floor 93%)
+killed 1364 · survived 9 · timeout 220        @ commit d85861c  (GitHub Actions)
 ```
 
-The 220 timeouts are outside the denominator. This is deliberate and documented in the
+Those 220 timeouts are outside the denominator. This is deliberate and documented in the
 step's own comment.
 
-**Impact.** A growing timeout population silently shrinks what the 93% floor is measured
-over. At 1593 mutants the timeouts were 77; at the full run they are 220.
+**Impact — and the trend this entry predicted has arrived.** A growing timeout population
+silently shrinks what the floor is measured over.
+
+| Mutants scored out | Commit | Source |
+|---|---|---|
+| 77 not scoreable, at 1593 mutants | `d85861c` (earlier run) | GitHub Actions |
+| 220 not scoreable | `d85861c` | GitHub Actions |
+| **919 not scoreable** — killed 2324, survived 115 | `7e0efe2` | GitHub Actions run 31041552213 |
+
+**919 of 3358 mutants — 27.4% of the population — are outside the denominator** as of
+commit `7e0efe2`. That measurement is now EXPIRED (source moved), so the figure at HEAD
+is **UNMEASURED**, and the direction of travel is the finding, not the exact number.
 
 **Permanent fix.** Not proposed. Changing how a gate scores is a `.github` change
 requiring the owner's approval for that specific change, and `CLAUDE.md` standing rule 9
@@ -275,6 +318,22 @@ forbids inventing a gate rule. **Flagged only.**
 **Description.** Only six checks are on the required list: `build · typecheck · lint ·
 unit tests · coverage · dependency scan`. `mutation` now passes but **is not required**.
 `merge gate` — the one job that polls every other gate — binds nothing.
+
+**Re-verified 2026-08-06** against ruleset `20249495` via the API. The required list is
+still exactly those six, unchanged. Measured on `f31e3cd`, the last commit GitHub has
+judged:
+
+```
+GREEN   build · typecheck · lint · unit tests · coverage · dependency scan
+        mutation · conformance · conformance suite · secret scan · CodeQL
+        typecheck · lint · tests · build   (the legacy combined gate)
+RED     adversarial tests · docker build · end-to-end · golden dataset
+        integration tests · license scan · merge gate · negative controls
+        negative controls 9 of 9 · performance · semgrep
+```
+
+Eleven red, and a pull request carrying them still merges. **`license scan` and `semgrep`
+are two reds this entry never listed** — both are real jobs, both fail, both bind nothing.
 
 **Impact.** A pull request with the required six green and fourteen others red still
 merges. That means merging on *"it compiles and imports resolve."*
@@ -397,11 +456,32 @@ or accepting CI as the only source of mutation data.
 | | |
 |---|---|
 | **Severity** | HIGH — blocks the merge |
-| **Status** | 🔒 **BLOCKED · needs a number from the owner** |
+| **Status** | ✅ **CLOSED 2026-08-06** — cap raised to 500 minutes at `66ab8cd`, and a run has since finished |
 | **Found** | 2026-08-05, after Engine 1 landed |
 
-**Description.** The `mutation` job was cancelled at the 100-minute cap on `ed5d504`.
-It is not failing on score — it cannot finish.
+**How it closed.** `.github/workflows/testing.yml:213` now reads `timeout-minutes: 500`,
+landed by `66ab8cd` — *"the cap was hiding a real score regression, not just a slow job."*
+The number came from the owner, not from an engineer, which is what this entry was
+blocked on.
+
+**Proof it is actually fixed, not merely re-specified.** The `mutation` job ran to
+completion:
+
+```
+Commit : 7e0efe2
+Source : GitHub Actions run 31041552213, job 92426852650
+Runtime: 3h 21m 01s   (19:54:15Z -> 23:15:16Z)
+Result : success
+```
+
+**Guarding test — there is none, and that is itself a finding (Law 3).** A CI job's
+`timeout-minutes` is configuration, not code, and nothing in `tests/` asserts it. If
+someone lowers it back to 100 the only signal is a cancelled run three hours later. The
+guard that would close this properly is a `.github` change and needs the owner's approval
+for that specific change; it is recorded here rather than written.
+
+**Original description, kept.** The `mutation` job was cancelled at the 100-minute cap on
+`ed5d504`. It was not failing on score — it could not finish.
 
 **Two things changed at once, and they multiply.**
 
@@ -421,7 +501,12 @@ mutants that now means loading real models.
 |---|---|---|
 | `d85861c` | 1593 | ✅ **24m14s · 99.3%** (floor 93) — killed 1364, survived 9 |
 | `ed5d504` | 2933 | ❌ **cancelled at 100 min** |
-| `27b44b3` | 2933 + 35 more tests | running; strictly slower than the run that already failed |
+| `2625b58` | — | ✅ finished · **90.6%** — killed 2178, survived 227, 953 not scoreable |
+| `7e0efe2` | 3358 | ✅ **3h 21m 01s · 95.3%** (floor 93) — killed 2324, survived 115, 919 not scoreable |
+| `e921c3c` (HEAD) | — | **UNMEASURED** — never pushed, never run |
+
+Every row above names the commit that produced it. All of them are **EXPIRED** for HEAD:
+`src/` moved by **+2591 / −300** lines after `7e0efe2`.
 
 **Workarounds attempted and rejected — every one, before reporting this.**
 
