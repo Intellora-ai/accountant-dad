@@ -20,7 +20,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from accountant_dad.artifacts.evidence import (
     ConfidenceReport,
@@ -36,7 +36,16 @@ from accountant_dad.artifacts.evidence import (
     StructuredDocument,
     UncertaintyMarker,
 )
-from accountant_dad.confidence import UNMEASURED, ConfidenceOrUnmeasured, UnmeasuredType
+from accountant_dad.confidence import (
+    UNMEASURED,
+    ConfidenceOrUnmeasured,
+    MeasurementFailedType,
+    MeasurementState,
+    NotApplicableType,
+    NotMeasuredType,
+    UnmeasuredType,
+    measurement_state,
+)
 from accountant_dad.identity import ArtifactId, IdentityEnvelope, TransactionId
 
 #: UUID version 4 is random. Named so the assertion below reads as the claim it
@@ -712,11 +721,11 @@ def test_a_report_that_scores_a_reading_nobody_measured_is_refused(invented: Dec
         )
     assert messages(raised) == [
         f"Value error, the Confidence Report and the provenance of 'Amount' disagree: "
-        f"{invented} against UNMEASURED. "
+        f"measured {invented} against not measured ({UNMEASURED.basis}). "
         "Refused rather than reconciled silently — only the confidence "
-        "sub-engine may set a score (INV-2). A measured score on one side "
-        "and UNMEASURED on the other is a disagreement, not a special case: "
-        "one of them asserts a reading nobody took."
+        "sub-engine may set a score (INV-2). Two different measurement "
+        "states are a disagreement, not a special case: one of them "
+        "asserts something about this reading that the other denies."
     ]
 
 
@@ -737,11 +746,11 @@ def test_a_report_that_erases_a_real_measurement_is_refused_too() -> None:
         )
     assert messages(raised) == [
         f"Value error, the Confidence Report and the provenance of 'Amount' disagree: "
-        f"UNMEASURED against {LOW}. "
+        f"not measured ({UNMEASURED.basis}) against measured {LOW}. "
         "Refused rather than reconciled silently — only the confidence "
-        "sub-engine may set a score (INV-2). A measured score on one side "
-        "and UNMEASURED on the other is a disagreement, not a special case: "
-        "one of them asserts a reading nobody took."
+        "sub-engine may set a score (INV-2). Two different measurement "
+        "states are a disagreement, not a special case: one of them "
+        "asserts something about this reading that the other denies."
     ]
 
 
@@ -768,9 +777,14 @@ def test_two_separately_built_absences_agree_and_the_artifact_is_accepted() -> N
     deliberately NOT load-bearing (`confidence.py`), and this is the test that
     makes that claim true rather than merely written down.
     """
-    one, another = UnmeasuredType(), UnmeasuredType()
+    one = NotMeasuredType(basis="the text layer was transcribed, not recognised")
+    another = NotMeasuredType(basis="no recogniser ran over this region")
     assert one is not another, "two constructions must be two objects, or this proves nothing"
     assert one is not UNMEASURED
+    # And the two BASES differ deliberately. Agreement is over the STATE, never
+    # over the prose explaining it — otherwise rewording a reason in one module
+    # would refuse an artifact that states one consistent fact (Amendment 7).
+    assert one.basis != another.basis
 
     evidence = an_evidence_object(
         structured_document=a_structured_document(
@@ -805,6 +819,208 @@ def test_a_measured_and_an_unmeasured_field_coexist_in_one_artifact() -> None:
     scored, unscored = evidence.structured_document.detected_fields
     assert scored.provenance.confidence == HIGH
     assert isinstance(unscored.provenance.confidence, UnmeasuredType)
+
+
+# ── all four states, through the real schema — Amendment 7 ──────────────────
+#
+# Amendment 5 gave the schema ONE way to say "no measurement". Amendment 7 gives
+# it three, because the pipeline produces three genuinely different facts and
+# collapsing them is how the last one was lost. Every test below runs through
+# the real frozen models, never through the type in isolation: a state the type
+# can hold and the artifact cannot is a state that does not exist.
+
+#: The three non-measured states, each with the basis a real producer states.
+#: Built here rather than imported so a test asserting a state cannot be
+#: satisfied by a module-level singleton somebody else already validated.
+NOT_MEASURED = NotMeasuredType(basis="the text layer was transcribed, not recognised")
+NOT_APPLICABLE = NotApplicableType(basis="the grid position holds no text to score")
+FAILED = MeasurementFailedType(basis="the recogniser could not read this region at all")
+
+
+@pytest.mark.parametrize(
+    ("absence", "expected"),
+    [
+        (NOT_MEASURED, MeasurementState.NOT_MEASURED),
+        (NOT_APPLICABLE, MeasurementState.NOT_APPLICABLE),
+        (FAILED, MeasurementState.FAILED),
+    ],
+)
+def test_each_absent_state_survives_the_schema_as_itself(
+    absence: UnmeasuredType, expected: MeasurementState
+) -> None:
+    """Identity AND state. A schema that rebuilt the value, or that stored one
+    absence as another, would still satisfy `isinstance(x, UnmeasuredType)` —
+    which is exactly the collapse the three classes exist to prevent.
+    """
+    provenance = a_provenance(confidence=absence)
+    assert provenance.confidence is absence
+    assert measurement_state(provenance.confidence) is expected
+
+
+@pytest.mark.parametrize("absence", [NOT_MEASURED, NOT_APPLICABLE, FAILED])
+def test_every_absent_state_reaches_the_artifact_carrying_its_reason(
+    absence: UnmeasuredType,
+) -> None:
+    """A state with no reason is a gap that reads as a decision.
+
+    The `basis` is what makes the artifact answer *why* rather than only
+    *whether* — `ENGINE_1_INPUT_ENGINE_RULES.md:626` settles the general form:
+    a bare score cannot become a good question downstream, and a bare absence
+    is worse than a bare score. Asserted on the value that came OUT of the
+    frozen model, so a schema that dropped the reason on the way in goes red.
+    """
+    evidence = an_evidence_object(
+        structured_document=a_structured_document(
+            detected_fields=(a_detected_field(confidence=absence),),
+        ),
+        confidence_report=a_confidence_report(
+            confidence_scores=(FieldConfidence(field_name="Amount", confidence=absence),),
+        ),
+    )
+    carried = evidence.structured_document.detected_fields[0].provenance.confidence
+    assert isinstance(carried, UnmeasuredType)
+    assert carried.basis.strip() != ""
+    assert carried.basis == absence.basis
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        (NOT_MEASURED, NOT_APPLICABLE),
+        (NOT_APPLICABLE, NOT_MEASURED),
+        (NOT_MEASURED, FAILED),
+        (FAILED, NOT_MEASURED),
+        (NOT_APPLICABLE, FAILED),
+        (FAILED, NOT_APPLICABLE),
+    ],
+)
+def test_two_different_absences_are_a_disagreement_the_artifact_refuses(
+    left: UnmeasuredType, right: UnmeasuredType
+) -> None:
+    """THE REFUSAL AMENDMENT 5 COULD NOT EXPRESS, AND THE REASON FOR THREE
+    CLASSES RATHER THAN ONE.
+
+    Under a single sentinel every pair here reads as "both declined to score"
+    and the artifact is accepted. But one side saying *a real value is carried
+    with nothing behind it* and the other saying *there is no value at all* is
+    two components disagreeing about whether the document was even read there.
+    That must not travel into the artifact unremarked.
+
+    Both directions are parametrised: a one-sided implementation that checked
+    only the provenance, or only the report, would otherwise pass.
+    """
+    with pytest.raises(ValidationError) as raised:
+        an_evidence_object(
+            structured_document=a_structured_document(
+                detected_fields=(a_detected_field(confidence=left),),
+            ),
+            confidence_report=a_confidence_report(
+                confidence_scores=(FieldConfidence(field_name="Amount", confidence=right),),
+            ),
+        )
+    assert messages(raised) == [
+        f"Value error, the Confidence Report and the provenance of 'Amount' disagree: "
+        f"{measurement_state(right).value} ({right.basis}) against "
+        f"{measurement_state(left).value} ({left.basis}). "
+        "Refused rather than reconciled silently — only the confidence "
+        "sub-engine may set a score (INV-2). Two different measurement "
+        "states are a disagreement, not a special case: one of them "
+        "asserts something about this reading that the other denies."
+    ]
+
+
+@pytest.mark.parametrize("absence", [NOT_MEASURED, NOT_APPLICABLE, FAILED])
+@pytest.mark.parametrize("invented", [Decimal("1.0000"), Decimal("0.0000"), Decimal("0.4200")])
+def test_no_absent_state_may_be_scored_by_the_report(
+    absence: UnmeasuredType, invented: Decimal
+) -> None:
+    # The measured-against-absent refusal, proven for ALL THREE absences rather
+    # than only for the one that existed first. A state added later that forgot
+    # to inherit the refusal would be a new hole of exactly the old shape.
+    with pytest.raises(ValidationError, match="disagree"):
+        an_evidence_object(
+            structured_document=a_structured_document(
+                detected_fields=(a_detected_field(confidence=absence),),
+            ),
+            confidence_report=a_confidence_report(
+                confidence_scores=(FieldConfidence(field_name="Amount", confidence=invented),),
+            ),
+        )
+
+
+@pytest.mark.parametrize("absence", [NOT_MEASURED, NOT_APPLICABLE, FAILED])
+def test_no_absent_state_may_be_omitted_from_the_report(absence: UnmeasuredType) -> None:
+    # Silence is not a statement about reliability, for any of the three. This
+    # is the check that stops a future "unscorable fields need no entry"
+    # shortcut, which would hide precisely the fields least established.
+    with pytest.raises(ValidationError, match="carries no confidence score"):
+        an_evidence_object(
+            structured_document=a_structured_document(
+                detected_fields=(a_detected_field(confidence=absence),),
+            ),
+            confidence_report=a_confidence_report(confidence_scores=()),
+        )
+
+
+def test_four_fields_in_four_different_states_coexist_in_one_artifact() -> None:
+    """The realistic mixed document, and the completeness claim in one object.
+
+    A scanned block the recogniser scored, a text-layer value nobody scored, a
+    blank grid position with nothing to score, and a region the recogniser
+    could not read. All four are ordinary outcomes of one run over one invoice,
+    and each field must keep its own state — if the schema flattened any pair,
+    a fact would be lost on every real document rather than on an edge case.
+    """
+    states: tuple[tuple[str, ConfidenceOrUnmeasured, MeasurementState], ...] = (
+        ("Amount", HIGH, MeasurementState.MEASURED),
+        ("Invoice No", NOT_MEASURED, MeasurementState.NOT_MEASURED),
+        ("Line 3 Rate", NOT_APPLICABLE, MeasurementState.NOT_APPLICABLE),
+        ("Supplier GSTIN", FAILED, MeasurementState.FAILED),
+    )
+    evidence = an_evidence_object(
+        structured_document=a_structured_document(
+            detected_fields=tuple(
+                a_detected_field(name=name, confidence=value) for name, value, _ in states
+            ),
+        ),
+        confidence_report=a_confidence_report(
+            confidence_scores=tuple(
+                FieldConfidence(field_name=name, confidence=value) for name, value, _ in states
+            ),
+        ),
+    )
+    carried = {
+        field.name: measurement_state(field.provenance.confidence)
+        for field in evidence.structured_document.detected_fields
+    }
+    assert carried == {name: expected for name, _, expected in states}
+    # Four fields, four DISTINCT states — asserted as a set so a schema that
+    # stored every absence as the same one cannot pass by matching names.
+    assert len(set(carried.values())) == len(states)
+
+
+def test_no_confidence_bearing_slot_in_this_schema_carries_a_default() -> None:
+    """ "Never defaulting", enforced against the real models rather than trusted.
+
+    A default is how a fabricated confidence gets in without anyone typing a
+    number: the caller says nothing and the schema supplies "good enough".
+    `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids that by name. Asserted through
+    `model_fields` so it covers every confidence slot the schema has, including
+    one added after this test was written.
+    """
+    slots: list[tuple[type[BaseModel], str]] = [
+        (Provenance, "confidence"),
+        (FieldConfidence, "confidence"),
+    ]
+    for model, name in slots:
+        assert model.model_fields[name].is_required(), (
+            f"{model.__name__}.{name} has a default. A confidence slot that "
+            "fills itself in is how a number nobody measured reaches a ledger."
+        )
+    # And the omission really is refused, not merely declared required.
+    for model, name in slots:
+        with pytest.raises(ValidationError, match=name):
+            model.model_validate({})
 
 
 def test_an_extra_score_for_something_that_is_not_a_detected_field_is_allowed() -> None:

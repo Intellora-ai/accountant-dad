@@ -29,7 +29,13 @@ from accountant_dad.confidence import (
     UNMEASURED,
     Confidence,
     ConfidenceOrUnmeasured,
+    MeasurementFailedType,
+    MeasurementState,
+    NotApplicableType,
+    NotMeasuredType,
     UnmeasuredType,
+    describe_measurement,
+    measurement_state,
     records_the_same_measurement,
 )
 from accountant_dad.engines.input_engine.measurement import ABSENT, AbsentType
@@ -41,6 +47,14 @@ adapter: TypeAdapter[Decimal] = TypeAdapter(Confidence)
 #: assert the refusals are word for word identical, which is what proves one
 #: scale exists rather than two.
 either: TypeAdapter[Decimal | UnmeasuredType] = TypeAdapter(ConfidenceOrUnmeasured)
+
+#: One representative per non-measured state (Amendment 7). Built here, at
+#: module scope, because `parametrize` evaluates its arguments at import time —
+#: and built rather than imported because only NOT_MEASURED has a shared
+#: constant: NOT_APPLICABLE and FAILED deliberately have none, so that no
+#: caller can reach for one without stating why it applies.
+NOT_APPLICABLE = NotApplicableType(basis="the grid position holds no text to score")
+FAILED = MeasurementFailedType(basis="the recogniser could not read this region at all")
 
 
 class Holder(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel's own signature carries Any
@@ -301,8 +315,8 @@ def test_the_sentinel_refuses_to_have_a_truth_value() -> None:
     with pytest.raises(TypeError) as raised:
         bool(UNMEASURED)
     assert str(raised.value) == (
-        "UNMEASURED has no truth value. Test it with "
-        "`isinstance(x, UnmeasuredType)` - `if not confidence:` is exactly "
+        "NOT_MEASURED has no truth value. Test it with "
+        "`measurement_state(x)` - `if not confidence:` is exactly "
         "the collapse into a measured zero this type exists to prevent."
     )
 
@@ -320,47 +334,92 @@ def test_every_ordinary_way_of_reaching_for_the_truth_value_also_raises() -> Non
         _ = UNMEASURED and Decimal("1.0000")
 
 
-def test_the_sentinel_cannot_grow_an_attribute() -> None:
-    # `__slots__ = ()`. A sentinel that can carry state can stop being one —
-    # two instances with different attributes are two different sentinels, and
-    # `isinstance` would stop being a complete answer. The absent `__dict__` is
-    # the STRUCTURAL form of that claim: without an instance dictionary there
-    # is no attribute to set, so this cannot be defeated by a subclass that
-    # merely catches the error.
-    assert UnmeasuredType.__slots__ == ()
-    assert not hasattr(UNMEASURED, "__dict__")
+def test_no_absent_state_can_grow_an_attribute() -> None:
+    # `basis` is the ONLY attribute any of them carries, and it is fixed at
+    # construction. A value that can carry arbitrary state can stop being the
+    # thing it claims to be. The absent `__dict__` is the STRUCTURAL form of
+    # that claim: without an instance dictionary there is no attribute to set,
+    # so this cannot be defeated by a subclass that merely catches the error.
+    assert UnmeasuredType.__slots__ == ("basis",)
+    for kind in (NotMeasuredType, NotApplicableType, MeasurementFailedType):
+        assert kind.__slots__ == (), f"{kind.__name__} declares a slot of its own"
+    for absence in (UNMEASURED, NOT_APPLICABLE, FAILED):
+        assert not hasattr(absence, "__dict__")
+        # Runtime, not the typechecker: `__setattr__` accepts any name as far
+        # as mypy is concerned, so this refusal has to be proven by running it.
+        with pytest.raises(AttributeError):
+            absence.invented = "a second fact"
 
 
-def test_the_sentinel_says_what_it_is() -> None:
-    # It reaches humans through refusal messages and artifact dumps. "<object
+def test_the_basis_cannot_be_rewritten_after_the_artifact_carrying_it_exists() -> None:
+    # Immutability is not decoration here. The basis is the artifact's own
+    # answer to "why is there no score?", and a fact that can be edited in
+    # place is a fact that can be rewritten after somebody audited it.
+    with pytest.raises(AttributeError, match="is immutable"):
+        UNMEASURED.basis = "something more reassuring"
+
+
+@pytest.mark.parametrize(
+    ("absence", "expected"),
+    [(UNMEASURED, "NOT_MEASURED"), (NOT_APPLICABLE, "NOT_APPLICABLE"), (FAILED, "FAILED")],
+)
+def test_each_absent_state_says_which_one_it_is(absence: UnmeasuredType, expected: str) -> None:
+    # They reach humans through refusal messages and artifact dumps. "<object
     # at 0x10a…>" in a validation error tells a reader nothing about why the
-    # artifact was refused.
-    assert repr(UNMEASURED) == "UNMEASURED"
+    # artifact was refused — and a repr shared by all three would tell them
+    # something WRONG, which is worse.
+    assert repr(absence) == expected
 
 
-def test_the_sentinel_is_not_a_number_and_will_not_pretend_to_be_one() -> None:
+def test_the_three_absences_never_share_a_repr() -> None:
+    # The disconfirming form of the test above: a single `__repr__` on the base
+    # returning one word would satisfy "says what it is" for whichever state
+    # happened to be parametrised first.
+    absences = (UNMEASURED, NOT_APPLICABLE, FAILED)
+    reprs = {repr(absence) for absence in absences}
+    assert len(reprs) == len(absences), f"two absent states print the same word: {sorted(reprs)}"
+
+
+@pytest.mark.parametrize("absence", [UNMEASURED, NOT_APPLICABLE, FAILED])
+def test_no_absent_state_is_a_number_or_will_pretend_to_be_one(absence: UnmeasuredType) -> None:
     # Ordering and arithmetic must be IMPOSSIBLE, not merely discouraged. If
-    # any of these succeeded, "not measured" would have a magnitude, and a
+    # any of these succeeded, an absence would have a magnitude, and a
     # threshold comparison written against it would silently take a branch.
     for combine in (operator.add, operator.sub, operator.mul):
         with pytest.raises(TypeError):
-            combine(UNMEASURED, MIN)
+            combine(absence, MIN)
         with pytest.raises(TypeError):
-            combine(MAX, UNMEASURED)
+            combine(MAX, absence)
 
-    # Ordering, which is what a threshold comparison would reach for. Asserted
-    # against the stdlib's own numeric ABC rather than by attempting `<`: the
-    # typechecker refuses to compile the attempt at all, which is itself the
-    # first line of this defence and is worth keeping rather than silencing.
-    assert not isinstance(UNMEASURED, numbers.Number)
-    assert not isinstance(UNMEASURED, Decimal)
+    # Ordering, which is what a threshold comparison reaches for FIRST. Every
+    # one of the four raises, and the message names the state rather than
+    # leaving Python's generic "not supported between instances of" — a reader
+    # who wrote `if confidence < floor:` needs to be told there is no floor to
+    # be below, not that two types are unrelated.
+    for compare in (operator.lt, operator.le, operator.gt, operator.ge):
+        with pytest.raises(TypeError, match="has no magnitude"):
+            compare(absence, MIN)
+
+    # And it is not a number by the stdlib's own reckoning either.
+    assert not isinstance(absence, numbers.Number)
 
     # And it converts to no numeric type, so `float(...)` cannot launder it
     # into one. Asserted on the protocol rather than on a raised error: a
     # `__float__` added later would make the conversion succeed, and this goes
     # red at the moment it is added rather than at the first wrong entry.
     for numeric_protocol in ("__float__", "__int__", "__index__", "__complex__"):
-        assert not hasattr(UNMEASURED, numeric_protocol)
+        assert not hasattr(absence, numeric_protocol)
+
+
+def test_no_absent_state_is_a_decimal_by_class_and_not_merely_by_instance() -> None:
+    # The class relationship, not one object's. `isinstance` on the singleton
+    # would still hold if some OTHER instance were built as a `Decimal`
+    # subclass — which is the one shape Amendment 6 named as the wrong answer,
+    # because it would satisfy every existing annotation and bring the
+    # collapse into zero back wearing the type system's approval.
+    for kind in (UnmeasuredType, NotMeasuredType, NotApplicableType, MeasurementFailedType):
+        assert not issubclass(kind, Decimal), f"{kind.__name__} is a Decimal"
+        assert not issubclass(kind, numbers.Number), f"{kind.__name__} is a Number"
 
 
 def test_the_sentinel_is_never_equal_to_a_score_at_either_end_of_the_scale() -> None:
@@ -416,10 +475,13 @@ def test_two_unmeasured_slots_agree() -> None:
 
 def test_identity_is_not_load_bearing_for_agreement() -> None:
     # A second instance behaves identically. `records_the_same_measurement`
-    # asks what each value IS, so a caller who constructs `UnmeasuredType()`
-    # instead of importing the singleton does not get a spurious disagreement.
-    assert records_the_same_measurement(UnmeasuredType(), UNMEASURED)
-    assert records_the_same_measurement(UNMEASURED, UnmeasuredType())
+    # asks what STATE each value is in, so a caller who constructs its own
+    # `NotMeasuredType` instead of importing the constant does not get a
+    # spurious disagreement.
+    mine = NotMeasuredType(basis="a reason of my own")
+    assert records_the_same_measurement(mine, UNMEASURED)
+    assert records_the_same_measurement(UNMEASURED, mine)
+    assert mine.basis != UNMEASURED.basis, "or this proves nothing about the basis"
 
 
 @pytest.mark.parametrize(("left", "right"), [("0.98", "0.9800"), ("0.5", "0.50"), ("1", "1.0000")])
@@ -449,6 +511,153 @@ def test_a_measurement_and_an_absent_one_disagree_in_both_directions(score: str)
     """
     assert not records_the_same_measurement(Decimal(score), UNMEASURED)
     assert not records_the_same_measurement(UNMEASURED, Decimal(score))
+
+
+# ── four states: the complete pairing matrix — Amendment 7 ───────────────────
+#
+# The tests above cover the two states Amendment 5 had. These prove the rule
+# over ALL FOUR, exhaustively, because "we extended it" is a claim and a full
+# matrix is the only evidence for it. Every pair is generated rather than
+# listed, so a fifth state added later WIDENS this test automatically instead
+# of leaving a hole nobody notices.
+
+#: One representative per state, and a second measured value so
+#: measured-vs-measured is not tested only against itself.
+A_SCORE = Decimal("0.3100")
+THE_SAME_SCORE_PADDED = Decimal("0.31")
+ANOTHER_SCORE = Decimal("0.9800")
+
+#: Every distinct state, each with the value that represents it here.
+BY_STATE: dict[MeasurementState, Decimal | UnmeasuredType] = {
+    MeasurementState.MEASURED: A_SCORE,
+    MeasurementState.NOT_MEASURED: UNMEASURED,
+    MeasurementState.NOT_APPLICABLE: NOT_APPLICABLE,
+    MeasurementState.FAILED: FAILED,
+}
+
+
+def test_the_matrix_covers_every_state_the_enum_declares() -> None:
+    """The matrix below is only exhaustive if this is true.
+
+    A fifth state added to `MeasurementState` and not added here would leave
+    every pairing test silently passing over a state nobody checked — the exact
+    shape of the hole Amendment 5 left, one level up. This turns that into a
+    red test at the moment the member is added.
+    """
+    assert set(BY_STATE) == set(MeasurementState)
+
+
+@pytest.mark.parametrize("state", list(MeasurementState))
+def test_each_representative_really_is_in_the_state_it_stands_for(state: MeasurementState) -> None:
+    # Guards the guard. If a representative were mislabelled, the matrix would
+    # test one state twice and another never.
+    assert measurement_state(BY_STATE[state]) is state
+
+
+@pytest.mark.parametrize("right_state", list(MeasurementState))
+@pytest.mark.parametrize("left_state", list(MeasurementState))
+def test_every_pairing_of_states_agrees_exactly_when_the_states_match(
+    left_state: MeasurementState, right_state: MeasurementState
+) -> None:
+    """THE COMPLETE TRUTH TABLE — all sixteen pairings, generated.
+
+    The rule, stated once: two slots agree when they are in the SAME state,
+    and measured slots additionally need equal numbers. Everything else
+    disagrees, including every pair of two DIFFERENT absences — one side
+    saying "a real value is carried with nothing behind it" and the other
+    saying "there is nothing here at all" is a genuine contradiction about
+    whether the document was read at that spot.
+    """
+    left, right = BY_STATE[left_state], BY_STATE[right_state]
+    expected = left_state is right_state
+    assert records_the_same_measurement(left, right) is expected
+    # Symmetry, asserted rather than assumed. An implementation that tested
+    # only `isinstance(left, ...)` would pass one direction and fail the other.
+    assert records_the_same_measurement(right, left) is expected
+
+
+def test_two_measured_slots_in_the_same_state_still_have_to_carry_the_same_number() -> None:
+    # The matrix says "same state agrees"; for MEASURED that is necessary and
+    # NOT sufficient. Without this, an implementation comparing only states
+    # would pass every cell above while calling 0.31 and 0.98 the same reading.
+    assert records_the_same_measurement(A_SCORE, THE_SAME_SCORE_PADDED)
+    assert not records_the_same_measurement(A_SCORE, ANOTHER_SCORE)
+
+
+@pytest.mark.parametrize("state", list(MeasurementState))
+def test_the_widened_slot_accepts_every_state_the_enum_declares(state: MeasurementState) -> None:
+    # The type may hold four states and the SLOT may hold two would be a type
+    # nobody can use. Identity, so a validator that rebuilt the value — losing
+    # its basis on the way — goes red.
+    value = BY_STATE[state]
+    assert either.validate_python(value) is value
+
+
+# ── the base is abstract, and every absence must state its reason ────────────
+
+
+def test_the_base_state_cannot_be_constructed_and_says_why() -> None:
+    """ "A measurement is absent and I decline to say which" is exactly the
+    *unknown but looks valid* shape the four states exist to remove.
+
+    Equality on the message: a bare `raise TypeError()` still raises, still
+    passes `pytest.raises`, and sends whoever hits it looking for a bug in
+    their arguments rather than for the three concrete classes.
+    """
+    with pytest.raises(TypeError) as raised:
+        UnmeasuredType("some absence or other")
+    assert str(raised.value) == (
+        "UnmeasuredType is abstract: it says a measurement is absent "
+        "without saying which absence. Construct NotMeasuredType, "
+        "NotApplicableType or MeasurementFailedType - naming which of "
+        "the three is the whole reason the base exists."
+    )
+
+
+@pytest.mark.parametrize("kind", [NotMeasuredType, NotApplicableType, MeasurementFailedType])
+@pytest.mark.parametrize("blank", ["", "   ", "\t\n"])
+def test_no_absence_may_be_constructed_without_a_stated_reason(
+    kind: type[UnmeasuredType], blank: str
+) -> None:
+    # A padded blank is a blank — the same rule `evidence._meaningful_text`
+    # applies to a source id, applied to the reason a measurement is missing.
+    # `ENGINE_1_INPUT_ENGINE_RULES.md:626`: a bare score cannot become a good
+    # question downstream, and a bare absence is worse than a bare score.
+    with pytest.raises(ValueError, match="non-blank basis"):
+        kind(blank)
+
+
+@pytest.mark.parametrize("state", list(MeasurementState))
+def test_every_state_describes_itself_in_words_a_reader_can_act_on(
+    state: MeasurementState,
+) -> None:
+    # `describe_measurement` is what reaches a human inside a refusal. It must
+    # name the state, and for an absence it must carry the reason too — "not
+    # measured" with no reason sends the reader back to the source to find out
+    # why, which is the entire cost the basis exists to remove.
+    value = BY_STATE[state]
+    described = describe_measurement(value)
+    assert described.startswith(state.value)
+    if isinstance(value, UnmeasuredType):
+        assert value.basis in described
+
+
+@pytest.mark.parametrize("impostor", [1.0, 0, True, "0.98", None, ABSENT])
+def test_nothing_that_merely_looks_like_a_score_is_reported_as_measured(
+    impostor: object,
+) -> None:
+    """The inspector is hostile, not permissive, and this is why.
+
+    `float(True)` is `1.0`; `1.0` is both the forbidden default
+    (`ENGINE_1_INPUT_ENGINE_RULES.md:625`) and the top of the scale. A
+    classifier that answered MEASURED for any of these would launder a
+    fabricated score into every downstream branch that asks which state a
+    value is in (Law 24). `ABSENT` is in the list because it is the mistake a
+    reader is most likely to make — both are module-level capitals meaning
+    "nothing here" — and it means a different thing.
+    """
+    with pytest.raises(TypeError, match="neither a Decimal measurement nor a stated absence"):
+        measurement_state(impostor)  # type: ignore[arg-type]
 
 
 # The sentinel's behaviour as a field on a real frozen model is asserted in
