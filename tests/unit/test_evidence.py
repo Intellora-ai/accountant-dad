@@ -36,6 +36,7 @@ from accountant_dad.artifacts.evidence import (
     StructuredDocument,
     UncertaintyMarker,
 )
+from accountant_dad.confidence import UNMEASURED, ConfidenceOrUnmeasured, UnmeasuredType
 from accountant_dad.identity import ArtifactId, IdentityEnvelope, TransactionId
 
 #: UUID version 4 is random. Named so the assertion below reads as the claim it
@@ -56,7 +57,7 @@ LOW = Decimal("0.4200")
 def a_provenance(
     *,
     source_type: SourceType = SourceType.DOCUMENT,
-    confidence: Decimal = HIGH,
+    confidence: ConfidenceOrUnmeasured = HIGH,
     evidence_reference: str = "page 1, box at (240, 118)",
 ) -> Provenance:
     return Provenance(
@@ -73,7 +74,7 @@ def a_detected_field(
     *,
     name: str = "Amount",
     value: str | None = "19800.00",
-    confidence: Decimal = HIGH,
+    confidence: ConfidenceOrUnmeasured = HIGH,
     source_type: SourceType = SourceType.DOCUMENT,
 ) -> DetectedField:
     return DetectedField(
@@ -609,6 +610,162 @@ def test_the_same_score_written_at_a_different_scale_still_agrees() -> None:
         ),
     )
     assert evidence.confidence_report.confidence_scores[0].confidence == Decimal("0.98")
+
+
+# ── the absence of a measurement, through the real schema — Amendment 5 ──────
+
+
+def test_a_fact_may_record_that_nothing_measured_it() -> None:
+    # The whole amendment, at its smallest. `reader.read_pdf_text_layer` scores
+    # nothing and a PDF text layer is the MVP's primary input, so a provenance
+    # that cannot say "not measured" cannot describe the MVP's own documents.
+    # Identity, not equality: a schema that rebuilt the sentinel would still
+    # look right under `isinstance`.
+    provenance = a_provenance(confidence=UNMEASURED)
+    assert provenance.confidence is UNMEASURED
+
+
+def test_the_confidence_attribute_is_still_mandatory_and_none_is_still_refused() -> None:
+    # INV-11 is untouched: six attributes, none optional. The sentinel makes the
+    # VALUE absent, never the ATTRIBUTE. `None` is the shape the widening would
+    # most plausibly have leaked in — it already means three other things in
+    # this pipeline — so it must still be refused rather than quietly stored as
+    # a second kind of nothing.
+    payload: dict[str, object] = {
+        "source_type": SourceType.DOCUMENT,
+        "source_id": "invoice-481.pdf",
+        "evidence_reference": "page 1",
+        "timestamp": WHEN,
+        "confidence": None,
+        "corroborated": Corroborated.NOT_ASSESSED,
+    }
+    with pytest.raises(ValidationError):
+        Provenance.model_validate(payload)
+
+
+def test_an_unmeasured_field_crosses_when_the_report_says_the_same_thing() -> None:
+    """THE STATE THAT USED TO BE UNREPRESENTABLE, END TO END.
+
+    Both sides say "nobody measured this", so there is nothing to contradict
+    and the artifact is valid. This is what makes a text-layer reading
+    emittable at all — before the amendment `detected_fields` had to be empty,
+    and `ENGINE_1_INPUT_ENGINE_RULES.md:245` was satisfied by dropping every
+    value rather than by carrying all three.
+    """
+    evidence = an_evidence_object(
+        structured_document=a_structured_document(
+            detected_fields=(a_detected_field(confidence=UNMEASURED),),
+        ),
+        confidence_report=a_confidence_report(
+            confidence_scores=(FieldConfidence(field_name="Amount", confidence=UNMEASURED),),
+        ),
+    )
+    field = evidence.structured_document.detected_fields[0]
+    assert isinstance(field.provenance.confidence, UnmeasuredType)
+    assert isinstance(evidence.confidence_report.confidence_scores[0].confidence, UnmeasuredType)
+
+
+def test_an_unmeasured_field_with_no_report_entry_is_still_refused() -> None:
+    # The check is EXTENDED, never exempted. "Nobody measured this" is a
+    # statement about reliability and silence is not, so an unscored field
+    # still has to appear in the report. Exempting it would have hidden exactly
+    # the fields whose reliability is least established.
+    with pytest.raises(ValidationError) as raised:
+        an_evidence_object(
+            structured_document=a_structured_document(
+                detected_fields=(a_detected_field(confidence=UNMEASURED),),
+            ),
+            confidence_report=a_confidence_report(confidence_scores=()),
+        )
+    assert messages(raised) == [
+        "Value error, detected field 'Amount' carries no confidence score. "
+        "A value whose reliability the artifact does not state must not be emitted."
+    ]
+
+
+@pytest.mark.parametrize("invented", [Decimal("1.0000"), Decimal("0.0000"), Decimal("0.4200")])
+def test_a_report_that_scores_a_reading_nobody_measured_is_refused(invented: Decimal) -> None:
+    """THE ATTACK THIS AMENDMENT EXISTS TO STOP, ASSERTED DIRECTLY.
+
+    The provenance says nothing measured this value; the Confidence Report
+    claims a number for it. One of the two is asserting a reading nobody took,
+    and the artifact must not be emitted either way.
+
+    `1.0000` and `0.0000` are parametrised on purpose — they are the two
+    numbers a "helpful" default would produce, and the two
+    `ENGINE_1_INPUT_ENGINE_RULES.md:625` and Law 24 forbid inventing. `0.4200`
+    is there so this cannot pass by testing only the extremes.
+
+    Equality on the message, not `match=`: a refusal reworded down to "no"
+    still contains "Amount" and still passes a substring check, and the wording
+    is what tells the next reader that the two sides disagree about whether a
+    measurement exists at all rather than about its magnitude.
+    """
+    with pytest.raises(ValidationError) as raised:
+        an_evidence_object(
+            structured_document=a_structured_document(
+                detected_fields=(a_detected_field(confidence=UNMEASURED),),
+            ),
+            confidence_report=a_confidence_report(
+                confidence_scores=(FieldConfidence(field_name="Amount", confidence=invented),),
+            ),
+        )
+    assert messages(raised) == [
+        f"Value error, the Confidence Report and the provenance of 'Amount' disagree: "
+        f"{invented} against UNMEASURED. "
+        "Refused rather than reconciled silently — only the confidence "
+        "sub-engine may set a score (INV-2). A measured score on one side "
+        "and UNMEASURED on the other is a disagreement, not a special case: "
+        "one of them asserts a reading nobody took."
+    ]
+
+
+def test_a_report_that_erases_a_real_measurement_is_refused_too() -> None:
+    # The same rule from the other side, and the more dangerous direction: a
+    # field the reader genuinely scored at 0.4200 while the report claims
+    # nobody measured it. That would hide a weak reading behind "not measured",
+    # which reads as blameless. Asserted separately so a one-sided
+    # implementation cannot pass.
+    with pytest.raises(ValidationError) as raised:
+        an_evidence_object(
+            structured_document=a_structured_document(
+                detected_fields=(a_detected_field(confidence=LOW),),
+            ),
+            confidence_report=a_confidence_report(
+                confidence_scores=(FieldConfidence(field_name="Amount", confidence=UNMEASURED),),
+            ),
+        )
+    assert messages(raised) == [
+        f"Value error, the Confidence Report and the provenance of 'Amount' disagree: "
+        f"UNMEASURED against {LOW}. "
+        "Refused rather than reconciled silently — only the confidence "
+        "sub-engine may set a score (INV-2). A measured score on one side "
+        "and UNMEASURED on the other is a disagreement, not a special case: "
+        "one of them asserts a reading nobody took."
+    ]
+
+
+def test_a_measured_and_an_unmeasured_field_coexist_in_one_artifact() -> None:
+    # A mixed document is the realistic case — a scanned page beside a text
+    # layer — and each field must keep its own state. If the schema collapsed
+    # them, one of the two facts would be lost on every real invoice.
+    evidence = an_evidence_object(
+        structured_document=a_structured_document(
+            detected_fields=(
+                a_detected_field(name="Amount", confidence=HIGH),
+                a_detected_field(name="Invoice No", confidence=UNMEASURED),
+            ),
+        ),
+        confidence_report=a_confidence_report(
+            confidence_scores=(
+                FieldConfidence(field_name="Amount", confidence=HIGH),
+                FieldConfidence(field_name="Invoice No", confidence=UNMEASURED),
+            ),
+        ),
+    )
+    scored, unscored = evidence.structured_document.detected_fields
+    assert scored.provenance.confidence == HIGH
+    assert isinstance(unscored.provenance.confidence, UnmeasuredType)
 
 
 def test_an_extra_score_for_something_that_is_not_a_detected_field_is_allowed() -> None:

@@ -15,14 +15,32 @@ audit afterwards.
 
 from __future__ import annotations
 
+import numbers
+import operator
 from decimal import Decimal
 
 import pytest
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
-from accountant_dad.confidence import CONFIDENCE_PLACES, MAX, MIN, Confidence
+from accountant_dad.confidence import (
+    CONFIDENCE_PLACES,
+    MAX,
+    MIN,
+    UNMEASURED,
+    Confidence,
+    ConfidenceOrUnmeasured,
+    UnmeasuredType,
+    records_the_same_measurement,
+)
+from accountant_dad.engines.input_engine.measurement import ABSENT, AbsentType
 
 adapter: TypeAdapter[Decimal] = TypeAdapter(Confidence)
+
+#: The widened slot Amendment 5 introduced. Held beside `adapter`, never
+#: instead of it: several tests below run the SAME input through both and
+#: assert the refusals are word for word identical, which is what proves one
+#: scale exists rather than two.
+either: TypeAdapter[Decimal | UnmeasuredType] = TypeAdapter(ConfidenceOrUnmeasured)
 
 
 class Holder(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel's own signature carries Any
@@ -222,3 +240,219 @@ def test_a_model_field_rejects_a_float_too() -> None:
     # The constraint must travel with the type, not live only in the adapter.
     with pytest.raises(ValidationError):
         Holder(score=0.98)  # type: ignore[arg-type]
+
+
+# ── the absence of a measurement — Amendment 5 ───────────────────────────────
+#
+# `UNMEASURED` exists because `reader.read_pdf_text_layer` scores nothing and a
+# PDF text layer is the MVP's primary input. The dangerous direction here is
+# the SILENT one: a sentinel that reads as falsy, compares equal to zero, or
+# converts to a number would let "nobody measured this" become "this measured
+# zero" with nothing raised and nothing logged. Every test below attacks that
+# direction specifically.
+
+
+def test_the_sentinel_survives_validation_as_itself_and_is_not_converted() -> None:
+    # Identity, not equality. A validator that rebuilt the sentinel would still
+    # compare equal under `isinstance`, and this is the assertion that tells a
+    # pass-through apart from a reconstruction.
+    assert either.validate_python(UNMEASURED) is UNMEASURED
+
+
+def test_the_widened_slot_enforces_the_identical_scale_as_confidence_itself() -> None:
+    """The whole point of delegating to one validator (Law 14, Law 19).
+
+    A SECOND scale is the exact failure `confidence.py:16-24` was written
+    after — two schemas built the same day gave the word two incompatible
+    types. So this asserts the widened slot's refusals are the SAME STRINGS the
+    narrow type produces, not merely that it also refuses something.
+    """
+    for bad in (0.98, 1, "0.98", None, True, Decimal("1.5"), Decimal("0.00001"), Decimal("NaN")):
+        with pytest.raises(ValidationError) as narrow:
+            adapter.validate_python(bad)
+        with pytest.raises(ValidationError) as widened:
+            either.validate_python(bad)
+        assert messages(widened) == messages(narrow), (
+            f"the widened slot worded its refusal of {bad!r} differently from "
+            "`Confidence`, so two scales exist where the repository claims one"
+        )
+
+
+def test_a_real_score_still_passes_through_the_widened_slot_unchanged() -> None:
+    # Adding a state must not cost the state that already worked. Verbatim, so
+    # Decimal("0.5") is still not padded to "0.5000".
+    assert str(either.validate_python(Decimal("0.5"))) == "0.5"
+    assert either.validate_python(Decimal("0.3100")) == Decimal("0.3100")
+
+
+def test_the_sentinel_refuses_to_have_a_truth_value() -> None:
+    """THE ONE THAT MATTERS MOST, AND THE REASON THIS IS A CLASS.
+
+    Written `if not provenance.confidence:`, a reading nobody scored and a
+    reading a recogniser scored at rock bottom take the same branch — the most
+    alarming signal in the artifact silently becoming the most reassuring
+    reading of it. Answering `False` would make that bug invisible; raising
+    makes it a stack trace.
+
+    Equality on the message, not `pytest.raises` alone: a `raise TypeError()`
+    with the explanation deleted still raises, still passes a bare `raises`,
+    and sends whoever hits it to go and add a `bool()` call.
+    """
+    with pytest.raises(TypeError) as raised:
+        bool(UNMEASURED)
+    assert str(raised.value) == (
+        "UNMEASURED has no truth value. Test it with "
+        "`isinstance(x, UnmeasuredType)` - `if not confidence:` is exactly "
+        "the collapse into a measured zero this type exists to prevent."
+    )
+
+
+def test_every_ordinary_way_of_reaching_for_the_truth_value_also_raises() -> None:
+    # `__bool__` is not only called by `bool()`. Each of these is a real line
+    # someone writes without thinking, and each must fail loudly rather than
+    # take a branch about a measurement that does not exist.
+    with pytest.raises(TypeError):
+        if UNMEASURED:
+            pass
+    with pytest.raises(TypeError):
+        _ = not UNMEASURED
+    with pytest.raises(TypeError):
+        _ = UNMEASURED and Decimal("1.0000")
+
+
+def test_the_sentinel_cannot_grow_an_attribute() -> None:
+    # `__slots__ = ()`. A sentinel that can carry state can stop being one —
+    # two instances with different attributes are two different sentinels, and
+    # `isinstance` would stop being a complete answer. The absent `__dict__` is
+    # the STRUCTURAL form of that claim: without an instance dictionary there
+    # is no attribute to set, so this cannot be defeated by a subclass that
+    # merely catches the error.
+    assert UnmeasuredType.__slots__ == ()
+    assert not hasattr(UNMEASURED, "__dict__")
+
+
+def test_the_sentinel_says_what_it_is() -> None:
+    # It reaches humans through refusal messages and artifact dumps. "<object
+    # at 0x10a…>" in a validation error tells a reader nothing about why the
+    # artifact was refused.
+    assert repr(UNMEASURED) == "UNMEASURED"
+
+
+def test_the_sentinel_is_not_a_number_and_will_not_pretend_to_be_one() -> None:
+    # Ordering and arithmetic must be IMPOSSIBLE, not merely discouraged. If
+    # any of these succeeded, "not measured" would have a magnitude, and a
+    # threshold comparison written against it would silently take a branch.
+    for combine in (operator.add, operator.sub, operator.mul):
+        with pytest.raises(TypeError):
+            combine(UNMEASURED, MIN)
+        with pytest.raises(TypeError):
+            combine(MAX, UNMEASURED)
+
+    # Ordering, which is what a threshold comparison would reach for. Asserted
+    # against the stdlib's own numeric ABC rather than by attempting `<`: the
+    # typechecker refuses to compile the attempt at all, which is itself the
+    # first line of this defence and is worth keeping rather than silencing.
+    assert not isinstance(UNMEASURED, numbers.Number)
+    assert not isinstance(UNMEASURED, Decimal)
+
+    # And it converts to no numeric type, so `float(...)` cannot launder it
+    # into one. Asserted on the protocol rather than on a raised error: a
+    # `__float__` added later would make the conversion succeed, and this goes
+    # red at the moment it is added rather than at the first wrong entry.
+    for numeric_protocol in ("__float__", "__int__", "__index__", "__complex__"):
+        assert not hasattr(UNMEASURED, numeric_protocol)
+
+
+def test_the_sentinel_is_never_equal_to_a_score_at_either_end_of_the_scale() -> None:
+    # `==` is not how agreement is decided (see below), but a caller WILL write
+    # it, and it must not answer "yes" for the two values a mistake would most
+    # plausibly produce.
+    assert UNMEASURED != MIN
+    assert UNMEASURED != MAX
+    assert MIN != UNMEASURED
+    assert MAX != UNMEASURED
+
+
+# ── it is NOT `measurement.ABSENT`, and the two must never cross ─────────────
+
+
+def test_the_two_sentinels_are_different_types_and_neither_satisfies_the_other() -> None:
+    """`measurement.ABSENT` and `UNMEASURED` say different things.
+
+    `ABSENT` — a whole signal CATEGORY was never produced for the document;
+    nothing was attempted. `UNMEASURED` — the value WAS read, is real, and
+    travels into the artifact; only its score is missing.
+
+    If one class served both, `isinstance` would answer yes to both and the
+    distinction both types exist to preserve would be gone — the exact collapse
+    `measurement.py:41-59` refuses. This is the test that keeps a future
+    "simplification" from merging them.
+    """
+    assert not isinstance(UNMEASURED, AbsentType)
+    assert not isinstance(ABSENT, UnmeasuredType)
+    # Neither may become the other by SUBCLASSING either, which is how a
+    # well-meant "these are the same thing" refactor would most plausibly
+    # arrive — and which the two `isinstance` checks above would not catch,
+    # because a subclass satisfies its parent.
+    assert not issubclass(UnmeasuredType, AbsentType)
+    assert not issubclass(AbsentType, UnmeasuredType)
+
+
+def test_a_confidence_slot_refuses_the_measurement_stores_sentinel() -> None:
+    # Handing `ABSENT` to a confidence slot is a real mistake — both are
+    # module-level singletons spelled in capitals — and it must be refused
+    # rather than stored as a second kind of nothing.
+    with pytest.raises(ValidationError):
+        either.validate_python(ABSENT)
+
+
+# ── what "agreement" means, as a complete truth table ────────────────────────
+
+
+def test_two_unmeasured_slots_agree() -> None:
+    # Neither claims a score, so there is nothing to contradict.
+    assert records_the_same_measurement(UNMEASURED, UNMEASURED)
+
+
+def test_identity_is_not_load_bearing_for_agreement() -> None:
+    # A second instance behaves identically. `records_the_same_measurement`
+    # asks what each value IS, so a caller who constructs `UnmeasuredType()`
+    # instead of importing the singleton does not get a spurious disagreement.
+    assert records_the_same_measurement(UnmeasuredType(), UNMEASURED)
+    assert records_the_same_measurement(UNMEASURED, UnmeasuredType())
+
+
+@pytest.mark.parametrize(("left", "right"), [("0.98", "0.9800"), ("0.5", "0.50"), ("1", "1.0000")])
+def test_two_measured_slots_agree_as_numbers_not_as_strings(left: str, right: str) -> None:
+    # `confidence.py` records what a producer asserted verbatim rather than
+    # padding it, so string comparison would make one score disagree with
+    # itself. This is the pre-existing rule, unchanged by the amendment.
+    assert records_the_same_measurement(Decimal(left), Decimal(right))
+
+
+def test_two_different_measurements_disagree() -> None:
+    assert not records_the_same_measurement(Decimal("0.9800"), Decimal("0.9700"))
+
+
+@pytest.mark.parametrize("score", ["0.0000", "0.3100", "1.0000"])
+def test_a_measurement_and_an_absent_one_disagree_in_both_directions(score: str) -> None:
+    """THE NEW REFUSAL, AND THE WHOLE REASON THE PREDICATE EXISTS.
+
+    One side asserts a number the other says was never taken. That is not an
+    edge case to be exempted — it is the precise shape of the bug this type was
+    added to catch, so it must fail, and it must fail whichever side holds the
+    number.
+
+    `0.0000` and `1.0000` are parametrised deliberately: they are the two
+    values a "helpful" default would most likely produce, and both are the
+    numbers `ENGINE_1_INPUT_ENGINE_RULES.md:625` and Law 24 forbid inventing.
+    """
+    assert not records_the_same_measurement(Decimal(score), UNMEASURED)
+    assert not records_the_same_measurement(UNMEASURED, Decimal(score))
+
+
+# The sentinel's behaviour as a field on a real frozen model is asserted in
+# `tests/unit/test_evidence.py`, against `Provenance` — the PRODUCTION model
+# that actually carries it. A local `Holder`-style double here would prove the
+# double (§J.6), and `Provenance` exercises the same type through the same
+# validator with the artifact's own `frozen`/`extra="forbid"` config.
