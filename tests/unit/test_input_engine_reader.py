@@ -50,6 +50,7 @@ import ast
 import importlib.util
 import inspect
 import io
+import math
 import pathlib
 import sys
 import types
@@ -128,6 +129,17 @@ class _Document(Protocol):
     def close(self) -> None: ...
 
 
+class _EncryptingDocument(Protocol):
+    """`_Document.tobytes` with the encryption keywords PyMuPDF also accepts.
+
+    Declared separately rather than widened into `_Document` so that the plain
+    `tobytes()` every other fixture calls keeps its narrow signature: only the
+    one fixture that builds an encrypted PDF may reach these three keywords.
+    """
+
+    def tobytes(self, *, encryption: int, owner_pw: str, user_pw: str) -> bytes: ...
+
+
 class _NewDocument(Protocol):
     def __call__(self, *, stream: bytes | None = ..., filetype: str | None = ...) -> _Document: ...
 
@@ -138,6 +150,18 @@ class _MakeRect(Protocol):
 
 open_pdf = cast(_NewDocument, pymupdf.open)
 rectangle = cast(_MakeRect, pymupdf.Rect)
+
+#: PyMuPDF's own AES-256 encryption selector, read out of the module rather than
+#: written as the integer it happens to be. The constant EXISTS at runtime -
+#: `pymupdf.PDF_ENCRYPT_AES_256` is `5` in the pinned 1.28.0 - but PyMuPDF ships
+#: `py.typed` without declaring it, so a plain attribute reference is a
+#: `mypy --strict` error and this repository allows no per-line suppression.
+#:
+#: Through `__dict__` and a `cast`, for the same reason every other facade in
+#: this file exists: it is STRICTER than silencing the line, because the value
+#: is now typed `int` everywhere it is used, and it keeps the vendor's name for
+#: the vendor's number instead of hard-coding a 5 that means nothing on sight.
+AES_256_ENCRYPTION = cast(int, pymupdf.__dict__["PDF_ENCRYPT_AES_256"])
 
 # ── ground truth ──────────────────────────────────────────────────────────
 # The synthetic invoice is rendered FROM this list, so it is genuine ground
@@ -396,6 +420,81 @@ def test_a_whitespace_only_span_is_skipped_not_emitted_as_an_empty_region() -> N
     assert tuple(region.text for region in reading.regions) == ("HELLO", "WORLD")
 
 
+def test_a_whitespace_span_skips_only_itself_and_never_the_rest_of_its_line() -> None:
+    """`continue`, not `break` - and the fixture above cannot tell them apart.
+
+    In that fixture every whitespace span is the ONLY span on its line, because
+    the three insert_text calls sit on three different baselines. Skipping the
+    span and abandoning the line therefore produce the identical reading, and a
+    mutation run proved it: `continue` rewritten to `break` left that test green.
+
+    Here the whitespace span and a REAL span share one line. PyMuPDF groups
+    spans by geometry, so they have to be adjacent on the same baseline in
+    different fonts to land in one line - measured, not assumed: this exact
+    fixture reports `block 0 / line 0 / spans ['   ', 'AFTER']`.
+
+    With `break`, `AFTER` is never emitted. Nothing raises, nothing warns, and
+    the page comes back short by everything that followed a run of spaces -
+    which is a leading-indented table cell, a padded amount column, or any line
+    a producer chose to align with spaces. `ENGINE_1:509`: a region that could
+    not be read *"is reported as unread, not omitted silently."* Dropping the
+    rest of a line silently is the failure that rule exists to forbid.
+    """
+    doc = open_pdf()
+    page = doc.new_page(width=595, height=842)
+    blank = "   "
+    page.insert_text((60, 90), blank, fontname="helv", fontsize=13)
+    # A different font, starting exactly where the spaces end, so PyMuPDF reads
+    # one line carrying two spans rather than two lines carrying one each.
+    page.insert_text(
+        (60 + pymupdf.get_text_length(blank, fontname="helv", fontsize=13), 90),
+        "AFTER",
+        fontname="tiro",
+        fontsize=13,
+    )
+    data = bytes(doc.tobytes())
+    doc.close()
+
+    reading = reader.read_pdf_text_layer(data)
+
+    assert tuple(region.text for region in reading.regions) == ("AFTER",), (
+        "the whitespace span took the rest of its line with it; `continue` skips "
+        "one span, `break` abandons every span after it"
+    )
+
+
+def test_a_text_layer_reading_names_its_backend_and_counts_every_page() -> None:
+    """The two fields of `Reading` the text-layer path never asserted.
+
+    `backend` is what makes a reading traceable to the tool that produced it,
+    and `pages_read` is the only statement anywhere that page two was looked at
+    at all. A mutation run found both unasserted on this path: `backend=None`
+    and `pages_read=None` both survived, and a `Reading` that names no backend
+    is evidence with no provenance (`CLAUDE.md` §O - *"Evidence carries its
+    origin, permanently"*).
+
+    Two pages, not one, because `pages_read=1` is indistinguishable from a
+    hard-coded 1 and from `len(pages)` on a single-page document.
+    """
+    doc = open_pdf()
+    for index in range(BOTH_PAGES):
+        doc.new_page(width=595, height=842).insert_text(
+            (60, 90), f"PAGE {index}", fontname="helv", fontsize=13
+        )
+    data = bytes(doc.tobytes())
+    doc.close()
+
+    reading = reader.read_pdf_text_layer(data)
+
+    assert reading.backend is reader.Backend.PDF_TEXT_LAYER
+    assert reading.pages_read == BOTH_PAGES, (
+        f"a two-page PDF reported {reading.pages_read} pages read; the second "
+        "page was either never opened or never counted"
+    )
+    assert tuple(region.text for region in reading.regions) == ("PAGE 0", "PAGE 1")
+    assert [region.location.page_index for region in reading.regions] == [0, 1]
+
+
 # ── `_render_pdf_pages`: PyMuPDF only, reachable without a recogniser ──────
 #
 # `reader.read` only reaches this function after the text layer comes back
@@ -428,6 +527,53 @@ def test_render_pdf_pages_error_message_names_the_reason_completely() -> None:
         reader._render_pdf_pages(b"not a pdf at all", render_dpi=FIXTURE_DPI)
 
     assert str(raised.value).startswith("the bytes supplied could not be opened as a PDF: ")
+
+
+#: A DPI at which a 595x842pt page is 826,389 x 1,169,444 pixels - about 2.9 TB
+#: of RGB. MuPDF refuses it with `FzErrorLimit: code=5: Overly large image`,
+#: which is a REAL backend failure on a REAL, perfectly openable PDF: nothing is
+#: faked, nothing is monkeypatched, and the refusal costs milliseconds because
+#: the limit is checked before any allocation. Measured directly against this
+#: exact fixture at 100000, 1000000 and 10^9 dpi - all three raise the same
+#: error, so the number is not balanced on a threshold.
+#:
+#: It is a TEST INPUT, not a product number: `reader.read` still demands a DPI
+#: from its caller and this file's `FIXTURE_DPI` is unchanged.
+DPI_TOO_LARGE_TO_RASTERISE = 100_000
+
+
+def test_a_page_that_opens_and_then_cannot_be_rasterised_names_the_dpi_and_the_cause() -> None:
+    """The second boundary in `_render_pdf_pages`, which had never executed.
+
+    `test_render_pdf_pages_raises_on_an_unopenable_pdf` above only reaches the
+    OPEN failure. The rasterisation failure is a different `raise` on a
+    different line, and it was reachable only in theory - so every literal in
+    its message, and the upstream type it interpolates, were unasserted. A
+    mutation run proved it: replacing that whole message with `None`, and
+    replacing `type(failure).__name__` with `type(None).__name__`, both left the
+    entire suite green.
+
+    The message is pinned WHOLE and composed from the cause rather than from a
+    copy of MuPDF's wording, so this asserts `reader`'s contract - *name the
+    DPI, name the upstream type, keep the upstream text* - without pinning a
+    vendor string the vendor is free to reword.
+
+    `UnreadableDocumentError` and not `RecognitionFailedError` is the load-bearing
+    half: a page MuPDF cannot draw is a verdict on the DOCUMENT, and no
+    recogniser is involved on this path at all.
+    """
+    with pytest.raises(reader.UnreadableDocumentError) as raised:
+        reader._render_pdf_pages(a_blank_pdf(), render_dpi=DPI_TOO_LARGE_TO_RASTERISE)
+
+    cause = raised.value.__cause__
+    assert cause is not None, "the backend's own failure was dropped instead of preserved"
+    assert str(raised.value) == (
+        "the PDF opened but a page could not be rasterised at "
+        f"{DPI_TOO_LARGE_TO_RASTERISE} dpi: {type(cause).__name__}: {cause}"
+    )
+    # The document opened cleanly, so this is NOT the open-failure message.
+    assert "could not be opened as a PDF" not in str(raised.value)
+    assert not isinstance(raised.value, reader.RecognitionFailedError)
 
 
 def test_render_pdf_pages_declares_pdf_the_callers_dpi_and_png_to_pymupdf(
@@ -533,6 +679,20 @@ def test_decode_image_converts_every_native_mode_to_true_three_channel_rgb() -> 
     assert decoded.shape == (3, 4, 3), (
         f"expected height=3, width=4, 3 channels (true RGB); got shape {decoded.shape}"
     )
+    # `reader.Page` declares `NDArray[numpy.uint8]` - "one byte per channel" -
+    # and that half of the contract was asserted nowhere. A 16-bit or float
+    # array has the same three-channel SHAPE and is not the array the module
+    # promises its caller.
+    #
+    # STATED HONESTLY: this does NOT kill the surviving `dtype=numpy.uint8`
+    # mutants. `Image.convert("RGB")` yields PIL mode RGB, which numpy always
+    # materialises as `uint8` - measured across all fourteen PIL modes - so
+    # dropping that argument cannot change the result. Those two mutants are
+    # equivalent, and this assertion pins the contract rather than pretending
+    # to have killed them.
+    assert decoded.dtype == numpy.uint8, (
+        f"reader.Page promises one byte per channel; got dtype {decoded.dtype}"
+    )
 
 
 def test_a_corrupt_image_error_message_names_every_reason_completely() -> None:
@@ -543,6 +703,24 @@ def test_a_corrupt_image_error_message_names_every_reason_completely() -> None:
     message = str(raised.value)
     assert message.startswith("the bytes supplied could not be decoded as an image: ")
     assert message.endswith(
+        "Raised rather than returned as an empty reading - a file that could "
+        "not be opened and a page with nothing on it are different answers."
+    )
+
+    # THE MIDDLE WAS THE HOLE, AND A MUTATION RUN FOUND IT. `startswith` and
+    # `endswith` together pin both ENDS of the message and say nothing about
+    # what sits between them - which is exactly where the diagnosis lives.
+    # Replacing `type(failure).__name__` with `type(None).__name__` left both
+    # assertions above green while every corrupt image reported its cause as
+    # "NoneType", so the one segment that tells a human WHICH Pillow failure
+    # happened was untested. Pinned whole, and composed from the cause rather
+    # than from a copy of Pillow's wording, so this asserts `reader`'s contract
+    # without pinning a vendor string the vendor is free to reword.
+    cause = raised.value.__cause__
+    assert cause is not None, "Pillow's own failure was dropped instead of preserved"
+    assert message == (
+        "the bytes supplied could not be decoded as an image: "
+        f"{type(cause).__name__}: {cause}. "
         "Raised rather than returned as an empty reading - a file that could "
         "not be opened and a page with nothing on it are different answers."
     )
@@ -769,6 +947,102 @@ def test_the_text_layer_path_itself_raises_rather_than_returning_empty(payload: 
     """
     with pytest.raises(reader.UnreadableDocumentError):
         reader.read_pdf_text_layer(payload)
+
+
+def test_the_text_layer_open_failure_names_every_reason_completely() -> None:
+    """§J.2 - the test above asserts only that SOME `UnreadableDocumentError` fired.
+
+    A mutation run showed what that leaves open: this message's whole body
+    replaced by `None`, and each of its literal fragments blanked, upper-cased or
+    case-flipped - six mutations, all of them green, because nothing anywhere
+    reads what `read_pdf_text_layer` actually says when a PDF will not open.
+
+    That message is not decoration. It is the sentence that tells whoever is
+    holding a rejected document WHY it was rejected, and the clause that records
+    the decision this whole module is built on - *raised rather than returned as
+    an empty reading*. Pinned whole, and composed from the cause rather than from
+    a copy of MuPDF's wording, so the backend stays free to reword its half.
+
+    Note what is deliberately NOT here: this message interpolates the failure but
+    not `type(failure).__name__`, unlike the other two boundaries in this module.
+    The comparison is exact, so a later edit that quietly aligns them turns this
+    red rather than passing unnoticed.
+    """
+    with pytest.raises(reader.UnreadableDocumentError) as raised:
+        reader.read_pdf_text_layer(b"this is plainly not a PDF")
+
+    cause = raised.value.__cause__
+    assert cause is not None, "the backend's own failure was dropped instead of preserved"
+    assert str(raised.value) == (
+        f"the bytes supplied could not be opened as a PDF: {cause}. "
+        "Raised rather than returned as an empty reading, which would be "
+        "indistinguishable downstream from an honest reading of a blank page."
+    )
+
+
+def a_password_protected_pdf() -> bytes:
+    """A REAL PDF that opens, reports its page count, and refuses to be read.
+
+    Not a corruption and not a fake. `pymupdf.open` succeeds on an encrypted
+    document and `page_count` answers 1, because the trailer and the page tree
+    are readable without the password; only the page CONTENT is not. Asking for
+    its structured text then raises `ValueError: document closed or encrypted` -
+    measured against this exact fixture, not assumed.
+
+    It is also the realistic case, which is why it is the fixture rather than a
+    mangled byte string: businesses email password-protected invoices and bank
+    statements routinely, and this is precisely what one looks like arriving at
+    Engine 1 without its password.
+    """
+    doc = open_pdf()
+    doc.new_page(width=595, height=842).insert_text(
+        (60, 90), "CONFIDENTIAL INVOICE", fontname="helv", fontsize=13
+    )
+    encrypted = bytes(
+        cast(_EncryptingDocument, doc).tobytes(
+            encryption=AES_256_ENCRYPTION, owner_pw="owner", user_pw="user"
+        )
+    )
+    doc.close()
+    return encrypted
+
+
+def test_a_pdf_that_opens_but_cannot_be_read_is_never_a_partial_reading() -> None:
+    """The SECOND boundary in `read_pdf_text_layer`, which had never executed.
+
+    Every corrupt-PDF test above fails at `open_pdf`. This one gets past it: the
+    document opens, `page_count` answers 1, and the read fails afterwards - the
+    exact case the module's nested `try/finally` inside the converting `try` was
+    written for, and the exact case nothing exercised. A mutation run measured
+    the cost: this message replaced entirely by `None`, its upstream type
+    replaced by `type(None).__name__`, and each of its fragments mutated - six
+    survivors, on the boundary that decides whether a half-read document is
+    reported or returned.
+
+    The dangerous outcome is not the raise, it is the alternative: a partial
+    reading. A document read up to the page it broke on is indistinguishable
+    downstream from a document that simply ended there, and Engine 1 would hand
+    on an invoice with its last pages missing and no signal that anything was
+    lost (`CLAUDE.md` Law 11).
+
+    `UnreadableDocumentError` and not `RecognitionFailedError`: an encrypted PDF
+    is a fact about the DOCUMENT, and no recogniser is involved on this path.
+    """
+    with pytest.raises(reader.UnreadableDocumentError) as raised:
+        reader.read_pdf_text_layer(a_password_protected_pdf())
+
+    cause = raised.value.__cause__
+    assert cause is not None, "the backend's own failure was dropped instead of preserved"
+    assert str(raised.value) == (
+        "the PDF opened but its text layer could not be read: "
+        f"{type(cause).__name__}: {cause}. Raised rather than returned "
+        "as a partial reading — a document read up to the point it broke is "
+        "indistinguishable downstream from a document that ended there."
+    )
+    # It got PAST the open. Reporting the open-failure message here would mean
+    # the two boundaries had been collapsed into one.
+    assert "could not be opened as a PDF" not in str(raised.value)
+    assert not isinstance(raised.value, reader.RecognitionFailedError)
 
 
 # ── the vision fallback: stubbed, and it refuses loudly ───────────────────
@@ -1396,6 +1670,39 @@ class _FailingRecogniser:
         raise self._failure
 
 
+class _RaggedRecogniser:
+    """A recogniser whose three documented lists are not the same length.
+
+    A DIFFERENT DEFECT FROM `_MisshapenRecogniser`, AND A QUIETER ONE. A missing
+    key raises `KeyError` the moment it is read. Three lists of unequal length
+    raise NOTHING: `zip` simply stops at the shortest one, so a result carrying
+    three texts and two scores yields two regions and the third line vanishes
+    with no error anywhere. `reader` passes `strict=True` precisely to turn that
+    silence into a failure, and nothing measured it.
+
+    Real, not hypothetical: `rec_texts`, `rec_scores` and `rec_polys` are three
+    separate arrays a pinned-but-living dependency assembles independently, and
+    any version that filters one of them without filtering the others produces
+    exactly this shape.
+    """
+
+    def __init__(self, short_key: str) -> None:
+        self._short_key = short_key
+        self.pages_seen: list[reader.Page] = []
+
+    def predict(self, image: reader.Page) -> list[reader._OcrResult]:
+        self.pages_seen.append(image)
+        payload: dict[str, object] = {
+            "rec_texts": [line.text for line in SCRIPTED_LINES],
+            "rec_scores": [line.score for line in SCRIPTED_LINES],
+            "rec_polys": [numpy.array(line.box, dtype=numpy.int16) for line in SCRIPTED_LINES],
+        }
+        # One element short. Which one is the parameter, because `zip` stops at
+        # the shortest whichever position it is in.
+        payload[self._short_key] = cast(list[object], payload[self._short_key])[:-1]
+        return [_ScriptedResult(payload, [])]
+
+
 class _MisshapenRecogniser:
     """A recogniser that returns a result missing one of the three documented keys.
 
@@ -1553,6 +1860,74 @@ def test_no_region_below_the_threshold_returns_the_reading_exactly_as_read(
     assert tuple(region.extraction_confidence for region in reading.regions) == SCRIPTED_SCORES
     assert reading.pages_read == 1
     assert len(factory.recogniser.pages_seen) == 1, "the recogniser was never actually reached"
+
+
+#: PDF user space is 1/72 inch, fixed by the PDF specification. A UNIT
+#: CONVERSION, not a tuning value and not a default - `pdf_backend` names the
+#: same constant for the same reason. No other number is arithmetically correct.
+POINTS_PER_INCH = 72
+
+
+def test_the_callers_dpi_decides_the_raster_the_recogniser_actually_sees(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """`read` forwards the caller's DPI to the rasteriser, and nothing checked it.
+
+    A mutation run found this one, and it is the most dangerous survivor in the
+    module: rewriting `_render_pdf_pages(document, render_dpi=render_dpi)` to
+    `render_dpi=None` inside `reader.read` left ALL 83 covering tests green.
+    PyMuPDF accepts `dpi=None` without raising and falls back to 72 - so a
+    caller asking for 300 dpi silently got a page rendered at 72, OCR ran on it,
+    and a full reading came back with every coordinate in a space 4.17x smaller
+    than the one requested. Nothing raises, nothing warns, and the regions look
+    perfectly plausible.
+
+    `test_render_pdf_pages_declares_pdf_the_callers_dpi_and_png_to_pymupdf` does
+    not cover it: that one calls `_render_pdf_pages` DIRECTLY, so it proves the
+    rasteriser honours the DPI it is given and says nothing about which DPI
+    `read` gives it. The gap was exactly one function call wide.
+
+    This is the F-028 defect class arriving by another route. `pdf_backend`
+    states it: *"a page whose coordinate space is a function of a render setting
+    is not reproducible"*, and `reader.SourceLocation` promises the backend's own
+    space kept unnormalised precisely so *"a human can find the region again."*
+
+    ASSERTED ON THE PIXELS, NOT ON THE CALL. A recorded argument proves what was
+    passed; the raster's own dimensions prove what was DONE with it, and they are
+    what the recogniser actually saw. The expected size is computed from the
+    page's real point size, so no magic number stands in for the fixture.
+    """
+    factory = substitute_the_recogniser(SCRIPTED_LINES)
+    document = an_image_only_pdf()
+
+    reader.read(
+        document,
+        media_type=reader.MediaType.PDF,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+    )
+
+    opened = pdf_backend.open_pdf(document)
+    width_points, height_points = pdf_backend.page_size(opened, 0)
+    pdf_backend.close_pdf(opened)
+
+    height_pixels, width_pixels = factory.recogniser.pages_seen[0].shape[:2]
+    scale = FIXTURE_DPI / POINTS_PER_INCH
+    assert (height_pixels, width_pixels) == (
+        math.ceil(height_points * scale),
+        math.ceil(width_points * scale),
+    ), (
+        f"a {width_points}x{height_points}pt page rendered for OCR at "
+        f"{FIXTURE_DPI} dpi reached the recogniser as {width_pixels}x"
+        f"{height_pixels}px; the caller's DPI was not the one used"
+    )
+    # The falsifier, named rather than implied: 72 dpi is what PyMuPDF silently
+    # substitutes when the DPI goes missing, and at 72 dpi the raster is exactly
+    # the page's point size. That is the reading this test exists to refuse.
+    assert (height_pixels, width_pixels) != (
+        math.ceil(height_points),
+        math.ceil(width_points),
+    ), "the page was rendered at PyMuPDF's 72 dpi fallback, not at the DPI asked for"
 
 
 def test_one_region_below_the_threshold_escalates_instead_of_returning_the_reading(
@@ -2148,6 +2523,90 @@ def test_a_result_missing_a_documented_key_raises_a_named_reader_error(
         reader.read_by_ocr([an_invoice_png()])
 
     assert dropped in str(raised.value)
+
+
+@pytest.mark.parametrize("short_key", ["rec_texts", "rec_scores", "rec_polys"])
+def test_a_result_whose_three_lists_disagree_in_length_refuses_to_read_it_short(
+    short_key: str, install_paddleocr: InstallFactory
+) -> None:
+    """`strict=True` on the `zip`, and it is the only thing standing here.
+
+    THE FAILURE THIS PREVENTS IS SILENT, WHICH IS WHY IT MATTERS. Three texts
+    and two scores is not an error to `zip` - it is a two-element iteration.
+    Without `strict=True` the reading comes back with a line missing, carrying
+    no error, no warning and nothing to distinguish it from an honest reading of
+    a page with two lines on it. Every downstream engine would then reason about
+    an invoice with a row deleted, and the Confidence Report assembled from it
+    would be a confident statement about evidence that was thrown away
+    (`CLAUDE.md` Law 11; `ENGINE_1:509` - a region that could not be read *"is
+    reported as unread, not omitted silently"*).
+
+    A mutation run is what proved it untested: `strict=True` weakened to
+    `strict=False`, to `strict=None` and deleted outright all left the whole
+    suite green. So all three lengths are shortened in turn, because `zip` stops
+    at the shortest whichever of the three it is.
+
+    The recogniser is scripted at the `paddleocr` MODULE edge, the same
+    substitution the section above already uses and for the same reason
+    (`CLAUDE.md` §J.7): the property under test is `reader`'s OWN handling of a
+    result it does not control, not PaddleOCR's accuracy. Everything else -
+    the rasterisation, the decode, the boundary, the conversion - runs for real.
+    """
+    recogniser = _RaggedRecogniser(short_key)
+    install_paddleocr(_RecordingFactory(recogniser))
+
+    with pytest.raises(reader.RecognitionFailedError) as raised:
+        reader.read_by_ocr([an_invoice_png()])
+
+    assert recogniser.pages_seen, "the recogniser was never reached, so nothing was ragged"
+    # `zip(strict=True)` is what refuses; anything else silently truncated.
+    assert isinstance(raised.value.__cause__, ValueError), (
+        f"the ragged result was not refused by zip(strict=True); the reading was "
+        f"cut short instead. Cause: {raised.value.__cause__!r}"
+    )
+    assert not isinstance(raised.value, reader.UnreadableDocumentError), (
+        "a recogniser handing back mismatched lists is OUR tool failing, never a "
+        "verdict on the document"
+    )
+
+
+def test_the_recognition_failure_message_names_every_reason_completely(
+    install_paddleocr: InstallFactory,
+) -> None:
+    """§J.2 - the exact result, not merely that `RecognitionFailedError` fired.
+
+    The same discipline `test_the_vision_fallback_message_names_every_reason_
+    completely` already applies to the other named failure, applied here because
+    a mutation run showed this message had none of it. Nine separate mutations
+    of its literal segments - fragments blanked, fragments upper-cased, a single
+    letter's case flipped - every one of them left the suite green, because the
+    tests above assert only that the upstream TYPE and the page NUMBER appear
+    somewhere in it.
+
+    The message is the entire product of this boundary. `pipeline.BUSINESS_FAILURE`
+    decides by type; a human deciding whether their invoice is damaged or our OCR
+    is dead has only these words. Pinning them whole is what makes them a
+    contract rather than a comment.
+
+    The two interpolated segments are composed from the cause rather than copied,
+    so this pins `reader`'s contract - *name the page, name the upstream type,
+    keep the upstream text* - without pinning a vendor string.
+    """
+    original = a_paddle_onednn_failure()
+    install_paddleocr(_RecordingFactory(_FailingRecogniser(original)))
+
+    with pytest.raises(reader.RecognitionFailedError) as raised:
+        reader.read_by_ocr([an_invoice_png()])
+
+    assert raised.value.__cause__ is original
+    assert str(raised.value) == (
+        "the OCR recogniser failed on page 0: "
+        f"{type(original).__name__}: {original}. This is a failure of OUR "
+        "recogniser, not a verdict on the document — the page decoded "
+        "cleanly and may be perfectly readable. Raised as a named reader "
+        "failure rather than passed on as the backend's own exception, "
+        "which downstream code cannot tell apart from a damaged file."
+    )
 
 
 def test_a_missing_paddleocr_is_deliberately_left_as_a_plain_import_error(

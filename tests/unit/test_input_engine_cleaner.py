@@ -28,6 +28,7 @@ import ast
 import importlib
 import inspect
 import math
+from dataclasses import replace
 from decimal import Decimal
 from types import ModuleType
 from typing import cast
@@ -329,40 +330,93 @@ def test_a_contrast_tile_grid_below_one_is_refused() -> None:
 # ── refusing what cannot be cleaned, loudly ───────────────────────────────
 
 
+#: The refusal `_receive` raises when the dtype is not 8-bit, with the dtype it
+#: saw left to the caller of this helper. Written once because four tests below
+#: assert it whole and a copy per test is a copy that can drift.
+def a_dtype_refusal(seen: str) -> str:
+    return (
+        f"expected an 8-bit (uint8) image, got {seen}. A cast would "
+        "change every intensity in the frame; the original is not altered."
+    )
+
+
+def a_size_refusal(shorter_side: int) -> str:
+    return (
+        f"the shorter side is {shorter_side} pixel(s) and the caller's "
+        f"denoise_search_window is {BASELINE.denoise_search_window}; the "
+        "search window must fit inside the image. The minimum comes from "
+        "the caller's own setting, not from a size this module chose."
+    )
+
+
 def test_a_float_image_is_refused_rather_than_silently_cast() -> None:
     """A float32 array casts to uint8 without complaint and every intensity in
     it changes meaning. Refused, because a silent cast is a value modified.
+
+    The message is asserted WHOLE, and it names the dtype that arrived. A
+    caller told only *"not uint8"* has to guess whether they sent a 16-bit
+    scan, a float export or a signed array, and those have different fixes.
     """
-    with pytest.raises(cleaner.UnusableArtifactError, match="uint8"):
+    with pytest.raises(cleaner.UnusableArtifactError) as excinfo:
         cleaner._clean_image(np.zeros((400, 400), dtype=np.float32), BASELINE)
+    assert str(excinfo.value) == a_dtype_refusal("float32")
 
 
 def test_a_sixteen_bit_image_is_refused() -> None:
-    with pytest.raises(cleaner.UnusableArtifactError, match="uint8"):
+    with pytest.raises(cleaner.UnusableArtifactError) as excinfo:
         cleaner._clean_image(np.zeros((400, 400), dtype=np.uint16), BASELINE)
+    assert str(excinfo.value) == a_dtype_refusal("uint16")
 
 
 def test_an_empty_image_is_refused() -> None:
-    with pytest.raises(cleaner.UnusableArtifactError):
+    """An array with no pixels is refused by the SIZE guard, not the dimension
+    one: it is a legitimately shaped 2-D image that happens to be zero across,
+    and the number the refusal quotes is the caller's own search window.
+    """
+    with pytest.raises(cleaner.UnusableArtifactError) as excinfo:
         cleaner._clean_image(np.zeros((0, 0), dtype=np.uint8), BASELINE)
+    assert str(excinfo.value) == a_size_refusal(0)
 
 
 def test_a_single_pixel_image_is_refused_because_the_search_window_cannot_fit() -> None:
     """The minimum size is derived from the caller's own search window, not from
-    a number this module invented.
+    a number this module invented — which is only checkable if the refusal says
+    so, so the whole sentence is asserted rather than the digits in it.
     """
-    with pytest.raises(cleaner.UnusableArtifactError, match="21"):
+    with pytest.raises(cleaner.UnusableArtifactError) as excinfo:
         cleaner._clean_image(np.zeros((1, 1), dtype=np.uint8), BASELINE)
+    assert str(excinfo.value) == a_size_refusal(1)
 
 
 def test_an_image_with_five_channels_is_refused() -> None:
-    with pytest.raises(cleaner.UnusableArtifactError, match="channel"):
+    """Whole message. The refusal has to say which channel counts ARE normalised,
+    or a caller holding a four-channel scan cannot tell a refusal of their file
+    from a refusal of their whole format.
+    """
+    with pytest.raises(cleaner.UnusableArtifactError) as excinfo:
         cleaner._clean_image(np.zeros((400, 400, 5), dtype=np.uint8), BASELINE)
+    assert str(excinfo.value) == (
+        "an image with 5 channels is not a document this module can "
+        "normalise; one, three and four channel 8-bit images are."
+    )
 
 
 def test_a_one_dimensional_array_is_refused() -> None:
-    with pytest.raises(cleaner.UnusableArtifactError):
+    """And a four-dimensional one, from the other side of the same guard. The
+    refusal quotes the shape it was handed, which is the only thing that tells
+    a caller whether they sent a raw buffer or a batch of pages.
+    """
+    with pytest.raises(cleaner.UnusableArtifactError) as excinfo:
         cleaner._clean_image(np.zeros((400,), dtype=np.uint8), BASELINE)
+    assert str(excinfo.value) == (
+        "expected a 2-D or 3-D image, got 1 dimension(s) with shape (400,)."
+    )
+
+    with pytest.raises(cleaner.UnusableArtifactError) as too_many:
+        cleaner._clean_image(np.zeros((4, 4, 4, 4), dtype=np.uint8), BASELINE)
+    assert str(too_many.value) == (
+        "expected a 2-D or 3-D image, got 4 dimension(s) with shape (4, 4, 4, 4)."
+    )
 
 
 # ── format normalisation ──────────────────────────────────────────────────
@@ -378,21 +432,49 @@ def test_decode_returns_the_pixels_that_were_encoded() -> None:
 
 
 def test_decode_refuses_bytes_that_are_not_an_image() -> None:
-    with pytest.raises(cleaner.UndecodableArtifactError):
-        cleaner.decode(b"this is not an image, it is a sentence")
+    """The message is asserted WHOLE, not as a substring.
+
+    `SYSTEM_BOUNDARIES.md:52` makes the reason a document was refused part of
+    what crosses the boundary, and the byte count in it is the only thing that
+    tells a reader whether they sent a truncated file or the wrong file at all.
+    A substring match would accept any wrapping, any casing and any dropped
+    clause, so the count and the reason could both vanish while this stayed
+    green.
+    """
+    sentence = b"this is not an image, it is a sentence"
+    with pytest.raises(cleaner.UndecodableArtifactError) as excinfo:
+        cleaner.decode(sentence)
+    assert str(excinfo.value) == (
+        f"the {len(sentence)} byte(s) supplied are not a decodable image. Reported "
+        "rather than replaced by a blank page, which would read as a document "
+        "that genuinely had nothing on it."
+    )
 
 
 def test_decode_refuses_empty_bytes() -> None:
-    with pytest.raises(cleaner.UndecodableArtifactError):
+    """Whole message again, and a DIFFERENT one from the undecodable case.
+
+    "nothing was sent" and "what was sent is not an image" are different facts
+    about the caller's request, and collapsing them would leave `reader` unable
+    to say which happened.
+    """
+    with pytest.raises(cleaner.UndecodableArtifactError) as excinfo:
         cleaner.decode(b"")
+    assert str(excinfo.value) == "no bytes were supplied; there is nothing to decode."
 
 
 def test_decode_refuses_a_truncated_png() -> None:
     encoded, buffer = cv2.imencode(".png", a_page())
     assert encoded
     whole = bytes(bytearray(buffer))
-    with pytest.raises(cleaner.UndecodableArtifactError):
-        cleaner.decode(whole[: len(whole) // 3])
+    truncated = whole[: len(whole) // 3]
+    with pytest.raises(cleaner.UndecodableArtifactError) as excinfo:
+        cleaner.decode(truncated)
+    assert str(excinfo.value) == (
+        f"the {len(truncated)} byte(s) supplied are not a decodable image. Reported "
+        "rather than replaced by a blank page, which would read as a document "
+        "that genuinely had nothing on it."
+    )
 
 
 def test_decode_refuses_a_sixteen_bit_png_rather_than_downconverting_it() -> None:
@@ -822,6 +904,228 @@ def test_measure_contrast_is_unmeasurable_on_an_empty_array() -> None:
 def test_measure_ink_fraction_is_unmeasurable_on_an_empty_array() -> None:
     empty: Image = np.zeros((5, 0), dtype=np.uint8)
     assert cleaner._measure_ink_fraction(empty) is None
+
+
+def a_page_of_exactly_three_pixels_on_its_short_side(rows: int, columns: int) -> Image:
+    """A page at the smallest size the estimators accept, carrying real detail.
+
+    Seeded noise rather than a flat fill: a uniform page measures 0.0, which is
+    falsy, so a guard that had wrongly refused it would be indistinguishable
+    from one that measured it.
+    """
+    return np.asarray(
+        np.random.default_rng(RNG_SEED).integers(0, 256, (rows, columns)), dtype=np.uint8
+    )
+
+
+def test_a_page_exactly_three_pixels_across_is_measurable_and_not_refused() -> None:
+    """The minimum is a MINIMUM. Immerkaer's mask is 3x3 and its normalisation
+    divides by the interior area, so three is the smallest side on which the
+    estimate exists — and it does exist there.
+
+    Refusing it instead costs a real document its evidence. A till receipt
+    cropped to a single printed line, or the last strip of a scan, arrives at
+    exactly this size, and `confidence` cannot account for a page that reports
+    `None` when the number was available (`ENGINE_1:109`).
+
+    Both sides are checked, because the guard has two: three rows and three
+    columns are measurable, two are not.
+    """
+    three_rows = a_page_of_exactly_three_pixels_on_its_short_side(3, 5)
+    three_columns = a_page_of_exactly_three_pixels_on_its_short_side(10, 3)
+
+    assert cleaner._measure_noise(three_rows) is not None
+    assert cleaner._measure_noise(three_columns) is not None
+    assert cleaner._measure_sharpness(three_rows) is not None
+    assert cleaner._measure_sharpness(three_columns) is not None
+
+    assert cleaner._measure_noise(np.zeros((2, 5), dtype=np.uint8)) is None
+    assert cleaner._measure_noise(np.zeros((10, 2), dtype=np.uint8)) is None
+    assert cleaner._measure_sharpness(np.zeros((2, 5), dtype=np.uint8)) is None
+    assert cleaner._measure_sharpness(np.zeros((10, 2), dtype=np.uint8)) is None
+
+
+#: The 3x3 Laplacian `cv2.Laplacian` applies at its default kernel size, written
+#: out so this file convolves it ITSELF rather than calling the same routine the
+#: module calls and comparing it to itself.
+FOUR_NEIGHBOUR_LAPLACIAN = np.asarray(
+    [[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]], dtype=np.float64
+)
+
+
+def test_sharpness_keeps_the_negative_half_of_the_laplacian_it_measures() -> None:
+    """A blur measure computed in 8 bits is a blur measure with half its signal
+    thrown away.
+
+    Every edge produces a Laplacian response that is negative on one side and
+    positive on the other. Ask OpenCV for an 8-bit result and every negative one
+    clamps to zero, so the variance collapses — measured on this page, 2941.75
+    in floating point against 1325.89 clamped, a blurred page reported as more
+    than twice as sharp as it is. `cleaner` has no deblur step, so this number
+    is the ONLY thing that tells `confidence` a page was out of focus.
+
+    Checked against this file's own convolution of the same kernel, in
+    float64 — the same quantity by a different call — and then against the
+    clamped figure, so the test states what the number is AND what it must not
+    be.
+    """
+    page = a_small_banded_page()
+    reported = cleaner._measure_sharpness(page)
+    in_full = float(np.var(cv2.filter2D(_f64(page), -1, FOUR_NEIGHBOUR_LAPLACIAN)))
+    clamped = float(np.var(_f64(cv2.Laplacian(page, -1))))
+
+    assert reported is not None
+    assert reported == pytest.approx(in_full, rel=1e-12)
+    assert reported > clamped, (
+        f"the reported sharpness {reported} is the clamped 8-bit figure {clamped}, "
+        "so half of every edge's response has been discarded"
+    )
+
+
+#: The impulse page below. Every dimension of it is load-bearing: each spike
+#: sits exactly two pixels from one edge, so its 3x3 response fills the outermost
+#: line of the region the estimator keeps and NOTHING is left over at the border.
+IMPULSE_PAGE_HEIGHT = 40
+IMPULSE_PAGE_WIDTH = 60
+IMPULSE_AMPLITUDE = 200
+#: `|1| + |2| + |1| + |2| + |4| + |2| + |1| + |2| + |1|`, the absolute weight one
+#: isolated spike puts through Immerkaer's mask.
+NOISE_MASK_ABSOLUTE_WEIGHT = 16
+IMPULSES_ON_THE_PAGE = 4
+#: The interval the estimate of a known sigma must land in. Measured across five
+#: seeds on a 400 x 400 page: -0.54% to +0.45%.
+MAX_SIGMA_RECOVERY_ERROR = 0.01
+KNOWN_SIGMA = 12.0
+MID_GREY = 128.0
+CALIBRATION_SIDE = 400
+CALIBRATION_SEEDS = (1, 2, 3, 20260805, 11)
+
+
+def a_page_of_four_isolated_spikes() -> Image:
+    """A black page carrying one bright pixel beside each of its four edges.
+
+    An isolated spike is the one input whose Immerkaer response can be written
+    down: the mask lands on it nine times and nowhere else, so the page's total
+    absolute response is the mask's absolute weight times the amplitude, times
+    the number of spikes. Each spike is placed two pixels in, so the top row of
+    one response, the bottom row of another and the outer column of the last two
+    each sit ON the boundary of the region the estimator keeps.
+    """
+    page: Image = np.zeros((IMPULSE_PAGE_HEIGHT, IMPULSE_PAGE_WIDTH), dtype=np.uint8)
+    page[2, 20] = IMPULSE_AMPLITUDE
+    page[IMPULSE_PAGE_HEIGHT - 3, 20] = IMPULSE_AMPLITUDE
+    page[20, 2] = IMPULSE_AMPLITUDE
+    page[20, IMPULSE_PAGE_WIDTH - 3] = IMPULSE_AMPLITUDE
+    return page
+
+
+def test_the_noise_estimate_normalises_over_the_interior_it_actually_measured() -> None:
+    """Immerkaer's arithmetic, on the one page where it can be written out.
+
+    Border pixels are dropped because `filter2D` invents them by reflection, and
+    what is left is normalised by the interior's area. Both halves of that are
+    off-by-one country, and neither is visible on a real scan: a page-level
+    tolerance wide enough for sensor noise swallows a normaliser that is one row
+    short, while the resulting sigma is quietly 2.6% high on every document.
+
+    So the page carries four isolated spikes, each two pixels from one edge.
+    The total absolute response is countable — four spikes at the mask's
+    absolute weight of 16 — and each spike's response reaches exactly one
+    boundary of the kept region, so a slice that starts or ends one step in
+    loses a measurable quarter-of-a-spike and lands nowhere near this number.
+    """
+    page = a_page_of_four_isolated_spikes()
+    interior = (IMPULSE_PAGE_HEIGHT - 2) * (IMPULSE_PAGE_WIDTH - 2)
+    total = IMPULSES_ON_THE_PAGE * NOISE_MASK_ABSOLUTE_WEIGHT * IMPULSE_AMPLITUDE
+
+    measured = cleaner._measure_noise(page)
+
+    assert measured is not None
+    assert measured == pytest.approx(math.sqrt(math.pi / 2.0) * total / (6.0 * interior), rel=1e-12)
+
+
+def test_the_noise_estimate_recovers_a_sigma_this_file_put_in() -> None:
+    """Calibration, against noise whose spread is known because it was chosen.
+
+    The test above pins the estimator's SHAPE by restating its normalisation;
+    this one pins its SCALE without restating anything, by drawing Gaussian
+    noise of a known standard deviation and requiring the estimate to come back
+    as that number. A leading constant that is wrong by a factor — `sqrt(2 pi)`
+    for `sqrt(pi / 2)` is a factor of two — cannot survive it, and no formula
+    from the module appears here at all.
+
+    Five seeds, because one seed proves nothing about a statistic. Measured
+    across them on a 400 x 400 page: -0.54% to +0.45%, against a bound of 1%.
+    Mid-grey and sigma 12 so that nothing clips at either end of the range,
+    which would bias the spread downward and make this pass for the wrong
+    reason.
+    """
+    for seed in CALIBRATION_SEEDS:
+        generator = np.random.default_rng(seed)
+        lightest = float(np.iinfo(np.uint8).max)
+        noise = generator.normal(0.0, KNOWN_SIGMA, (CALIBRATION_SIDE, CALIBRATION_SIDE))
+        page = _u8(np.clip(np.rint(MID_GREY + noise), 0.0, lightest))
+        assert int(page.min()) > 0, "the fixture clipped at black, which narrows its spread"
+        assert float(page.max()) < lightest, "the fixture clipped at white"
+
+        estimate = cleaner._measure_noise(page)
+
+        assert estimate is not None
+        assert abs(estimate / KNOWN_SIGMA - 1.0) < MAX_SIGMA_RECOVERY_ERROR, (
+            f"seed {seed} put in sigma {KNOWN_SIGMA} and got {estimate} back"
+        )
+
+
+#: A page two pixels tall — below the three the noise estimator needs — with a
+#: mark four grey levels below its paper. Two rows so the mark's column mean is
+#: displaced by exactly half of that, which is inside the allowance a sigma of
+#: one would buy and outside the allowance a sigma of zero buys.
+UNMEASURABLY_THIN_HEIGHT = 2
+UNMEASURABLY_THIN_WIDTH = 40
+FAINT_MARK_DEPTH = 4
+#: Measured: rows 0 to 0, columns 5 to 29 — the mark exactly.
+BOX_AROUND_THE_FAINT_MARK = (0, 0, 5, 29)
+
+
+def test_a_page_too_thin_to_measure_noise_on_is_given_no_allowance_at_all() -> None:
+    """`_measure_noise(grey) or 0.0` — and the zero is the whole of it.
+
+    The allowance a line has to clear before it counts as content is scaled by
+    the page's noise. When the page is too small for the estimator to say
+    anything, there is no measured noise, and the honest allowance is ZERO: an
+    invented one is a threshold this module chose, and every mark fainter than
+    it leaves the page (Law 52).
+
+    Two rows and a mark four grey levels down is exactly the gap. With no
+    allowance the mark is content and the box closes around it; with an
+    allowance of one grey level's worth the same mark is paper, the columns
+    carry nothing, and `_content_box` reports a page with nothing on it —
+    which `_crop_to_content` reads as *"return it whole"* and everything
+    downstream reads as a blank sheet.
+    """
+    thin: Image = np.full(
+        (UNMEASURABLY_THIN_HEIGHT, UNMEASURABLY_THIN_WIDTH), SMALL_PAPER, dtype=np.uint8
+    )
+    thin[0, 5:30] = SMALL_PAPER - FAINT_MARK_DEPTH
+    assert cleaner._measure_noise(thin) is None, "the fixture is measurable, so it proves nothing"
+
+    assert cleaner._content_box(thin) == BOX_AROUND_THE_FAINT_MARK
+
+
+def test_the_ink_fraction_is_the_share_of_the_page_the_ink_actually_covers() -> None:
+    """A number that can be counted by hand, so the arithmetic has nowhere to hide.
+
+    `a_small_banded_page` paints a band of 10 rows by 70 columns onto a sheet of
+    60 by 90: 700 pixels of 5400, which is exactly 0.12962962962962962. The
+    existing blank-page test pins the numerator's zero; nothing pinned that the
+    numerator is COUNTED at all, and a fraction stuck at zero reports every
+    document as a blank sheet.
+    """
+    banded = a_small_banded_page()
+    band = 10 * 70
+
+    assert cleaner._measure_ink_fraction(banded) == pytest.approx(band / banded.size, rel=1e-12)
+    assert cleaner._measure_ink_fraction(a_small_uniform_page()) == 0.0
 
 
 # ── the boundary the module must never cross ──────────────────────────────
@@ -1641,4 +1945,808 @@ def test_a_scanned_pdf_is_rasterised_because_there_was_never_a_text_layer_to_los
     )
     assert cleaned.artifact.raster is not None, (
         "a rasterised path produced no raster view, so OCR has nothing to read"
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# THE ARITHMETIC AND THE WORDING NOTHING WAS READING
+#
+# Everything above reaches `cleaner` through a page. That is the right way to
+# ask *"does the cleaner clean?"* and it is a bad way to ask *"is the constant
+# in this bound the constant the docstring names?"* — a page averages the
+# helpers together, so a factor of two here and a border row there can both
+# move and still land inside a tolerance chosen for the whole pipeline.
+#
+# Mutation testing found exactly that gap. Every test below pins ONE helper's
+# stated contract with numbers small enough to check by hand, and every number
+# in it was produced by running the code, never chosen to fit.
+# ══════════════════════════════════════════════════════════════════════════
+
+#: `_extreme_normal`'s guard: below two draws there is no maximum to expect.
+NO_DRAWS = 0
+ONE_DRAW = 1
+TWO_DRAWS = 2
+FOUR_DRAWS = 4
+MANY_DRAWS = 1000
+
+#: The ring page below is 6 rows by 10 columns so that its border carries
+#: exactly as many dark pixels as light ones: 16 at `RING_DARK` (the two full
+#: rows, less the four corners the columns claim) and 16 at `RING_LIGHT` (the
+#: two full columns, plus those four corners). A median taken over a balanced
+#: multiset sits between the two, so swapping any ONE of the four edges for the
+#: line just inside it unbalances the count and moves the answer.
+RING_HEIGHT = 6
+RING_WIDTH = 10
+RING_DARK = 40
+RING_LIGHT = 200
+RING_INTERIOR = 255
+#: Measured: `(40 + 200) / 2`, the balance point of that border.
+RING_BORDER_MEDIAN = 120.0
+
+#: A four-channel fixture whose colour channels are constant and whose alpha
+#: sweeps the range, so every composited value is decided by opacity alone.
+ALPHA_SWEEP = ((0, 32, 64, 100, 128), (160, 191, 200, 224, 255))
+MARK_INTENSITY = 64
+
+#: `_painted_by` is asked about a frame this size; its pixels are never read.
+FRAME_HEIGHT = 40
+FRAME_WIDTH = 60
+#: Rotation is rigid, so the region it did NOT paint is the page's own area.
+#: Measured across the five turns below: 2400, 2398, 2400, 2399, 2401 against
+#: an area of 2400, the shortfall being nearest-neighbour rounding on the
+#: boundary. Two pixels wide; four is the bound, and INTER_LINEAR misses it by
+#: 101 (measured: 2501 at seven degrees).
+MAX_AREA_DISCREPANCY_PIXELS = 4
+TURNS_DEGREES = (0.0, 7.0, 31.5, -12.25, 44.0)
+
+#: A page whose only ink is a single diagonal: `minAreaRect` reports its
+#: orientation as exactly 45, the one value at which the fold's comparison can
+#: be observed at all.
+DIAGONAL_SIDE = 80
+EXACTLY_HALF_A_QUARTER_TURN = 45.0
+
+#: The small page the crop tests use. Wider than `denoise_search_window` so it
+#: would also survive `_receive`, though these call the crop directly.
+SMALL_HEIGHT = 60
+SMALL_WIDTH = 90
+SMALL_PAPER = 235
+SMALL_INK = 30
+#: Measured: the turned page cropped to (21, 32) when told which pixels the
+#: rotation painted, and to the whole (88, 106) canvas when not told.
+TURNED_CROP_WITH_PAINTED = (21, 32)
+TURNED_CROP_WITHOUT_PAINTED = (88, 106)
+FILL_ONE_LEVEL_BELOW_PAPER = 234.0
+CROP_TEST_TURN_DEGREES = 20.0
+
+NO_RETENTION = 0.0
+
+#: The line-profile fixtures. Five lines, measured over 0, 1, 2, 5 and 60
+#: pixels, whose means sit 235, 35, 0, 6 and 135 grey levels below the
+#: lightest of them. The line over five pixels is the interesting one: its
+#: deficit of 6 lies between twice its standard error (4.81) and three times
+#: it (7.22), so it is content under the rule the module states and paper
+#: under a wider one.
+LINE_PROFILE = (0.0, 200.0, 235.0, 229.0, 100.0)
+LINE_COUNTS = (0.0, 1.0, 2.0, 5.0, 60.0)
+LINE_SIGMA = 3.0
+#: Measured, at both sigma 3.0 and sigma 0.0.
+LINES_CARRYING_A_MARK = (False, True, False, True, True)
+
+
+#: Two intensities whose product overflows an 8-bit accumulator: 200 * 200 is
+#: 40000, which wraps to 64. Any measurement that multiplies without widening
+#: first reports 64 and looks entirely plausible.
+AN_INTENSITY_THAT_OVERFLOWS_WHEN_SQUARED = 200
+
+
+def test_narrowing_to_eight_bits_refuses_rather_than_casts_and_says_which_dtype() -> None:
+    """`_u8` narrows OpenCV's return, and it CHECKS rather than assuming.
+
+    OpenCV's stubs describe every return as some integer-or-float array, so the
+    narrowing has to happen somewhere; the whole value of it happening here is
+    that a routine which quietly starts returning `float64` fails loudly
+    instead of being cast into silence. A cast changes every intensity in the
+    frame, which `ENGINE_1:453` forbids outright.
+
+    The whole message is asserted, and it is deliberately NOT the same sentence
+    `_receive` raises for the same dtype. One is about what a caller handed in
+    and the other about what a library handed back, and a reader chasing a
+    corrupted page needs to know which.
+    """
+    with pytest.raises(cleaner.UnusableArtifactError) as excinfo:
+        cleaner._u8(np.zeros((2, 2), dtype=np.float32))
+    assert str(excinfo.value) == (
+        "expected an 8-bit (uint8) image, got float32. Casting would "
+        "change every intensity in the frame, which is the original altered."
+    )
+    assert str(excinfo.value) != a_dtype_refusal("float32"), (
+        "`_u8` and `_receive` now raise the same sentence, so nothing downstream "
+        "can tell a bad input from a bad library return"
+    )
+
+
+def test_widening_to_float_actually_widens_or_every_later_product_wraps() -> None:
+    """`_f64` exists so that arithmetic on a page happens in floating point.
+
+    Hand it back the array unchanged and every measurement built on it computes
+    in the page's own 8-bit type: 200 squared becomes 64, an ink count becomes a
+    count of something else, and nothing raises. The dtype IS the behaviour
+    here, so it is asserted directly and then demonstrated on the multiplication
+    that would wrap.
+    """
+    page: Image = np.full((3, 3), AN_INTENSITY_THAT_OVERFLOWS_WHEN_SQUARED, dtype=np.uint8)
+
+    widened = cleaner._f64(page)
+
+    assert widened.dtype == np.float64
+    assert float((widened * widened)[0, 0]) == float(AN_INTENSITY_THAT_OVERFLOWS_WHEN_SQUARED**2), (
+        "the square wrapped, so the widening did not happen"
+    )
+    assert cleaner._f64([1, 2, 3]).dtype == np.float64, (
+        "a sequence that is not already an array was left at its own integer type"
+    )
+
+
+def test_the_extreme_factor_is_the_expected_maximum_of_that_many_draws() -> None:
+    """`sqrt(2 ln n)`, and the guard below two draws.
+
+    The module's crop allowance is this factor times a standard error, so the
+    two inside the square root decides how faint a mark has to be before the
+    crop is allowed to throw it away. A page-level test cannot see it: a
+    different factor moves a box by a few rows and every geometric tolerance in
+    this file is wider than that.
+
+    `draws == 1` is asserted from both sides. `log(1)` is zero, so the guarded
+    branch and the arithmetic branch agree there by algebra — which is why the
+    boundary has to be pinned by its VALUE and not by which branch ran.
+    """
+    assert cleaner._extreme_normal(TWO_DRAWS) == pytest.approx(math.sqrt(2.0 * math.log(2.0)))
+    assert cleaner._extreme_normal(FOUR_DRAWS) == pytest.approx(math.sqrt(2.0 * math.log(4.0)))
+    assert cleaner._extreme_normal(MANY_DRAWS) == pytest.approx(math.sqrt(2.0 * math.log(1000.0)))
+    assert cleaner._extreme_normal(ONE_DRAW) == 0.0
+    assert cleaner._extreme_normal(NO_DRAWS) == 0.0
+
+
+def test_a_line_no_pixel_of_which_is_on_the_document_averages_to_zero_not_to_nan() -> None:
+    """A row made entirely of pixels rotation painted has no mean to report.
+
+    Dividing by its count would be dividing by zero, and the `nan` that
+    produces propagates into `_lines_with_content` as a comparison that is
+    False whatever the page holds — a page whose every mark silently stops
+    being findable. The module substitutes one for the divisor; this checks the
+    RESULT is a real zero rather than checking which divisor was used.
+    """
+    intensity = _f64(np.full((4, 5), 200.0))
+    nothing_present = _f64(np.zeros((4, 5)))
+
+    profile, counts = cleaner._line_profile(intensity, nothing_present, axis=1)
+
+    assert np.array_equal(counts, np.zeros(4)), "a line of painted pixels was counted as present"
+    assert np.array_equal(profile, np.zeros(4)), (
+        f"a line with nothing on it reported {profile.tolist()}; `nan` here makes every "
+        "later comparison False and the whole page unfindable"
+    )
+
+
+def test_a_profile_in_which_no_line_was_measured_is_blank_and_boolean() -> None:
+    """The early return, checked for its SHAPE and its DTYPE as well as its
+    emptiness. `_content_box` indexes the page with what comes back, so a
+    float array of zeros is not the same answer as a boolean array of zeros
+    even though both are falsy.
+    """
+    blank = cleaner._lines_with_content(_f64([0.0, 0.0, 0.0]), _f64(np.zeros(3)), LINE_SIGMA)
+
+    assert blank.shape == (3,)
+    assert blank.dtype == np.bool_, f"the blank answer came back as {blank.dtype}, not a mask"
+    assert not blank.any()
+
+
+def test_a_line_with_no_pixel_on_the_document_is_blank_whatever_its_profile_says() -> None:
+    """*"A line with no unpainted pixels at all has nothing to say and is
+    blank."* Asserted with a profile that SHOUTS — 300, well outside the range
+    an 8-bit page can produce — so the only thing that can keep it out of the
+    answer is the count beside it.
+    """
+    carries = cleaner._lines_with_content(_f64([300.0, 100.0, 90.0]), _f64([0.0, 9.0, 9.0]), 3.0)
+
+    assert carries.tolist() == [False, False, True], (
+        "a line measured over no pixels at all was allowed to decide the page's "
+        "lightest level and then to carry a mark"
+    )
+
+
+def test_the_content_allowance_is_twice_the_standard_error_and_the_boundary_is_open() -> None:
+    """The bound the crop is drawn with, pinned at its exact constant.
+
+    Five lines, measured over 0, 1, 2, 5 and 60 pixels. At sigma 3.0 the line
+    over five pixels sits 6 grey levels below the lightest, against an
+    allowance of 2 x 2.407 = 4.81 — content. Three times the same standard
+    error is 7.22, so a wider factor drops it, and this fixture is the only
+    thing in the suite that can see the difference.
+
+    Sigma 0.0 is asserted for the other edge. A page with no noise gives every
+    line an allowance of exactly zero, so the LIGHTEST line's own deficit is
+    exactly zero — and it must not be content, because a comparison that
+    included its own reference point would call a blank page content
+    everywhere. Both runs give the same answer, and they give it for opposite
+    reasons.
+    """
+    profile = _f64(LINE_PROFILE)
+    counts = _f64(LINE_COUNTS)
+
+    assert tuple(cleaner._lines_with_content(profile, counts, LINE_SIGMA).tolist()) == (
+        LINES_CARRYING_A_MARK
+    )
+    assert tuple(cleaner._lines_with_content(profile, counts, 0.0).tolist()) == (
+        LINES_CARRYING_A_MARK
+    )
+
+
+def a_page_with_a_ring_the_median_balances_on() -> Image:
+    """A page whose border is half dark and half light, and whose inside is
+    neither. See `RING_BORDER_MEDIAN` for why the counts balance.
+    """
+    sheet: Image = np.full((RING_HEIGHT, RING_WIDTH), RING_INTERIOR, dtype=np.uint8)
+    sheet[0, :] = RING_DARK
+    sheet[-1, :] = RING_DARK
+    sheet[:, 0] = RING_LIGHT
+    sheet[:, -1] = RING_LIGHT
+    return sheet
+
+
+def test_the_rotation_fill_is_taken_from_the_page_edge_and_not_from_just_inside_it() -> None:
+    """The intensity rotation paints into the corners comes off the artifact.
+
+    A row one step inside the edge is already the document, so a fill taken
+    from there is a fill taken from CONTENT — and the module then paints that
+    content into a region where the document has nothing, which
+    `_line_profile` reads back as a mark on a page that never carried one.
+
+    Measured: 120.0 from the four edges; 200.0 or 40.0 from any line one step
+    in, on this page.
+    """
+    ringed = a_page_with_a_ring_the_median_balances_on()
+
+    assert cleaner._border_median(ringed) == RING_BORDER_MEDIAN, (
+        "the fill was measured somewhere other than the page's four edges"
+    )
+
+
+def a_stamp_at_every_opacity() -> Image:
+    """One mark intensity, ten opacities. A background remover's ordinary
+    output: the colour channels say one thing everywhere and the shape lives
+    entirely in alpha.
+    """
+    alpha: Image = np.asarray(list(ALPHA_SWEEP) * 2, dtype=np.uint8)
+    grey: Image = np.full(alpha.shape, MARK_INTENSITY, dtype=np.uint8)
+    return _u8(np.stack([grey, grey, grey, alpha], axis=-1))
+
+
+def test_a_transparent_pixel_shows_the_paper_through_in_proportion_to_its_opacity() -> None:
+    """Alpha compositing, checked against the interpolation form of itself.
+
+    The module writes the composite as a weighted SUM — mark times opacity plus
+    paper times the rest. This checks it against the LERP form — the paper,
+    moved toward the mark by the opacity — which is the same quantity reached
+    by different arithmetic, so a dropped minus sign or a factor on the wrong
+    term cannot be shared between the code and the check.
+
+    It matters because the whole channel is a document's content: a stamp of
+    40320 visible pixels and a blank canvas used to flatten to the same page
+    (`KNOWN_FAILURES.md` D4). Getting the shape back is not enough — the
+    INTENSITIES have to be right, or `reader` sees strokes at the wrong weight.
+    """
+    stamp = a_stamp_at_every_opacity()
+    opacity = _f64(stamp[..., 3]) / float(np.iinfo(np.uint8).max)
+    paper = float(np.iinfo(np.uint8).max)
+    lerped = _u8(np.rint(paper + (float(MARK_INTENSITY) - paper) * opacity))
+
+    composited = cleaner._composite_over_paper(stamp)
+
+    assert composited.dtype == np.uint8
+    assert np.array_equal(composited, lerped), (
+        f"composited {composited.tolist()} against {lerped.tolist()}"
+    )
+    # Both ends, stated separately: a fully transparent pixel IS the paper and a
+    # fully opaque one IS the mark, and an equality against a formula alone
+    # would still pass if both were wrong in the same direction.
+    assert int(composited[0, 0]) == int(paper)
+    assert int(composited[1, -1]) == MARK_INTENSITY
+
+
+def test_the_region_rotation_painted_is_exactly_the_canvas_the_page_could_not_cover() -> None:
+    """Rotation is rigid, so it preserves area. That is the oracle.
+
+    The painted mask names the pixels this module invented; its complement is
+    therefore the page itself, turned. A rigid turn cannot change how many
+    pixels a page has, so the complement's size must be the page's area — 2400
+    here — whatever the angle. Measured across the five turns: 2400, 2398,
+    2400, 2399 and 2401, the shortfall being nearest-neighbour rounding along
+    the new boundary.
+
+    That single invariant catches three different ways of getting this wrong:
+    an interpolated membership (INTER_LINEAR leaves the boundary ramp
+    unclaimed — measured 2501 at seven degrees), a fill value the equality
+    below cannot then find, and an equality testing for the wrong side of the
+    membership. Each of those reports a page as larger than it is, and each
+    ends with a measurement averaging in a region no document ever occupied.
+    """
+    frame: Image = np.zeros((FRAME_HEIGHT, FRAME_WIDTH), dtype=np.uint8)
+
+    for degrees in TURNS_DEGREES:
+        painted = cleaner._painted_by(frame, degrees)
+        canvas = int(painted.size)
+        invented = int(np.count_nonzero(painted))
+
+        assert sorted(np.unique(painted).tolist()) in ([0], [0, 255]), (
+            f"at {degrees} degrees the painted mask carries {np.unique(painted).tolist()}; "
+            "a membership has two values"
+        )
+        assert abs((canvas - invented) - FRAME_HEIGHT * FRAME_WIDTH) <= (
+            MAX_AREA_DISCREPANCY_PIXELS
+        ), (
+            f"at {degrees} degrees the unpainted region holds {canvas - invented} pixels "
+            f"against the page's {FRAME_HEIGHT * FRAME_WIDTH}"
+        )
+
+    assert int(np.count_nonzero(cleaner._painted_by(frame, 0.0))) == 0, (
+        "a page that was not turned has no painted region at all"
+    )
+
+
+def a_page_of_one_diagonal_stroke() -> Image:
+    """A page whose only ink runs corner to corner.
+
+    `minAreaRect` reports its orientation as exactly 45.0 — measured — which
+    makes it the one fixture on which two separate boundaries are observable:
+    the fold's half-open interval, and a caller's deskew limit set to the same
+    number as the skew being judged.
+    """
+    diagonal: Image = np.full((DIAGONAL_SIDE, DIAGONAL_SIDE), SMALL_PAPER, dtype=np.uint8)
+    np.fill_diagonal(diagonal, SMALL_INK)
+    return diagonal
+
+
+def test_a_skew_of_exactly_forty_five_degrees_is_reported_as_a_positive_turn() -> None:
+    """The fold's boundary, and the only page on which it is observable.
+
+    A rectangle's orientation repeats every quarter turn, so the module folds
+    the measured angle into (-45, 45]. The interval is half-open, and 45 is the
+    end that is IN it: a page reported at 45 and a page reported at -45 are
+    turned the same way in geometry and opposite ways to a reader, and every
+    other angle folds identically either way.
+    """
+    assert cleaner._measure_skew(a_page_of_one_diagonal_stroke()) == EXACTLY_HALF_A_QUARTER_TURN
+
+
+def test_a_skew_exactly_at_the_callers_limit_is_corrected_and_not_refused() -> None:
+    """`max_deskew_degrees` is a MAXIMUM, so the value itself is allowed.
+
+    The refusal exists because *"a detector that reports 32 degrees on a
+    document is usually a detector that failed"*, and the caller says where
+    that begins. A limit of 45 that refuses 45 is a limit of 44.9999 — the
+    caller's number silently shifted by one comparison, and the only page on
+    which anyone could ever notice is one whose skew lands exactly on it.
+
+    Both sides are asserted from the SAME page, so the difference between them
+    is the setting and nothing else: at a limit of 45 it turns, at 15 it does
+    not, and the refusal names the number that refused it.
+    """
+    diagonal = a_page_of_one_diagonal_stroke()
+
+    _grey, _carried, painted, applied, _filled = cleaner._deskew(
+        diagonal, diagonal, settings(max_deskew_degrees=EXACTLY_HALF_A_QUARTER_TURN)
+    )
+
+    assert applied.value == EXACTLY_HALF_A_QUARTER_TURN, (
+        "a skew exactly at the caller's limit was refused, which makes the limit "
+        "one they did not set"
+    )
+    assert applied.note == "rotation applied onto a canvas grown to hold the whole rotated frame."
+    assert painted is not None, "a page that was turned reported no painted region"
+
+
+def test_the_deskew_observations_say_exactly_what_was_done_and_why() -> None:
+    """The three deskew outcomes, each pinned field by field.
+
+    `ENGINE_1:626` — every marker carries a reason. These are the reasons a
+    page came back unturned, and the two are not interchangeable: *"no ink"*
+    says the page has nothing to orient, while *"the measured skew exceeds
+    max_deskew_degrees"* says there was a reading and the caller's setting
+    rejected it. `confidence` treats those differently, and a blank page
+    reported as a rejected reading is a document described as something it is
+    not (`ENGINE_1:337`).
+
+    The refusal's wording carries BOTH numbers — what was measured and what
+    refused it — so a reader can see whether to change the setting or the
+    scanner. Asserting it whole is the only way that survives a rewording.
+
+    `deskew_fill_intensity` is checked on every branch because the fill is
+    reported from here on all three, and its value is asserted against a page
+    whose border is one intensity by construction rather than against the
+    module's own median.
+    """
+    blank = a_small_uniform_page()
+    _g1, _c1, unpainted, applied_to_blank, filled_on_blank = cleaner._deskew(blank, blank, BASELINE)
+
+    assert unpainted is None, "a page that was not turned reported a painted region"
+    assert (applied_to_blank.name, applied_to_blank.stage, applied_to_blank.value) == (
+        cleaner.DESKEW_APPLIED,
+        cleaner.Stage.CLEANED,
+        0.0,
+    )
+    assert applied_to_blank.unit == "degrees"
+    assert applied_to_blank.note == (
+        "no rotation: the page carries no ink, so no skew is measurable."
+    )
+    assert (filled_on_blank.name, filled_on_blank.stage, filled_on_blank.unit) == (
+        cleaner.DESKEW_FILL_INTENSITY,
+        cleaner.Stage.CLEANED,
+        "grey levels",
+    )
+    assert filled_on_blank.value == float(SMALL_PAPER), (
+        "the fill was not the intensity of the page this stage received"
+    )
+    assert filled_on_blank.note == (
+        "the intensity rotation fills its corners with, taken as the median "
+        "of the border of the page this stage received rather than chosen here."
+    )
+
+    diagonal = a_page_of_one_diagonal_stroke()
+    _g2, _c2, still_unpainted, refused, filled_on_refusal = cleaner._deskew(
+        diagonal, diagonal, BASELINE
+    )
+
+    assert still_unpainted is None
+    assert refused.value == 0.0
+    assert refused.unit == "degrees"
+    assert refused.note == (
+        "no rotation: the measured skew 45.0000 degrees exceeds "
+        f"max_deskew_degrees ({BASELINE.max_deskew_degrees}). The page is "
+        "left as received rather than turned on a reading that far out."
+    )
+    assert filled_on_refusal.value == float(SMALL_PAPER)
+
+
+def a_small_uniform_page() -> Image:
+    return np.full((SMALL_HEIGHT, SMALL_WIDTH), SMALL_PAPER, dtype=np.uint8)
+
+
+def a_small_banded_page() -> Image:
+    """A page with one printed band, so it has a content box to be cropped to."""
+    sheet = a_small_uniform_page()
+    sheet[5:15, 10:80] = SMALL_INK
+    return sheet
+
+
+def test_a_page_with_no_content_box_comes_back_whole_and_at_full_retention() -> None:
+    """A blank sheet cropped to nothing would read downstream as a document
+    that genuinely held nothing, so it is returned as it arrived — and the
+    retention it reports is a FRACTION, which cannot exceed one.
+    """
+    blank = a_small_uniform_page()
+
+    cropped, kept = cleaner._crop_to_content(blank, BASELINE.crop_margin_pixels)
+
+    assert np.array_equal(cropped, blank)
+    assert kept == FULL_RETENTION
+
+
+def test_a_page_with_no_ink_at_all_reports_full_retention_after_a_real_crop() -> None:
+    """The other zero. Here there IS a box — drawn from a second page, the way
+    `_clean_image` draws it from the document's own intensities — but the page
+    being cropped carries nothing Otsu calls ink, so the quotient has no
+    denominator. Reporting a fraction above one instead would put a number in
+    the artifact that cannot be true of any page.
+    """
+    blank = a_small_uniform_page()
+    ink, _threshold = cleaner._ink_mask(blank)
+    assert int(np.count_nonzero(ink)) == 0, "the fixture is not the no-ink case it claims to be"
+
+    _cropped, kept = cleaner._crop_to_content(blank, 0, a_small_banded_page())
+
+    assert kept == FULL_RETENTION
+
+
+def test_a_crop_that_throws_away_the_only_ink_pixel_reports_that_it_kept_none() -> None:
+    """One ink pixel, outside the box, and the figure that has to say so.
+
+    A single mark is the smallest thing this module can destroy and the hardest
+    for a fraction to report: every rounding and every tolerance in the suite is
+    wider than one pixel in a hundred thousand. Counting it as a special case
+    instead — "one is as good as none" — would report full retention for a page
+    whose only mark had just been deleted.
+    """
+    losing = a_small_uniform_page()
+    losing[SMALL_HEIGHT - 2, SMALL_WIDTH - 2] = 0
+    ink, _threshold = cleaner._ink_mask(losing)
+    assert int(np.count_nonzero(ink)) == 1, "the fixture does not carry exactly one ink pixel"
+
+    _cropped, kept = cleaner._crop_to_content(losing, 0, a_small_banded_page())
+
+    assert kept == NO_RETENTION, (
+        "the crop discarded the page's only ink pixel and reported that it had kept some"
+    )
+
+
+def test_the_crop_box_is_drawn_from_the_document_and_never_from_the_rotation_fill() -> None:
+    """The failure the `painted` argument exists to stop, reproduced.
+
+    Rotation fills the corners with the page's own border median. One grey
+    level below the paper is an ordinary value for it, and to a line profile
+    calibrated on noise a whole row of it reads as a faint mark — so the crop
+    keeps the entire grown canvas and the page is delivered with its corners
+    still on it. Measured on this page: (21, 32) when the painted region is
+    named, (88, 106) when it is not, against a canvas of 88 by 106.
+
+    The two shapes are asserted as a PAIR. The tight one alone could also be
+    produced by a crop that ignored the fill because the fill happened to be
+    invisible, and the pair says the fill was there and was excluded.
+    """
+    body = a_small_uniform_page()
+    body[20:30, 30:60] = SMALL_INK
+    turned_page = cleaner._rotate_whole_frame(
+        body, CROP_TEST_TURN_DEGREES, FILL_ONE_LEVEL_BELOW_PAPER
+    )
+    painted = cleaner._painted_by(body, CROP_TEST_TURN_DEGREES)
+
+    told, _kept = cleaner._crop_to_content(turned_page, 0, turned_page, painted)
+    untold, _also = cleaner._crop_to_content(turned_page, 0, turned_page, None)
+
+    assert told.shape == TURNED_CROP_WITH_PAINTED
+    assert untold.shape == TURNED_CROP_WITHOUT_PAINTED, (
+        "the fixture's fill was not visible to the line profile, so this test "
+        "would pass whether or not the painted region was excluded"
+    )
+
+
+#: Non-default values for the three settings whose baseline happens to equal
+#: OpenCV's own default. Each is legal, and each is far enough from the baseline
+#: to change the page — measured below.
+NARROW_TEMPLATE_WINDOW = 3
+NARROW_SEARCH_WINDOW = 11
+COARSE_TILE_GRID = 2
+
+
+def test_the_three_settings_that_match_opencvs_defaults_still_reach_opencv() -> None:
+    """A FINDING, and the reason this test exists at all.
+
+    `denoise_template_window = 7`, `denoise_search_window = 21` and
+    `contrast_tile_grid = 8` — the values this file has always used — are
+    EXACTLY the defaults `cv2.fastNlMeansDenoising` and `cv2.createCLAHE`
+    apply when the argument is left out. So on this suite's own settings, a
+    cleaner that forgot to pass all three produced byte-identical pages, and
+    every existing test agreed with it.
+
+    That is not a hypothetical. `CleanerSettings` exists so that no number
+    reaches OpenCV that a caller did not choose (Law 52); a setting that is
+    silently dropped is the caller's number replaced by the library's, which is
+    the same defect wearing a different hat. The only way to see it is to ask
+    for something OTHER than the default and require the page to change.
+
+    Each arm differs from the baseline in ONE field, so the difference cannot
+    come from anywhere else.
+    """
+    noisy = with_gaussian_noise(padded(a_page()), INJECTED_NOISE_SIGMA)
+    baseline = cleaner._clean_image(noisy, BASELINE).cleaned
+
+    for field, value in (
+        ("denoise_template_window", NARROW_TEMPLATE_WINDOW),
+        ("denoise_search_window", NARROW_SEARCH_WINDOW),
+        ("contrast_tile_grid", COARSE_TILE_GRID),
+    ):
+        changed = cleaner._clean_image(noisy, settings(**{field: value})).cleaned
+        assert not np.array_equal(baseline, changed), (
+            f"{field} = {value} produced the same page as {field} = "
+            f"{getattr(BASELINE, field)}, so the setting never reached OpenCV and "
+            "the library's default is being used in the caller's name"
+        )
+
+
+#: The page on which the SECOND crop is the one that throws ink away. Measured
+#: by re-running both crops separately across turns, noise levels and seeds:
+#: at 12 degrees and sigma 20 on this seed the first crop keeps everything and
+#: the second keeps 0.9968394735600736. Every other combination tried left the
+#: second factor at exactly 1.0, where a product and a quotient agree.
+SECOND_CROP_TURN_DEGREES = 12.0
+SECOND_CROP_SIGMA = 20.0
+SECOND_CROP_SEED = 20260805
+INK_KEPT_WHEN_THE_SECOND_CROP_DISCARDS = 0.9968394735600736
+
+
+def a_scan_the_second_crop_trims_into() -> Image:
+    """A skewed, noisy invoice with a mark in the margin.
+
+    Deliberately a whole page rather than a helper call: what makes it work is
+    the exact combination of turn, noise and seed above, and any of the three
+    changing puts the second crop's retention back to 1.0.
+    """
+    sheet: Image = np.full((PAGE_HEIGHT, PAGE_WIDTH), PAPER_INTENSITY, dtype=np.uint8)
+    for row in range(80, 300, 40):
+        sheet[row : row + 10, 60:840] = INK_INTENSITY
+    sheet[560:563, 860:863] = INK_INTENSITY
+    return with_gaussian_noise(
+        turned(sheet, SECOND_CROP_TURN_DEGREES),
+        SECOND_CROP_SIGMA,
+    )
+
+
+def test_the_two_crops_compound_and_the_reported_share_cannot_exceed_the_whole() -> None:
+    """`ink_kept_by_crop` is a FRACTION, so it lives in [0, 1] — and the only
+    page that can prove it is one whose SECOND crop discards something.
+
+    Both crops report the share of the ink they kept, and the artifact carries
+    the share that survived the pair. Compounding them is a product; anything
+    else is not a share of anything. Divide instead and the number climbs ABOVE
+    one on exactly the pages where the crop did damage — a document reported as
+    having MORE ink than it started with, at the moment some of it was thrown
+    away, which is a reassurance pointing the wrong way (Law 24).
+
+    Every ordinary page hides it, because the second crop's factor is 1.0 and a
+    product and a quotient agree at one. This page is the one that does not:
+    measured 0.9968394735600736, all of the shortfall from the second crop.
+    """
+    result = cleaner._clean_image(
+        a_scan_the_second_crop_trims_into(), settings(max_deskew_degrees=45.0)
+    )
+    kept = result.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED)
+
+    assert kept.value is not None
+    assert kept.value == pytest.approx(INK_KEPT_WHEN_THE_SECOND_CROP_DISCARDS, rel=1e-9)
+    assert kept.value < FULL_RETENTION, (
+        "the fixture's crop discarded nothing, so it cannot tell a product from a quotient"
+    )
+    assert result.preservation_status is cleaner.PreservationStatus.ORIGINAL_IS_SAFER
+
+
+#: `a_small_banded_page` paints one band of ten rows by seventy columns at ink
+#: intensity onto paper, and nothing else, so its ink count under any split
+#: between the two intensities is 700 pixels by arithmetic.
+BAND_INK_PIXELS = 10 * 70
+
+
+def test_the_ink_loss_note_says_what_was_counted_where_and_how_much_went() -> None:
+    """The reported ink loss carries three numbers, and this pins all three.
+
+    A bare fraction cannot become a good question downstream (`ENGINE_1:626`):
+    *"0.0043 of the ink"* leaves a reader unable to tell four erased pixels out
+    of a thousand from four thousand out of a million, and the note is where
+    that lives. It also states WHICH split the counting used — the one taken
+    from the artifact as received, never recomputed after the filter ran — and
+    that the figure is a SET DIFFERENCE rather than a net, which is the whole
+    of `KNOWN_FAILURES.md` D2.
+
+    The numbers are checkable by hand: the fixture's only mark is a band of ten
+    rows by seventy columns, so 700 pixels lie below any split between the two
+    intensities on it, and a denoise that erases nothing leaves 700 and zero.
+    """
+    result = cleaner._clean_image(a_small_banded_page(), BASELINE)
+    lost = result.observed(cleaner.INK_LOST_TO_DENOISE, cleaner.Stage.CLEANED)
+    kept = result.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED)
+
+    assert lost.value == 0.0
+    assert lost.unit == "fraction of original ink"
+    assert lost.note == (
+        f"{BAND_INK_PIXELS} ink pixel(s) before denoising, {BAND_INK_PIXELS} after, "
+        "counted at the single split taken from the artifact as received. "
+        "0 of them stopped being ink; that SET DIFFERENCE is the "
+        "reported figure, because a net of the two counts lets ink gained "
+        "in one region cancel a stroke destroyed in another. Denoising is "
+        "the one step that can erase a stroke."
+    )
+    assert kept.unit == "fraction of ink pixels"
+    assert kept.note == (
+        "the ink inside both crops over the ink on the page, counted at "
+        "Otsu's split while the boxes were drawn from the line profiles. "
+        "Two different rules, so this AUDITS the boxes instead of "
+        "restating them, and it is NOT 1.0 by construction — measured "
+        "0.9998077292828302 on a noisy scan whose 3x3 margin mark the "
+        "crop discarded, which is exactly that mark's share of the ink, "
+        "against exactly 1.0 on the same scan without it. Below 1.0 "
+        "means a mark Otsu called ink was thrown away."
+    )
+
+
+def test_every_measurement_carries_the_exact_name_unit_and_reason_it_was_written_with() -> None:
+    """`ENGINE_1:626` — every marker carries a reason, and the reason is TEXT.
+
+    `test_every_observation_carries_a_reason` above asks only that the strings
+    are non-empty, which any wording satisfies. These notes are what
+    `confidence` and, through it, a human reads to decide whether a number is
+    usable: *"None when the page carries no ink to orient"* is the difference
+    between a straight page and an empty one, and a unit of "grey levels
+    squared" is the difference between a variance and a standard deviation.
+    They are part of the contract, so they are asserted whole and in order.
+    """
+    observations = cleaner._observe(a_small_banded_page(), cleaner.Stage.ORIGINAL)
+
+    assert [(o.name, o.stage, o.unit) for o in observations] == [
+        (cleaner.SKEW_ANGLE, cleaner.Stage.ORIGINAL, "degrees"),
+        (cleaner.NOISE_SIGMA, cleaner.Stage.ORIGINAL, "grey levels"),
+        (cleaner.RMS_CONTRAST, cleaner.Stage.ORIGINAL, "grey levels"),
+        (cleaner.LAPLACIAN_VARIANCE, cleaner.Stage.ORIGINAL, "grey levels squared"),
+        (cleaner.INK_FRACTION, cleaner.Stage.ORIGINAL, "fraction of pixels"),
+    ]
+    assert [o.note for o in observations] == [
+        (
+            "the rotation that straightens the page, from the ink's rotated "
+            "bounding box. None when the page carries no ink to orient."
+        ),
+        "Immerkaer's estimate of the additive noise standard deviation.",
+        "root-mean-square contrast: the standard deviation of intensity.",
+        (
+            "variance of the Laplacian. A low value is a blurred artifact, "
+            "which this module reports and does not attempt to repair."
+        ),
+        "pixels darker than the artifact's own Otsu split, as a fraction.",
+    ]
+    assert {o.page for o in observations} == {1}, (
+        "a single page's measurements must all be attributed to page one"
+    )
+
+
+def test_every_page_of_a_scan_is_reported_under_its_own_number_and_the_worst_status_wins() -> None:
+    """`KNOWN_FAILURES.md` D3, at the function that fixes it.
+
+    `test_the_preservation_status_of_a_scan_does_not_depend_on_the_page_order`
+    proves the DOCUMENT-level symptom is gone. It cannot see which field
+    carried which value, because a scanned PDF's own measurements are whatever
+    the pages happen to produce. This builds the page list from real
+    `_clean_image` runs and then checks the join field by field:
+
+        every observation is carried, in page order, unchanged except for the
+        page number stamped on it — a value, a unit or a note dropped here is a
+        page's evidence silently emptied
+
+        the numbering is one-based and increments — page provenance is the
+        whole point of the fix, and a constant number reports three pages as
+        one
+
+        `ORIGINAL_IS_SAFER` the moment ANY page says so, in both orders — a
+        decimal point erased on the last page is not made safe by the first two
+
+        the original, the raster and the artifact are the first page's own
+        objects, by identity
+    """
+    clean_page = cleaner._clean_image(a_small_banded_page(), BASELINE)
+    damaged_page = cleaner._clean_image(
+        a_page_of_hairline_strokes(), settings(denoise_strength=ERASING_DENOISE_STRENGTH)
+    )
+    assert clean_page.preservation_status is cleaner.PreservationStatus.CLEANED_IS_SAFER
+    assert damaged_page.preservation_status is cleaner.PreservationStatus.ORIGINAL_IS_SAFER
+
+    carrier = cleaner.replace_artifact(
+        clean_page,
+        cleaner.CleanedArtifact(
+            kind=cleaner.MediaKind.PDF, payload=b"%PDF-rebuilt", original=b"%PDF-source"
+        ),
+    )
+    joined = cleaner._every_page_reported([carrier, damaged_page, clean_page])
+
+    assert [o.page for o in joined.quality_observations] == (
+        [1] * len(carrier.quality_observations)
+        + [2] * len(damaged_page.quality_observations)
+        + [3] * len(clean_page.quality_observations)
+    ), "the pages were not numbered one, two, three in the order they were given"
+    for source, number in ((carrier, 1), (damaged_page, 2), (clean_page, 3)):
+        carried = [o for o in joined.quality_observations if o.page == number]
+        assert carried == [replace(o, page=number) for o in source.quality_observations], (
+            f"page {number}'s evidence was not carried across unchanged"
+        )
+
+    assert joined.preservation_status is cleaner.PreservationStatus.ORIGINAL_IS_SAFER
+    assert (
+        cleaner._every_page_reported([damaged_page, clean_page]).preservation_status
+        is cleaner.PreservationStatus.ORIGINAL_IS_SAFER
+    ), "a damaged first page was voted down by the clean page after it"
+    assert (
+        cleaner._every_page_reported([clean_page, clean_page]).preservation_status
+        is cleaner.PreservationStatus.CLEANED_IS_SAFER
+    ), "a document with no damaged page was still reported as damaged"
+
+    assert joined.original is carrier.original
+    assert joined.cleaned is carrier.cleaned
+    assert joined.artifact is carrier.artifact, (
+        "the first page's artifact was dropped, so nothing downstream can reach "
+        "the document the pages came off"
     )

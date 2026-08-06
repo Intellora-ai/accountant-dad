@@ -879,23 +879,26 @@ and no domain implementation is written until its gates are green.**
 | **Guarded by** | Four, all binding: (1) `ENGINE_1_AUTHORIZED` is **exhaustive** — a path not named is refused; (2) a new test proves nothing outside `engines/input_engine/` enters it; (3) a new test proves no module named for accounting, tax, LLM, brain or Tally enters it, so **no accounting reasoning may live inside Engine 1**; (4) a new test proves Engines 2–6 remain frozen. Gate count rises by three |
 | **Approved** | The user, 2026-08-05 |
 
-**Amendment 4 — Engine 2, deterministic assembly only. ⬜ DRAFT — NOT SIGNED, NOT IN FORCE.**
+**Amendment 4 — Engine 2, deterministic assembly only. ✅ SIGNED 2026-08-06, IN FORCE.**
 
-> **THIS AMENDMENT IS NOT APPROVED AND RELEASES NOTHING.** An earlier revision of
-> this block was written as *"Approved 2026-08-06"* — that was my error, corrected
-> here rather than quietly. The owner's actual instruction, 2026-08-06, is the
-> opposite: *"You are NOT authorized to write production Engine 2 implementation
-> code that violates the existing freeze until Amendment 4 formally releases
-> implementation."*
+> **Approved by the owner, 2026-08-06, in these words:** *"Amendment 4 approved —
+> option (a), Story Builder only."*
 >
-> **Every Engine 2 activity that is NOT implementation is authorized and under
-> way** — architecture, specifications, contracts, mathematical models, evaluation
-> methodology, adversarial analysis, falsifiers, synthetic datasets, the
-> implementation roadmap. The intent is that when this is signed, implementation
-> starts the same hour because the design is already finished.
+> **Option (a) means what it says.** Story Builder (§8.7) and the parent
+> orchestration are released for implementation. **The six reasoning sub-engines —
+> Transaction, Party, Item, Payment, Timeline, Business Context — remain FROZEN**,
+> together with every LLM/AI call anywhere in Engine 2. They are Gemini 2.5 Flash,
+> which needs an API key and real spend, and that decision has not been made.
 >
-> `ENGINE_2_AUTHORIZED` in `tests/unit/test_package.py` is therefore **EMPTY**,
-> and the freeze on all seven sub-engines stands.
+> An earlier revision of this block was written as *"Approved"* BEFORE any approval
+> existed. That was my error and it is recorded rather than erased: the owner's
+> instruction at the time was the opposite — *"You are NOT authorized to write
+> production Engine 2 implementation code… until Amendment 4 formally releases
+> implementation."* It now says Approved because it now is.
+>
+> `ENGINE_2_AUTHORIZED` in `tests/unit/test_package.py` names the released paths and
+> nothing else. Three guards, written and proven against an EMPTY set before this
+> signature existed, keep it that way.
 
 | | |
 |---|---|

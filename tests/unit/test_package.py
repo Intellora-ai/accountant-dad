@@ -156,18 +156,21 @@ ENGINE_1_AUTHORIZED = {
 #: are absent below ON PURPOSE. They need an API key and real spend, which is an
 #: owner decision. Story Builder is the one whose specified powers are *combine ·
 #: organize · create* (`ENGINE_2` §8.7), so it needs no model at all.
-#: **EMPTY, AND DELIBERATELY SO.** Amendment 4 is a DRAFT and releases nothing:
-#: *"You are NOT authorized to write production Engine 2 implementation code that
-#: violates the existing freeze until Amendment 4 formally releases
-#: implementation"* — the owner, 2026-08-06.
+#: CLAUDE.md §P, **Amendment 4** — SIGNED 2026-08-06: *"Amendment 4 approved —
+#: option (a), Story Builder only."*
 #:
-#: The guards below exist ALREADY rather than being written on the day the
-#: amendment is signed. A guard authored in the same commit as the code it
-#: permits has never once refused anything, and is therefore unproven at the
-#: moment it matters most. These have been proven against an empty set first.
+#: The guards below were written and proven against an EMPTY set BEFORE this
+#: signature existed. A guard authored in the same commit as the code it permits
+#: has never once refused anything, and is unproven at the moment it matters
+#: most; these had already refused.
 #:
-#: When the amendment is signed, the single line that changes is this set.
-ENGINE_2_AUTHORIZED: frozenset[str] = frozenset()
+#: **Two paths, not seven.** Option (a) released Story Builder and the parent
+#: orchestration. The six reasoning sub-engines are Gemini 2.5 Flash — an API key
+#: and real spend — and are absent by decision, not by oversight.
+ENGINE_2_AUTHORIZED = {
+    "engines/understanding_engine/story_builder",  # §8.7 assembly, never reasoning
+    "engines/understanding_engine/pipeline",  # the ENGINE's own runner, not a sub-engine
+}
 
 AUTHORIZED_STUBS = {
     "brain/__init__",
