@@ -51,6 +51,7 @@ import inspect
 import itertools
 import sys
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -389,6 +390,25 @@ def one_run() -> _CanonicalRun:
     return _Fixture().to_the_bound()
 
 
+@pytest.fixture(scope="module")
+def second_run() -> _CanonicalRun:
+    """A SECOND, genuinely independent run of the same bytes through the same
+    real engines — the other half of every claim that compares two runs.
+
+    Two tests need one and each built its own, which is three full runs to
+    compare two. `test_two_identical_runs_produce_identical_histories` already
+    says in words that it and `test_engine_1_mints_the_document_id...` assert
+    *"about the same two runs"*; this makes that literally so, and pays for the
+    second run once.
+
+    IT IS STILL A SECOND RUN, not a copy of the first. `_Fixture()` is
+    constructed fresh here and driven through `ApplicationLayer.run` again, so
+    the id that must differ and the history that must not are both produced by
+    an independent pass — which is the entire content of both assertions.
+    """
+    return _Fixture().to_the_bound()
+
+
 # ── it runs, end to end, on one document ──────────────────────────────────
 
 
@@ -557,7 +577,9 @@ def test_the_application_layer_does_not_import_the_input_engine_stub() -> None:
     assert offenders == [], f"the Application Layer is back on the Engine 1 stub: {offenders}"
 
 
-def test_engine_1_mints_the_document_id_not_the_application_layer(one_run: _CanonicalRun) -> None:
+def test_engine_1_mints_the_document_id_not_the_application_layer(
+    one_run: _CanonicalRun, second_run: _CanonicalRun
+) -> None:
     """`ENGINE_1:95`, `:253` — the Document ID *"is assigned by the Input Engine
     at intake."*
 
@@ -567,8 +589,7 @@ def test_engine_1_mints_the_document_id_not_the_application_layer(one_run: _Cano
     from here — it was minted inside Engine 1, which is where the locked
     specification puts it.
     """
-    second = _Fixture().to_the_bound()
-    assert one_run.preserved.evidence.document_id != second.preserved.evidence.document_id
+    assert one_run.preserved.evidence.document_id != second_run.preserved.evidence.document_id
 
     # The Application Layer no longer has one to give.
     assert "document_id" not in inspect.signature(ApplicationLayer.run).parameters
@@ -1010,7 +1031,9 @@ def test_the_accounting_stub_never_claims_a_complete_decision(one_run: _Canonica
 # ── the run is reproducible ───────────────────────────────────────────────
 
 
-def test_two_identical_runs_produce_identical_histories(one_run: _CanonicalRun) -> None:
+def test_two_identical_runs_produce_identical_histories(
+    one_run: _CanonicalRun, second_run: _CanonicalRun
+) -> None:
     """AL-INV-12 rests on identical input producing an identical conclusion. A
     module reaching for uuid4() or datetime.now() cannot offer that.
 
@@ -1020,4 +1043,4 @@ def test_two_identical_runs_produce_identical_histories(one_run: _CanonicalRun) 
     the pair of facts `test_engine_1_mints_the_document_id...` and this test
     assert about the same two runs: the ids differ, the histories do not.
     """
-    assert _Fixture().to_the_bound().history == one_run.history
+    assert second_run.history == one_run.history

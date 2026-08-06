@@ -52,6 +52,7 @@ import hashlib
 import pathlib
 import re
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Protocol, cast
@@ -1956,10 +1957,26 @@ def _an_invoice_pdf() -> bytes:
 
 
 @pytest.fixture(scope="module")
-def emitted_evidence() -> DocumentEvidenceObject:
-    """One real run of Engine 1, shared by the tests below. Module-scoped
-    because Docling's model load is the expensive part and the tests only read
-    the result."""
+def emitted_evidence(
+    recorded_docling_for_module: Callable[[tuple[str, ...]], None],
+) -> DocumentEvidenceObject:
+    """One real run of Engine 1, shared by the tests below.
+
+    Every stage runs for real — cleaner, reader, classification, confidence and
+    assembly all execute, and the text below is read out of the PDF's own text
+    layer by `reader`, not supplied. The ONE substitution is Docling's
+    converter, which is handed the reading it really returned for this exact
+    document on 2026-08-07 (`tests/conftest.py`). Nothing in this module asserts
+    anything about how well a model reads; every assertion is a conformance
+    predicate over the artifact Engine 1 emitted, and each one is unchanged.
+
+    MEASURED at commit `00c6b8d`, LOCAL, back to back in one session: this
+    fixture cost 135.90 s to set up with the real converter and 23.69 s with the
+    recording, and the file ran in 141.46 s against 31.29 s — 856 passed either
+    way. Almost all of the difference is the per-process model load, which the
+    `mutation` gate pays again for every single mutant.
+    """
+    recorded_docling_for_module(_INVOICE_LINES)
     return pipeline.run(
         pipeline.DocumentIntake(
             document=_an_invoice_pdf(),

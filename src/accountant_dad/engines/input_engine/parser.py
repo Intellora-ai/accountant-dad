@@ -192,9 +192,10 @@ import shlex
 import sys
 from dataclasses import dataclass, field
 from types import ModuleType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, cast
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
     from decimal import Decimal
     from pathlib import Path
 
@@ -1014,16 +1015,176 @@ def _convert(source: Path) -> _Conversion:
     return conversion
 
 
+# ── a typed facade over one untyped dependency ────────────────────────────
+#
+# `transformers` is reached through `require_module`, which is annotated
+# `ModuleType`, so everything taken off it arrives implicitly `Any` and mypy
+# checks NOTHING about it. That was survivable while the two constructions sat
+# inline; it stops being survivable once they move behind a function, because a
+# function has a RETURN TYPE and `disallow_any_explicit` refuses `Any` as one.
+# That is the exact wall the first attempt at this fix hit and was reverted on
+# (`KNOWN_FAILURES.md` F-015).
+#
+# Declaring the surface this module actually uses is STRICTER than what stood
+# here before, not looser: mypy now checks every call below against these
+# signatures, so a renamed method, a wrong keyword or a wrong argument type is
+# caught, where the implicit `Any` hid all of it. Written in `reader.py`'s
+# style and for `reader._recogniser`'s reason, and read off the installed
+# library (transformers 5.8.1) rather than from memory.
+
+
+class _Numbers(Protocol):
+    """One tensor, as this module uses it: iterable, and convertible to a number.
+
+    Deliberately self-referential, because a tensor's elements are tensors — a
+    row of `boxes` iterates into four edges, and an edge is the same shape of
+    thing a single `scores` entry is.
+
+    Declaring `__float__` and `__int__` rather than `float` and `int` is the
+    honest statement: the values belong to the tensor library, and this module
+    converts each one at the moment it takes it. That conversion is the whole
+    reason nothing from that library ever reaches a `Band`.
+    """
+
+    def __iter__(self) -> Iterator[_Numbers]: ...
+    def __float__(self) -> float: ...
+    def __int__(self) -> int: ...
+
+
+class _Detection(Protocol):
+    """One post-processed batch: parallel tensors, keyed by name.
+
+    Three keys are read — `scores`, `labels`, `boxes` — by string, because that
+    is how the library returns them. A key that stops existing is a `KeyError`,
+    which is loud; a key that stops being parallel to the others is what
+    `zip(..., strict=True)` below refuses to paper over.
+    """
+
+    def __getitem__(self, key: str) -> _Numbers: ...
+
+
+class _DetectorConfig(Protocol):
+    """The one thing this module reads off the model's configuration.
+
+    `id2label` maps the detector's integer class to its name. Typed as a
+    mapping to `object` and passed through `str(...)` at the call site: what
+    the library puts in that mapping is the library's business, and declaring
+    it already `str` would be a claim ABOUT a dependency rather than a check OF
+    one.
+    """
+
+    @property
+    def id2label(self) -> Mapping[int, object]: ...
+
+
+class _ImageProcessor(Protocol):
+    """Table Transformer's preprocessor, in the two ways this module uses it."""
+
+    def __call__(self, *, images: object, return_tensors: str) -> Mapping[str, object]: ...
+
+    def post_process_object_detection(
+        self,
+        outputs: object,
+        *,
+        threshold: float,
+        target_sizes: list[tuple[int, int]],
+    ) -> list[_Detection]: ...
+
+
+class _ObjectDetector(Protocol):
+    """The structure model itself: put into inference mode, then called."""
+
+    @property
+    def config(self) -> _DetectorConfig: ...
+
+    def eval(self) -> object: ...
+    def __call__(self, **inputs: object) -> object: ...
+
+
+class _FromPretrained[T](Protocol):
+    """A `transformers` class, reduced to the one constructor used here."""
+
+    def from_pretrained(self, checkpoint: str) -> T: ...
+
+
+@dataclass(frozen=True, slots=True)
+class _TableStructure:
+    """The one preprocessor and the one detector, built together and reused."""
+
+    processor: _ImageProcessor
+    detector: _ObjectDetector
+
+
+@functools.cache
+def _table_structure_model() -> _TableStructure:
+    """Table Transformer, built on first use and reused after — `KNOWN_FAILURES.md` F-015.
+
+    ── THE MEASUREMENT THAT FORCED IT ──
+
+    Both constructions used to sit inside `_bands_for`, which runs ONCE PER
+    TABLE, so a three-table invoice built the model three times. Measured on
+    this machine at commit `00c6b8d`, weights already in the HuggingFace cache
+    so no download is involved, three repeats in ONE process with the cache
+    cleared between tables for the "before" arm and left alone for the "after"
+    arm — same warm state, one variable:
+
+        3 tables, model built per table    14.476 s   median
+        3 tables, model built once          7.015 s   median
+        saved per EXTRA table                3.730 s
+
+    That is a production cost first and a CI cost second. Every table in every
+    document paid it, forever.
+
+    `@cache` rather than a module-level global, for the reason
+    `reader._recogniser` gives: the caching is then a property of the function
+    instead of a mutable name any other code could rebind. `require_module`
+    directly below is `@functools.cache`d for the same reason.
+
+    INFERENCE MODE IS ASSERTED ONCE, HERE, AND THAT IS DELIBERATE. `eval()` used
+    to be re-asserted per call. It is a property of the instance, nothing in
+    this module sets it back, and the instance is private and returned to no
+    caller — so a second assertion could only confirm what the first one did. If
+    a later change ever hands this object out, that stops being true and the
+    `eval()` belongs back at the point of use.
+
+    A FAILED BUILD IS NOT REMEMBERED. `functools.cache` stores return values and
+    never exceptions, so an absent `transformers` raises
+    `ParserDependencyMissingError` on EVERY call rather than on the first only
+    — which keeps the error a fact about the deployment instead of a fact about
+    call order.
+
+    The literal `"transformers"` stays in this file so the AST checks that pin
+    this module's dynamic imports still see it: moving the call must not hide a
+    technology swap from `test_runtime_library_versions.py`.
+    """
+    transformers = require_module("transformers")
+    processor_class = cast("_FromPretrained[_ImageProcessor]", transformers.AutoImageProcessor)
+    detector_class = cast(
+        "_FromPretrained[_ObjectDetector]", transformers.TableTransformerForObjectDetection
+    )
+    # Processor first, then detector, then `eval()` — the order the inline
+    # version ran in, kept rather than tidied. `from_pretrained` touches global
+    # state in the tensor library, and a reordering that turned out to matter
+    # would show up as a changed band, which is silent.
+    processor = processor_class.from_pretrained(TABLE_STRUCTURE_MODEL)
+    detector = detector_class.from_pretrained(TABLE_STRUCTURE_MODEL)
+    detector.eval()
+    return _TableStructure(processor=processor, detector=detector)
+
+
 def _bands_for(source: Path, table: Table, settings: TableStructureSettings) -> tuple[Band, ...]:
     """Run Table Transformer's STRUCTURE model inside one already-located table.
 
     The table is a given, not a finding. This function cannot return a table
     and cannot be reached for a page Docling found no table on, which is the
     structural half of the rule the module docstring measures.
+
+    The model comes from `_table_structure_model`, once per process. Everything
+    else in here is per-table because it is about one table; the model is not,
+    and used to be (`KNOWN_FAILURES.md` F-015).
     """
     pdfium = require_module("pypdfium2")
     torch = require_module("torch")
-    transformers = require_module("transformers")
 
     scale = settings.render_dots_per_inch / _POINTS_PER_INCH
     pad = settings.crop_padding_points
@@ -1042,12 +1203,10 @@ def _bands_for(source: Path, table: Table, settings: TableStructureSettings) -> 
     finally:
         document.close()
 
-    processor = transformers.AutoImageProcessor.from_pretrained(TABLE_STRUCTURE_MODEL)
-    model = transformers.TableTransformerForObjectDetection.from_pretrained(TABLE_STRUCTURE_MODEL)
-    model.eval()
+    built = _table_structure_model()
     with torch.no_grad():
-        outputs = model(**processor(images=crop, return_tensors="pt"))
-    detected = processor.post_process_object_detection(
+        outputs = built.detector(**built.processor(images=crop, return_tensors="pt"))
+    detected = built.processor.post_process_object_detection(
         outputs,
         threshold=settings.structure_score_threshold,
         target_sizes=[(crop.height, crop.width)],
@@ -1060,7 +1219,7 @@ def _bands_for(source: Path, table: Table, settings: TableStructureSettings) -> 
         edges = [float(edge) for edge in box]
         bands.append(
             Band(
-                label=str(model.config.id2label[int(label)]),
+                label=str(built.detector.config.id2label[int(label)]),
                 score=float(score),
                 box=BoundingBox(
                     page=table.box.page,

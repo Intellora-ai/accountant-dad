@@ -2631,3 +2631,186 @@ def test_a_missing_paddleocr_is_deliberately_left_as_a_plain_import_error(
         reader.read_by_ocr([an_invoice_png()])
 
     assert "paddleocr" in paddleocr_is_absent
+
+
+# ── the coordinate contract, guarded where the reader already is ──────────
+#
+# `KNOWN_FAILURES.md` F-030's consumer half. The end-to-end proof — a mark
+# planted on a real page, cleaned, read back and compared against where it
+# started — lives in `test_source_location_maps_to_source.py`, because it needs
+# the cleaner and a mark-locating substitute. What belongs HERE is the part that
+# is about `reader` alone and needs no OCR at all: that the refusal happens
+# before any recogniser is reached, and that an outline is carried verbatim.
+
+
+def test_an_impossible_source_map_is_refused_before_the_recogniser_is_even_reached(
+    paddleocr_is_absent: list[str],
+) -> None:
+    """FAIL FAST, and the fixture is what proves it.
+
+    PaddleOCR is made absent, so anything that reaches the recogniser raises
+    `ModuleNotFoundError` — the behaviour the test directly above pins. A
+    `CoordinateContractError` instead can only mean the contract was checked
+    first. That also makes every contract refusal testable on a machine with no
+    OCR installed, which is every machine this project has (F-002, F-009).
+    """
+    with pytest.raises(reader.CoordinateContractError, match="contract version"):
+        reader.read_by_ocr(
+            [an_invoice_png()],
+            mapping=reader.SourceMapping(
+                pages=(),
+                raster_dpi=None,
+                contract_version=reader.COORDINATE_CONTRACT_VERSION + 1,
+            ),
+        )
+
+    assert paddleocr_is_absent == [], (
+        "the recogniser was reached before the contract was checked; the "
+        "modules it tried to import were " + repr(paddleocr_is_absent)
+    )
+
+
+def test_a_map_covering_fewer_pages_than_were_read_is_refused_not_partially_applied(
+    paddleocr_is_absent: list[str],
+) -> None:
+    """Two pages read, none mapped. The tempting behaviour is to map what can be
+    mapped, and it is the F-030 defect exactly: an unmapped page comes back in
+    the cleaned raster's own pixels, indistinguishable from a mapped page's real
+    source coordinates.
+    """
+    with pytest.raises(reader.CoordinateContractError, match="2 page"):
+        reader.read_by_ocr(
+            [an_invoice_png(), an_invoice_png()],
+            mapping=reader.SourceMapping(
+                pages=(),
+                raster_dpi=None,
+                contract_version=reader.COORDINATE_CONTRACT_VERSION,
+            ),
+        )
+
+    assert paddleocr_is_absent == []
+
+
+class _AGeometryFor(Protocol):
+    """`cleaner.SourceGeometry`'s shape, as `reader` declares it structurally."""
+
+    @property
+    def source_height(self) -> int: ...
+    @property
+    def source_width(self) -> int: ...
+    @property
+    def render_dpi(self) -> int | None: ...
+    @property
+    def page(self) -> int: ...
+    def source_pixel(self, x: float, y: float) -> tuple[float, float]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class _StraightGeometry:
+    """A map that moves nothing, at a stated resolution. Only enough of a
+    geometry to reach the arithmetic; the real one is exercised in
+    `test_source_location_maps_to_source.py`."""
+
+    render_dpi: int | None
+    source_height: int = 100
+    source_width: int = 100
+    page: int = 1
+
+    def source_pixel(self, x: float, y: float) -> tuple[float, float]:
+        return x, y
+
+
+def test_a_raster_resolution_of_zero_is_refused_by_the_one_dpi_rule_this_repo_has(
+    paddleocr_is_absent: list[str],
+) -> None:
+    """A zero or negative DPI is a division this module must never perform.
+
+    Refused by `pdf_backend.require_positive_dpi`, the SAME rule `read`,
+    `render_page_png` and `cleaner.clean_artifact` are all held to (Law 19) —
+    not by a second copy of the comparison here, which would be a second place
+    for "what counts as a usable resolution" to drift.
+    """
+    with pytest.raises(ValueError, match="render_dpi"):
+        reader.read_by_ocr(
+            [an_invoice_png()],
+            mapping=reader.SourceMapping(
+                pages=(
+                    reader.CleanedPage(
+                        page_index=0,
+                        height=10,
+                        width=10,
+                        geometry=cast(_AGeometryFor, _StraightGeometry(render_dpi=FIXTURE_DPI)),
+                    ),
+                ),
+                raster_dpi=0,
+                contract_version=reader.COORDINATE_CONTRACT_VERSION,
+            ),
+        )
+
+    assert paddleocr_is_absent == []
+
+
+def test_an_unmapped_recognised_region_carries_its_outline_verbatim(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """The four corners are KEPT, in the backend's own order, unrounded.
+
+    `a_box_at` reports the bottom-right corner first on purpose, so an
+    implementation that re-sorted the outline into reading order — or rebuilt it
+    from the four edges — produces a different tuple and turns this red. The
+    quad is what a rotation needs; the four edges are only its enclosure, and
+    `test_a_recognised_region_is_located_by_its_whole_outline_not_its_first_corner`
+    above already pins that enclosure.
+    """
+    substitute_the_recogniser(SCRIPTED_LINES)
+
+    reading = reader.read(
+        an_invoice_png(),
+        media_type=reader.MediaType.IMAGE,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+    )
+
+    assert [region.location.corners for region in reading.regions] == [
+        tuple((float(x), float(y)) for x, y in line.box) for line in SCRIPTED_LINES
+    ]
+    assert all(
+        region.location.space is reader.CoordinateSpace.OCR_RASTER_PIXELS
+        for region in reading.regions
+    ), "an unmapped OCR reading claimed a space it cannot prove"
+
+
+def test_a_text_layer_region_reports_no_outline_because_none_was_reported() -> None:
+    """The backend gives a RECTANGLE here, not an outline, and inventing four
+    corners from it would be four coordinates no backend produced (Law 24).
+
+    Empty is the honest answer, and it is different from four zeroes.
+    """
+    reading = reader.read(
+        an_invoice_pdf(),
+        media_type=reader.MediaType.PDF,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=NO_FALLBACK,
+    )
+
+    assert reading.regions
+    assert all(region.location.corners == () for region in reading.regions)
+    assert all(
+        region.location.space is reader.CoordinateSpace.PDF_PAGE_POINTS
+        for region in reading.regions
+    )
+
+
+def test_the_source_map_is_the_one_parameter_that_may_be_omitted() -> None:
+    """`mapping` HAS a default and the other three do not, and both halves matter.
+
+    A caller may honestly not know where the pixels came from — a text-layer PDF
+    has no map at all — so requiring one would force every caller to invent one,
+    which is the failure this whole contract exists to prevent. The three
+    numbers are the opposite case: nobody may invent those (Law 52), which
+    `test_no_unset_number_acquires_a_default` above pins.
+    """
+    signature = inspect.signature(reader.read)
+
+    assert signature.parameters["mapping"].default is None
+    assert reader.COORDINATE_CONTRACT_VERSION == 1

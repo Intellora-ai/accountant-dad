@@ -2635,7 +2635,50 @@ def test_the_configured_parameters_went_through_config_and_not_around_it() -> No
     assert isinstance(settings.confidence_parameters, config.ConfidenceParameters)
 
 
-def test_a_run_classifies_the_document_and_records_what_it_found(tmp_path: Path) -> None:
+@dataclass(frozen=True)
+class _RecordedRun:
+    """One real run that wrote a calibration row, and the row it wrote."""
+
+    evidence: DocumentEvidenceObject
+    row: measurement.MeasurementRow
+
+
+@pytest.fixture(scope="module")
+def recorded_run(tmp_path_factory: pytest.TempPathFactory) -> _RecordedRun:
+    """ONE run against a configured store, shared by the four tests that only
+    READ what it recorded.
+
+    All four issued the identical call — `a_document_intake()`, a fresh
+    identity, `a_pipeline_settings(measurement_store=...)`, `RECORDED_AT` — and
+    each paid for its own Docling conversion of the same bytes to assert a
+    different property of the one row that came out. Measured CPU at commit
+    00c6b8d, LOCAL ONLY - NOT AUTHORITATIVE: 3166 + 3055 + 2853 + 2774 ms,
+    11.85 s to make four assertions about one run's record.
+
+    Nothing mutable is shared. `DocumentEvidenceObject` is immutable by INV-5,
+    `MeasurementRow` is read off disk and only read here, and no test below
+    writes to the store. That is the property isolation exists to give
+    (`CLAUDE.md` §J.6), and this file's own `end_to_end_result` fixture already
+    makes the same trade for the same measured reason.
+
+    THE TESTS THAT NEED A DIFFERENT RUN STILL BUILD ONE. A second document, a
+    run with no store configured, and two documents appended to one store are
+    all genuinely different runs and are left alone below.
+    """
+    store = tmp_path_factory.mktemp("recorded-run") / "measurements.jsonl"
+    evidence = pipeline.run(
+        a_document_intake(),
+        identity=an_identity(),
+        settings=a_pipeline_settings(measurement_store=store),
+        recorded_at=RECORDED_AT,
+    )
+    (row,) = measurement.read_all(store)
+    return _RecordedRun(evidence=evidence, row=row)
+
+
+def test_a_run_classifies_the_document_and_records_what_it_found(
+    recorded_run: _RecordedRun,
+) -> None:
     """`classification` AND `measurement` BOTH HAVE CONSUMERS, and one run is
     what proves it: the classification result is what the measurement row states
     the document type to be.
@@ -2651,16 +2694,7 @@ def test_a_run_classifies_the_document_and_records_what_it_found(tmp_path: Path)
     else, and `test_the_evidence_object_has_no_document_type_field` is the
     falsifier for that claim.
     """
-    store = tmp_path / "measurements.jsonl"
-
-    evidence = pipeline.run(
-        a_document_intake(),
-        identity=an_identity(),
-        settings=a_pipeline_settings(measurement_store=store),
-        recorded_at=RECORDED_AT,
-    )
-
-    (row,) = measurement.read_all(store)
+    evidence, row = recorded_run.evidence, recorded_run.row
     assert row.document_id == evidence.document_id, (
         "the row is keyed by a different document than the artifact it "
         "describes, so no calibration run could ever join the two"
@@ -2677,7 +2711,7 @@ def test_a_run_classifies_the_document_and_records_what_it_found(tmp_path: Path)
     ]
 
 
-def test_the_recorded_row_invents_no_score_anywhere(tmp_path: Path) -> None:
+def test_the_recorded_row_invents_no_score_anywhere(recorded_run: _RecordedRun) -> None:
     """The row is a RECORD, never a judgement — `measurement.py`'s own first
     rule, and the one this wiring could most easily break.
 
@@ -2687,15 +2721,7 @@ def test_the_recorded_row_invents_no_score_anywhere(tmp_path: Path) -> None:
     classification signal carries `None` rather than a number, because
     `classification` scores nothing at all and `classification_accept` is UNSET.
     """
-    store = tmp_path / "measurements.jsonl"
-    pipeline.run(
-        a_document_intake(),
-        identity=an_identity(),
-        settings=a_pipeline_settings(measurement_store=store),
-        recorded_at=RECORDED_AT,
-    )
-
-    (row,) = measurement.read_all(store)
+    row = recorded_run.row
     assert row.document_score is measurement.ABSENT, (
         "a document score was recorded. No rule anywhere produces one — #13 is "
         "UNDEFINED — so any value here was invented (Law 24)."
@@ -2711,22 +2737,16 @@ def test_the_recorded_row_invents_no_score_anywhere(tmp_path: Path) -> None:
     )
 
 
-def test_the_recorded_row_carries_every_reading_with_its_instrument(tmp_path: Path) -> None:
+def test_the_recorded_row_carries_every_reading_with_its_instrument(
+    recorded_run: _RecordedRun,
+) -> None:
     """`ConfidenceReport.FieldConfidence` is `(field_name, confidence)` — no slot
     for which tool produced the score, and none for a page region
     (`CONFIDENCE_SPECIFICATION.md` §3.3-3.4, open item O4). This store is the
     ONLY place either fact survives, so a row that dropped them would silently
     end the possibility of calibrating per instrument.
     """
-    store = tmp_path / "measurements.jsonl"
-    pipeline.run(
-        a_document_intake(),
-        identity=an_identity(),
-        settings=a_pipeline_settings(measurement_store=store),
-        recorded_at=RECORDED_AT,
-    )
-
-    (row,) = measurement.read_all(store)
+    row = recorded_run.row
     assert not isinstance(row.per_region_ocr, measurement.AbsentType)
     assert not isinstance(row.per_field, measurement.AbsentType)
     assert len(row.per_region_ocr) == len(INVOICE_LINES), (
@@ -2785,7 +2805,9 @@ def test_a_row_is_recorded_for_every_run_even_with_no_store_configured() -> None
     assert built[0].source_document_type == classification.DocumentType.TAX_INVOICE.value
 
 
-def test_the_recorded_processing_time_is_a_real_elapsed_duration(tmp_path: Path) -> None:
+def test_the_recorded_processing_time_is_a_real_elapsed_duration(
+    recorded_run: _RecordedRun,
+) -> None:
     """A duration, measured, and never an injected constant.
 
     `Sources.now` is injected everywhere else in this repository so the ARTIFACT
@@ -2793,16 +2815,13 @@ def test_the_recorded_processing_time_is_a_real_elapsed_duration(tmp_path: Path)
     `processing_time_ms` on the calibration row — and a fabricated duration
     there would be worse than none (Law 24). It is taken from a MONOTONIC clock
     so it can never come back negative because a wall clock stepped.
-    """
-    store = tmp_path / "measurements.jsonl"
-    pipeline.run(
-        a_document_intake(),
-        identity=an_identity(),
-        settings=a_pipeline_settings(measurement_store=store),
-        recorded_at=RECORDED_AT,
-    )
 
-    (row,) = measurement.read_all(store)
+    THE RUN IS STILL A REAL RUN. `recorded_run` reads a genuine
+    `pipeline.run` through the real four sub-engines and takes the row off disk;
+    the duration asserted here is the one that run actually measured, not a
+    number this test arranged.
+    """
+    row = recorded_run.row
     assert row.processing_time_ms > 0.0, (
         f"processing took {row.processing_time_ms} ms, which no real run does. "
         "A zero here means the duration is a constant rather than a measurement."

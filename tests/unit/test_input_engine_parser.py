@@ -203,6 +203,33 @@ def invoice(documents: dict[str, pathlib.Path]) -> parser.ParsedStructure:
     return parser.parse(documents["with_table"], source_reference=A_REFERENCE)
 
 
+@pytest.fixture(scope="session")
+def without_table(documents: dict[str, pathlib.Path]) -> parser.ParsedStructure:
+    """The table-free document, parsed once, for the same reason as `invoice`.
+
+    Two tests asserted different properties of `parse(without_table.pdf)` and
+    each paid for its own Docling conversion of the same bytes. Measured CPU on
+    this file at commit 00c6b8d, LOCAL ONLY - NOT AUTHORITATIVE:
+    `test_a_document_with_no_table_yields_no_table` 2128 ms and
+    `test_the_parser_reports_no_missing_field_whatever_the_document` 8918 ms,
+    the latter re-converting all three documents that were already converted
+    elsewhere in this file.
+
+    Sharing costs nothing here. `ParsedStructure` is frozen and every assertion
+    below only reads it, so no test can disturb another's value — the property
+    isolation exists to give (`CLAUDE.md` §J.6). Nothing asserted that two
+    independent conversions of the same file agree; that claim has no test here
+    and none is removed by this.
+    """
+    return parser.parse(documents["without_table"], source_reference=A_REFERENCE)
+
+
+@pytest.fixture(scope="session")
+def blank(documents: dict[str, pathlib.Path]) -> parser.ParsedStructure:
+    """The blank page, parsed once. Same trade as `without_table` above."""
+    return parser.parse(documents["blank"], source_reference=A_REFERENCE)
+
+
 def _cell_grid(table: parser.Table) -> dict[tuple[int, int], str | None]:
     return {(cell.row_start, cell.column_start): cell.text for cell in table.cells}
 
@@ -869,20 +896,18 @@ def test_the_page_header_survives_as_a_located_region(invoice: parser.ParsedStru
 
 
 @needs_the_real_tools
-def test_a_document_with_no_table_yields_no_table(documents: dict[str, pathlib.Path]) -> None:
+def test_a_document_with_no_table_yields_no_table(without_table: parser.ParsedStructure) -> None:
     """Zero, not a guess."""
-    structure = parser.parse(documents["without_table"], source_reference=A_REFERENCE)
-    assert len(structure.tables) == NO_TABLES
-    assert structure.regions
+    assert len(without_table.tables) == NO_TABLES
+    assert without_table.regions
 
 
 @needs_the_real_tools
-def test_a_blank_page_yields_an_empty_structure(documents: dict[str, pathlib.Path]) -> None:
+def test_a_blank_page_yields_an_empty_structure(blank: parser.ParsedStructure) -> None:
     """Nothing on the page means nothing in the output. Never an invented row."""
-    structure = parser.parse(documents["blank"], source_reference=A_REFERENCE)
-    assert structure.page_count == ONE_PAGE
-    assert structure.tables == ()
-    assert structure.regions == ()
+    assert blank.page_count == ONE_PAGE
+    assert blank.tables == ()
+    assert blank.regions == ()
 
 
 @needs_the_real_tools
@@ -1001,9 +1026,18 @@ def test_the_source_reference_travels_with_the_structure(
 
 @needs_the_real_tools
 def test_the_parser_reports_no_missing_field_whatever_the_document(
-    documents: dict[str, pathlib.Path],
+    invoice: parser.ParsedStructure,
+    without_table: parser.ParsedStructure,
+    blank: parser.ParsedStructure,
 ) -> None:
-    """Not even for a blank page. Absence is only knowable against an expected list."""
-    for name in ("with_table", "without_table", "blank"):
-        structure = parser.parse(documents[name], source_reference=A_REFERENCE)
+    """Not even for a blank page. Absence is only knowable against an expected list.
+
+    THE SAME THREE DOCUMENTS, and the same three conversions of them — they are
+    now the session's, so this reads what the rest of the file already paid for
+    instead of converting all three again. Named individually rather than looped
+    over, because a loop over a dict of fixtures would let one silently drop out
+    of the tuple and leave this quantifying over two documents while still
+    claiming "whatever the document".
+    """
+    for structure in (invoice, without_table, blank):
         assert structure.missing_field_information.absent_fields == ()

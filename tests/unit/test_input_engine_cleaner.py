@@ -711,11 +711,49 @@ def test_the_reported_contrast_matches_the_independent_measure() -> None:
     assert reported.value == pytest.approx(rms_contrast(flat), abs=1e-6)
 
 
+# ── the one baseline clean the read-only tests share ──────────────────────
+#
+# `_clean_image(padded(a_page()), BASELINE)` appeared EIGHT times below, with
+# identical arguments every time, and each occurrence paid for its own
+# `cv2.fastNlMeansDenoising` over the 1000x1300 padded page — the single most
+# expensive call in this module. Measured CPU at commit 00c6b8d, LOCAL ONLY -
+# NOT AUTHORITATIVE: the eight cost 21.6 s between them to make eight
+# assertions about ONE clean's outcome.
+#
+# NOTHING MUTABLE IS SHARED AND NO ASSERTION CHANGES. `CleanedDocument` is
+# frozen — `test_the_result_is_frozen` below is the falsifier for that, and it
+# still runs against this object — and every test taking one of these fixtures
+# only READS it. That is the property isolation exists to give (§J.6).
+#
+# WHAT WAS CHECKED BEFORE COLLAPSING THEM: nothing here asserted that two
+# independent cleans of the same page agree. That claim has its own test,
+# `test_cleaning_the_same_page_twice_gives_the_same_bytes`, which still calls
+# `clean_artifact` twice and compares — so determinism is still measured, by
+# the test whose subject it is, and is not being inferred from these.
+#
+# Module-scoped rather than session-scoped so nothing outside this file can
+# reach them.
+
+
+@pytest.fixture(scope="module")
+def cleaned_baseline_page() -> cleaner.CleanedDocument:
+    """The padded text page, cleaned once at `BASELINE`."""
+    return cleaner._clean_image(padded(a_page()), BASELINE)
+
+
+@pytest.fixture(scope="module")
+def page_cropped_without_margin() -> cleaner.CleanedDocument:
+    """The same page at a zero crop margin — the second identical pair."""
+    return cleaner._clean_image(padded(a_page()), settings(crop_margin_pixels=0))
+
+
 # ── the preservation rule ─────────────────────────────────────────────────
 
 
-def test_a_clean_that_loses_no_ink_reports_the_cleaned_form_as_safer() -> None:
-    result = cleaner._clean_image(padded(a_page()), BASELINE)
+def test_a_clean_that_loses_no_ink_reports_the_cleaned_form_as_safer(
+    cleaned_baseline_page: cleaner.CleanedDocument,
+) -> None:
+    result = cleaned_baseline_page
     lost = result.observed(cleaner.INK_LOST_TO_DENOISE, cleaner.Stage.CLEANED)
     assert lost.value is not None
     assert lost.value < MAX_BASELINE_INK_LOSS
@@ -763,9 +801,13 @@ def test_the_preservation_rule_tracks_the_callers_threshold_and_not_a_constant()
     assert permissive.preservation_status is cleaner.PreservationStatus.CLEANED_IS_SAFER
 
 
-def test_the_original_is_never_discarded() -> None:
+def test_the_original_is_never_discarded(cleaned_baseline_page: cleaner.CleanedDocument) -> None:
+    # Rebuilt rather than taken from the fixture on purpose: comparing the
+    # carried original against a page this test constructed for itself is what
+    # makes "the original was altered" falsifiable. Comparing it against the
+    # very array that was handed in would be the same object either way.
     page = padded(a_page())
-    result = cleaner._clean_image(page, BASELINE)
+    result = cleaned_baseline_page
     assert np.array_equal(result.original, page), "the original was altered"
     assert result.original is not result.cleaned
 
@@ -779,29 +821,35 @@ def test_the_original_is_carried_in_the_colour_it_arrived_in() -> None:
 # ── crop discards no content ──────────────────────────────────────────────
 
 
-def test_crop_keeps_every_ink_pixel() -> None:
+def test_crop_keeps_every_ink_pixel(cleaned_baseline_page: cleaner.CleanedDocument) -> None:
     """The one operation that can literally delete content. `cleaner` may not
     discard anything it judges irrelevant, so retention must be exactly 1.
     """
-    result = cleaner._clean_image(padded(a_page()), BASELINE)
-    kept = result.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED)
+    kept = cleaned_baseline_page.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED)
     assert kept.value == FULL_RETENTION
     assert kept.unit == "fraction of ink pixels"
 
 
-def test_crop_removes_the_blank_border_it_was_given() -> None:
+def test_crop_removes_the_blank_border_it_was_given(
+    page_cropped_without_margin: cleaner.CleanedDocument,
+) -> None:
     """Retention of 1.0 would also hold if crop did nothing at all, so the
     counterpart is that the 200px blank pad actually goes."""
     page = padded(a_page())
-    result = cleaner._clean_image(page, settings(crop_margin_pixels=0))
+    result = page_cropped_without_margin
     assert result.cleaned.shape[0] < page.shape[0]
     assert result.cleaned.shape[1] < page.shape[1]
 
 
-def test_a_larger_crop_margin_keeps_a_larger_page() -> None:
-    page = padded(a_page())
-    tight = cleaner._clean_image(page, settings(crop_margin_pixels=0))
-    loose = cleaner._clean_image(page, settings(crop_margin_pixels=40))
+def test_a_larger_crop_margin_keeps_a_larger_page(
+    page_cropped_without_margin: cleaner.CleanedDocument,
+) -> None:
+    """DIFFERENTIAL, and only the margin differs. The tight side is the shared
+    zero-margin clean; the loose side is cleaned here because 40 is this test's
+    own value and nothing else uses it.
+    """
+    tight = page_cropped_without_margin
+    loose = cleaner._clean_image(padded(a_page()), settings(crop_margin_pixels=40))
     assert loose.cleaned.shape[0] > tight.cleaned.shape[0]
     assert loose.cleaned.shape[1] > tight.cleaned.shape[1]
 
@@ -833,24 +881,29 @@ def test_an_all_black_page_is_handled_too() -> None:
 # ── the observations themselves ───────────────────────────────────────────
 
 
-def test_every_observation_carries_a_reason() -> None:
+def test_every_observation_carries_a_reason(
+    cleaned_baseline_page: cleaner.CleanedDocument,
+) -> None:
     """`ENGINE_1:626` - a bare score cannot become a good question downstream."""
-    result = cleaner._clean_image(padded(a_page()), BASELINE)
+    result = cleaned_baseline_page
     assert result.quality_observations
     for observation in result.quality_observations:
         assert observation.note.strip(), f"{observation.name} carries no reason"
         assert observation.unit.strip(), f"{observation.name} carries no unit"
 
 
-def test_no_observation_is_reported_twice_for_one_stage() -> None:
-    result = cleaner._clean_image(padded(a_page()), BASELINE)
-    keys = [(o.name, o.stage) for o in result.quality_observations]
+def test_no_observation_is_reported_twice_for_one_stage(
+    cleaned_baseline_page: cleaner.CleanedDocument,
+) -> None:
+    keys = [(o.name, o.stage) for o in cleaned_baseline_page.quality_observations]
     assert len(keys) == len(set(keys)), f"a measurement is reported twice: {keys}"
 
 
-def test_both_stages_are_measured_so_an_improvement_can_be_stated() -> None:
+def test_both_stages_are_measured_so_an_improvement_can_be_stated(
+    cleaned_baseline_page: cleaner.CleanedDocument,
+) -> None:
     """Law 52. A claim that cleaning improved anything needs before and after."""
-    result = cleaner._clean_image(padded(a_page()), BASELINE)
+    result = cleaned_baseline_page
     stages = {o.stage for o in result.quality_observations}
     assert stages == {cleaner.Stage.ORIGINAL, cleaner.Stage.CLEANED}
     for name in (cleaner.NOISE_SIGMA, cleaner.RMS_CONTRAST, cleaner.LAPLACIAN_VARIANCE):
@@ -858,14 +911,15 @@ def test_both_stages_are_measured_so_an_improvement_can_be_stated() -> None:
         assert result.observed(name, cleaner.Stage.CLEANED).value is not None
 
 
-def test_asking_for_a_measurement_that_was_not_taken_fails_loudly() -> None:
-    result = cleaner._clean_image(padded(a_page()), BASELINE)
+def test_asking_for_a_measurement_that_was_not_taken_fails_loudly(
+    cleaned_baseline_page: cleaner.CleanedDocument,
+) -> None:
     with pytest.raises(KeyError):
-        result.observed("a measurement nobody took", cleaner.Stage.ORIGINAL)
+        cleaned_baseline_page.observed("a measurement nobody took", cleaner.Stage.ORIGINAL)
 
 
-def test_the_result_is_frozen() -> None:
-    result = cleaner._clean_image(padded(a_page()), BASELINE)
+def test_the_result_is_frozen(cleaned_baseline_page: cleaner.CleanedDocument) -> None:
+    result = cleaned_baseline_page
     #: Named rather than written literally: `setattr` with a literal attribute
     #: is a lint violation, and a suppression comment is a gate this repo blocks.
     frozen_field = "preservation_status"
@@ -2832,7 +2886,26 @@ def a_skewed_invoice() -> Image:
     return turned(padded(a_page()), KNOWN_SKEW_DEGREES)
 
 
-def test_a_cleaned_pixel_maps_back_to_the_source_pixel_it_came_from() -> None:
+@pytest.fixture(scope="module")
+def cleaned_skewed_invoice() -> cleaner.CleanedDocument:
+    """The skewed invoice, cleaned once at `BASELINE`.
+
+    Four tests in this section issued that identical call and each paid for its
+    own denoise and deskew of the same 1000x1300 page. Measured CPU at commit
+    00c6b8d, LOCAL ONLY - NOT AUTHORITATIVE: 4270 + 3730 + 2490 ms and one more
+    below the reporting cut, to make four assertions about ONE clean's geometry.
+
+    Shared for the same reason and under the same guarantee as
+    `cleaned_baseline_page` above: the object is frozen, every test taking it
+    only reads it, and no claim about two independent cleans agreeing is being
+    made or lost here.
+    """
+    return cleaner._clean_image(a_skewed_invoice(), BASELINE)
+
+
+def test_a_cleaned_pixel_maps_back_to_the_source_pixel_it_came_from(
+    cleaned_skewed_invoice: cleaner.CleanedDocument,
+) -> None:
     """F-030's headline, as a round trip through the real cleaner.
 
     The ink's centroid is located independently on the cleaned page and on the
@@ -2858,8 +2931,7 @@ def test_a_cleaned_pixel_maps_back_to_the_source_pixel_it_came_from() -> None:
     the same region at every resolution, the identical round trip measures
     EXACTLY 0.000000 px at 150, 300 and 600 dpi.
     """
-    source = a_skewed_invoice()
-    result = cleaner._clean_image(source, BASELINE)
+    result = cleaned_skewed_invoice
 
     kept = result.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED).value
     assert kept == FULL_RETENTION, (
@@ -2883,7 +2955,9 @@ def test_a_cleaned_pixel_maps_back_to_the_source_pixel_it_came_from() -> None:
     )
 
 
-def test_the_map_is_not_a_translation_because_the_page_was_turned() -> None:
+def test_the_map_is_not_a_translation_because_the_page_was_turned(
+    cleaned_skewed_invoice: cleaner.CleanedDocument,
+) -> None:
     """THE HALF-FIX, REFUSED. F-030 names the discarded crop origin, and a
     record of the origin alone would be a translation.
 
@@ -2898,8 +2972,7 @@ def test_the_map_is_not_a_translation_because_the_page_was_turned() -> None:
     where the real map lands 0.270661 px from it. Two hundred times the bound —
     this is not a fix that is nearly right without the rotation.
     """
-    source = a_skewed_invoice()
-    result = cleaner._clean_image(source, BASELINE)
+    result = cleaned_skewed_invoice
     geometry = result.geometry_of()
     across, down = ink_centroid(result.cleaned)
     truth = ink_centroid(cleaner._to_grey(result.original))
@@ -3140,14 +3213,16 @@ def _to_grey_page_of(document: bytes, dpi: int) -> Image:
     return _u8(decoded)
 
 
-def test_the_geometry_survives_the_copy_that_attaches_the_artifact() -> None:
+def test_the_geometry_survives_the_copy_that_attaches_the_artifact(
+    cleaned_skewed_invoice: cleaner.CleanedDocument,
+) -> None:
     """`replace_artifact` rebuilds `CleanedDocument` field by field, so a field
     it forgets is silently emptied on EVERY path that produces an artifact —
     which is every path a consumer ever sees. The identity check is the point:
     a copy that rebuilt the records would also be a copy that could rebuild
     them differently.
     """
-    result = cleaner._clean_image(a_skewed_invoice(), BASELINE)
+    result = cleaned_skewed_invoice
     assert result.source_geometry != (), "the fixture produced no geometry to lose"
 
     copied = cleaner.replace_artifact(
@@ -3161,16 +3236,22 @@ def test_the_geometry_survives_the_copy_that_attaches_the_artifact() -> None:
     assert copied.geometry_of() is result.geometry_of()
 
 
-def test_every_page_of_a_scan_carries_its_own_geometry_and_not_page_ones() -> None:
+def test_every_page_of_a_scan_carries_its_own_geometry_and_not_page_ones(
+    cleaned_skewed_invoice: cleaner.CleanedDocument,
+) -> None:
     """`KNOWN_FAILURES.md` D3, applied to the new field before it can repeat.
 
     D3 was page one's measurements standing for a whole document. Geometry has
     the identical shape and a worse consequence: every page of a multi-page
     scan is cropped and turned differently, so page one's map placed on page
     three's coordinates is not an approximation, it is another page's answer.
+
+    The two pages must be genuinely DIFFERENTLY shaped for the last assertion
+    to bite, which is why the banded page is cleaned here rather than shared:
+    it is a 60x90 fixture and costs nothing.
     """
     first = cleaner._clean_image(a_small_banded_page(), BASELINE)
-    second = cleaner._clean_image(a_skewed_invoice(), BASELINE)
+    second = cleaned_skewed_invoice
 
     joined = cleaner._every_page_reported([first, second])
 

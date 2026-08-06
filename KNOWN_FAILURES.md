@@ -40,7 +40,7 @@ for HEAD.
 | Mutation at HEAD | — | `564bb1d` | — | **PENDING CI** |
 | Coverage at HEAD | — | `564bb1d` | — | **PENDING CI** |
 | Test suite at HEAD | — | `564bb1d` | — | **UNMEASURED** |
-| Tracker predicates | 33 entries · 88 predicates · 0 contradicted · 2 carrying an UNVERIFIABLE admission | `564bb1d` | local `tools/ci/verify_tracker.py` | **LOCAL ONLY — NOT AUTHORITATIVE** (Law 44) |
+| Tracker predicates | 33 entries · 90 predicates · 0 contradicted · 2 carrying an UNVERIFIABLE admission | working tree over `00c6b8d`, UNCOMMITTED | local `tools/ci/verify_tracker.py` | **LOCAL ONLY — NOT AUTHORITATIVE** (Law 44) |
 
 Previous measurements expired because source changed after commit `78e99d4`. Stated
 here rather than waited for (Law 56).
@@ -64,7 +64,7 @@ was carried into a root-cause analysis as though it were evidence.
 So every entry now names a predicate the repository can decide, and a program decides it.
 
 ```totals
-entries=33 predicates=88 unverifiable=2
+entries=33 predicates=90 unverifiable=2
 ```
 
 That line is machine-checked against the file it describes
@@ -887,12 +887,14 @@ at 3.45x the work in 60% as many mutants, @ commit d85861c and now EXPIRED.
 | | |
 |---|---|
 | **Severity** | MEDIUM — real production cost, not just CI |
-| **Status** | `OPEN` · ⬜ fix identified, blocked on typing |
+| **Status** | `CLOSED` · ✅ **CLOSED 2026-08-07** — `_table_structure_model` is `@functools.cache`d behind narrow Protocols, with no type weakened and no suppression added |
 | **Found** | 2026-08-05 |
 
 ```check
-contains src/accountant_dad/engines/input_engine/parser.py "from_pretrained"
-not-defines src/accountant_dad/engines/input_engine/parser.py _table_structure_model
+defines src/accountant_dad/engines/input_engine/parser.py _table_structure_model
+contains src/accountant_dad/engines/input_engine/parser.py "_table_structure_model()"
+not-contains src/accountant_dad/engines/input_engine/parser.py "transformers.AutoImageProcessor.from_pretrained"
+exists tests/unit/test_parser_model_cache.py
 ```
 
 **Description.** `parser.py:580-581` calls `AutoImageProcessor.from_pretrained` and
@@ -916,13 +918,43 @@ instance and does not change.
 PaddleOCR and caches with `@cache`; `parser.require_module` is `@functools.cache`d for
 the same reason. This one call site was missed.
 
-**Permanent fix.** `@functools.cache` on a `_table_structure_model()` helper. Attempted
-and reverted: `transformers` is reached through `require_module` and typed `ModuleType`,
-so today the objects are implicitly `Any` and the call site relies on that for
-`float(score)`, `int(label)` and `model.config.id2label`. Annotating a cached function's
-return re-types them, and `disallow_any_explicit` blocks the shortcut. The clean fix is
-narrow Protocols in `reader.py`'s style — worth doing deliberately, not wedged in to
-save CI minutes.
+**Permanent fix — LANDED 2026-08-07.** `@functools.cache` on `_table_structure_model()`,
+reached through six narrow Protocols in `reader.py`'s style: `_Numbers`, `_Detection`,
+`_DetectorConfig`, `_ImageProcessor`, `_ObjectDetector` and `_FromPretrained[T]`. The
+earlier attempt was reverted because `transformers` arrives as `ModuleType`, so the
+objects were implicitly `Any` and a cached function's declared return re-typed them
+against `disallow_any_explicit`. The Protocols are what removed the `Any` without
+removing the check: `mypy --strict` now verifies every call against them, where before
+it verified nothing. **No type weakened, no `# type: ignore`, no `# noqa`.**
+
+**Measured @ commit `00c6b8d`, weights already in the HuggingFace cache, three repeats
+in ONE process with the model cache cleared between tables for the "before" arm and left
+alone for the "after" arm — same warm state, one variable:**
+
+```
+3 tables, model built per table    14.476 s   median   ·  6 constructions
+3 tables, model built once          7.015 s   median   ·  2 constructions
+saved per EXTRA table                3.730 s
+```
+
+**Output is byte-identical.** The same three tables through the old and the new path
+produced the same 54 bands, serialised with `repr` on every float:
+`sha256 e9051e9f237ee45845dfe61c1209300bf00eca327eebf2132c3bc4f99ab100ac`, twice per
+path. **LOCAL ONLY — NOT AUTHORITATIVE** (Law 44).
+
+**Guarded by** `tests/unit/test_parser_model_cache.py` — 15 tests, no real weights, so
+it runs in CI where `transformers` is absent. It counts CONSTRUCTIONS and INFERENCES
+together, because a cache that memoised the RESULT would satisfy the first alone and
+report table 1's bands for every later table. Watched RED against the pre-fix code
+first: 5 failures at table counts 2, 3 and 5, and green at 1 — which is correct, since
+one table never discriminated.
+
+**The new failure this fix could create, stated rather than discovered.** The weights
+now live for the life of the process instead of the life of a call, so a long-running
+worker holds them after the last document. That is the intended trade and it is the same
+one `reader._recogniser` already makes. `functools.cache` is not thread-safe for the
+build itself: two threads racing the first call build two models and one is discarded —
+wasted work, never a wrong band, since the object is stateless in `eval()` mode.
 
 ---
 

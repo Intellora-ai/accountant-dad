@@ -83,15 +83,34 @@ WHAT IT DOES NOT DO, AND WHY EACH ABSENCE IS DELIBERATE.
 
 WHERE THE INPUT COMES FROM, STATED RATHER THAN ASSUMED.
     §1.2 says `reader` receives *"the cleaned document representation from
-    `cleaner`."* `cleaner` does not exist yet. This module therefore takes the
-    document as bytes plus a declared `MediaType`, and does NOT define a
-    `CleanedDocument` type: that type is `cleaner`'s output and belongs to
-    `cleaner` (INV-10, one concept one owner). Defining it here would put a
-    second owner on it before the first one is written.
+    `cleaner`."* This module takes it as bytes plus a declared `MediaType`, and
+    does NOT define a `CleanedDocument` type: that type is `cleaner`'s output
+    and belongs to `cleaner` (INV-10, one concept one owner). Defining one here
+    would put a second owner on it. When `cleaner` was still unwritten that was
+    a statement about the future; it is now a statement about ownership, and it
+    is why `CleanedPageGeometry` below is a structural Protocol rather than an
+    import.
 
     The media type is declared by the caller and never sniffed. `CLAUDE.md`
     Law 23 - external input is untrusted - and guessing a document's type from
     its bytes is a guess, which is the one thing this sub-engine may never make.
+
+A COORDINATE MUST SAY WHICH PAGE IT ANSWERS ON (`KNOWN_FAILURES.md` F-030).
+    `cleaner` CROPS and DESKEWS a scanned page, so a coordinate on the cleaned
+    raster is not a coordinate on the document. This module used to emit one as
+    though it were: `SourceLocation` carried five numbers and nothing that named
+    the space they lived in, so nothing downstream had a question it could ask.
+
+        no map supplied   ->  `OCR_RASTER_PIXELS`, an honest statement about the
+                              raster read, and no claim about the document
+        map supplied      ->  `SOURCE_RASTER_PIXELS`, the document as received
+        map unusable      ->  `CoordinateContractError`, and NO reading at all
+
+    The third line is the one that matters. Degrading a bad map to the second
+    line's answer would reproduce the original defect with a fix's name on it —
+    see `CoordinateContractError`. The map itself belongs to `cleaner`; this
+    module names the surface it needs and applies it, and owns neither the
+    geometry nor the pixels it describes.
 """
 
 from __future__ import annotations
@@ -226,6 +245,35 @@ class RecognitionFailedError(ReaderError):
     """
 
 
+class CoordinateContractError(ReaderError):
+    """A source map was supplied and cannot be honoured, so NOTHING is claimed.
+
+    THE FAILURE THIS TYPE EXISTS TO MAKE IMPOSSIBLE IS THE QUIET ONE.
+    `KNOWN_FAILURES.md` F-030: `cleaner` crops and turns a scanned page, and this
+    module emitted `SourceLocation` in the CLEANED image's pixel space as though
+    that were the document. The numbers were plausible, the artifact was
+    well-formed, and every coordinate on it was somewhere the document does not
+    have. Nothing raised, because nothing was asked.
+
+    So when a caller hands over a map and any part of it cannot be trusted —
+    the page count, the page number, the raster's size, the resolution, the
+    contract version — the reading is REFUSED rather than returned in the space
+    the caller did not ask for. Degrading to the unmapped answer would reproduce
+    the original defect exactly, wearing a fix's name: the caller asked where
+    the text is ON THE DOCUMENT and would receive, silently, where it is on a
+    crop of a rotation of it.
+
+    A VERDICT ON OUR WIRING, NEVER ON THE DOCUMENT, and that is why it is not
+    an `UnreadableDocumentError`. The user's file may be perfect; what is
+    inconsistent is the contract between two of our own components.
+    `pipeline.BUSINESS_FAILURE` decides by `isinstance` which reader failures
+    cross the Engine 1 boundary as a statement about the document, and this type
+    is deliberately absent from it for the same reason `RecognitionFailedError`
+    is — `ENGINE_1_INPUT_ENGINE_RULES.md:337` forbids asserting something false
+    about a document outright.
+    """
+
+
 class VisionFallbackUnavailableError(ReaderError):
     """The vision fallback was reached and cannot run.
 
@@ -251,6 +299,56 @@ class Backend(StrEnum):
     OCR = "OCR"
 
 
+#: The one coordinate contract this module can honour, as a whole number that a
+#: producer states explicitly. There is no default anywhere for it: a default
+#: would let a map built against a DIFFERENT contract be read as this one, which
+#: is precisely the case a version exists to catch.
+COORDINATE_CONTRACT_VERSION = 1
+
+
+class CoordinateSpace(StrEnum):
+    """WHICH page a `SourceLocation`'s four numbers answer on, and in what unit.
+
+    `KNOWN_FAILURES.md` F-030's consumer half, in one field. The producer defect
+    was that `cleaner` discarded its geometry; the CONSUMER defect is that a
+    `SourceLocation` in cleaned-image pixels and one on the document as received
+    were the same five numbers with nothing to tell them apart. A downstream
+    reader had no question it could ask, so it assumed — and the assumption was
+    wrong on every cropped or deskewed scan.
+
+    ORIGIN AND AXIS DIRECTION ARE THE SAME IN ALL OF THEM, AND ARE MEASURED
+    RATHER THAN ASSUMED. The origin is the TOP-LEFT corner of the page, `x`
+    increases to the RIGHT and `y` increases DOWNWARD. Measured at `00c6b8d` on
+    a page carrying text drawn with its baseline at y = 30 pt on a 400x200 pt
+    page: the backend reported the span's box as 21.400..32.392 pt and the same
+    page rasterised at 150 dpi put that ink at 24.480..29.760 pt — inside the
+    box, and 140 pt away from where the PDF specification's own BOTTOM-left user
+    space would have put it. A module that took the specification's word for it
+    would be upside down on every page and would still produce plausible
+    numbers. `test_source_location_maps_to_source.py` makes that measurement.
+
+    THE TRANSFORM RUNS ONE WAY ONLY: a CLEANED pixel to a SOURCE pixel. There is
+    no inverse here and none is offered, because a consumer that could ask for
+    either direction is a consumer that can pick the wrong one.
+    """
+
+    #: Nobody said. The default on a `SourceLocation` built by hand, and never
+    #: a value this module emits — inventing a space for somebody else's
+    #: coordinates would be exactly the fabricated measurement Law 24 forbids.
+    UNSTATED = "unstated"
+    #: POINTS on the PDF page THIS MODULE WAS HANDED. Not knowably the document
+    #: as received: this module is handed bytes and cannot tell an original from
+    #: a rebuild, so it names what it can prove.
+    PDF_PAGE_POINTS = "points on the PDF page this module was handed"
+    #: PIXELS of the raster the recogniser was shown. On a cleaned scan that is
+    #: a crop of a rotation of the page, so it is NOT the document.
+    OCR_RASTER_PIXELS = "pixels of the raster the recogniser was shown"
+    #: PIXELS of the raster rendered from the document AS RECEIVED. The only
+    #: member that is a claim about the user's own page, and the only one
+    #: reachable by supplying a map that survives every check in `_placements`.
+    SOURCE_RASTER_PIXELS = "pixels of the raster rendered from the document as received"
+
+
 @dataclass(frozen=True, slots=True)
 class SourceLocation:
     """Where on the page a piece of text sits.
@@ -259,9 +357,12 @@ class SourceLocation:
     extractions - that is what makes a later human check possible."* So this is
     never optional and never omitted, whatever the confidence attached to it.
 
-    Coordinates are in the backend's own pixel or point space for the page named
-    by `page_index`; they are not normalised, because normalising would discard
-    the scale a human needs to find the region again.
+    Coordinates are in the space `space` NAMES, for the page named by
+    `page_index`; they are not normalised, because normalising would discard the
+    scale a human needs to find the region again. `space` used to be absent and
+    the docstring said *"the backend's own pixel or point space"* — true, and
+    unusable: a consumer could not tell which of the two it held, nor whether
+    the page in question was the user's document or a crop of a rotation of it.
     """
 
     page_index: int
@@ -269,6 +370,20 @@ class SourceLocation:
     top: float
     right: float
     bottom: float
+    #: WHICH page these numbers answer on. Defaults to `UNSTATED` because a
+    #: location constructed anywhere else genuinely has not stated one; every
+    #: location THIS module produces sets it, and a test proves it.
+    space: CoordinateSpace = CoordinateSpace.UNSTATED
+    #: The four corners the backend reported, IN `space`, in the backend's own
+    #: order. Empty when the backend reported a rectangle rather than an outline.
+    #:
+    #: KEPT RATHER THAN DISCARDED, and that is not redundancy with the four
+    #: edges above. A rotation carries a rectangle to a QUADRILATERAL, so the
+    #: four edges are its axis-aligned ENCLOSURE and are strictly larger than
+    #: the region itself. The enclosure is derived here, at the one boundary
+    #: whose shape demands it; throwing the quad away would make the loss
+    #: permanent and unrecoverable one line after it happened.
+    corners: tuple[tuple[float, float], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -295,6 +410,83 @@ class Reading:
     regions: tuple[TextRegion, ...]
     backend: Backend
     pages_read: int
+
+
+class CleanedPageGeometry(Protocol):
+    """The map from ONE cleaned page's pixels back to the page as received.
+
+    STRUCTURAL, AND THAT IS A DELIBERATE CHOICE ABOUT OWNERSHIP. The affine is
+    `cleaner`'s — it computed it, it owns it, and `cleaner.SourceGeometry`
+    satisfies this Protocol without either module knowing about the other. So
+    the arithmetic that inverts a crop and a turn lives in exactly one place
+    (Law 14, Law 19), this module keeps the property its docstring already
+    claims — *"does NOT define a `CleanedDocument` type: that type is
+    `cleaner`'s"* — and neither is `import cleaner` needed here, which would put
+    OpenCV behind `import reader` for a module that never touches a pixel array
+    except through Pillow (Law 21).
+
+    The same facade pattern `_Recogniser` uses for PaddleOCR and `PdfDocument`
+    for the PDF engine, for the same reason: declare the surface actually used,
+    and let `mypy --strict` check every call against it.
+    """
+
+    @property
+    def source_height(self) -> int: ...
+
+    @property
+    def source_width(self) -> int: ...
+
+    @property
+    def render_dpi(self) -> int | None: ...
+
+    @property
+    def page(self) -> int: ...
+
+    def source_pixel(self, x: float, y: float) -> tuple[float, float]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class CleanedPage:
+    """One cleaned page as this module must be told about it, to map off it.
+
+    `height` and `width` are the CLEANED raster's extent in pixels, and they are
+    here because the geometry alone cannot supply them: without the extent this
+    module has nothing to compare the raster it actually rasterised against, and
+    a map for a different page would be applied in silence.
+    """
+
+    #: 0-BASED, this module's own convention, and checked against the geometry's
+    #: 1-based `page`. The two conventions meeting is exactly where an off-by-one
+    #: puts page one's map on page two's coordinates.
+    page_index: int
+    height: int
+    width: int
+    geometry: CleanedPageGeometry
+
+
+@dataclass(frozen=True, slots=True)
+class SourceMapping:
+    """Everything this module must be told before it may name a coordinate on
+    the document AS RECEIVED instead of on the raster it was handed.
+
+    Supplying one is the caller saying *"I know where these cleaned pixels came
+    from."* It is optional because a caller may honestly not know — a text-layer
+    PDF passes through `cleaner` untouched and has no map at all — and because
+    the answer to not knowing is to say so, never to guess.
+    """
+
+    #: One per page read, in page order. A page without one is refused, not
+    #: answered in another space.
+    pages: tuple[CleanedPage, ...]
+    #: The resolution at which THIS module rasterised those pages, or `None`
+    #: when it rasterised nothing and read the artifact's own pixels. It is
+    #: stated by the caller and CHECKED against what actually happened, rather
+    #: than taken from `render_dpi`: on the image path `render_dpi` is supplied
+    #: and ignored, so reading it would silently invent a resolution for pixels
+    #: nothing rendered.
+    raster_dpi: int | None
+    #: `COORDINATE_CONTRACT_VERSION`, stated. No default — see that constant.
+    contract_version: int
 
 
 def read_pdf_text_layer(document: bytes) -> Reading:
@@ -352,6 +544,15 @@ def read_pdf_text_layer(document: bytes) -> Reading:
                                         top=float(top),
                                         right=float(right),
                                         bottom=float(bottom),
+                                        # POINTS on the page handed to this
+                                        # module. Not `SOURCE_RASTER_PIXELS`:
+                                        # `cleaner` does pass a text-layer PDF
+                                        # through untouched, so these usually
+                                        # ARE the document's own coordinates —
+                                        # but this module is handed bytes and
+                                        # cannot prove which, and a claim it
+                                        # cannot check is the whole defect.
+                                        space=CoordinateSpace.PDF_PAGE_POINTS,
                                     ),
                                     extraction_confidence=None,
                                 )
@@ -540,7 +741,170 @@ def _recogniser() -> _Recogniser:
         ) from failure
 
 
-def read_by_ocr(pages: list[bytes]) -> Reading:
+#: How much larger, in pixels, the raster this module rasterised may be than the
+#: cleaned page it represents, before the two are declared to be different
+#: pages. DERIVED, NEVER CHOSEN: a rasteriser scales the page and then encloses
+#: the result in WHOLE pixels, so the enclosure can add strictly less than one
+#: pixel per axis and nothing else may. `KNOWN_FAILURES.md` F-031 records the
+#: same one-pixel bound from the other direction. Measured at `00c6b8d` over
+#: 150/300/600 dpi against reader resolutions of 0.5x, 1x and 2x: every
+#: disagreement was exactly 0.0 or 0.5 px, and never 1.
+_ENCLOSURE_SLACK_PIXELS = 1.0
+
+
+def _placements(
+    pages: list[bytes], mapping: SourceMapping | None
+) -> tuple[tuple[CleanedPage, float], ...] | None:
+    """One `(page, scale)` per page read, or `None` when no map was supplied.
+
+    RUN BEFORE THE RECOGNISER IS EVEN BUILT. An inconsistent contract is
+    knowable from the contract alone, so it is refused before model weights are
+    loaded and before a single page is decoded — and, usefully, it is then
+    refusable on a machine with no OCR installed at all, which is where this
+    path has always been (`KNOWN_FAILURES.md` F-002, F-009).
+
+    `scale` is CLEANED pixels per raster pixel, and it is the resolution ratio
+    rather than the extent ratio. Both are measured at `00c6b8d`: rasterising a
+    1511 px cleaned page at half its resolution gives 756 px, not 755.5, so the
+    extent ratio carries the enclosure's rounding into every coordinate on the
+    page while `cleaned_dpi / raster_dpi` does not. Where the two disagreed the
+    ratio form was wrong by 0.708 px and the resolution form by 0.501 px, and
+    `cleaner.SourceGeometry.source_point` rejects the extent ratio for the same
+    arithmetic one step earlier.
+    """
+    if mapping is None:
+        return None
+    if mapping.contract_version != COORDINATE_CONTRACT_VERSION:
+        raise CoordinateContractError(
+            f"the source map states coordinate contract version "
+            f"{mapping.contract_version}; this module can honour only "
+            f"{COORDINATE_CONTRACT_VERSION}. Refused rather than applied on the "
+            "assumption that the fields still mean what they used to."
+        )
+    if len(mapping.pages) != len(pages):
+        raise CoordinateContractError(
+            f"the source map covers {len(mapping.pages)} page(s) and "
+            f"{len(pages)} page(s) were read. Refused rather than mapping the "
+            "pages it does cover and answering for the rest in the cleaned "
+            "raster's own space, which no consumer could tell apart."
+        )
+
+    placed: list[tuple[CleanedPage, float]] = []
+    for index, page in enumerate(mapping.pages):
+        if page.page_index != index:
+            raise CoordinateContractError(
+                f"the source map's entry {index} names page_index "
+                f"{page.page_index}. Pages are mapped in the order they were "
+                "read, and another page's map is not an approximation of this "
+                "one — every page of a scan is cropped and turned differently."
+            )
+        if page.geometry.page != index + 1:
+            raise CoordinateContractError(
+                f"the source map's entry for page_index {index} carries a "
+                f"geometry for page {page.geometry.page}. This module counts "
+                "pages from 0 and the geometry counts from 1, so these two "
+                "disagree about which page they describe."
+            )
+        placed.append((page, _scale_of(page, mapping.raster_dpi)))
+    return tuple(placed)
+
+
+def _scale_of(page: CleanedPage, raster_dpi: int | None) -> float:
+    """Cleaned pixels per raster pixel, or a refusal."""
+    cleaned_dpi = page.geometry.render_dpi
+    if cleaned_dpi is None and raster_dpi is None:
+        # Nothing was rendered at either end: an image arrives already
+        # rasterised and leaves as the same pixels, so the two spaces are one.
+        return 1.0
+    if cleaned_dpi is None or raster_dpi is None:
+        raise CoordinateContractError(
+            f"the cleaned page for page_index {page.page_index} reports render "
+            f"resolution {cleaned_dpi} and the raster this module read reports "
+            f"{raster_dpi}. One of the two says its pixels were never rendered "
+            "from a page and are already the document's own space, and the "
+            "other says the opposite; there is no scale between them that is "
+            "not invented."
+        )
+    require_positive_dpi(cleaned_dpi)
+    require_positive_dpi(raster_dpi)
+    return cleaned_dpi / raster_dpi
+
+
+def _agrees_with_the_raster(page: CleanedPage, scale: float, height: int, width: int) -> None:
+    """Refuse a map whose cleaned page is not the raster that was just read."""
+    expected_width = page.width / scale
+    expected_height = page.height / scale
+    if (
+        abs(width - expected_width) >= _ENCLOSURE_SLACK_PIXELS
+        or abs(height - expected_height) >= _ENCLOSURE_SLACK_PIXELS
+    ):
+        raise CoordinateContractError(
+            f"the source map describes a {page.width}x{page.height} px cleaned "
+            f"page, which at this resolution is {expected_width:.4f}x"
+            f"{expected_height:.4f} px, and the raster read for page_index "
+            f"{page.page_index} is {width}x{height} px. A rasteriser encloses a "
+            f"scaled page in whole pixels, so at most {_ENCLOSURE_SLACK_PIXELS} "
+            "pixel of that may be rounding; more than that is a map for a "
+            "different page."
+        )
+
+
+def _placed(
+    corners: tuple[tuple[float, float], ...],
+    page_index: int,
+    placement: tuple[CleanedPage, float] | None,
+) -> SourceLocation:
+    """One recognised outline, on the page it truly sits on, and named as such.
+
+    ALL FOUR CORNERS MOVE. A rotation carries a rectangle to a quadrilateral, so
+    transforming the top-left and bottom-right alone would produce a rectangle
+    that is neither the region nor its enclosure. The enclosure is taken here
+    and ONLY here, because `SourceLocation`'s four edges are axis-aligned and
+    something has to give up the quad's shape at that boundary — which is why
+    the quad itself is carried on `corners` rather than dropped.
+
+    THE HALF-PIXEL IS NOT DECORATION, and it is measured rather than reasoned
+    into place. A pixel INDEX names a cell, and a cell's centre sits half a
+    pixel inside it, so resampling to another resolution maps centre to centre
+    and not index to index. Measured at `00c6b8d` on a planted mark, reading a
+    150 dpi cleaned page at 300: index-to-index put it 0.353553 px out at every
+    skew, and centre-to-centre 0.000409 px.
+
+    AT `scale == 1.0` — which is the pipeline's own configuration, since it
+    hands the same DPI to `cleaner` and to `read` — the algebra cancels to
+    `x`, subject to one rounding of `x + 0.5` in IEEE754. That residual is
+    bounded by an ulp of a pixel coordinate, about 1e-13 px at page scale, and
+    is 13 orders of magnitude under the 0.30 px this change is held to. Stated
+    rather than called exact, because it is not exact.
+    """
+    if placement is None:
+        return _enclosing(corners, page_index, CoordinateSpace.OCR_RASTER_PIXELS)
+    page, scale = placement
+    on_the_source = tuple(
+        page.geometry.source_pixel((across + 0.5) * scale - 0.5, (down + 0.5) * scale - 0.5)
+        for across, down in corners
+    )
+    return _enclosing(on_the_source, page_index, CoordinateSpace.SOURCE_RASTER_PIXELS)
+
+
+def _enclosing(
+    corners: tuple[tuple[float, float], ...], page_index: int, space: CoordinateSpace
+) -> SourceLocation:
+    """The axis-aligned box around an outline, keeping the outline."""
+    acrosses = [across for across, _ in corners]
+    downs = [down for _, down in corners]
+    return SourceLocation(
+        page_index=page_index,
+        left=min(acrosses),
+        top=min(downs),
+        right=max(acrosses),
+        bottom=max(downs),
+        space=space,
+        corners=corners,
+    )
+
+
+def read_by_ocr(pages: list[bytes], *, mapping: SourceMapping | None = None) -> Reading:
     """Recognise text on already-rasterised pages with PaddleOCR.
 
     Every region carries the score PaddleOCR reported for it, converted to
@@ -550,12 +914,19 @@ def read_by_ocr(pages: list[bytes]) -> Reading:
     A page with nothing recognisable on it contributes zero regions. It does not
     contribute an empty-string region, and it is not an error.
 
+    `mapping`, when given, is where these rasters came from, and every region is
+    then located on the document AS RECEIVED rather than on the raster. Omitting
+    it is honest and produces `OCR_RASTER_PIXELS`; supplying one that cannot be
+    honoured raises `CoordinateContractError` and produces NOTHING — see that
+    class for why a degraded answer is worse than no answer here.
+
     Raises `UnreadableDocumentError` if a page's bytes cannot be decoded — a
     verdict on the PAGE. Raises `RecognitionFailedError` if the recogniser
     itself fails — a verdict on OUR TOOL. Those are different answers and this
     function never conflates them; see `RecognitionFailedError` for what forced
     the distinction.
     """
+    placements = _placements(pages, mapping)
     engine = _recogniser()
 
     regions: list[TextRegion] = []
@@ -568,6 +939,14 @@ def read_by_ocr(pages: list[bytes]) -> Reading:
         # broken engine and lose exactly the distinction this module exists to
         # keep.
         decoded = _decode_image(page)
+        # ALSO OUTSIDE THE BOUNDARY, AND FOR THE MIRROR-IMAGE REASON.
+        # `_agrees_with_the_raster` raises `CoordinateContractError`, a verdict
+        # on OUR CONTRACT. Inside the handler below it would be relabelled
+        # `RecognitionFailedError` — the recogniser blamed for a map the caller
+        # got wrong, and a third meaning loaded onto one exception type.
+        placement = None if placements is None else placements[page_index]
+        if placement is not None:
+            _agrees_with_the_raster(placement[0], placement[1], *decoded.shape[:2])
         try:
             for result in engine.predict(decoded):
                 # The three keys PaddleOCR 3.7.0 populates for a text-only
@@ -582,18 +961,11 @@ def read_by_ocr(pages: list[bytes]) -> Reading:
                 for text, score, polygon in zip(texts, scores, polygons, strict=True):
                     if not text.strip():
                         continue
-                    xs = [float(point[0]) for point in polygon]
-                    ys = [float(point[1]) for point in polygon]
+                    outline = tuple((float(point[0]), float(point[1])) for point in polygon)
                     regions.append(
                         TextRegion(
                             text=text,
-                            location=SourceLocation(
-                                page_index=page_index,
-                                left=min(xs),
-                                top=min(ys),
-                                right=max(xs),
-                                bottom=max(ys),
-                            ),
+                            location=_placed(outline, page_index, placement),
                             # `str(score)` then Decimal: `Decimal(float)` would
                             # expand the binary value into its full expansion,
                             # which is not the number PaddleOCR reported.
@@ -651,6 +1023,7 @@ def read(
     media_type: MediaType,
     render_dpi: int,
     vision_fallback_threshold: Decimal,
+    mapping: SourceMapping | None = None,
 ) -> Reading:
     """Route a document to a backend and return what that backend read.
 
@@ -670,6 +1043,12 @@ def read(
     flagged for the owner alongside the threshold itself.** It then raises
     `VisionFallbackUnavailableError`; the fallback is a stub with no API key.
 
+    `mapping` is where the CLEANED pixels in `document` came from, and it is
+    optional because a caller may honestly not know. With it, every region is
+    located on the document as received; without it, on the raster that was
+    read, and the region says which. It is never guessed — see
+    `CoordinateContractError`.
+
     A page with nothing on it returns zero regions. A file that cannot be opened
     raises `UnreadableDocumentError`. Those are different answers to different
     questions and this function never conflates them.
@@ -681,15 +1060,42 @@ def read(
         if from_text_layer.regions:
             # A real text layer needs no OCR, so no OCR confidence exists, so
             # there is nothing the fallback threshold could be below.
+            if mapping is not None:
+                raise CoordinateContractError(
+                    "a source map was supplied and this document was read from "
+                    "its PDF text layer, whose coordinates are points on that "
+                    "page and not pixels of any cleaned raster. `cleaner` passes "
+                    "a text-layer PDF through untouched and records NO geometry "
+                    "for it, so a map here describes something that did not "
+                    "happen. Refused rather than returning the text-layer "
+                    "reading, which a caller expecting source-raster pixels "
+                    "cannot tell apart from one."
+                )
             return from_text_layer
         pages = _render_pdf_pages(document, render_dpi=render_dpi)
+        rasterised_at: int | None = render_dpi
     else:
         # One image is one page. It is decoded here rather than inside the OCR
         # loop so that undecodable bytes fail before any model is loaded.
         _decode_image(document)
         pages = [document]
+        # NOT `render_dpi`, WHICH THIS BRANCH NEVER USED. An image arrives
+        # already rasterised, so nothing here rendered it and it has no
+        # resolution this module knows. Passing `render_dpi` on would attach a
+        # number nothing measured to pixels nothing rendered — the same
+        # fabrication `cleaner.SourceGeometry.render_dpi`'s `None` refuses.
+        rasterised_at = None
 
-    recognised = read_by_ocr(pages)
+    if mapping is not None and mapping.raster_dpi != rasterised_at:
+        raise CoordinateContractError(
+            f"the source map states the rasters it describes are at "
+            f"{mapping.raster_dpi} dpi; this module rasterised at "
+            f"{rasterised_at}. Refused rather than scaled by the caller's "
+            "number, which would put every coordinate out by the ratio of the "
+            "two while looking entirely reasonable."
+        )
+
+    recognised = read_by_ocr(pages, mapping=mapping)
 
     if any(
         region.extraction_confidence is not None
