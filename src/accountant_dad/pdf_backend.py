@@ -75,6 +75,7 @@ WHAT THIS MODULE DOES NOT DO. It does not clean, read, parse, classify or
 
 from __future__ import annotations
 
+import math
 from typing import Protocol, TypedDict, cast
 
 import pymupdf
@@ -223,6 +224,19 @@ def require_positive_dpi(render_dpi: int) -> None:
     either an inverted dependency or two copies of one rule — and two copies is
     how the two drift apart. `reader` now imports this one.
     """
+    # NOT-A-NUMBER FIRST, BECAUSE IT PASSES EVERY COMPARISON. `nan <= 0` is
+    # False, so a NaN sailed through the check below and every derived page
+    # dimension became NaN — whereupon the backend SUBSTITUTED 612 x 792, a US
+    # Letter page nobody chose. Silent fabrication of a number is the worst
+    # failure this file can have (Law 11, Law 24), and it is exactly the shape
+    # F-028 already was. `inf` raises on its own; only NaN was silent.
+    if not math.isfinite(render_dpi):
+        raise ValueError(
+            f"render_dpi must be a finite number of dots per inch, got {render_dpi!r}. "
+            "Refused loudly: a non-finite DPI makes every page dimension non-finite, "
+            "and the backend then substitutes a default page size that no document "
+            "in this repository states."
+        )
     if render_dpi <= 0:
         raise ValueError(
             f"render_dpi must be a positive number of dots per inch, got {render_dpi}. "

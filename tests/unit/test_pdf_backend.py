@@ -69,6 +69,8 @@ class _AuthoringDocument(Protocol):
     def set_metadata(self, metadata: dict[str, str]) -> None: ...
     def tobytes(self) -> bytes: ...
     def close(self) -> None: ...
+    def xref_length(self) -> int: ...
+    def xref_get_key(self, xref: int, key: str) -> tuple[str, str]: ...
 
 
 class _NewDocument(Protocol):
@@ -107,6 +109,27 @@ PAGES_IN_THE_TWO_PAGE_FIXTURE = 2
 
 #: What the first eight bytes of a PNG always are.
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+
+
+def image_filters(payload: bytes) -> list[tuple[str, str]]:
+    """The `/Filter` of every image object in a PDF, as PyMuPDF reports it.
+
+    Read with the LIBRARY rather than through `pdf_backend`, for the same reason
+    the fixtures are authored with it: a check that used the adapter to inspect
+    the adapter's own output would be its own oracle.
+
+    `('name', '/FlateDecode')` for a compressed image; `('null', 'null')` when
+    the key is absent, which is what raw storage looks like.
+    """
+    document = open_stream(stream=payload, filetype="pdf")
+    try:
+        return [
+            document.xref_get_key(xref, "Filter")
+            for xref in range(1, document.xref_length())
+            if document.xref_get_key(xref, "Subtype")[1] == "/Image"
+        ]
+    finally:
+        document.close()
 
 
 def engine_1_sources() -> list[pathlib.Path]:
@@ -427,11 +450,37 @@ def test_a_rebuilt_page_stores_its_image_compressed_not_raw(dpi: int) -> None:
     the F-028 test caught nothing: it asserted the page's SIZE IN POINTS, and
     that was right in both worlds.
 
-    THE BOUND IS DERIVED, NOT CHOSEN (Law 10). A rebuilt page is compared
-    against the size its own pixels would occupy uncompressed — width x height x
-    channels — a number read off the image rather than picked. "Smaller than
-    raw" is precisely what "the image is stored compressed" means, so the
-    assertion needs no invented threshold and no tolerance.
+    ── THIS TEST'S OWN FIRST VERSION WAS A SIZE PROXY, AND IT DID NOT WORK ──
+
+    It compared the rebuilt PDF against `width x height x channels` from a
+    `cv2.IMREAD_COLOR` decode, so the bound was always three bytes per pixel.
+    **`cleaner._to_grey` normalises every page to ONE channel before
+    `_encode_png`**, so the shape that actually ships was never the shape being
+    bounded. Measured at 150 dpi:
+
+        input                     raw payload    w*h*3 bound   w*h bound   caught?
+        blank page, 3 channels      6,314,818      6,311,250   2,103,750   both
+        blank page, 1 channel         267,451      6,311,250   2,103,750   NEITHER
+        REAL cleaner output            91,065      6,311,250   2,103,750   NEITHER
+
+    **The size proxy misses the production path entirely.** A one-channel page
+    stores raw at a size no derived pixel bound catches, because MuPDF's raw
+    storage is not the naive `w x h x channels` this reasoned about. Tightening
+    the bound to `w*h` does not rescue it either — that was measured, not
+    assumed, and it still passes on both greyscale rows above.
+
+    ── SO THE TEST ASKS THE ACTUAL QUESTION INSTEAD OF A PROXY FOR IT ──
+
+    Every image in a PDF declares how it is encoded, in its `/Filter` key. Raw
+    storage has no filter at all. That is the property, stated directly:
+
+        raw save   ->  Filter = ('null', 'null')
+        correct    ->  Filter = ('name', '/FlateDecode')
+
+    Content-independent, channel-independent, size-independent, and needing no
+    threshold and no tolerance (Law 10). Verified to separate the two on all
+    three inputs in the table above, including the real cleaner output that no
+    size bound could see.
     """
     blank = new_pdf()
     try:
@@ -447,15 +496,18 @@ def test_a_rebuilt_page_stores_its_image_compressed_not_raw(dpi: int) -> None:
         pdf_backend.close_pdf(opened)
     decoded = cv2.imdecode(np.frombuffer(rendered, np.uint8), cv2.IMREAD_COLOR)
     assert decoded is not None, "the backend's own PNG did not decode"
-    png = cv2.imencode(".png", decoded)[1].tobytes()
+    # ONE CHANNEL, because that is what `cleaner._to_grey` hands to `_encode_png`.
+    # A three-channel fixture tests a shape this repository never rebuilds.
+    grey = cv2.cvtColor(decoded, cv2.COLOR_BGR2GRAY)
+    png = cv2.imencode(".png", grey)[1].tobytes()
 
-    raw_pixel_bytes = int(decoded.shape[0]) * int(decoded.shape[1]) * int(decoded.shape[2])
-    rebuilt = pdf_backend.pdf_of_page_images([png], dpi=dpi)
+    filters = image_filters(pdf_backend.pdf_of_page_images([png], dpi=dpi))
 
-    assert len(rebuilt) < raw_pixel_bytes, (
-        f"the rebuilt PDF is {len(rebuilt):,} bytes for an image whose pixels are "
-        f"{raw_pixel_bytes:,} bytes uncompressed, so the page is being stored as "
-        "raw pixels. The save has lost `deflate=True` (F-028's regression)."
+    assert filters, "the rebuilt PDF carries no image at all, so there is nothing to check"
+    assert all(kind == "name" and value != "null" for kind, value in filters), (
+        f"a page image in the rebuilt PDF declares no compression filter: {filters}. "
+        "It is stored as raw pixels. The save has lost `deflate=True` (F-028's "
+        "regression), and no page-size assertion can see that."
     )
 
 
@@ -535,6 +587,29 @@ def test_a_dpi_that_cannot_be_a_dpi_is_refused_rather_than_corrected() -> None:
     for impossible in (0, -1, -300):
         with pytest.raises(ValueError, match="positive number of dots per inch"):
             pdf_backend.pdf_of_page_images([b""], dpi=impossible)
+
+
+def test_a_dpi_that_is_not_a_number_is_refused_before_it_can_invent_a_page() -> None:
+    """NaN PASSES EVERY COMPARISON, INCLUDING `<= 0`, WHICH IS WHY IT NEEDS ITS
+    OWN CHECK.
+
+    Found by adversarial review of the F-028 fix. With a NaN DPI every derived
+    page dimension became NaN, and the backend then SUBSTITUTED 612 x 792 — a US
+    Letter page nobody chose, on a document of unknown size, silently. That is
+    the same failure F-028 itself was: a plausible number appearing where a
+    measurement should be.
+
+    `inf` is included because it raises on its own today; asserting it here
+    pins that it keeps failing loudly rather than starting to be substituted
+    for if the backend's behaviour changes.
+    """
+    # `cast`, never a suppression: the point of the test is that a value the
+    # annotation forbids still reaches this function at runtime from an untyped
+    # caller (Law 23), and a suppression would spend the repository's zero-new
+    # budget to say something a cast says exactly.
+    for impossible in (float("nan"), float("inf"), float("-inf")):
+        with pytest.raises(ValueError, match="finite number of dots per inch"):
+            pdf_backend.pdf_of_page_images([b""], dpi=cast(int, impossible))
 
 
 def test_pages_rebuilt_from_images_stay_in_the_order_they_were_given() -> None:
