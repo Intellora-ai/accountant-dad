@@ -714,8 +714,43 @@ changes across `reader`, `parser`, `confidence_report` and `assembly`.
 | | |
 |---|---|
 | **Severity** | MEDIUM — a precedence question, resolved by precedence but not reconciled |
-| **Status** | ⬜ OPEN · built on the permitted side; the documents still contradict |
+| **Status** | 🔒 **HALF RESOLVED, HALF RE-OPENED 2026-08-06** — a SECOND conflict was found, and this one IS on the ladder |
 | **Found** | 2026-08-05, building `classification` |
+
+### The G9.5 half is settled. A different clause re-opens it.
+
+`ENGINE_1_ARCHITECTURE.md` §G9.5 loses, for the reasons set out below — it self-declares
+*"Status: DRAFT — NOT FROZEN"* (verified at `:8` on 2026-08-06) and appears nowhere on the
+precedence ladder. That half needs no owner.
+
+**But a second document says the same thing and it IS on the ladder.**
+
+```
+docs/ENGINE_1_INPUT_ENGINE_RULES.md:352
+    "The Input Engine contains **exactly four** sub-engines:"
+```
+
+`ENGINE_1..6_*_RULES.md` sits at **level 3** of the ladder in `SYSTEM_INVARIANTS.md:11-18`.
+Engine 1 today ships **nine** modules:
+
+```
+cleaner  reader  parser  confidence_report          <- the four
+assembly  pipeline                                  <- the engine's own assembly
+classification  config  measurement                 <- what "exactly four" does not cover
+```
+
+**Two readings, and only the owner may pick.** Either `classification`, `config` and
+`measurement` are *not* sub-engines — internal assembly and infrastructure, which the
+boxed note above §1.1 arguably permits — or `exactly four` is violated by three modules.
+`assembly` and `pipeline` have the same question hanging over them. **`CLAUDE.md` §M: if
+code and a frozen doc disagree, the doc wins and the code is wrong.** Nothing here may be
+resolved silently in code.
+
+**This is not the same conflict as the G9.5 one.** G9.5 is about *capability* (may Engine 1
+classify at all) and is settled by Amendment 3. This is about *shape* (how many parts
+Engine 1 may have) and Amendment 3 does not address it.
+
+### The G9.5 reasoning, unchanged and still correct
 
 **Description.** Two documents written on the same day say opposite things.
 
@@ -799,11 +834,26 @@ paraphrasing them.
 | | |
 |---|---|
 | **Severity** | HIGH — three sub-engines are built, tested, mutation-hardened, and never run |
-| **Status** | 🔄 OPEN · agent wiring it |
+| **Status** | ⬜ **OPEN · UNCHANGED. Re-measured at `e921c3c` and nothing was wired** |
 | **Found** | 2026-08-06, while verifying F-010's residual |
 
-**Measured.** `pipeline.py:178` imports `assembly, cleaner, confidence_report, parser,
-reader`. Grepping all of `src/` for consumers of the remaining three returns nothing:
+**RE-MEASURED 2026-08-06 at commit `e921c3c`.** This entry said *"agent wiring it."* No
+agent wired it. `src/` contains exactly two imports of anything under `input_engine`:
+
+```
+pipeline.py:228           from ...input_engine import assembly, cleaner,
+                              confidence_report, parser, reader
+services/pipeline.py:132  from ...input_engine import pipeline as input_engine
+```
+
+`classification`, `config` and `measurement` still have **zero consumers**. `pipeline.py`
+gained 688 lines after `7e0efe2` and did not gain one of these three. The status is
+corrected from *in progress* to *open and untouched* — an entry that says work is happening
+when it is not is worse than one that says nothing.
+
+**Original measurement, kept.** `pipeline.py:178` imported `assembly, cleaner,
+confidence_report, parser, reader`. Grepping all of `src/` for consumers of the remaining
+three returned nothing:
 
 ```
 classification.py   17.6K   consumers: none
@@ -1285,9 +1335,209 @@ Until one lands, **no claim may be made about OCR accuracy, because none is prov
 
 ---
 
+## D1 – D4 · The four `cleaner` defects — recorded here because the source already cites them
+
+| | |
+|---|---|
+| **Severity** | HIGH — all four destroyed document content and reported that they had not |
+| **Status** | ✅ **ALL FOUR CLOSED 2026-08-06**, each with a red-team test |
+| **Found** | 2026-08-06, red-teaming `cleaner` (task T-022) |
+
+**Why this section exists at all — a dangling-citation defect.** `cleaner.py` cites
+`KNOWN_FAILURES.md` **D2** (`:446`), **D3** (`:212`, `:1227`) and **D4** (`:709`), and the
+red-team suite cites **D1**. **None of those IDs existed in this file.** Four IDs referenced
+from production source pointed at nothing. They are recorded here under the IDs the code
+already uses, so the citation resolves without touching code. *(Naming note: every other
+entry here is `F-nnn`. These are `D-n` because the source picked that prefix first and one
+source of truth beats a tidy prefix — Law 19.)*
+
+### The single class, named once
+
+**A destructive step or its own audit consulted the rule that caused the damage.** Each
+defect is the same shape wearing different clothes: the figure that would report a loss was
+computed from the same criterion that produced the loss, so it could only ever report
+success. `cleaner.py:18` states it — *"it checks the box against the rule that drew the
+box"* — and `:1327`, *"reported full retention, twice over, because the audit consulted the
+[same rule]."*
+
+### The four
+
+| ID | Defect | Measured |
+|---|---|---|
+| **D1** | The crop discards every mark Otsu does not call ink. A faint GSTIN line — 4080 pixels, 30 grey levels darker than the paper, plainly readable — leaves the page, and the module reports `ink_kept_by_crop = 1.0` and *"the cleaned representation is the safer basis for reading"* | RMS contrast rose 57.66 → 90.92, as though the page had been improved |
+| **D2** | `ink_lost_to_denoise` is a **net difference of two counts**, not the ink lost. Erasure in one place cancels against accretion in another | reported **−0.014868** while 1094 ink pixels were erased and a decimal point was wiped out — at `max_ink_loss_fraction = 0.0`, the strictest value the setting accepts |
+| **D3** | A multi-page scanned PDF reports **page one only**. The same two pages in the opposite order produce the opposite `preservation_status` | the reported quality is a property of **page order**, not of the document. Every page after the first contributes no evidence |
+| **D4** | `_to_grey` discards the alpha channel, so a document whose visible content lives in alpha flattens to one grey | a stamp of **40320 visible pixels** and a fully transparent canvas both flattened to a constant page, standard deviation **0.0**, every measurement reporting zero loss |
+
+### The fixes, and what guards them
+
+`tests/unit/test_input_engine_cleaner_redteam.py` — **1053 lines, new**, 22 tests, all
+green. Each attack was kept **pointed at the defect rather than retired with it**: where a
+fix made the original attack unconstructible, the test was rewritten to hold **both** halves
+— the damage must not recur, **and** the figure that would report it must remain able to.
+
+- **D1** — the box is drawn from the line profiles and the retention counted at Otsu's
+  split, so the two are no longer the same rule. Measured at commit `1e0df65`: a 600×900
+  scan at sigma 14, printed body 46800 ink pixels plus a 3×3 margin mark 480 rows below —
+  `ink_kept_by_crop = 0.9998077292828302`, which is `46800/46809` to the bit. The same page
+  without the mark returns exactly `1.0` on all 14 seeds tried. **Half one alone would pass
+  against a retention hardwired to 1.0; that is why half two is not optional.**
+- **D2** — a net count replaced by a count of what was actually erased.
+- **D3** — `Marker.page` added (`cleaner.py:215`), one-based, so every measurement carries
+  the page it was taken on. `cleaner.py:386` **raises** rather than falling back to page one
+  for a multi-page scan it cannot handle.
+- **D4** — `_composite_over_paper` (`cleaner.py:700`) flattens four channels **onto the
+  page** instead of discarding alpha. *"A transparent pixel is not black and it is not 'no
+  information': it is the page showing through."*
+
+**Proven by breaking the code four ways** and re-running the D1 test: retention hardwired to
+1.0 → RED; box drawn from the Otsu mask that audits it → RED; `preservation_status` stops
+reading the retention → RED; `kept_by_second_crop` dropped from the product → **SURVIVES**.
+
+**The survivor is recorded, not papered over.** Across 28 pages spanning 0–12° of skew and
+sigma 0–20, the second crop's factor was 1.0 on every one, because rotation's interpolation
+smooths the page and lowers the line profile's allowance. **No page is known that kills it,
+and none was invented to.**
+
+**A stale header was corrected too** (`1e0df65`). The file said eight tests are red and
+supposed to be. All 22 are green. *A file whose header says its reds are expected is a file
+where a real red gets waved through* — Law 12 failing by way of a comment.
+
+---
+
+## F-024 · The repository does not build at HEAD
+
+| | |
+|---|---|
+| **Severity** | **CRITICAL** — Law 1, keep the repo buildable always. The whole suite cannot collect |
+| **Status** | ⬜ **OPEN** · introduced by HEAD itself |
+| **Found** | 2026-08-06, running the suite to verify what the documents claim |
+
+**Measured at commit `e921c3c` — LOCAL ONLY — NOT AUTHORITATIVE, but decisive:**
+
+```
+$ pytest tests/
+ERROR tests/unit/test_conformance_registry.py
+E   ImportError: cannot import name 'Exclusion' from 'accountant_dad.conformance'
+!!!! Interrupted: 1 error during collection !!!!
+1 error in 10.71s
+```
+
+**Root cause.** `e921c3c` — *"conformance: a crash is not an enforcement, and every
+prohibition is now accounted for"* — designed `Exclusion` and shipped everything around it:
+the module docstring explains it at `conformance.py:100`, the `Uncovered` enum that gives it
+its reasons is defined at `:148`, and `test_conformance_registry.py:74` imports it. **The
+dataclass itself was never written.** Verified: `dir(accountant_dad.conformance)` returns
+`Attribution, Enforcement, Finding, NegativeControl, PHASES, Prohibition, Registry,
+Uncovered, attribute` — no `Exclusion`. Its parent `b3c1b51` does not import the name, so
+the commit introduced the break.
+
+**Impact.** A collection error is not one red test — **nothing runs**. Every other result in
+this file measured at HEAD had to be taken with this file excluded, which is stated wherever
+such a number appears. Purging `__pycache__` does not change it; this is not the stale-`.pyc`
+trap recorded in `PROGRESS.md`.
+
+**Why no gate caught it.** The commit was never pushed (F-026). CI has judged nothing after
+`f31e3cd`.
+
+**Permanent fix.** Write the `Exclusion` dataclass the docstring, the enum and the test all
+already describe, or remove the import. **Not chosen here — this file changes no code.**
+
+---
+
+## F-025 · One signature change, 39 red tests, two files that were never told
+
+| | |
+|---|---|
+| **Severity** | HIGH — 39 of the 40 failures at HEAD are this one cause |
+| **Status** | ⬜ **OPEN** |
+| **Found** | 2026-08-06 |
+
+**Measured at commit `e921c3c`** — full suite, `test_conformance_registry.py` excluded
+because it cannot collect (F-024). **LOCAL ONLY — NOT AUTHORITATIVE:**
+
+```
+17 failed · 2565 passed · 11 skipped · 23 errors      273.97s
+```
+
+Forty failures and errors. **Thirty-nine are one line:**
+
+```
+TypeError: run() missing 1 required keyword-only argument: 'recorded_at'
+```
+
+`pipeline.run` gained a required keyword-only `recorded_at` (`pipeline.py:903`). `b3c1b51`
+fixed the Application Layer's side of that call — *"two agents changed opposite sides of the
+same call and neither saw the other"* — but two test files were never updated:
+
+```
+tests/unit/test_input_engine_pipeline_redteam.py   occurrences of "recorded_at": 0
+tests/unit/test_input_engine_ablation.py           occurrences of "recorded_at": 0
+tests/unit/test_input_engine_pipeline.py           occurrences of "recorded_at": 24  <- updated
+tests/integration/test_engine1_end_to_end.py       occurrences of "recorded_at": 4   <- updated
+```
+
+**Root cause.** Both unupdated files were recovered at `211c6b0` — *"recover 10 red-team and
+integration files from the interrupted session"* — from a session that **predates** the
+signature change. That commit says outright: *"15 of these assertions are RED against real
+defects… NOT pushed until the code is fixed."* The count has since grown to 39 and the cause
+is no longer a real defect in the product; it is a mechanical signature mismatch.
+
+**Impact.** 1081 lines of pipeline red-team tests and 631 lines of ablation tests — the
+tests that guard F-012's `reader → parser` pipe and Engine 1's identity-leak boundary — are
+**not running at all.** They cannot fail, so they prove nothing.
+
+**The class.** Recovered work carries the contract it was written against. Recovery-not-
+restart (D-006) is still correct, but an inherited file is untrusted until it has been run
+against the *current* signature, not merely committed.
+
+**Permanent fix.** Pass `recorded_at` in both files. **Not done here — this file changes no
+tests.**
+
+---
+
+## F-026 · Twenty-four commits carry zero CI evidence
+
+| | |
+|---|---|
+| **Severity** | HIGH — Law 44. Nothing after `f31e3cd` has been verified anywhere that counts |
+| **Status** | ⬜ **OPEN** |
+| **Found** | 2026-08-06 |
+
+**Measured 2026-08-06 against the GitHub API:**
+
+```
+origin/ci/mutation-runs   f31e3cd
+local HEAD                e921c3c        24 commits ahead
+GET /commits/0babf47/check-runs   422  "No commit found for SHA"
+GET /commits/e921c3c/check-runs   422  "No commit found for SHA"
+```
+
+**What that costs.** `src/` moved **+2591 / −300** lines and `tests/` **+13335 / −148**
+after `7e0efe2`, and **not one line of it has been judged by CI.** Every gate result in this
+repository — mutation, coverage, typecheck, the lot — belongs to `f31e3cd` or earlier. Under
+Law 56 those numbers are EXPIRED, and under Law 44 there is no replacement, only
+**UNMEASURED**.
+
+**This is deliberate in part and not in whole.** `211c6b0` explicitly committed red work so
+it would survive an interruption and stated it was *not* to be pushed until fixed — that is
+the right call (D-006). But the branch has since accumulated fixes that *are* finished and
+are equally unverified, and the two are now indistinguishable from outside.
+
+**Permanent fix.** Fix F-024 and F-025 so the suite is green locally, then push and let CI
+judge it. **Merge is not discussable until every mandatory gate is at or above its threshold
+(Law 55), and at HEAD not one of them has a current value.**
+
+---
+
 ## Closed
 
-| ID | Title | Closed | Fix |
-|---|---|---|---|
-| **F-003** | Stale duplicate carrying the inverted `worst_k` row | 2026-08-05 | Deleted after proving nothing depended on it and that its only unique line *was* the bug |
-| **F-002** | Two OpenCV distributions in one environment | 2026-08-05 | OCR stack separated into its own manifest; pinned versions verified actually loaded (`numpy 2.5.1`, `cv2 5.0.0`) |
+| ID | Title | Closed | Fix | Guarded by |
+|---|---|---|---|---|
+| **F-003** | Stale duplicate carrying the inverted `worst_k` row | 2026-08-05 | Deleted after proving nothing depended on it and that its only unique line *was* the bug | — *(deletion; nothing to guard)* |
+| **F-002** | Two OpenCV distributions in one environment | 2026-08-05 | OCR stack separated into its own manifest | ⚠️ downgraded to PARTLY RESOLVED — see F-023 |
+| **F-012** | The pipeline is not a pipe | 2026-08-06 | `412eed6` (cleaner half) · `6b32425`, `41b23e6`, `d29985a` (reader→parser half) | `test_input_engine_pipeline.py`; the red-team half is **not running** — F-025 |
+| **F-014** | The mutation gate no longer fits in 100 minutes | 2026-08-06 | `66ab8cd` — cap 500 min; a run finished in 3h 21m 01s @ `7e0efe2` | ❌ **none.** A CI `timeout-minutes` is config and no test asserts it — recorded as a finding (Law 3) |
+| **F-020** | `pip install accountant-dad` ships an unimportable Engine 1 | 2026-08-06 | `839645a` + `pyproject.toml` declarations | `tests/unit/test_declared_dependencies.py` — derives the set from the code |
+| **F-021** | The build freeze checks filenames, not code | 2026-08-06 | AST-based guard | `test_package.py` — three named AST tests |
+| **D1–D4** | The four `cleaner` content-destruction defects | 2026-08-06 | `1e0df65`, `590c6bb` and the recovered `wip` commits | `test_input_engine_cleaner_redteam.py` — 22 tests, all green |
