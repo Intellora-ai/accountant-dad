@@ -289,7 +289,7 @@ Engine 1 ships **nine** source files. Read as a sub-engine count, that is five t
 
 A count written by a document that forbids code from existing cannot have been a count of code.
 
-**The third category was already in use, unnamed.** The last row above is the check on the whole amendment: the semantic tree has always excluded engine-level machinery that must nevertheless exist. This amendment names that exclusion instead of inventing one, and the 45 is unchanged.
+**The third category was already in use, unnamed.** The last row above is the check on the whole amendment: the semantic tree has always excluded engine-level machinery that the architecture nonetheless requires to exist. This amendment names that exclusion instead of inventing one, and the 45 is unchanged.
 
 ## What decides the hard case
 
