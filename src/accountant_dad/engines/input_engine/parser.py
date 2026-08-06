@@ -182,8 +182,14 @@ A TABLE CELL'S TEXT IS A VALUE, AND IT USED TO LEAVE HERE WITHOUT AN ORIGIN.
 from __future__ import annotations
 
 import functools
+import hashlib
 import importlib
+import importlib.metadata
 import math
+import os
+import pathlib
+import shlex
+import sys
 from dataclasses import dataclass, field
 from types import ModuleType
 from typing import TYPE_CHECKING
@@ -203,6 +209,23 @@ TABLE_TRANSFORMER = f"table-transformer:{TABLE_STRUCTURE_MODEL}"
 _BOTTOM_LEFT = "BOTTOMLEFT"
 _TOP_LEFT = "TOPLEFT"
 _POINTS_PER_INCH = 72.0
+
+#: The only conversion status that needs no further argument. Docling declares
+#: six — PENDING · STARTED · FAILURE · SUCCESS · PARTIAL_SUCCESS · SKIPPED —
+#: read off the installed library rather than remembered.
+_SUCCESS = "SUCCESS"
+#: Converted with reservations. NOT accepted on the status alone: the required
+#: output is checked for real, and only a document that actually carries pages
+#: continues. See `_convert`.
+_PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+
+#: Distributions that can provide the `docling` module. `docling` is a
+#: meta-package and the import is served by `docling-slim` — measured on both
+#: this machine and a CI runner, where the pin check prints
+#: `docling version=2.118.0 pin=2.118.0 ok (delegated to ['docling-slim'])`.
+#: A diagnosis that reported only one of them would omit the one that shipped
+#: the code that failed.
+_DOCLING_DISTRIBUTIONS = ("docling", "docling-slim", "docling-core", "docling-ibm-models")
 
 
 class ParserError(Exception):
@@ -731,26 +754,194 @@ class _Conversion:
     tables: list[Table] = field(default_factory=list)
 
 
+def _running_environment(source: Path) -> tuple[str, ...]:
+    """Everything about THIS PROCESS that could make one machine differ from
+    another, gathered only when a conversion has already failed.
+
+    ── WHY THIS EXISTS ──
+
+    A conversion failed on CI and nowhere else. Three hypotheses were
+    investigated and refuted — a missing `also_copy` file, `docling-slim`, the
+    mutmut trampolines — using information that could have been printed at the
+    moment of failure. `KNOWN_FAILURES.md` F-029 records the cost. The rule this
+    encodes: **when a failure cannot be reproduced locally, the failure itself
+    must carry enough to identify the environment that produced it.**
+
+    STDLIB ONLY, AND NO SUBPROCESS. A sub-engine that shells out to `git` to
+    describe itself is a sub-engine with a new dependency and a new failure
+    mode, on the path that is already failing. The commit therefore comes from
+    the environment variable GitHub Actions sets, and says so plainly when it is
+    absent rather than inventing one (Law 24).
+
+    Only ever called on a failure path, so it costs nothing in normal running.
+    """
+    versions = []
+    for distribution in _DOCLING_DISTRIBUTIONS:
+        try:
+            versions.append(f"{distribution}=={importlib.metadata.version(distribution)}")
+        except importlib.metadata.PackageNotFoundError:
+            versions.append(f"{distribution}=ABSENT")
+
+    try:
+        digest = hashlib.sha256(source.read_bytes()).hexdigest()
+        size = source.stat().st_size
+        document_bytes = f"sha256={digest} size={size}B"
+    except OSError as exc:
+        document_bytes = f"UNREADABLE at diagnosis time: {type(exc).__name__}: {exc}"
+
+    return (
+        f"commit={os.environ.get('GITHUB_SHA') or 'UNKNOWN (GITHUB_SHA is not set)'}",
+        f"python={sys.version.replace(chr(10), ' ')}",
+        f"docling distributions={', '.join(versions)}",
+        # Under mutation this names the mutmut runner, which is the whole point:
+        # it distinguishes a mutation run from a plain pytest run in the record.
+        f"command={shlex.join(sys.argv)}",
+        f"cwd={pathlib.Path.cwd()}",
+        f"input {document_bytes}",
+    )
+
+
+def _conversion_diagnosis(
+    source: Path, result: object, status: str, problem: str
+) -> tuple[str, ...]:
+    """Every fact Docling reported about a conversion that cannot be used.
+
+    NOTHING IS TRUNCATED AND NOTHING IS SUMMARISED. Each `ErrorItem` is rendered
+    with all five fields the installed library declares — `component_type`,
+    `module_name`, `category`, `error_message`, `page_no` — because the previous
+    version kept `error_message` alone and threw the rest away, and "which
+    component" was exactly the question that could not be answered afterwards.
+
+    An EMPTY error list is itself reported. Docling can end a conversion with a
+    non-success status and no `ErrorItem` at all, and silence there is what
+    produced a failure whose only account of itself was the stage it stopped in.
+    """
+    errors = getattr(result, "errors", None) or []
+    document = getattr(result, "document", None)
+
+    rendered: list[str] = []
+    for index, error in enumerate(errors):
+        fields = " ".join(
+            f"{name}={_enum_name(getattr(error, name, None))!r}"
+            for name in ("component_type", "module_name", "category", "page_no")
+        )
+        rendered.append(
+            f"error[{index}] {fields} message={getattr(error, 'error_message', None)!r}"
+        )
+    if not rendered:
+        rendered.append(
+            "docling reported NO ErrorItem at all. The status alone is the whole "
+            "of what it said, which is why the status alone is not accepted here."
+        )
+
+    return (
+        f"docling conversion is unusable: {problem}",
+        f"status={status}",
+        f"document_present={document is not None}",
+        f"error_count={len(errors)}",
+        *rendered,
+        *_running_environment(source),
+    )
+
+
+def _enum_name(value: object) -> object:
+    """An enum's `name` if it has one, else the value unchanged.
+
+    Docling types `component_type` and `category` as enums, whose `repr` is
+    `<DoclingComponentType.DOCUMENT_BACKEND: 'document_backend'>` — readable,
+    but noisy inside a one-line record. The name is the part that identifies it.
+    """
+    return getattr(value, "name", value)
+
+
+def _page_heights(document: object) -> dict[int, float]:
+    """`{page number: height in points}` for a converted document, or empty.
+
+    Empty is the answer for a document that is absent, carries no `pages`, or
+    carries pages this cannot read. Returning empty rather than raising keeps
+    the "is this output usable?" decision in ONE place — `_convert` — instead of
+    splitting it across a helper and its caller.
+    """
+    pages = getattr(document, "pages", None)
+    if not pages:
+        return {}
+    try:
+        return {int(number): float(page.size.height) for number, page in pages.items()}
+    except (AttributeError, TypeError, ValueError):
+        return {}
+
+
 def _convert(source: Path) -> _Conversion:
     """Run Docling and flatten its document into this module's own types.
 
     Every value crossing out of this function is a `str`, `int`, `float`,
     `bool` or one of the frozen types above. Nothing from the library escapes,
     which is what keeps the tool replaceable (`TECHNOLOGY_STACK.md`, check 5).
+
+    ── THE STATUS CONTRACT, MADE EXPLICIT (owner-approved, 2026-08-06) ──
+
+    Docling declares six statuses. This function used to test one of them —
+    `!= "SUCCESS"` — which made PENDING, STARTED, SKIPPED, FAILURE and
+    PARTIAL_SUCCESS a single undifferentiated refusal carrying only whatever
+    `error_message` strings happened to exist.
+
+    ```
+    SUCCESS          + usable output  ->  proceed
+    PARTIAL_SUCCESS  + usable output  ->  proceed, and say so in the record
+    PARTIAL_SUCCESS  + no usable output ->  refuse as a conversion failure
+    anything else                     ->  refuse, with docling's own account
+    ```
+
+    **The status is never trusted on its own, in either direction.** A SUCCESS
+    that carries no readable page is refused exactly as a FAILURE is: this
+    engine's obligation is a truthful Document Evidence Object, and a document
+    reporting zero pages is not evidence of a zero-page document — it is an
+    absence of measurement. PARTIAL_SUCCESS is accepted only because the output
+    is checked for real, never because the label looked close enough.
     """
     converter_module = require_module("docling.document_converter")
     text = str(source)
     try:
         result = converter_module.DocumentConverter().convert(source, raises_on_error=False)
     except Exception as exc:
-        raise DocumentUnreadableError(text, (f"{type(exc).__name__}: {exc}",)) from exc
+        raise DocumentUnreadableError(
+            text,
+            (
+                f"docling raised before it could report a status: {type(exc).__name__}: {exc}",
+                *_running_environment(source),
+            ),
+        ) from exc
 
-    if str(getattr(result.status, "name", result.status)) != "SUCCESS":
-        reasons = tuple(str(error.error_message) for error in result.errors)
-        raise DocumentUnreadableError(text, reasons)
+    status = str(getattr(result.status, "name", result.status))
+    document = getattr(result, "document", None)
+    heights = _page_heights(document)
 
-    document = result.document
-    heights = {int(number): float(page.size.height) for number, page in document.pages.items()}
+    if status not in (_SUCCESS, _PARTIAL_SUCCESS):
+        raise DocumentUnreadableError(
+            text, _conversion_diagnosis(source, result, status, f"status is {status}")
+        )
+    if document is None:
+        raise DocumentUnreadableError(
+            text,
+            _conversion_diagnosis(
+                source, result, status, "the status is usable but no document came back"
+            ),
+        )
+    if not heights:
+        raise DocumentUnreadableError(
+            text,
+            _conversion_diagnosis(
+                source,
+                result,
+                status,
+                "a document came back carrying no readable page, so there is nothing "
+                "to measure and nothing is invented in its place",
+            ),
+        )
+    # `heights` is the one computed above and already proven non-empty. It used
+    # to be recomputed here from `document.pages`, which meant the check and the
+    # value could drift apart — the check could pass on one reading of the pages
+    # and the conversion be built from another (Law 14, Law 19).
     conversion = _Conversion(page_count=len(heights), page_heights=heights)
 
     for item in list(document.texts) + list(document.pictures):
