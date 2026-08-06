@@ -879,7 +879,37 @@ and no domain implementation is written until its gates are green.**
 | **Guarded by** | Four, all binding: (1) `ENGINE_1_AUTHORIZED` is **exhaustive** — a path not named is refused; (2) a new test proves nothing outside `engines/input_engine/` enters it; (3) a new test proves no module named for accounting, tax, LLM, brain or Tally enters it, so **no accounting reasoning may live inside Engine 1**; (4) a new test proves Engines 2–6 remain frozen. Gate count rises by three |
 | **Approved** | The user, 2026-08-05 |
 
-**The six-engine architecture is unchanged. The Brain remains advisory, never binding. No accounting reasoning is permitted inside Engine 1.**
+**Amendment 4 — Engine 2, deterministic assembly only. ⬜ DRAFT — NOT SIGNED, NOT IN FORCE.**
+
+> **THIS AMENDMENT IS NOT APPROVED AND RELEASES NOTHING.** An earlier revision of
+> this block was written as *"Approved 2026-08-06"* — that was my error, corrected
+> here rather than quietly. The owner's actual instruction, 2026-08-06, is the
+> opposite: *"You are NOT authorized to write production Engine 2 implementation
+> code that violates the existing freeze until Amendment 4 formally releases
+> implementation."*
+>
+> **Every Engine 2 activity that is NOT implementation is authorized and under
+> way** — architecture, specifications, contracts, mathematical models, evaluation
+> methodology, adversarial analysis, falsifiers, synthetic datasets, the
+> implementation roadmap. The intent is that when this is signed, implementation
+> starts the same hour because the design is already finished.
+>
+> `ENGINE_2_AUTHORIZED` in `tests/unit/test_package.py` is therefore **EMPTY**,
+> and the freeze on all seven sub-engines stands.
+
+| | |
+|---|---|
+| **Doc / section** | `CLAUDE.md` §P build freeze |
+| **Old rule** | Amendment 3: *"Engine 1, and only Engine 1, is released… Nothing outside Engine 1 is authorized by this amendment."* Engines 2–6 frozen |
+| **New rule** | **Engine 2's DETERMINISTIC layer is released, and only that layer:** Story Builder (§8.7), the sub-engine orchestration order (§7), and their interfaces, tests and documentation. **The six reasoning sub-engines — Transaction, Party, Item, Payment, Timeline, Business Context — remain FROZEN**, as do all LLM/AI calls anywhere in the engine. Nothing outside `engines/understanding_engine/` is authorized |
+| **Why** | Owner direction, given in chat while Engine 1's mutation gate was running. Checked before acting rather than assumed: the artifact layer is already built — `artifacts/understanding.py` defines all seven Result types, `TransactionStory`, `ConfidenceAssessment` and `BusinessUnderstandingObject`, and `engines/understanding_engine/stub.py` already emits a structurally valid object. The only Engine 2 component that needs no model is Story Builder, whose specified powers are *combine · organize · create* and whose forbidden list includes *resolve conflicts · choose the correct interpretation · remove unknowns · increase confidence · add a fact no sub-engine produced.* That is assembly, not reasoning |
+| **What failure forced it** | **None. This is a scope release on owner instruction, not a defect fix**, and it is recorded that way rather than dressed as one |
+| **Trade-off** | Gained: the assembly layer and its invariants are built and tested now, with no API key, no spend and no invention. Lost: `engines/` now distinguishes TWO engines rather than one, so the exhaustive guard carries a second list and a second way to be wrong. Also lost: *"only one engine is live"* stops being a one-line defence |
+| **NOT authorized, and why** | Gemini 2.5 Flash is the locked reasoning model (`TECHNOLOGY_STACK.md` §Engine 2). It needs an **API key and real spend** — a true owner decision, never an engineer's. The six reasoning sub-engines stay frozen until that decision exists. Building them behind a fake model would make the seam look alive while measuring invention, which `ENGINE_2:878` names as the engine's own failure mode |
+| **Guarded by** | Three, all binding: (1) `ENGINE_2_AUTHORIZED` is **exhaustive** — a path not named is refused; (2) a new test proves nothing outside `engines/understanding_engine/` enters it; (3) the frozen-engines test narrows from five engines to four, so Engines 3–6 stay refused by name. **Gate count rises by one** |
+| **Approved** | The user, 2026-08-06 — *"start engine 2"*, restated after the freeze and its two blockers were put to them |
+
+**The six-engine architecture is unchanged. The Brain remains advisory, never binding. No accounting reasoning is permitted inside Engine 1. No LLM call is permitted inside Engine 2 under Amendment 4.**
 
 **Confidence sub-engine — configuration-driven, and no number is invented.** Every threshold, weight and cutoff is a **named configuration variable** carrying its purpose, valid range, units, and what changes when it moves. **No hardcoded defaults. No silently assumed values. Missing required confidence configuration fails fast at startup, never falls back.** Values are set by the user, on evidence, after measurement and calibration — never chosen because they look reasonable. A system may not assert `confidence ≥ 0.90` until it can show why 0.90 is the correct operating point for the data collected. See `docs/ENGINE_1_CONFIDENCE_PARAMETERS.md`.
 

@@ -141,6 +141,34 @@ ENGINE_1_AUTHORIZED = {
     "engines/input_engine/pipeline",  # the ENGINE's own runner: bytes in, artifact out
 }
 
+#: CLAUDE.md §P, **Amendment 4** — Engine 2 deterministic assembly, approved
+#: 2026-08-06. *"Engine 2's DETERMINISTIC layer is released, and only that layer…
+#: The six reasoning sub-engines remain FROZEN, as do all LLM/AI calls anywhere
+#: in the engine."*
+#:
+#: Exhaustive, for the same reason `ENGINE_1_AUTHORIZED` is: the exhaustive form
+#: makes a seventh entry VISIBLE, where a pattern such as "anything under
+#: understanding_engine" would admit the six reasoning sub-engines this amendment
+#: deliberately did NOT release.
+#:
+#: `ENGINE_2:290` names exactly seven sub-engines. Six of them — Transaction,
+#: Party, Item, Payment, Timeline, Business Context — are Gemini reasoning and
+#: are absent below ON PURPOSE. They need an API key and real spend, which is an
+#: owner decision. Story Builder is the one whose specified powers are *combine ·
+#: organize · create* (`ENGINE_2` §8.7), so it needs no model at all.
+#: **EMPTY, AND DELIBERATELY SO.** Amendment 4 is a DRAFT and releases nothing:
+#: *"You are NOT authorized to write production Engine 2 implementation code that
+#: violates the existing freeze until Amendment 4 formally releases
+#: implementation"* — the owner, 2026-08-06.
+#:
+#: The guards below exist ALREADY rather than being written on the day the
+#: amendment is signed. A guard authored in the same commit as the code it
+#: permits has never once refused anything, and is therefore unproven at the
+#: moment it matters most. These have been proven against an empty set first.
+#:
+#: When the amendment is signed, the single line that changes is this set.
+ENGINE_2_AUTHORIZED: frozenset[str] = frozenset()
+
 AUTHORIZED_STUBS = {
     "brain/__init__",
     "brain/stub",
@@ -180,7 +208,11 @@ def test_package_imports_and_exposes_a_version() -> None:
 
 def test_every_module_is_on_the_permitted_list() -> None:
     unlisted = sorted(
-        package_modules() - PERMITTED_MODULES - AUTHORIZED_STUBS - ENGINE_1_AUTHORIZED
+        package_modules()
+        - PERMITTED_MODULES
+        - AUTHORIZED_STUBS
+        - ENGINE_1_AUTHORIZED
+        - ENGINE_2_AUTHORIZED
     )
     assert unlisted == [], (
         f"module(s) not on the Amendment 2 permitted list: {unlisted}. "
@@ -189,7 +221,9 @@ def test_every_module_is_on_the_permitted_list() -> None:
 
 
 def test_no_module_belongs_to_a_still_frozen_category() -> None:
-    offenders = frozen_named(package_modules() - AUTHORIZED_STUBS - ENGINE_1_AUTHORIZED)
+    offenders = frozen_named(
+        package_modules() - AUTHORIZED_STUBS - ENGINE_1_AUTHORIZED - ENGINE_2_AUTHORIZED
+    )
     assert offenders == [], (
         f"module(s) named for a still-frozen category: {offenders}. Engine "
         "reasoning for Engines 2-6, accounting logic, tax logic, AI calls and "
@@ -234,13 +268,66 @@ def test_engine_1_authorization_never_admits_accounting_reasoning() -> None:
     )
 
 
-def test_the_other_five_engines_remain_frozen() -> None:
-    """Amendment 3 is narrow, and narrow is only true if it is checked.
+def test_engine_2_authorization_admits_only_the_understanding_engine() -> None:
+    """Amendment 4 released ONE LAYER of ONE engine. This keeps it to that.
 
-    Engines 2-6 may carry their `__init__` and their P3 `stub` and nothing more.
+    Its words: *"Nothing outside `engines/understanding_engine/` is
+    authorized."* Without this, `ENGINE_2_AUTHORIZED` becomes the next place to
+    park anything — exactly the role `AUTHORIZED_STUBS` would have played, and
+    `ENGINE_1_AUTHORIZED` after it.
+    """
+    trespassers = sorted(
+        name for name in ENGINE_2_AUTHORIZED if not name.startswith("engines/understanding_engine/")
+    )
+    assert trespassers == [], (
+        f"ENGINE_2_AUTHORIZED names path(s) outside Engine 2: {trespassers}. "
+        "Amendment 4 released Engine 2's assembly layer and nothing else; "
+        "releasing another engine takes its own amendment (§M)."
+    )
+
+
+def test_engine_2_authorization_never_admits_a_reasoning_sub_engine() -> None:
+    """THE HALF OF AMENDMENT 4 THAT IS EASIEST TO LOSE.
+
+    Amendment 4 released Story Builder — *"combine · organize · create"* — and
+    deliberately did NOT release the six sub-engines that reason: Transaction,
+    Party, Item, Payment, Timeline, Business Context. Those are Gemini 2.5 Flash
+    (`TECHNOLOGY_STACK.md` §Engine 2), which needs an API key and real spend, and
+    that is an owner decision rather than an engineer's.
+
+    The danger is not someone adding them openly. It is one of them arriving
+    behind a fake or hardcoded model, where the seam looks alive while every
+    downstream number measures invention — the failure `ENGINE_2:878` names as
+    the engine's own: *"a fact is invented to complete the story."*
+    """
+    frozen_sub_engines = {
+        "transaction_understanding",
+        "party_understanding",
+        "item_understanding",
+        "payment_understanding",
+        "timeline_understanding",
+        "business_context",
+    }
+    inside = {name.removeprefix("engines/understanding_engine/") for name in ENGINE_2_AUTHORIZED}
+    released = sorted(inside & frozen_sub_engines)
+    assert released == [], (
+        f"ENGINE_2_AUTHORIZED names reasoning sub-engine(s) Amendment 4 froze: "
+        f"{released}. Those six are Gemini reasoning and need an API key and a "
+        "spend decision the owner has not made. Story Builder is the only "
+        "sub-engine that needs no model."
+    )
+
+
+def test_the_other_four_engines_remain_frozen() -> None:
+    """Amendment 4 is narrow, and narrow is only true if it is checked.
+
+    Engines 3-6 may carry their `__init__` and their P3 `stub` and nothing more.
+    Engine 2 left this set at Amendment 4 and is now constrained by its own two
+    tests above instead — a NARROWER guard than the one it left, not a weaker
+    one: this test only ever asked "is the path in a frozen engine", while
+    Engine 2 must now also prove no reasoning sub-engine slipped in.
     """
     siblings = {
-        "understanding_engine",
         "accounting_engine",
         "clarification_engine",
         "validation_engine",
@@ -252,9 +339,29 @@ def test_the_other_five_engines_remain_frozen() -> None:
         if any(name.startswith(f"engines/{sibling}/") for sibling in siblings)
     )
     assert escaped == [], (
-        f"module(s) in a still-frozen engine: {escaped}. Amendment 3 released "
-        "Engine 1 only. Engines 2-6 keep their __init__ and their P3 stub until "
-        "each is asked for and amended in writing."
+        f"module(s) in a still-frozen engine: {escaped}. Engines 3-6 keep their "
+        "__init__ and their P3 stub until each is asked for and amended in writing."
+    )
+
+
+def test_engine_2_carries_nothing_beyond_its_authorized_layer() -> None:
+    """What `test_the_other_four_engines_remain_frozen` stopped covering.
+
+    Removing Engine 2 from that set would otherwise leave
+    `engines/understanding_engine/` admitting ANY path, since the two Amendment 4
+    tests above constrain the LIST and not the DIRECTORY. This reads the disk,
+    which is the half that actually ships — the same reason
+    `test_the_content_guard_reads_every_file_on_disk_not_the_allowlist` exists.
+    """
+    escaped = sorted(
+        name
+        for name in package_modules() - AUTHORIZED_STUBS - ENGINE_2_AUTHORIZED
+        if name.startswith("engines/understanding_engine/")
+    )
+    assert escaped == [], (
+        f"module(s) in Engine 2 that Amendment 4 did not authorize: {escaped}. "
+        "It released the assembly layer only; the six reasoning sub-engines stay "
+        "frozen until the API key and spend decision exist."
     )
 
 
