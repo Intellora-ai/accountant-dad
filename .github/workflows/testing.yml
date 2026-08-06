@@ -46,7 +46,26 @@ jobs:
             echo "BLOCKED - unit tests gate is HOLLOW: a failing test passed."
             exit 1
           fi
-          echo "canary rejected as expected - unit tests gate is live"
+          # ─────────────────────────────────────────────────────────────
+          # A CHECKER THAT REJECTS EVERYTHING PASSES THE TEST ABOVE TOO.
+          # `if tool args; then fail; fi` reads EVERY non-zero exit as "rejected
+          # as expected" — a missing binary (127), a segfault (139), an OOM kill
+          # (137), a network error or an internal tool fault all look identical
+          # to a genuine refusal. The half above proves only that the command
+          # did not exit 0.
+          #
+          # So the clean case must be ACCEPTED. Both halves together prove the
+          # tool RAN and DISCRIMINATED; either half alone proves nothing.
+          # `tools/ci/run_ocr_tests.sh:221-231` is where this shape already
+          # existed; it was the only canary in the repository that had it.
+          # ─────────────────────────────────────────────────────────────
+          printf 'def test_canary() -> None:\n    assert 1 == 1\n' > /tmp/canary-pytest/test_c.py
+          if ! pytest -p no:randomly -q /tmp/canary-pytest; then
+            echo "BLOCKED - unit tests gate rejects a PASSING test. It would never"
+            echo "pass, so a red from it says nothing about this repository."
+            exit 1
+          fi
+          echo "canary rejected the failing and accepted the passing - unit tests gate discriminates"
       - name: pytest, 100 percent passing
         # Seed derived from the commit, not chosen: random ORDER catches
         # order-dependent tests, a fixed seed keeps the run reproducible.
@@ -160,7 +179,34 @@ jobs:
             echo "BLOCKED - coverage gate is HOLLOW: partial coverage passed a 100% floor."
             exit 1
           fi
-          echo "canary rejected as expected - coverage gate is live"
+          # ─────────────────────────────────────────────────────────────
+          # A CHECKER THAT REJECTS EVERYTHING PASSES THE TEST ABOVE TOO.
+          # `if tool args; then fail; fi` reads EVERY non-zero exit as "rejected
+          # as expected" — a missing binary (127), a segfault (139), an OOM kill
+          # (137), a network error or an internal tool fault all look identical
+          # to a genuine refusal. The half above proves only that the command
+          # did not exit 0.
+          #
+          # So the clean case must be ACCEPTED. Both halves together prove the
+          # tool RAN and DISCRIMINATED; either half alone proves nothing.
+          # `tools/ci/run_ocr_tests.sh:221-231` is where this shape already
+          # existed; it was the only canary in the repository that had it.
+          # ─────────────────────────────────────────────────────────────
+          # This one has a second failure mode the others do not: line 158
+          # swallows the pytest run with `|| true`, so a run that produced NO
+          # DATA AT ALL makes `coverage report` error out, exit non-zero, and
+          # certify the gate live against an empty measurement. Assert data
+          # exists before believing either direction.
+          coverage report >/dev/null 2>&1 || {
+            echo "BLOCKED - the canary produced no coverage data, so neither"
+            echo "direction of this check measured anything."
+            exit 1; }
+          if ! coverage report --fail-under=50 >/dev/null 2>&1; then
+            echo "BLOCKED - coverage gate rejects a floor the fixture clears."
+            echo "It would never pass, so its red says nothing."
+            exit 1
+          fi
+          echo "canary rejected 100 and accepted a clearable floor - coverage gate discriminates"
       - name: coverage floor is the HIGHER of 93 and the base branch's actual
         # LOWERED-THRESHOLD DEFENCE. The literal 93 is only a MINIMUM. The real
         # floor is whatever coverage the base branch already achieves, so the

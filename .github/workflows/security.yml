@@ -122,7 +122,26 @@ jobs:
             echo "BLOCKED - dependency scan is HOLLOW: it passed a known-vulnerable pin."
             exit 1
           fi
-          echo "canary rejected as expected - dependency scan is live"
+          # ─────────────────────────────────────────────────────────────
+          # A CHECKER THAT REJECTS EVERYTHING PASSES THE TEST ABOVE TOO.
+          # `if tool args; then fail; fi` reads EVERY non-zero exit as "rejected
+          # as expected" — a missing binary (127), a segfault (139), an OOM kill
+          # (137), a network error or an internal tool fault all look identical
+          # to a genuine refusal. The half above proves only that the command
+          # did not exit 0.
+          #
+          # So the clean case must be ACCEPTED. Both halves together prove the
+          # tool RAN and DISCRIMINATED; either half alone proves nothing.
+          # `tools/ci/run_ocr_tests.sh:221-231` is where this shape already
+          # existed; it was the only canary in the repository that had it.
+          # ─────────────────────────────────────────────────────────────
+          printf '' > /tmp/canary-clean-req.txt
+          if ! pip-audit --strict --requirement /tmp/canary-clean-req.txt; then
+            echo "BLOCKED - dependency scan rejects a requirements file with no known"
+            echo "advisory. It would never pass, so its red says nothing."
+            exit 1
+          fi
+          echo "canary rejected the vulnerable and accepted the clean - dependency scan discriminates"
       - name: audit the CI toolchain
         # This gate is INTENTIONALLY non-deterministic, and that is correct.
         # The advisory database changes daily, so a dependency that was safe
