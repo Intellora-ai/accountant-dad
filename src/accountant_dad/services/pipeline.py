@@ -322,6 +322,9 @@ class ApplicationLayer:
             intake,
             identity=self._envelope(transaction_id),
             settings=self._config.input_engine_settings,
+            # The injected clock, never `datetime.now()` — the same rule the rest
+            # of this class already follows, and the reason a run is reproducible.
+            recorded_at=self._sources.now(),
             human_business_context=human_business_context,
         )
 

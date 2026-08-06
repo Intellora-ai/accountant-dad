@@ -155,3 +155,40 @@ Applies to documents too. A number written into `ROADMAP.md` or `PROGRESS.md` wi
 commit is a claim nobody can check.
 
 **Owner's standing instruction, 2026-08-06:** do this every time anything changes.
+
+---
+
+## L-012 · Land a whole stack or none of it
+
+An agent was killed mid-task. Its `parser.py` work sat in commit `e902ab4`, and I judged
+it unfinished and deliberately did not land it. A second agent resumed **from that
+commit**, and produced three more on top of it. I cherry-picked those three.
+
+Result: **42 failed, 45 errors**, up from 2.
+
+```
+59×  TypeError: run() missing 1 required keyword-only argument: 'recorded_at'
+14×  AttributeError: module 'parser' has no attribute 'ExtractedRegion' / 'MappedField'
+```
+
+The `pipeline.py` I landed called a `parser.py` API I had withheld. Half a change set.
+It imported cleanly, typechecked cleanly, and failed at runtime — because the missing
+half was a *sibling module*, not a syntax error.
+
+Then I made it worse: the replay hit merge conflicts and I resolved them with a blanket
+`git checkout --theirs`. That is the same shortcut a second time, and it **hides which
+half is missing** — the conflict was the one signal that the stack was incomplete, and I
+silenced it.
+
+**Rule.** When an agent's work arrives as a stack of commits, land the **whole stack or
+none of it**. A judgement that the top commit is "unfinished" does not license taking the
+commits above it — they were written against it. And never resolve a cherry-pick conflict
+mechanically: a conflict on a file two agents both touched is information, and `--theirs`
+throws it away.
+
+**The recovery that worked:** reset to the last known-good commit and replay the stack in
+dependency order, base first. Zero conflicts, because the order was right.
+
+Related: **L-007** — integration finds what unit tests structurally cannot. This is the
+same shape one level up: nothing in a unit test can see that a *neighbouring module's*
+half of a change never landed.

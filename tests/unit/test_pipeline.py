@@ -121,6 +121,12 @@ STUB_MARKER = "P3 stub"
 #: completeness check below reads as arithmetic rather than as a magic number.
 SINGLETON_ARTIFACTS = 2
 
+#: A document that could not be read produces exactly one marker — the one that
+#: names the stage that stopped. Asserted as a count rather than a lower bound:
+#: a second marker would mean something else was recorded as uncertain too, and
+#: that is a change worth failing on rather than absorbing.
+ONE_MARKER = 1
+
 
 # ── a typed facade over PyMuPDF, for AUTHORING the fixture only ───────────
 #
@@ -480,13 +486,49 @@ def test_a_document_engine_1_cannot_read_stops_the_run_loudly() -> None:
     requires does not exist yet, so nothing has exhausted anything.
     """
     fixture = _Fixture()
-    with pytest.raises(input_engine.PipelineStageError) as raised:
+
+    # CORRECTED EXPECTATION, not a weakened one (§J.4). This test used to assert
+    # `pytest.raises(input_engine.PipelineStageError)` with the stage `cleaner`
+    # and the transaction left in `Input`. It was PINNING A DEFECT: Engine 1
+    # raised where its contract says emit, so an unreadable document — a
+    # BUSINESS outcome — was indistinguishable from an engine crash, and the
+    # Application Layer could not route the two differently.
+    #
+    # `APPLICATION_LAYER_CONTRACTS.md:30` — *"Business -- unreadable, corrupt,
+    # zero-byte: an object is produced recording the failure. Runtime -- engine
+    # crash: nothing produced."*  `COMMUNICATION_RULES_INPUT_ENGINE.md:159` —
+    # failed extractions *"cross the boundary as low confidence and named
+    # uncertainty, not as errors."*  The document wins over the code (§M), the
+    # code was fixed, and the pin has to follow.
+    #
+    # The replacement is STRICTER: the old version proved only that something
+    # was raised. This one proves an artifact exists, that it NAMES the failure,
+    # that NOTHING was invented to fill the gap, and that the run routed onward
+    # instead of stopping — four claims where there was one.
+    with pytest.raises(ClarificationCycleExhaustedError) as raised:
         fixture.run(intake=an_intake(document=b""))
 
-    assert raised.value.stage == "cleaner"
-    assert fixture.store.state_of(fixture.transaction_id) is TransactionState.INPUT
+    evidence = raised.value.preserved.evidence
+    report = evidence.confidence_report
+
+    # 1. An artifact was produced, and it is empty rather than fabricated.
+    assert evidence.structured_document.extracted_text == ""
+    # 2. It names what failed, where, and why — not a generic marker.
+    assert len(report.uncertainty_markers) == ONE_MARKER
+    marker = report.uncertainty_markers[0]
+    assert "could not be read" in marker.reason
+    assert "cleaner" in marker.reason
+    assert "no bytes were supplied" in marker.reason
+    # 3. Nothing stands in for the value that was never read (Law 24).
+    assert "none is invented" in marker.reason
+    assert report.risky_fields == ()
+    assert "No confidence score is repor" in report.reliability_information
+    # 4. The failure CROSSED. It did not halt the pipeline, so a document nobody
+    #    could read becomes a question rather than an outage — which is the whole
+    #    point of the contract above.
     reached = {entry.to_state for entry in fixture.audit.history(fixture.transaction_id)}
-    assert reached == {TransactionState.INPUT}
+    assert TransactionState.UNDERSTANDING in reached
+    assert fixture.store.state_of(fixture.transaction_id) is TransactionState.ACCOUNTING
 
 
 # ── the Transaction ID is intact ──────────────────────────────────────────
