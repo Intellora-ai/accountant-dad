@@ -77,15 +77,63 @@ UNKNOWN AND AMBIGUOUS ARE BOTH HONEST ANSWERS, AND THEY ARE DIFFERENT ONES.
 
 LITERAL STRINGS, NEVER ACCOUNTING REASONING.
     The catalogue below matches document headings the way a human skims a
-    page for the word printed at the top of it — case-insensitive substring
-    matching against text `reader` and `parser` already extracted. It does not
-    read a value, does not total a table, does not look at a GSTIN, a party
-    name or an amount, and does not decide postability, tax treatment or
-    ledger classification. `test_no_accounting_conclusion_is_reachable_from_
-    the_public_surface` in this module's test file inspects every public
-    name — class, function, dataclass field, enum member — for the
-    accounting-decision vocabulary those other engines own, and fails if any
-    of it appears here.
+    page for the word printed at the top of it — case-insensitive matching
+    against text `reader` and `parser` already extracted. It does not read a
+    value, does not total a table, does not look at a GSTIN, a party name or
+    an amount, and does not decide postability, tax treatment or ledger
+    classification. `test_no_accounting_conclusion_is_reachable_from_the_
+    public_surface` in this module's test file inspects every public name —
+    class, function, dataclass field, enum member — for the accounting-decision
+    vocabulary those other engines own, and fails if any of it appears here.
+
+A DOCUMENT ANNOUNCING ITS OWN TYPE, VERSUS ONE MENTIONING ANOTHER DOCUMENT.
+    Plain substring containment could not tell those two apart, and that was a
+    real defect, found by the red-team pass and measured before it was fixed: a
+    goods receipt note whose body read *"Received against your purchase order
+    123 dated 4 May."* came back `TYPED`, `PURCHASE_ORDER`, `reasons=()` —
+    indistinguishable, in every field a caller reads, from a document that
+    printed PURCHASE ORDER as its own heading. `ENGINE_1_INPUT_ENGINE_RULES.md`
+    line 647: *"A confident extraction that quietly guessed is a failure, even
+    if the guess happened to be right."* The same containment also read the
+    word "misquotation" as a QUOTATION, because the cue sits inside it.
+
+    THE STRUCTURAL DIFFERENCE USED, AND WHY IT NEEDS NO NUMBER. `reader` and
+    `parser` both emit one piece of text per laid-out area of the page, so the
+    unit that arrives here is already a region, not a document. A document's own
+    heading IS its region, or it OPENS it — "TAX INVOICE", or "TAX INVOICE -
+    duplicate for transporter". A reference to a different document is a phrase
+    with running text on BOTH sides of it inside one region. So the cue must
+    open or close the region it was found in, as a whole phrase — matched with
+    start-of-text and end-of-text anchors and word boundaries. That is a
+    question about POSITION and WORD EDGES, both of which either hold or do
+    not; there is no score to threshold, no count to compare, no nearest match
+    to rank.
+
+    WHY NOT `parser.Region.label`, WHICH DOES SAY "section_header". Two
+    measured reasons. It does not exist on the `reader` side at all — `reader`
+    emits text and a source location and no structural label — so a label rule
+    would have left every reader region unguarded, which is exactly where the
+    defect was found. And the label is *"the detector's own structural
+    vocabulary, verbatim"* (`parser.Region`), an open set Docling chooses;
+    hard-coding which of its values count as a heading would put knowledge this
+    sub-engine does not hold inside it, the same reason `parser` itself refuses
+    to hold an expected-field list.
+
+    WHAT THIS RULE STILL CANNOT SEE, STATED RATHER THAN HIDDEN. A cue that
+    closes a prose region — "This is not a TAX INVOICE" — still reads as
+    evidence, because nothing structural separates it from a heading printed
+    alone on its line. That errs toward keeping the candidate and toward
+    AMBIGUOUS, never toward a silent single winner, which is the direction
+    Law 25 asks for. In the other direction, a heading welded to layout noise
+    on both sides ("\\x1b[1mTAX INVOICE\\x1b[0m") is no longer read as a
+    heading, the same class of artefact-induced false negative already pinned
+    for zero-width spaces — the module refuses instead of guessing.
+
+    NOTHING IS DISCARDED IN SILENCE. Every occurrence set aside this way is
+    written into `reasons`, naming the cue and where it was found. Dropping it
+    quietly would replace one silent guess with a silent omission, and would
+    have made the UNKNOWN sentence *"none of this module's catalogued
+    structural cues were found"* untrue.
 
 TWO INSTRUMENTS, NOT ONE, BECAUSE `reader` AND `parser` ALREADY EXIST.
     Unlike `confidence_report.py`, which was written before `reader` and
@@ -103,6 +151,7 @@ TWO INSTRUMENTS, NOT ONE, BECAUSE `reader` AND `parser` ALREADY EXIST.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -293,11 +342,63 @@ class _Source:
     Internal only — `reader.TextRegion` and `parser.Region` keep their own
     real types everywhere else; this exists so the matching loop below does
     not need to know which of the two produced a given piece of text.
+
+    `text` is the region's own text, verbatim, and is what travels into the
+    evidence. `searched_text` is the upper-cased, edge-trimmed copy the cues
+    are matched against, computed once per region rather than once per cue —
+    they are two fields and never one, so normalising for the search can never
+    edit what a human is later shown the document said.
     """
 
     instrument: Instrument
     text: str
     location: str
+    searched_text: str
+
+
+@dataclass(frozen=True, slots=True)
+class _Occurrence:
+    """One catalogued cue actually present in one region, and where it sits.
+
+    `opens_or_closes_its_region` is the whole of the heading test: `True` when
+    the cue is a whole phrase that begins or ends the region it was found in,
+    `False` when it is a phrase with running text on both sides of it. It is a
+    fact about position and word edges — no score, no count, no ranking.
+    """
+
+    cue: Cue
+    source: _Source
+    opens_or_closes_its_region: bool
+
+
+def _a_source(instrument: Instrument, text: str, location: str) -> _Source:
+    """The one place `searched_text` is derived, so the two instruments cannot
+    drift into normalising their text differently (Law 14).
+    """
+    return _Source(
+        instrument=instrument,
+        text=text,
+        location=location,
+        searched_text=text.upper().strip(),
+    )
+
+
+def _opens_or_closes_its_region(cue_text: str, searched_text: str) -> bool:
+    """True when `cue_text` is a whole phrase that BEGINS or ENDS the region.
+
+    `\\A` and `\\Z` rather than `^` and `$`. Today the two behave identically
+    here, because `_a_source` has already trimmed the edges and `$` differs from
+    `\\Z` only in also matching immediately before a TRAILING newline. That
+    equivalence is a property of the trim, not of the anchor, and it would end
+    silently the moment the trim changed — so the anchor that means "the end,
+    full stop" is the one written.
+
+    `\\b` on the open side of each anchor is what stops "QUOTATION" inside
+    "misquotation" from reading as this document's own heading. Position alone
+    would have accepted it, since it ends its region.
+    """
+    phrase = re.escape(cue_text)
+    return re.search(rf"\A{phrase}\b|\b{phrase}\Z", searched_text) is not None
 
 
 def _describe_reader_location(location: SourceLocation) -> str:
@@ -318,7 +419,7 @@ def _describe_parser_location(region: Region) -> str:
 
 def _reader_sources(reading: Reading) -> tuple[_Source, ...]:
     return tuple(
-        _Source(
+        _a_source(
             instrument=Instrument.READER,
             text=region.text,
             location=_describe_reader_location(region.location),
@@ -330,7 +431,7 @@ def _reader_sources(reading: Reading) -> tuple[_Source, ...]:
 
 def _parser_sources(structure: ParsedStructure) -> tuple[_Source, ...]:
     return tuple(
-        _Source(
+        _a_source(
             instrument=Instrument.PARSER,
             text=region.text,
             location=_describe_parser_location(region),
@@ -340,33 +441,87 @@ def _parser_sources(structure: ParsedStructure) -> tuple[_Source, ...]:
     )
 
 
-def _candidate_for(
-    document_type: DocumentType, sources: tuple[_Source, ...]
-) -> TypeCandidate | None:
-    """Every matched cue this module can find for one document type, or `None`.
+def _occurrences(sources: tuple[_Source, ...]) -> tuple[_Occurrence, ...]:
+    """Every catalogued cue actually present anywhere, each carrying whether it
+    is printed where a document prints its own heading.
 
-    Case-insensitive substring containment against text `reader` or `parser`
-    already extracted — the one matching rule this whole module has, and the
-    only place `.upper()` is called on anything that was not already
-    normalised by `CUE_CATALOG` itself.
+    Case-insensitive containment against text `reader` or `parser` already
+    extracted decides what is PRESENT; `_opens_or_closes_its_region` decides
+    whether being present makes it this document's own heading. Both questions
+    are asked here so that nothing found can be dropped without being recorded.
     """
-    found = tuple(
-        MatchedCue(
-            cue=cue.text,
-            instrument=source.instrument,
-            matched_text=source.text,
-            location=source.location,
+    return tuple(
+        _Occurrence(
+            cue=cue,
+            source=source,
+            opens_or_closes_its_region=_opens_or_closes_its_region(cue.text, source.searched_text),
         )
         for cue in CUE_CATALOG
-        if cue.document_type is document_type
         for source in sources
-        if cue.text in source.text.upper()
+        if cue.text in source.searched_text
+    )
+
+
+def _candidate_from(
+    document_type: DocumentType, headings: tuple[_Occurrence, ...]
+) -> TypeCandidate | None:
+    """Every heading-position cue found for one document type, or `None`."""
+    found = tuple(
+        MatchedCue(
+            cue=occurrence.cue.text,
+            instrument=occurrence.source.instrument,
+            matched_text=occurrence.source.text,
+            location=occurrence.source.location,
+        )
+        for occurrence in headings
+        if occurrence.cue.document_type is document_type
     )
     return TypeCandidate(document_type=document_type, matched_cues=found) if found else None
 
 
+def _set_aside_reason(occurrence: _Occurrence) -> str:
+    """What was found, where, and why it names no type. Never omitted."""
+    return (
+        f"the catalogued cue '{occurrence.cue.text}' was found at "
+        f"{occurrence.source.location}, with other text on both sides of it "
+        "inside the same region — where a document refers to a DIFFERENT "
+        "document, not where it prints its own heading. It is recorded here "
+        "and names no type."
+    )
+
+
+def _nothing_where_a_heading_sits_reason(
+    sources: tuple[_Source, ...], set_aside: tuple[str, ...]
+) -> str:
+    """Why no type was named, told two different ways because two different
+    things happened: nothing catalogued was on the page at all, or something
+    catalogued was on the page but not where a heading sits. Saying the first
+    when the second happened would be a fabricated reason (Law 24).
+    """
+    match set_aside:
+        case ():
+            return (
+                "none of this module's catalogued structural cues were found "
+                f"in the {len(sources)} region(s) of text supplied by reader "
+                "and parser; no type is guessed in their place."
+            )
+        case _:
+            return (
+                "no catalogued structural cue was found where a document "
+                f"prints its own heading, in the {len(sources)} region(s) of "
+                "text supplied by reader and parser; no type is guessed in "
+                "their place."
+            )
+
+
 def classify(reading: Reading, structure: ParsedStructure) -> ClassificationResult:
     """Name which catalogued document type's cues were found, and where.
+
+    Only a cue that OPENS or CLOSES the region it was found in, as a whole
+    phrase, counts as this document's own heading. Every other occurrence is
+    set aside — a document that mentions a purchase order does not become one —
+    and every occurrence set aside is written into `reasons`, so nothing found
+    is ever dropped in silence.
 
     Never raises for any valid `Reading` or `ParsedStructure`, including an
     empty one — a document with nothing read, or nothing structured, is a
@@ -377,11 +532,20 @@ def classify(reading: Reading, structure: ParsedStructure) -> ClassificationResu
     types, so there is no partial-input case to default around.
     """
     sources = _reader_sources(reading) + _parser_sources(structure)
+    occurrences = _occurrences(sources)
+    headings = tuple(
+        occurrence for occurrence in occurrences if occurrence.opens_or_closes_its_region
+    )
+    set_aside = tuple(
+        _set_aside_reason(occurrence)
+        for occurrence in occurrences
+        if not occurrence.opens_or_closes_its_region
+    )
 
     candidates = tuple(
         candidate
         for document_type in DocumentType
-        if (candidate := _candidate_for(document_type, sources)) is not None
+        if (candidate := _candidate_from(document_type, headings)) is not None
     )
 
     match candidates:
@@ -389,17 +553,13 @@ def classify(reading: Reading, structure: ParsedStructure) -> ClassificationResu
             return ClassificationResult(
                 status=ClassificationStatus.UNKNOWN,
                 candidates=(),
-                reasons=(
-                    "none of this module's catalogued structural cues were found "
-                    f"in the {len(sources)} region(s) of text supplied by reader "
-                    "and parser; no type is guessed in their place.",
-                ),
+                reasons=(_nothing_where_a_heading_sits_reason(sources, set_aside), *set_aside),
             )
         case (only,):
             return ClassificationResult(
                 status=ClassificationStatus.TYPED,
                 candidates=(only,),
-                reasons=(),
+                reasons=set_aside,
             )
         case multiple:
             names = ", ".join(candidate.document_type.value for candidate in multiple)
@@ -410,5 +570,6 @@ def classify(reading: Reading, structure: ParsedStructure) -> ClassificationResu
                     f"structural cues were found for more than one catalogued "
                     f"document type ({names}); this module does not choose "
                     "between them.",
+                    *set_aside,
                 ),
             )

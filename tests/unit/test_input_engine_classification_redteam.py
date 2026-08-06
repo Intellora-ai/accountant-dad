@@ -40,13 +40,26 @@ attacks the things that file's stance could not see, in five directions:
      A Cyrillic lookalike must not match. An invisible character must not be
      able to make a visible heading match. Both directions are measured here,
      and one of them turns out to be surprising: Python's `str.upper()` is
-     Unicode-aware, so a Turkish dotless `ı` folds into ASCII `I` and DOES
+     Unicode-aware, so a Turkish dotless i (U+0131) folds into ASCII `I` and
      match. That is pinned rather than assumed.
 
-ONE TEST IN THIS FILE IS RED ON PURPOSE. `test_a_catalogued_phrase_in_body_
-prose_must_not_become_the_documents_type` traps a defect this pass found and
-did not fix (`CLAUDE.md` §E.7 — record it, do not fix a module outside the
-current mission). Its reasoning is written out in full at the test itself.
+THE DEFECT THIS PASS FOUND IS NOW FIXED, AND ONE EXPECTATION IN THIS FILE WAS
+CORRECTED TO MATCH. `test_a_catalogued_phrase_in_body_prose_must_not_become_
+the_documents_type` was written red on purpose and is now green: `classify`
+requires a cue to OPEN or CLOSE the region it was found in, as a whole phrase,
+before it counts as this document's own heading.
+
+That rule also changed one expectation this file had pinned, and the change is
+recorded rather than absorbed. `"\\x1b[1mTAX INVOICE\\x1b[0m"` — a heading
+welded to layout noise on BOTH sides — used to read as TYPED and now reads as
+UNKNOWN. Under ANY whole-word rule it must: the character before the "T" is the
+letter "m", so the cue is not a word there, and this module cannot know that
+`\\x1b[1m` is a terminal escape rather than part of a word. That is the same
+class of artefact-induced false negative `test_an_invisible_character_makes_a_
+visible_heading_read_as_unknown` already pins for zero-width spaces, and it
+errs the safe way — the module refuses instead of guessing. The test's own
+point, that refusing everything is not robustness, is kept and now measured on
+a heading that carries control characters on one side, which still matches.
 """
 
 from __future__ import annotations
@@ -140,6 +153,42 @@ def ambiguity_reason(*types: DocumentType) -> str:
     return (
         f"structural cues were found for more than one catalogued document "
         f"type ({names}); this module does not choose between them."
+    )
+
+
+#: What `_describe_reader_location` renders for `a_location()`, and what
+#: `_describe_parser_location` renders for `a_structure`'s region. Written out
+#: rather than substring-matched for the same reason `unknown_reason` is: a
+#: reason that names WHERE a set-aside cue was found is only useful if the
+#: place it names is actually checked.
+READER_LOCATION = "page 0, (10.0, 10.0)-(200.0, 30.0)"
+PARSER_LOCATION = "page 1, 'section_header' region, (5.0, 5.0)-(100.0, 25.0)"
+
+
+def no_heading_reason(region_count: int) -> str:
+    """The sentence UNKNOWN carries when a cue WAS on the page but not where a
+    heading sits. Deliberately a different sentence from `unknown_reason`:
+    saying "none were found" when one was found and set aside would be a
+    fabricated reason (`CLAUDE.md` Law 24), and this pins that they differ.
+    """
+    return (
+        "no catalogued structural cue was found where a document prints its "
+        f"own heading, in the {region_count} region(s) of text supplied by "
+        "reader and parser; no type is guessed in their place."
+    )
+
+
+def set_aside_reason(cue: str, location: str) -> str:
+    """The exact sentence `classify` emits for a cue found with running text on
+    both sides of it. Every word is pinned: this string is the ONLY record that
+    the module saw the cue at all, so a silent edit to it is a silent loss of
+    the evidence.
+    """
+    return (
+        f"the catalogued cue '{cue}' was found at {location}, with other text "
+        "on both sides of it inside the same region — where a document refers "
+        "to a DIFFERENT document, not where it prints its own heading. It is "
+        "recorded here and names no type."
     )
 
 
@@ -519,14 +568,25 @@ def test_a_proforma_says_nothing_about_whether_it_may_be_posted() -> None:
 
 # ── 5. case, whitespace and unicode, in both failure directions ──────────────
 
-#: U+0410 CYRILLIC CAPITAL LETTER A, which renders identically to Latin "A".
-CYRILLIC_A = "А"
+#: Spelled as escapes, never as the glyphs themselves. Every codepoint below
+#: is either invisible or indistinguishable from an ASCII letter in an editor,
+#: so a literal here would be a character a reviewer cannot see and cannot
+#: check — which is what ruff's RUF001, PLE2502 and PLE2515 refuse. The escape
+#: is both the more honest spelling and the lint-clean one; the VALUE that
+#: reaches `classify` is byte-for-byte what it was.
+#: U+0410 CYRILLIC CAPITAL LETTER A, which renders identically to Latin A.
+CYRILLIC_A = "\u0410"
 #: U+200B ZERO WIDTH SPACE — invisible, and a real artefact of PDF text layers.
-ZERO_WIDTH_SPACE = "​"
+ZERO_WIDTH_SPACE = "\u200b"
 #: U+200F RIGHT-TO-LEFT MARK — invisible, and emitted by bidirectional layout.
-RIGHT_TO_LEFT_MARK = "‏"
+RIGHT_TO_LEFT_MARK = "\u200f"
 #: U+00A0 NO-BREAK SPACE — visually a space, a different codepoint.
-NO_BREAK_SPACE = " "
+NO_BREAK_SPACE = "\u00a0"
+#: U+0131 LATIN SMALL LETTER DOTLESS I, whose `.upper()` is ASCII I.
+TURKISH_DOTLESS_I = "\u0131"
+#: "TAX INVOICE" in fullwidth forms, U+FF34 onward, separated by the ordinary
+#: U+0020 space the original literal carried.
+FULLWIDTH_TAX_INVOICE = "\uff34\uff21\uff38 \uff29\uff2e\uff36\uff2f\uff29\uff23\uff25"
 
 
 @pytest.mark.parametrize(
@@ -538,7 +598,7 @@ NO_BREAK_SPACE = " "
 )
 def test_a_cyrillic_lookalike_never_matches_a_latin_cue(heading: str) -> None:
     """The dangerous direction: a homoglyph must not be able to satisfy a cue.
-    A document whose heading is spelled with a Cyrillic "А" is not the same
+    A document whose heading is spelled with a Cyrillic U+0410 is not the same
     string as the catalogued one, and this module must not pretend it is.
     """
     result = classify(a_reading(heading), NOTHING_STRUCTURED)
@@ -577,14 +637,15 @@ def test_a_turkish_dotless_i_folds_into_ascii_and_does_match() -> None:
     """MEASURED, AND SURPRISING, SO IT IS PINNED.
 
     Matching upper-cases the source with `str.upper()`, which is Unicode-aware
-    rather than ASCII-only: `"ı".upper()` is `"I"`. So a heading printed with a
+    rather than ASCII-only: `"\u0131".upper()` is `"I"`. So a heading printed
+    with a
     Turkish dotless i matches the catalogued cue. This errs toward matching,
     which is the direction that would matter if a type were ever concluded from
     it — so the safety property asserted alongside it is the one that makes it
     checkable: the evidence quote keeps the dotless i verbatim, so a human
     reading the Document Evidence Object can see exactly what the page said.
     """
-    printed = "TAX INVOıCE"
+    printed = f"TAX INVO{TURKISH_DOTLESS_I}CE"
 
     result = classify(a_reading(printed), NOTHING_STRUCTURED)
 
@@ -592,13 +653,13 @@ def test_a_turkish_dotless_i_folds_into_ascii_and_does_match() -> None:
     assert result.document_type is DocumentType.TAX_INVOICE
     (matched,) = result.candidates[0].matched_cues
     assert matched.matched_text == printed
-    assert "ı" in matched.matched_text
+    assert TURKISH_DOTLESS_I in matched.matched_text
 
 
 @pytest.mark.parametrize(
     "heading",
     [
-        "ＴＡＸ ＩＮＶＯＩＣＥ",  # fullwidth forms
+        FULLWIDTH_TAX_INVOICE,  # fullwidth forms
         "TAX INVOICÉ",  # an accent Python's upper() does not strip
         "TAX İNVOICE",  # U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE
     ],
@@ -671,16 +732,52 @@ def test_classify_survives_hostile_text_without_raising_or_guessing() -> None:
 
 def test_a_cue_hidden_among_hostile_text_is_still_found_with_its_verbatim_quote() -> None:
     """The other half of the hostile-input attack: refusing everything is not
-    robustness. A real cue buried in control characters must still be found,
-    and its quote must still be the region's own bytes.
+    robustness. A real cue carrying control characters must still be found, and
+    its quote must still be the region's own bytes.
+
+    EXPECTATION CORRECTED, AND THE REASON IS LOUD. This test used to print
+    `"\\x1b[1mTAX INVOICE\\x1b[0m"` — noise on BOTH sides — and assert TYPED. It
+    cannot, now that a cue must be a WHOLE PHRASE opening or closing its region:
+    the character before the "T" is the letter "m" of `\\x1b[1m`, so "TAX
+    INVOICE" is not a word there, and nothing available to this module says that
+    "m" is a terminal escape rather than part of a word. The both-sides form is
+    pinned immediately below, as UNKNOWN. What is measured here is the claim
+    this test was written to make, on a form that still holds it: the cue opens
+    the region, control characters follow it, and it is found.
     """
-    printed = "\x1b[1mTAX INVOICE\x1b[0m"
+    printed = "TAX INVOICE\x1b[0m"
 
     result = classify(a_reading("\x00\x01", printed), NOTHING_STRUCTURED)
 
     assert result.status is ClassificationStatus.TYPED
     assert result.document_type is DocumentType.TAX_INVOICE
-    assert result.candidates[0].matched_cues[0].matched_text == printed
+    (matched,) = result.candidates[0].matched_cues
+    assert matched.matched_text == printed
+    assert matched.cue == "TAX INVOICE"
+    assert result.reasons == ()
+
+
+def test_a_heading_welded_to_layout_noise_on_both_sides_reads_as_unknown() -> None:
+    """THE CORRECTED EXPECTATION, PINNED RATHER THAN LEFT TO BE REDISCOVERED.
+
+    `"\\x1b[1mTAX INVOICE\\x1b[0m"` is a heading to a human and is refused here,
+    because "1mTAX" is one run of word characters and this module will not read
+    a cue out of the middle of a word. It is a false NEGATIVE — the safe
+    direction, and the same class already pinned for zero-width spaces — and it
+    is not silent: the reason names the cue and where it was found, so the
+    evidence a human would need survives even though no type does.
+    """
+    printed = "\x1b[1mTAX INVOICE\x1b[0m"
+
+    result = classify(a_reading(printed), NOTHING_STRUCTURED)
+
+    assert result.status is ClassificationStatus.UNKNOWN
+    assert result.candidates == ()
+    assert result.document_type is None
+    assert result.reasons == (
+        no_heading_reason(1),
+        set_aside_reason("TAX INVOICE", READER_LOCATION),
+    )
 
 
 def test_classify_returns_the_same_result_for_the_same_input_twice() -> None:
@@ -708,29 +805,29 @@ def test_classify_leaves_the_reading_and_the_structure_it_was_given_unchanged() 
     assert tuple(region.text for region in structure.regions) == before_structure
 
 
-# ── THE DEFECT THIS PASS FOUND, TRAPPED AND NOT FIXED ────────────────────────
+# ── THE DEFECT THIS PASS FOUND, NOW FIXED AND GUARDED PERMANENTLY ────────────
 
 
 def test_a_catalogued_phrase_in_body_prose_must_not_become_the_documents_type() -> None:
-    """RED ON PURPOSE. A defect found by this pass and deliberately not fixed
-    (`CLAUDE.md` §E.7 — record it, do not fix a module outside this mission).
+    """WRITTEN RED, NOW GREEN — the permanent regression test for the defect
+    this pass found (`CLAUDE.md` Law 3, §J.8).
 
-    WHAT HAPPENS TODAY, MEASURED. `_candidate_for` tests `cue.text in
+    WHAT USED TO HAPPEN, MEASURED. `_candidate_for` tested `cue.text in
     source.text.upper()` against EVERY region `reader` and `parser` produced,
-    with no word boundary, no position and no use of `parser.Region.label`. So
-    a goods receipt note whose body reads "Received against your purchase order
-    123" is reported as `TYPED`, `document_type == DocumentType.PURCHASE_ORDER`,
-    `reasons == ()`. It is indistinguishable, in every field a caller reads,
-    from a document that actually printed PURCHASE ORDER as its heading.
+    with no word boundary and no position. So a goods receipt note whose body
+    reads "Received against your purchase order 123" came back `TYPED`,
+    `document_type == DocumentType.PURCHASE_ORDER`, `reasons == ()` —
+    indistinguishable, in every field a caller reads, from a document that
+    actually printed PURCHASE ORDER as its heading.
 
-    WHY THAT IS A DEFECT AND NOT A DOCUMENTED LIMIT.
+    WHY THAT WAS A DEFECT AND NOT A DOCUMENTED LIMIT.
       - The module's own docstring says it matches "document headings the way a
-        human skims a page for the word printed at the top of it". It does not
+        human skims a page for the word printed at the top of it". It did not
         look at the top of the page, or at a heading, or at anything positional.
       - `ENGINE_1_INPUT_ENGINE_RULES.md:647` is explicit: *"A confident
         extraction that quietly guessed is a failure, even if the guess happened
-        to be right."* This is a confident answer with no uncertainty attached —
-        not AMBIGUOUS, not UNKNOWN, and `reasons` empty.
+        to be right."* That was a confident answer with no uncertainty attached
+        — not AMBIGUOUS, not UNKNOWN, and `reasons` empty.
       - §9's failure list names *"Information is invented"*. The document never
         said it was a purchase order; the module concluded it was.
       - It is the same failure the module was built to prevent, arriving from
@@ -738,10 +835,11 @@ def test_a_catalogued_phrase_in_body_prose_must_not_become_the_documents_type() 
         invoice, and an incidental cross-reference is a cheaper way to get there
         than a look-alike heading.
 
-    WHAT WOULD MAKE IT GREEN — for whoever fixes it, not decided here: any of a
-    word-boundary match, a heading-position or `Region.label` constraint, or a
-    distinct status for "found, but not where a heading would be". Which one is
-    the owner's call, so none is chosen here.
+    WHAT FIXED IT. A cue counts as this document's own heading only when it
+    OPENS or CLOSES the region it was found in, as a whole phrase. Asserted
+    below in full rather than only on `document_type`: the original assertion
+    would also have passed on an AMBIGUOUS result, and "ambiguous" would be its
+    own quiet guess here.
     """
     goods_receipt = a_reading(
         "GOODS RECEIPT NOTE",
@@ -756,13 +854,141 @@ def test_a_catalogued_phrase_in_body_prose_must_not_become_the_documents_type() 
         "ENGINE_1_INPUT_ENGINE_RULES.md:647 - a confident extraction that "
         "quietly guessed is a failure even when the guess is right."
     )
+    assert result.status is ClassificationStatus.UNKNOWN
+    assert result.candidates == ()
+    # and the cue is not thrown away in silence either: what was seen, and
+    # where, is on the record.
+    assert result.reasons == (
+        no_heading_reason(2),
+        set_aside_reason("PURCHASE ORDER", READER_LOCATION),
+    )
 
     # The same defect, second instance: the word "misquotation" contains the
-    # catalogued cue "QUOTATION", so a sentence disclaiming a quotation is
+    # catalogued cue "QUOTATION", so a sentence disclaiming a quotation was
     # reported as one.
     disclaimer = a_reading("Please disregard any misquotation in our earlier mail.")
+    disclaimed = classify(disclaimer, NOTHING_STRUCTURED)
 
-    assert classify(disclaimer, NOTHING_STRUCTURED).document_type is not DocumentType.QUOTATION, (
+    assert disclaimed.document_type is not DocumentType.QUOTATION, (
         "the substring 'QUOTATION' inside the word 'misquotation' was reported "
         "as the document's own type."
     )
+    assert disclaimed.status is ClassificationStatus.UNKNOWN
+    assert disclaimed.reasons == (
+        no_heading_reason(1),
+        set_aside_reason("QUOTATION", READER_LOCATION),
+    )
+
+
+def test_a_cue_welded_inside_a_longer_word_at_the_region_edge_is_still_refused() -> None:
+    """Position alone would not have been enough, and this proves it.
+
+    "MISQUOTATION" alone in a region ENDS that region, so a rule that only asked
+    where the cue sits would have accepted it. The word-boundary half is what
+    refuses it. Both halves are load-bearing and both are measured.
+    """
+    result = classify(a_reading("MISQUOTATION"), NOTHING_STRUCTURED)
+
+    assert result.status is ClassificationStatus.UNKNOWN
+    assert result.candidates == ()
+    assert result.reasons == (
+        no_heading_reason(1),
+        set_aside_reason("QUOTATION", READER_LOCATION),
+    )
+
+
+def test_a_typed_document_still_reports_the_cross_reference_it_set_aside() -> None:
+    """The case that would be easiest to lose: the document DOES announce its
+    own type, so a caller reading `document_type` is right — and it also names
+    another document in its body. `reasons` is not empty on a TYPED result
+    here, which is exactly the point: the answer is right AND the discarded
+    evidence is visible.
+    """
+    reading = a_reading(
+        "DELIVERY CHALLAN",
+        "Delivered against your purchase order 123 dated 4 May.",
+    )
+
+    result = classify(reading, NOTHING_STRUCTURED)
+
+    assert result.status is ClassificationStatus.TYPED
+    assert result.document_type is DocumentType.DELIVERY_CHALLAN
+    assert result.reasons == (set_aside_reason("PURCHASE ORDER", READER_LOCATION),)
+
+
+def test_an_ambiguous_document_reports_its_ambiguity_and_its_cross_reference() -> None:
+    """The third branch, with a set-aside occurrence alongside it. The
+    ambiguity sentence still comes first — a caller reading only `reasons[0]`
+    must not have it replaced by a cross-reference note.
+    """
+    reading = a_reading(
+        "TAX INVOICE",
+        "QUOTATION",
+        "Raised against your purchase order 123 dated 4 May.",
+    )
+
+    result = classify(reading, NOTHING_STRUCTURED)
+
+    assert result.status is ClassificationStatus.AMBIGUOUS
+    assert [candidate.document_type for candidate in result.candidates] == [
+        DocumentType.TAX_INVOICE,
+        DocumentType.QUOTATION,
+    ]
+    assert result.reasons == (
+        ambiguity_reason(DocumentType.TAX_INVOICE, DocumentType.QUOTATION),
+        set_aside_reason("PURCHASE ORDER", READER_LOCATION),
+    )
+
+
+def test_the_same_cue_can_be_a_heading_in_one_region_and_a_reference_in_another() -> None:
+    """The case a per-DOCUMENT rule would get wrong and a per-REGION rule gets
+    right. "PURCHASE ORDER" is printed as the heading AND mentioned inside a
+    sentence lower down. The heading types the document; the mention is still
+    set aside and still recorded, so the two are never pooled into one verdict.
+    """
+    reading = a_reading(
+        "PURCHASE ORDER",
+        "Supersedes the purchase order 122 we sent on 1 May.",
+    )
+
+    result = classify(reading, NOTHING_STRUCTURED)
+
+    assert result.status is ClassificationStatus.TYPED
+    assert result.document_type is DocumentType.PURCHASE_ORDER
+    (candidate,) = result.candidates
+    # exactly ONE piece of evidence: the heading. The sentence is not evidence.
+    assert [matched.matched_text for matched in candidate.matched_cues] == ["PURCHASE ORDER"]
+    assert result.reasons == (set_aside_reason("PURCHASE ORDER", READER_LOCATION),)
+
+
+def test_a_cross_reference_found_by_the_parser_names_the_parser_region_it_sat_in() -> None:
+    """The same rule on the other instrument, and the reason must locate it
+    there — a set-aside note that could not say WHICH region it came from would
+    be a record a human cannot check.
+    """
+    structure = a_structure("Received against your purchase order 123 dated 4 May.")
+
+    result = classify(NOTHING_READ, structure)
+
+    assert result.status is ClassificationStatus.UNKNOWN
+    assert result.reasons == (
+        no_heading_reason(1),
+        set_aside_reason("PURCHASE ORDER", PARSER_LOCATION),
+    )
+
+
+def test_a_heading_that_opens_its_region_survives_the_prose_that_follows_it() -> None:
+    """The other direction of the same rule, measured rather than assumed: a
+    heading printed with a subtitle on the same line is still a heading. If the
+    fix had required the cue to be the WHOLE region, this would have gone
+    UNKNOWN and every real document with a strapline would have been lost.
+    """
+    printed = "DELIVERY CHALLAN for goods sent to our Pune warehouse on 4 May"
+
+    result = classify(a_reading(printed), NOTHING_STRUCTURED)
+
+    assert result.status is ClassificationStatus.TYPED
+    assert result.document_type is DocumentType.DELIVERY_CHALLAN
+    assert result.reasons == ()
+    (matched,) = result.candidates[0].matched_cues
+    assert matched.matched_text == printed
