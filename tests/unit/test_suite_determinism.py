@@ -152,6 +152,42 @@ FROZEN_INVENTORY: dict[tuple[str, str, str], str] = {
         "shared_temporary_directory below. This file does not merely write to the "
         "shared temp dir, it READS it and asserts nothing new appeared"
     ),
+    # ── the 40 mutation-killer files, added 2026-08-07 ───────────────────
+    # Three survivors of a sweep that found six. The other three were REAL and
+    # were fixed rather than inventoried: a live `datetime.now(UTC)`, three
+    # unseeded `numpy.random.randint` draws, and 34 `uuid4()` calls. An entry
+    # here has to argue determinism, and those three could not.
+    ("tests/unit/test_kill_cleaner_c.py", "random", "numpy.random"): (
+        "draws come from an explicitly seeded default_rng(20260806), so the same "
+        "pixels are generated on every run and a failure reproduces exactly"
+    ),
+    ("tests/unit/test_kill_execution.py", "hash_order", "hash"): (
+        "compares hash(key1) == hash(key2) WITHIN one process, where PYTHONHASHSEED "
+        "is fixed by definition; it asserts two equal keys hash alike, never a value"
+    ),
+    ("tests/unit/test_kill_parser_c.py", "environment", "os.environ"): (
+        "every read is inside patch.dict, so the test supplies the environment it "
+        "then asserts on and never observes the real machine"
+    ),
+    # ── the sharded mutation pipeline, added 2026-08-07 ──────────────────
+    ("tests/unit/test_mutation_shard_runner.py", "process", "subprocess"): (
+        "spawns the runner's own command line to prove a SIGKILLed worker keeps its "
+        "flushed records and a SIGTERMed one reports an incomplete run; fixed argv, "
+        "no shell, no network, and the assertions are states and exit codes"
+    ),
+    ("tests/unit/test_mutation_manifest.py", "process", "subprocess"): (
+        "runs real git and a real 4-mutant mutmut as the ORACLE for manifest fields; "
+        "mutmut's output on a fixed tree is fixed, and inventing the oracle instead "
+        "would make the manifest agree with itself rather than with mutmut"
+    ),
+    ("tests/unit/test_mutation_manifest.py", "environment", "os.environ"): (
+        "sets PYTHONHASHSEED to 1 and 999 to PROVE the digest is stable across them; "
+        "the values are written by the test, never read from the machine"
+    ),
+    ("tests/unit/test_mutation_manifest.py", "environment", "platform.python_version"): (
+        "records the interpreter into the manifest as provenance and asserts it is "
+        "carried unchanged; the value is data in a header, never a branch"
+    ),
 }
 
 #: The one test that snapshots the SHARED system temporary directory and asserts
