@@ -522,9 +522,9 @@ def test_a_deskewed_page_is_left_tight_around_its_content_and_not_around_the_fil
 
     margin = BASELINE.crop_margin_pixels
     marked: Image = np.asarray(
-        (result.cleaned.astype(np.int16) < paper_mode(result.cleaned) - CONTENT_TOLERANCE).astype(
-            np.uint8
-        ),
+        (
+            result.cleaned.astype(np.int16) < paper_mode(result.cleaned) - CONTENT_TOLERANCE
+        ).astype(np.uint8),
         dtype=np.uint8,
     )
     left, top, box_width, box_height = cv2.boundingRect(marked)

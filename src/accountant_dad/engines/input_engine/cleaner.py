@@ -44,15 +44,27 @@ THE ONE DECISION IT DOES MAKE, AND THE MEASUREMENT BEHIND IT.
     original input and mark uncertainty."* That is a decision, so it needs a
     number, so the number is the caller's: `max_ink_loss_fraction`.
 
-    What is measured against it is INK LOST TO DENOISING — the ink pixels
-    present before the denoise step and absent after it, counted with the single
-    threshold computed from the artifact as received. Denoising is the one step
-    that can erase a stroke; the hairline of a decimal point is exactly what a
-    strong filter removes, and a decimal point removed is a financial
-    misstatement. Rotation cannot lose a pixel because the canvas is grown to
-    hold the whole rotated frame, and neither crop can lose one because each box
-    is the bounding box of all the ink — both are structural, and both are
-    measured anyway rather than asserted.
+    What is measured against it is INK LOST TO DENOISING — the pixels that WERE
+    ink before the denoise step and are NOT ink after it, counted as a set
+    difference at the single threshold computed from the artifact as received.
+    A NET of two counts was the earlier form and it was wrong: a filter that
+    erases strokes in one region while pushing a shaded panel across the split
+    in another reported ink GAINED while a decimal point was being wiped out
+    (`_ink_erased`). Denoising is the one step that can erase a stroke; the
+    hairline of a decimal point is exactly what a strong filter removes, and a
+    decimal point removed is a financial misstatement. Rotation cannot lose a
+    pixel because the canvas is grown to hold the whole rotated frame, and
+    neither crop can lose one because each box is the bounding box of all the
+    CONTENT — both are structural, and both are measured anyway rather than
+    asserted.
+
+    NEITHER STRUCTURAL GUARANTEE IS ALLOWED TO BE ITS OWN AUDITOR. A retention
+    counted with the mask that drew the box is 1.0 by algebra whatever the box
+    removed, which is how a readable GSTIN left an invoice while the module
+    reported full retention. `content_kept` is therefore counted end to end
+    against each page's own modal intensity — a quantity no stage here
+    transforms anything with — and it is the only retention figure in this
+    module that is free to move.
 
 WHAT IT DOES NOT ACCEPT, AND WHY REFUSING IS THE HONEST ANSWER.
     A float or 16-bit array is refused rather than cast. Casting `float32` to
@@ -114,6 +126,10 @@ DESKEW_APPLIED = "deskew_applied"
 DESKEW_FILL_INTENSITY = "deskew_fill_intensity"
 INK_LOST_TO_DENOISE = "ink_lost_to_denoise"
 INK_KEPT_BY_CROP = "ink_kept_by_crop"
+#: What the WHOLE cleaning kept, counted against the paper the page itself
+#: declares rather than against any rule this module used to transform it. The
+#: one number here that is not 1.0 by construction — see `clean`.
+CONTENT_KEPT = "content_kept"
 
 _DEGREES = "degrees"
 _GREY_LEVELS = "grey levels"
@@ -133,6 +149,13 @@ _GREY_NDIM = 2
 _COLOUR_NDIM = 3
 _BGR_CHANNELS = 3
 _BGRA_CHANNELS = 4
+_ALPHA_CHANNEL = 3
+
+#: The largest value an 8-bit channel can hold: full opacity, and the lightest
+#: intensity there is. Arithmetic, not a level anyone picked. It is the paper a
+#: transparent region shows through to (`_composite_over_paper`) and the "yes"
+#: of a mask, so that a mask prints and inspects like the image it accompanies.
+_FULL_SCALE = 255
 
 
 class ImpossibleSettingError(ValueError):
@@ -178,6 +201,18 @@ class QualityObservation:
     #: `ENGINE_1:626` — every marker carries a reason; a bare number cannot
     #: become a good question downstream.
     note: str
+    #: WHICH PAGE THIS WAS MEASURED ON, one-based.
+    #:
+    #: A single-page artifact has exactly one, so the default is the whole
+    #: answer for every image and every one-page scan. It exists because a
+    #: multi-page scan used to report page one's measurements and silently drop
+    #: every other page's: the same two pages in the opposite order produced the
+    #: opposite `preservation_status`, which made the reported quality a
+    #: property of the page ORDER rather than of the document
+    #: (`KNOWN_FAILURES.md` D3). Page provenance is what makes the accumulated
+    #: measurements readable instead of merely numerous — without it, twenty
+    #: pages of `skew_angle` are twenty numbers nobody can attribute.
+    page: int = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -343,12 +378,21 @@ class CleanedDocument:
     #: `clean_artifact`; every path that knows its media kind sets it.
     artifact: CleanedArtifact | None = None
 
-    def observed(self, name: str, stage: Stage) -> QualityObservation:
-        """The measurement, or `KeyError`. A miss is never a `None` in disguise."""
+    def observed(self, name: str, stage: Stage, page: int = 1) -> QualityObservation:
+        """The measurement, or `KeyError`. A miss is never a `None` in disguise.
+
+        `page` is one-based and defaults to the first, which is the whole
+        document for an image and for a one-page scan. Asking for a page a
+        multi-page scan does not have raises rather than falling back to page
+        one — a silent fallback is how page one's quality came to stand for a
+        whole document in the first place.
+        """
         for observation in self.quality_observations:
-            if observation.name == name and observation.stage is stage:
+            if observation.name == name and observation.stage is stage and observation.page == page:
                 return observation
-        raise KeyError(f"no measurement named {name!r} was taken on the {stage} form")
+        raise KeyError(
+            f"no measurement named {name!r} was taken on the {stage} form of page {page}"
+        )
 
 
 def _u8(array: object) -> Image:
@@ -394,6 +438,184 @@ def _ink_mask(grey: Image) -> tuple[Image, float]:
 
 def _ink_at(grey: Image, threshold: float) -> int:
     return int(np.count_nonzero(_f64(grey) <= threshold))
+
+
+def _ink_erased(before: Image, after: Image, threshold: float) -> int:
+    """Pixels that WERE ink and are not any more. A SET DIFFERENCE, not a net.
+
+    Subtracting one count from another was the defect (`KNOWN_FAILURES.md` D2):
+    a filter that erases strokes in one region while pushing a shaded panel
+    across the split in another moves the two counts in opposite directions, and
+    the difference cancels. Measured on a shaded invoice at strength 40: 194382
+    ink pixels before, 197272 after, so the net reported -0.014868 — ink
+    apparently GAINED — while 1094 pixels stopped being ink and an isolated
+    decimal point was wiped out entirely. `1234.56` and `123456` differ by two
+    orders of magnitude, so a cancelled erasure is a misstatement waiting.
+
+    A set difference cannot be cancelled by anything happening elsewhere on the
+    page, which is the whole property the reported number needed and lacked.
+    """
+    was = _f64(before) <= threshold
+    still = _f64(after) <= threshold
+    return int(np.count_nonzero(was & ~still))
+
+
+def _paper_level(grey: Image) -> float:
+    """The paper's own intensity: the median of the page.
+
+    A MEDIAN, AND DELIBERATELY NOT OTSU. Otsu answers a different question —
+    *"where do I split this page into a dark class and a light one?"* — and its
+    answer moves with the content. On an invoice of black print plus a
+    light-grey registration line it lands at 30, which classifies a plainly
+    readable grey mark as paper. The median does not move with a minority: the
+    paper is the majority of a document by definition, in every reproduction of
+    one, and ink cannot drag a median it is outnumbered by.
+
+    A median and not the histogram's mode either, measured: a page of paper at
+    235 carrying sigma 12 of sensor noise CLIPS at 255, which piles a spike
+    there and makes 255 the modal intensity — a paper level 20 grey levels off
+    the paper. The median of the same page is 234.8.
+
+    It carries no threshold, so there is no number here for anyone to have
+    chosen (Law 52).
+    """
+    return float(np.median(_f64(grey)))
+
+
+def _content_at(grey: Image) -> int:
+    """Pixels the paper alone cannot account for. The END-TO-END oracle.
+
+    Neither the crop's rule (line profiles) nor the ink-loss rule (Otsu): a
+    third, independent route to *"is something printed here?"*, so that what the
+    whole cleaning cost the document is measured by something none of its stages
+    consulted. The bound is `_blank_line_tolerance` with a line of ONE sample —
+    the largest excursion the page's own noise could produce at a single pixel —
+    so on a clean page every departure from the paper counts and on a noisy one
+    the noise does not.
+    """
+    if grey.size == 0:
+        return 0
+    sigma = _measure_noise(grey) or 0.0
+    bound = sigma * _extreme_normal(int(grey.size))
+    return int(np.count_nonzero(np.absolute(_f64(grey) - _paper_level(grey)) > bound))
+
+
+def _extreme_normal(draws: int) -> float:
+    """`sqrt(2 ln n)` — the leading term of the expected maximum of `n` standard
+    normal draws. Arithmetic, and the only reason an extreme needs its own
+    factor: a bounding box is the LARGEST excursion in a profile, never a
+    typical one, and a bound set for a typical value is exceeded by definition.
+
+    It sits slightly BELOW the true expected maximum, so every bound built from
+    it is a little tight and every box a little large. That is the safe
+    direction here: over-including costs a margin, under-including costs a
+    document a mark.
+    """
+    return math.sqrt(2.0 * math.log(draws)) if draws > 1 else 0.0
+
+
+def _line_profile(intensity: Real, present: Real, axis: int) -> tuple[Real, Real]:
+    """Each line's mean intensity, and how many pixels it was taken over.
+
+    `present` is 1 where a pixel came off the document and 0 where this module
+    PAINTED it — the corners rotation fills. Those are excluded rather than
+    averaged in, because a measurement of a region this module invented is a
+    measurement of something that never happened (Law 24), and because it is
+    wrong by exactly enough to matter: measured on a page turned 7 degrees, the
+    fill sat at 236 while the contrast-enhanced paper around it sat at 237, so
+    every fill-only row read as faint content and the second crop stopped
+    cropping — insets of 98 where the content box wanted 4.
+    """
+    counts = _f64(present.sum(axis=axis))
+    totals = _f64((intensity * present).sum(axis=axis))
+    return _f64(totals / np.where(counts > 0.0, counts, 1.0)), counts
+
+
+def _lines_with_content(profile: Real, counts: Real, sigma: float) -> npt.NDArray[np.bool_]:
+    """Which rows (or columns) carry a mark, from the profile of their means.
+
+    THIS IS THE TRANSFORM THE CROP NEEDED (Law 53). Asking *"is this PIXEL a
+    mark?"* cannot be answered on a real scan: over a million pixels the largest
+    noise excursion is enormous, so a box drawn from per-pixel deviations is the
+    whole frame — measured, a page of paper at 235 carrying sigma 11.6 gave
+    (0, 999, 0, 1299) on a 1000 x 1300 frame whose content occupied
+    (280, 689, 260, 1039). Averaged along a line the same noise falls by
+    sqrt(1300) to 0.32 grey levels, while a faint 340-pixel GSTIN thirty levels
+    down displaces its row's mean by 7.8. Same question, signal-to-noise better
+    by the square root of the line's length, and now answerable.
+
+    The paper's own level is the LIGHTEST line — under this module's stated
+    polarity, the line carrying least ink is the one closest to bare paper. A
+    median was tried and is wrong: on a page padded with a blank border 780 of
+    1300 columns carry print, so the median column is a PRINTED one, every blank
+    column reads as the deviant, and the crop stops cropping. The lightest line
+    cannot be outvoted that way.
+
+    THE ALLOWANCE IS TWICE THE STANDARD ERROR OF A LINE'S MEAN, TIMES
+    `_extreme_normal`, AND THE TWO IS ARITHMETIC. The observed maximum sits
+    about one such step ABOVE the true paper level, being itself an extreme; a
+    blank line sits at most one step BELOW it; their difference is therefore at
+    most two, and anything further down carries something the paper cannot
+    account for. A line with no unpainted pixels at all has nothing to say and
+    is blank.
+
+    ON AN INVERTED SCAN THE LIGHTEST LINE IS A STROKE, so every line of the dark
+    field reads as content and nothing is cropped at all. That is the failure
+    direction a destructive step is allowed to have: the page comes through
+    whole. Polarity is named as an assumption in this module's docstring, and
+    this is what the assumption costs when it does not hold.
+    """
+    measured = counts > 0.0
+    if not measured.any():
+        return np.zeros(profile.shape, dtype=np.bool_)
+    step = sigma / np.sqrt(np.where(measured, counts, 1.0)) * _extreme_normal(int(profile.size))
+    lightest = float(np.max(profile[measured]))
+    return np.asarray(measured & (lightest - profile > 2.0 * step), dtype=np.bool_)
+
+
+def _content_box(grey: Image, painted: Image | None = None) -> tuple[int, int, int, int] | None:
+    """The rows and columns that carry a mark. `None` when the page is uniform.
+
+    THE RULE THAT DREW THIS BOX IS NOT THE RULE THAT AUDITS IT, and that
+    separation is the whole point. `_ink_mask` is DISCRIMINATIVE: Otsu separates
+    the darkest mode from the rest, which is right for measuring skew because it
+    wants the strongest signal on the page, and wrong for deciding what to
+    DELETE because it was never designed to be exhaustive. Driving the crop with
+    it took a readable GSTIN off an invoice — 4080 pixels, thirty grey levels
+    below the paper, Otsu's split at 30.0 — and then reported full retention,
+    because the retention was counted with that same mask (`KNOWN_FAILURES.md`
+    D1). A number that cannot take any other value is not a measurement.
+
+    So the box comes from line profiles, `ink_kept_by_crop` is counted with the
+    Otsu mask, and `content_kept` is counted end to end against the paper level.
+    Three different rules; none of them marks its own work.
+
+    `painted` names the pixels rotation filled in, and is `None` before any
+    geometry has been applied — every pixel is then the document's own.
+    """
+    if grey.size == 0:
+        return None
+    sigma = _measure_noise(grey) or 0.0
+    intensity = _f64(grey)
+    present = (
+        _f64(np.ones_like(intensity))
+        if painted is None
+        else _f64((painted == 0).astype(np.float64))
+    )
+    row_profile, row_counts = _line_profile(intensity, present, axis=1)
+    column_profile, column_counts = _line_profile(intensity, present, axis=0)
+    rows = _lines_with_content(row_profile, row_counts, sigma)
+    columns = _lines_with_content(column_profile, column_counts, sigma)
+    if not rows.any() or not columns.any():
+        return None
+    marked_rows = np.nonzero(rows)[0]
+    marked_columns = np.nonzero(columns)[0]
+    return (
+        int(marked_rows[0]),
+        int(marked_rows[-1]),
+        int(marked_columns[0]),
+        int(marked_columns[-1]),
+    )
 
 
 def _measure_skew(grey: Image) -> float | None:
@@ -475,15 +697,53 @@ def _border_median(grey: Image) -> float:
     return float(np.median(edges))
 
 
+def _composite_over_paper(image: Image) -> Image:
+    """Flatten a four-channel page ONTO THE PAGE, rather than dropping alpha.
+
+    `cv2.COLOR_BGRA2GRAY` computes a luma from B, G and R and DISCARDS A. When a
+    mark's shape lives in the alpha channel — the ordinary result of a
+    background removal, a premultiplied export, a `convert -transparent` — the
+    colour channels are zero everywhere and the luma is uniform. Measured: a
+    stamp of 40320 visible pixels and a fully transparent canvas both flattened
+    to a constant page, standard deviation 0.0, and every measurement reported
+    zero loss (`KNOWN_FAILURES.md` D4). Two different documents mapped onto one
+    output is the difference between them destroyed, by the NORMALISATION step,
+    before any cleaning has happened at all.
+
+    A transparent pixel is not black and it is not "no information": it is the
+    page showing through. Compositing over the page is what a renderer does,
+    what a printer does and what a human sees, and it is the only reading under
+    which the alpha channel carries what it was written to carry.
+
+    `_FULL_SCALE` is the paper composited onto. It is the maximum an 8-bit
+    channel holds — arithmetic, not a level chosen here — and it is the one
+    value that cannot itself be mistaken for a mark under this module's stated
+    polarity assumption. Taking it from the artifact instead would make two
+    documents composite differently and destroy the comparison this fix exists
+    to restore.
+    """
+    colour = _f64(cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY))
+    opacity = _f64(image[..., _ALPHA_CHANNEL]) / float(_FULL_SCALE)
+    composited = colour * opacity + float(_FULL_SCALE) * (1.0 - opacity)
+    return _u8(np.rint(composited).astype(np.uint8))
+
+
 def _to_grey(image: Image) -> Image:
-    """Format normalisation. One channel, so every later stage sees one shape."""
+    """Format normalisation. One channel, so every later stage sees one shape.
+
+    NORMALISATION MAY NOT REDUCE THE INFORMATION AVAILABLE — it is the first
+    thing that touches the artifact and everything after it reasons from what it
+    hands on. Three channels carry their content in luma, so a luma conversion
+    keeps it. Four channels carry part of it in opacity, so the fourth is
+    composited rather than dropped; see `_composite_over_paper`.
+    """
     if image.ndim == _GREY_NDIM:
         return image
     channels = image.shape[2]
     if channels == _BGR_CHANNELS:
         return _u8(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
     if channels == _BGRA_CHANNELS:
-        return _u8(cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY))
+        return _composite_over_paper(image)
     raise UnusableArtifactError(
         f"an image with {channels} channels is not a document this module can "
         "normalise; one, three and four channel 8-bit images are."
@@ -523,6 +783,23 @@ def _receive(image: object, settings: CleanerSettings) -> Image:
     return narrowed
 
 
+def _rotation(height: int, width: int, degrees: float) -> tuple[Real, int, int]:
+    """The affine map that turns an h by w frame, and the canvas it needs.
+
+    Factored out because the PAGE and its CONTENT MASK must move together: two
+    copies of this arithmetic would be two chances for the mask to describe a
+    geometry the page no longer has (Law 14, Law 19).
+    """
+    matrix = _f64(cv2.getRotationMatrix2D((width / 2.0, height / 2.0), degrees, 1.0))
+    cosine = abs(float(matrix[0, 0]))
+    sine = abs(float(matrix[0, 1]))
+    grown_width = math.ceil(height * sine + width * cosine)
+    grown_height = math.ceil(height * cosine + width * sine)
+    matrix[0, 2] += grown_width / 2.0 - width / 2.0
+    matrix[1, 2] += grown_height / 2.0 - height / 2.0
+    return matrix, grown_width, grown_height
+
+
 def _rotate_whole_frame(grey: Image, degrees: float, fill: float) -> Image:
     """Rotate onto a canvas grown to hold the rotated frame.
 
@@ -533,13 +810,7 @@ def _rotate_whole_frame(grey: Image, degrees: float, fill: float) -> Image:
     were never on the page.
     """
     height, width = _extent(grey)
-    matrix = _f64(cv2.getRotationMatrix2D((width / 2.0, height / 2.0), degrees, 1.0))
-    cosine = abs(float(matrix[0, 0]))
-    sine = abs(float(matrix[0, 1]))
-    grown_width = math.ceil(height * sine + width * cosine)
-    grown_height = math.ceil(height * cosine + width * sine)
-    matrix[0, 2] += grown_width / 2.0 - width / 2.0
-    matrix[1, 2] += grown_height / 2.0 - height / 2.0
+    matrix, grown_width, grown_height = _rotation(height, width, degrees)
     return _u8(
         cv2.warpAffine(
             grey,
@@ -552,27 +823,41 @@ def _rotate_whole_frame(grey: Image, degrees: float, fill: float) -> Image:
     )
 
 
-def _crop_to_ink(grey: Image, margin: int) -> tuple[Image, float]:
-    """Crop to the bounding box of ALL the ink, plus the caller's margin.
+def _crop_to_content(
+    grey: Image, margin: int, source: Image | None = None, painted: Image | None = None
+) -> tuple[Image, float]:
+    """Crop to the content box plus the caller's margin. Report the INK kept.
 
-    The box is the bounding box, so every ink pixel is inside it by
-    construction — §1.1 forbids discarding content, and a box chosen any other
-    way could. The retention is counted anyway and returned, because a structural
-    guarantee nobody measures is a guarantee nobody would notice breaking.
+    The box comes from `_content_box`, which reads line profiles. The retention
+    is counted with `_ink_mask`, which reads Otsu. Two different rules, so the
+    number can actually move: if the box ever failed to contain a stroke the
+    quotient would fall below 1.0 and say so, which the previous form — box and
+    audit from the same mask — could not do on any page whatsoever.
+
+    `source` is the same page in the document's own intensities when `grey` has
+    been contrast-enhanced, and `grey` itself when it has not; `painted` names
+    the pixels rotation filled in. Both exist so the box is drawn from the
+    document and never from this module's own handiwork — see `_deskew`.
+
+    A uniform page has no content box, and is returned as it arrived. A blank
+    sheet cropped to nothing would read downstream as a document that genuinely
+    held nothing.
     """
-    mask, _threshold = _ink_mask(grey)
-    total = int(np.count_nonzero(mask))
-    if total == 0:
+    ink, _threshold = _ink_mask(grey)
+    total = int(np.count_nonzero(ink))
+    box = _content_box(grey if source is None else source, painted)
+    if box is None:
         return grey, 1.0
-    box = cv2.boundingRect(mask)
-    left, top, width, height = (int(box[0]), int(box[1]), int(box[2]), int(box[3]))
+    top, bottom, left, right = box
     rows, columns = _extent(grey)
     top_kept = max(top - margin, 0)
     left_kept = max(left - margin, 0)
-    bottom_kept = min(top + height + margin, rows)
-    right_kept = min(left + width + margin, columns)
+    bottom_kept = min(bottom + 1 + margin, rows)
+    right_kept = min(right + 1 + margin, columns)
     cropped: Image = grey[top_kept:bottom_kept, left_kept:right_kept]
-    kept = int(np.count_nonzero(mask[top_kept:bottom_kept, left_kept:right_kept]))
+    if total == 0:
+        return cropped, 1.0
+    kept = int(np.count_nonzero(ink[top_kept:bottom_kept, left_kept:right_kept]))
     return cropped, kept / total
 
 
@@ -629,16 +914,54 @@ def _observe(grey: Image, stage: Stage) -> tuple[QualityObservation, ...]:
     )
 
 
+def _painted_by(grey: Image, degrees: float) -> Image:
+    """WHICH pixels the rotation filled in, as against which came off the page.
+
+    A frame of ones put through the identical transform: everything that lands
+    outside it is fill this module painted. Nearest-neighbour, because this is a
+    membership and interpolating one produces pixels that are partly document.
+
+    It exists so that no later measurement averages in a region that is not on
+    any document — see `_line_profile`.
+    """
+    height, width = _extent(grey)
+    matrix, grown_width, grown_height = _rotation(height, width, degrees)
+    frame: Image = np.full((height, width), _FULL_SCALE, dtype=np.uint8)
+    inside = _u8(
+        cv2.warpAffine(
+            frame,
+            matrix,
+            (grown_width, grown_height),
+            flags=cv2.INTER_NEAREST,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=0.0,
+        )
+    )
+    return _u8((inside == 0).astype(np.uint8) * _FULL_SCALE)
+
+
 def _deskew(
-    grey: Image, settings: CleanerSettings
-) -> tuple[Image, QualityObservation, QualityObservation]:
+    grey: Image, carried: Image, settings: CleanerSettings
+) -> tuple[Image, Image, Image | None, QualityObservation, QualityObservation]:
     """Straighten, or refuse and say which setting refused.
 
-    Returns the rotation actually applied AND the fill intensity actually used,
-    both measured on the page this stage received. The fill is reported from
-    here rather than from the caller so the reported number is the number that
-    was painted into the corners; a fill reported from a different form of the
-    page would be a measurement of something that never happened (Law 24).
+    Returns the rotation actually applied, the fill intensity actually used, and
+    WHICH PIXELS that fill went into — `None` on both refusal paths, because a
+    page that was not turned has no painted region and every pixel on it is the
+    document's own. The fill is reported from here rather than from the caller
+    so the reported number is the number that was painted into the corners; a
+    fill reported from a different form of the page would be a measurement of
+    something that never happened (Law 24).
+
+    `carried` is the SAME PAGE BEFORE THE CONTRAST STAGE, put through the
+    identical turn so the next crop has the document's own intensities to draw
+    its box from. It exists because CLAHE varies the paper SPATIALLY: measured
+    on a page turned 7 degrees, the enhanced paper stood at 237.05 in the middle
+    of the frame and 235.03 at its corner, a 2.0 grey level swing that is not
+    noise and that a bound calibrated on noise reads as a faint mark on every
+    outer row. The crop then kept the whole fill — insets of 98 where the box
+    wanted 4. The content box is a property of the DOCUMENT, so it is measured
+    on the document's own intensities and never on an enhanced view of them.
     """
     fill = _border_median(grey)
     filled = QualityObservation(
@@ -655,6 +978,8 @@ def _deskew(
     if measured is None:
         return (
             grey,
+            carried,
+            None,
             QualityObservation(
                 name=DESKEW_APPLIED,
                 stage=Stage.CLEANED,
@@ -667,6 +992,8 @@ def _deskew(
     if abs(measured) > settings.max_deskew_degrees:
         return (
             grey,
+            carried,
+            None,
             QualityObservation(
                 name=DESKEW_APPLIED,
                 stage=Stage.CLEANED,
@@ -682,6 +1009,8 @@ def _deskew(
         )
     return (
         _rotate_whole_frame(grey, measured, fill),
+        _rotate_whole_frame(carried, measured, _border_median(carried)),
+        _painted_by(grey, measured),
         QualityObservation(
             name=DESKEW_APPLIED,
             stage=Stage.CLEANED,
@@ -830,6 +1159,44 @@ def _pdf_passed_through(data: bytes) -> CleanedDocument:
     )
 
 
+def _every_page_reported(per_page: list[CleanedDocument]) -> CleanedDocument:
+    """One `CleanedDocument` carrying EVERY page's evidence, not page one's.
+
+    The raster stays page one's, because `CleanedDocument` holds exactly one
+    array and the rebuilt PDF payload is where all the pages live. What changes
+    is that no page's measurements are dropped and no page's damage is voted
+    down: `page` on each observation says which sheet it describes, and the
+    status is the worst any page reported.
+    """
+    combined: list[QualityObservation] = []
+    for number, document in enumerate(per_page, start=1):
+        for observation in document.quality_observations:
+            combined.append(
+                QualityObservation(
+                    name=observation.name,
+                    stage=observation.stage,
+                    value=observation.value,
+                    unit=observation.unit,
+                    note=observation.note,
+                    page=number,
+                )
+            )
+    damaged = any(
+        document.preservation_status is PreservationStatus.ORIGINAL_IS_SAFER
+        for document in per_page
+    )
+    first = per_page[0]
+    return CleanedDocument(
+        original=first.original,
+        cleaned=first.cleaned,
+        quality_observations=tuple(combined),
+        preservation_status=(
+            PreservationStatus.ORIGINAL_IS_SAFER if damaged else PreservationStatus.CLEANED_IS_SAFER
+        ),
+        artifact=first.artifact,
+    )
+
+
 def _pdf_rebuilt_from_cleaned_pages(
     data: bytes, settings: CleanerSettings, *, render_dpi: int
 ) -> CleanedDocument:
@@ -838,26 +1205,43 @@ def _pdf_rebuilt_from_cleaned_pages(
     Information is not lost by rasterising here, because there was never
     anything but pixels to begin with — that is what "no text layer" means.
     The output stays a PDF so the pipeline has one shape for every input.
+
+    EVERY PAGE CONTRIBUTES EVIDENCE, AND THE ANSWER IS THE WORST OF THEM.
+        This used to clean every page and then keep page one's measurements and
+        page one's `preservation_status`, discarding the rest. Measured at
+        strength 40, tolerance 0.10, 100 dpi: a thick page then a hairline page
+        reported ink lost 0.0043 and *"cleaned is safer"*; THE SAME TWO PAGES IN
+        THE OPPOSITE ORDER reported 0.6389 and *"the original is safer."* Both
+        rebuilt PDFs contained both damaged pages — only the evidence about them
+        moved. A quality that changes with the page ORDER is a measurement of
+        the wrong thing (`KNOWN_FAILURES.md` D3).
+
+        So every page's observations are carried, each stamped with the page it
+        came from, and the document's status is `ORIGINAL_IS_SAFER` the moment
+        ANY page says so. `ENGINE_1:457` is about damage, not about averages: a
+        decimal point erased on page nine is not made safe by eight clean pages,
+        and `confidence` — the only component allowed to turn these signals into
+        a score (`ENGINE_1:109`) — cannot account for a page that emits nothing.
     """
     fitz = importlib.import_module("pymupdf")
     source = fitz.open(stream=data, filetype="pdf")
     cleaned_pages: list[Image] = []
-    first: CleanedDocument | None = None
+    per_page: list[CleanedDocument] = []
     try:
         for index in range(source.page_count):
             rendered = source[index].get_pixmap(dpi=render_dpi).tobytes("png")
             document = clean(decode(rendered), settings)
             cleaned_pages.append(document.cleaned)
-            if first is None:
-                first = document
+            per_page.append(document)
     finally:
         source.close()
 
-    if first is None:
+    if not per_page:
         raise UndecodableArtifactError(
             "the PDF reports zero pages. Reported rather than returned as a blank "
             "document, which would read as a page that genuinely held nothing."
         )
+    first = _every_page_reported(per_page)
 
     rebuilt = fitz.open()
     try:
@@ -922,6 +1306,26 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
     intermediate. A more robust estimate is available from the denoised form,
     and reporting it would describe something this module produced rather than
     the document it was given — and what Engine 1 reports is what it observed.
+
+    THE CONTENT MASK IS TAKEN ONCE AND CARRIED, AND IT IS WHY THE CROP IS SAFE.
+        It is computed on the artifact as received, before any stage of this
+        function has touched an intensity, and it is then moved through exactly
+        the geometry the page is moved through. Both crops read it and nothing
+        else. A page that arrives with a mark on it therefore cannot be cropped
+        past that mark, whatever a threshold would have said about how dark it
+        was — the defect this replaced took a readable GSTIN off an invoice and
+        reported full retention, twice over, because the audit consulted the
+        rule that drew the box (`_content_mask`, `_crop_to_content`).
+
+    WHAT IS AUDITED WITH WHAT, BECAUSE THAT IS THE PART THAT WENT WRONG.
+        `ink_kept_by_crop` is measured with the mask that drew the box, so it
+        can only ever audit the box. `ink_lost_to_denoise` is measured at the
+        Otsu split taken from the artifact as received — the rule the denoise
+        did not consult — as a SET DIFFERENCE, so a stroke destroyed cannot be
+        cancelled by ink gained elsewhere. `content_kept` is measured against
+        each page's own modal intensity, which no stage here transforms
+        anything with, so it is the one figure that is free to move and the one
+        that answers *"what did this cost the document?"*
     """
     received = _receive(image, settings)
     grey = _to_grey(received)
@@ -929,6 +1333,7 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
     before = _observe(grey, Stage.ORIGINAL)
     _mask, split = _ink_mask(grey)
     ink_before = _ink_at(grey, split)
+    content_before = _content_at(grey)
 
     denoised = _u8(
         cv2.fastNlMeansDenoising(
@@ -940,20 +1345,28 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
         )
     )
     ink_after = _ink_at(denoised, split)
-    lost = 0.0 if ink_before == 0 else (ink_before - ink_after) / ink_before
+    erased = _ink_erased(grey, denoised, split)
+    lost = 0.0 if ink_before == 0 else erased / ink_before
 
-    trimmed, kept_by_first_crop = _crop_to_ink(denoised, settings.crop_margin_pixels)
+    trimmed, kept_by_first_crop = _crop_to_content(denoised, settings.crop_margin_pixels)
     contrasted = _u8(
         cv2.createCLAHE(
             clipLimit=settings.contrast_clip_limit,
             tileGridSize=(settings.contrast_tile_grid, settings.contrast_tile_grid),
         ).apply(trimmed)
     )
-    straightened, rotation, filled = _deskew(contrasted, settings)
-    cleaned, kept_by_second_crop = _crop_to_ink(straightened, settings.crop_margin_pixels)
-    # Both crops are the bounding box of all the ink, so both are 1.0 by
-    # construction; the product is what survived the pair of them.
+    straightened, straight_source, painted, rotation, filled = _deskew(
+        contrasted, trimmed, settings
+    )
+    cleaned, kept_by_second_crop = _crop_to_content(
+        straightened, settings.crop_margin_pixels, straight_source, painted
+    )
+    # Each crop's box is drawn from the line profiles and audited with the Otsu
+    # mask, so neither factor is 1.0 by algebra; the product is the ink that
+    # survived the pair of them.
     retained = kept_by_first_crop * kept_by_second_crop
+    content_after = _content_at(cleaned)
+    content_kept = 1.0 if content_before == 0 else content_after / content_before
 
     observations = (
         *before,
@@ -968,7 +1381,10 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
             note=(
                 f"{ink_before} ink pixel(s) before denoising, {ink_after} after, "
                 "counted at the single split taken from the artifact as received. "
-                "Denoising is the one step that can erase a stroke."
+                f"{erased} of them stopped being ink; that SET DIFFERENCE is the "
+                "reported figure, because a net of the two counts lets ink gained "
+                "in one region cancel a stroke destroyed in another. Denoising is "
+                "the one step that can erase a stroke."
             ),
         ),
         QualityObservation(
@@ -977,9 +1393,25 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
             value=retained,
             unit="fraction of ink pixels",
             note=(
-                "each crop is the bounding box of all the ink, so this is 1.0 by "
-                "construction. Counted anyway, across both crops: a guarantee "
-                "nobody measures is a guarantee nobody would notice breaking."
+                "each crop is the bounding box of all the content, so this is 1.0 "
+                "by construction. Counted anyway, across both crops: a guarantee "
+                "nobody measures is a guarantee nobody would notice breaking. It "
+                f"audits the BOX and not the mask that drew it — {CONTENT_KEPT} is "
+                "the number that can move."
+            ),
+        ),
+        QualityObservation(
+            name=CONTENT_KEPT,
+            stage=Stage.CLEANED,
+            value=content_kept,
+            unit="fraction of content pixels",
+            note=(
+                f"{content_before} pixel(s) differed from the paper on the artifact "
+                f"as received, {content_after} on the page delivered. Counted "
+                "against each page's own modal intensity, which no stage here uses "
+                "to transform anything — so unlike every other retention figure in "
+                "this module it is not 1.0 by construction, and it falls when "
+                "denoising, contrast or the geometry costs the document a mark."
             ),
         ),
     )
