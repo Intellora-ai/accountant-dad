@@ -101,7 +101,7 @@ from typing import Protocol, TypedDict, cast
 import numpy
 import numpy.typing
 import pymupdf
-from PIL import Image, UnidentifiedImageError
+from PIL import Image
 
 #: An RGB page as PaddleOCR wants it: height x width x 3, one byte per channel.
 Page = numpy.typing.NDArray[numpy.uint8]
@@ -346,38 +346,64 @@ def read_pdf_text_layer(document: bytes) -> Reading:
         ) from failure
 
     regions: list[TextRegion] = []
+    # THE CLEANUP IS INSIDE THE BOUNDARY, NOT BESIDE IT. `close()` is a PyMuPDF
+    # call like any other and can raise like any other; with `finally` as a
+    # sibling of `except` it would escape unconverted. Nesting the `try/finally`
+    # INSIDE the converting `try` keeps the guarantee that the document is always
+    # closed while putting the close itself under the same boundary as the read.
     try:
-        pages_read = opened.page_count
-        for page_index in range(pages_read):
-            page = opened[page_index]
-            # "dict" gives spans with their bounding boxes. `sort=False` is the
-            # default and is what we want: §1.2 forbids reordering, so the
-            # backend's own order is preserved rather than re-sorted by us.
-            for block in page.get_text("dict")["blocks"]:
-                for line in block.get("lines", ()):
-                    for span in line["spans"]:
-                        text = span["text"]
-                        if not text.strip():
-                            # A whitespace-only span is not a reading. Skipping
-                            # it drops nothing a human could check, and keeping
-                            # it would pad the region count with non-evidence.
-                            continue
-                        left, top, right, bottom = span["bbox"]
-                        regions.append(
-                            TextRegion(
-                                text=text,
-                                location=SourceLocation(
-                                    page_index=page_index,
-                                    left=float(left),
-                                    top=float(top),
-                                    right=float(right),
-                                    bottom=float(bottom),
-                                ),
-                                extraction_confidence=None,
+        try:
+            pages_read = opened.page_count
+            for page_index in range(pages_read):
+                page = opened[page_index]
+                # "dict" gives spans with their bounding boxes. `sort=False` is
+                # the default and is what we want: §1.2 forbids reordering, so
+                # the backend's own order is preserved rather than re-sorted.
+                for block in page.get_text("dict")["blocks"]:
+                    for line in block.get("lines", ()):
+                        for span in line["spans"]:
+                            text = span["text"]
+                            if not text.strip():
+                                # A whitespace-only span is not a reading.
+                                # Skipping it drops nothing a human could check,
+                                # and keeping it would pad the region count with
+                                # non-evidence.
+                                continue
+                            left, top, right, bottom = span["bbox"]
+                            regions.append(
+                                TextRegion(
+                                    text=text,
+                                    location=SourceLocation(
+                                        page_index=page_index,
+                                        left=float(left),
+                                        top=float(top),
+                                        right=float(right),
+                                        bottom=float(bottom),
+                                    ),
+                                    extraction_confidence=None,
+                                )
                             )
-                        )
-    finally:
-        opened.close()
+        finally:
+            opened.close()
+    except Exception as failure:
+        # A PDF THAT OPENS CAN STILL BREAK ON PAGE 3, AND THIS USED TO LEAK.
+        # Only the `_open_pdf` call above had a boundary; everything after it
+        # ran under `try/finally` with no `except`, so a malformed page, a
+        # damaged content stream or a span PyMuPDF could not lay out escaped
+        # wearing PyMuPDF's name. Found by the structural validator in
+        # `test_input_engine_reader.py`, not by reading — which is the whole
+        # argument for having it.
+        #
+        # `UnreadableDocumentError` and not `RecognitionFailedError`: PyMuPDF
+        # failing on a page's own content is a statement about the DOCUMENT,
+        # the same verdict the open failure above produces, and no recogniser
+        # is involved in this path at all.
+        raise UnreadableDocumentError(
+            f"the PDF opened but its text layer could not be read: "
+            f"{type(failure).__name__}: {failure}. Raised rather than returned "
+            "as a partial reading — a document read up to the point it broke is "
+            "indistinguishable downstream from a document that ended there."
+        ) from failure
 
     return Reading(regions=tuple(regions), backend=Backend.PDF_TEXT_LAYER, pages_read=pages_read)
 
@@ -392,23 +418,54 @@ def _render_pdf_pages(document: bytes, *, render_dpi: int) -> list[bytes]:
         ) from failure
 
     try:
-        return [
-            bytes(opened[index].get_pixmap(dpi=render_dpi).tobytes("png"))
-            for index in range(opened.page_count)
-        ]
-    finally:
-        opened.close()
+        try:
+            return [
+                bytes(opened[index].get_pixmap(dpi=render_dpi).tobytes("png"))
+                for index in range(opened.page_count)
+            ]
+        finally:
+            opened.close()
+    except Exception as failure:
+        # Same gap as `read_pdf_text_layer`: the open had a boundary, the
+        # rasterisation did not. A page whose content stream is damaged, or one
+        # whose dimensions overflow at this DPI, failed here with PyMuPDF's own
+        # exception. It is a verdict on the DOCUMENT, so it converts the same
+        # way the open failure above does. The close is nested inside for the
+        # same reason it is in `read_pdf_text_layer`.
+        raise UnreadableDocumentError(
+            f"the PDF opened but a page could not be rasterised at {render_dpi} "
+            f"dpi: {type(failure).__name__}: {failure}"
+        ) from failure
 
 
 def _decode_image(image: bytes) -> Page:
-    """Bytes to an RGB array PaddleOCR can read. Raises on anything undecodable."""
+    """Bytes to an RGB array PaddleOCR can read. Raises on anything undecodable.
+
+    CATCHES `Exception`, NOT A LIST OF PILLOW'S EXCEPTION TYPES. This used to
+    enumerate `UnidentifiedImageError`, `OSError` and `ValueError`, which is an
+    allowlist over a set this module does not own: Pillow and numpy are free to
+    raise anything, at any version, on any input, and the three names here were
+    chosen from the failures somebody imagined rather than measured. Pillow's
+    own `DecompressionBombError`, a `struct.error` from a truncated header, an
+    `EOFError`, a `MemoryError` on a hostile size field — every one of those is
+    the same event, *these bytes are not a usable image*, and every one of them
+    used to escape this module wearing Pillow's name instead of Engine 1's.
+
+    That is the general defect, and it is the same one that let PaddlePaddle's
+    C++ `NotImplementedError` out of `read_by_ocr`: A BOUNDARY THAT NAMES
+    EXCEPTION TYPES IS AN ALLOWLIST OVER A SET THE VENDOR CONTROLS. The boundary
+    is named by WHERE IT IS, never by what happens to cross it. `Exception` and
+    not `BaseException` is the one deliberate limit: `KeyboardInterrupt` and
+    `SystemExit` are the operator stopping the process, not a verdict on a page.
+    """
     try:
         with Image.open(io.BytesIO(image)) as opened:
             decoded: Page = numpy.asarray(opened.convert("RGB"), dtype=numpy.uint8)
             return decoded
-    except (UnidentifiedImageError, OSError, ValueError) as failure:
+    except Exception as failure:
         raise UnreadableDocumentError(
-            f"the bytes supplied could not be decoded as an image: {failure}. "
+            f"the bytes supplied could not be decoded as an image: "
+            f"{type(failure).__name__}: {failure}. "
             "Raised rather than returned as an empty reading - a file that could "
             "not be opened and a page with nothing on it are different answers."
         ) from failure
@@ -466,12 +523,31 @@ def _recogniser() -> _Recogniser:
         beats an engine that does not run, and it is flagged rather than
         quietly absorbed.
     """
-    build_recogniser = cast(_RecogniserFactory, importlib.import_module("paddleocr").PaddleOCR)
-    # `ModuleNotFoundError` from the line above is deliberately NOT caught. It
-    # says "this deployment has no OCR at all", which is knowable before any
-    # document arrives and is already exact; everything below is "the OCR we
-    # have could not run", which is not. Constructing the recogniser downloads
-    # model weights over the network, so it fails for real reasons.
+    try:
+        build_recogniser = cast(_RecogniserFactory, importlib.import_module("paddleocr").PaddleOCR)
+    except ModuleNotFoundError:
+        # THE ONE FAILURE THAT CROSSES UNCONVERTED, AND IT IS NOT A VENDOR
+        # ERROR. Everything else this boundary catches is PaddleOCR failing;
+        # this is the INTERPRETER stating there is no PaddleOCR to fail — a
+        # deployment fact, knowable before any document arrives, raised by
+        # CPython with a stable type and an exact message. Converting it would
+        # replace a precise statement with a vaguer one, and three other test
+        # modules measure it as the real error.
+        #
+        # This is a single closed case, not the beginning of a list. Anything
+        # else — a vendor `__init__` raising on import, a broken C extension, a
+        # missing shared library — is PaddleOCR failing and is converted below.
+        raise
+    except Exception as failure:
+        raise RecognitionFailedError(
+            f"the OCR recogniser could not be imported: "
+            f"{type(failure).__name__}: {failure}. PaddleOCR is installed but "
+            "importing it failed, which is a failure of OUR tool and not a "
+            "verdict on any document."
+        ) from failure
+
+    # Constructing the recogniser downloads model weights over the network, so
+    # it fails for real reasons and gets its own boundary.
     try:
         return build_recogniser(
             lang="en",

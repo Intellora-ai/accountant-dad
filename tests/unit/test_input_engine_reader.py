@@ -1004,6 +1004,164 @@ def test_the_only_dynamically_imported_module_is_the_approved_ocr() -> None:
     )
 
 
+# ── the boundary is structural, and a new call site cannot skip it ────────
+#
+# THE CLASS, NOT THE INSTANCE (§I.12, §J.9). PaddlePaddle's C++
+# `NotImplementedError` escaping `read_by_ocr` was one symptom. The defect is
+# general and `reader.py` had it in three places at once:
+#
+#     AN ERROR BOUNDARY THAT NAMES EXCEPTION TYPES IS AN ALLOWLIST OVER A SET
+#     THE VENDOR CONTROLS.
+#
+# `_decode_image` enumerated three Pillow/builtin types; the import and the
+# recogniser call had no boundary at all. Every one of those was written against
+# the failures somebody IMAGINED — "the library is missing" — rather than the
+# one that happened: the library is present and breaks at runtime, on this CPU,
+# at this version. A vendor may raise anything, and paddle proved the set is open.
+#
+# The behavioural tests further down prove today's call sites convert today's
+# failures. They cannot prove anything about a call site added next year. This
+# one reads the structure, so a new vendor call without a boundary is red before
+# anyone has to think of the exception type it might raise.
+
+
+#: Every name in `reader.py` through which a third-party library is entered.
+#: `predict` is PaddleOCR, `open`/`get_pixmap`/`get_text`/`tobytes` are PyMuPDF,
+#: `Image.open`/`convert` are Pillow, `asarray` is numpy, `import_module` is how
+#: PaddleOCR arrives at all. Adding a vendor call under a NEW name is the one
+#: hole here, and `test_the_reader_imports_only_the_approved_stack` above is what
+#: closes it: no new third-party name can enter this module unnoticed.
+VENDOR_CALLS = frozenset(
+    {
+        "import_module",
+        "predict",
+        "get_text",
+        "get_pixmap",
+        "tobytes",
+        "asarray",
+        "convert",
+        # `close` is here because CLEANUP IS A VENDOR CALL TOO. It sat in a
+        # `finally` beside the converting `except`, which does not guard it —
+        # a PyMuPDF failure while closing a damaged document would have escaped
+        # through the one place nobody thinks to look. Both call sites now nest
+        # the `try/finally` inside the converting `try`.
+        "close",
+    }
+)
+
+
+def _enclosing_handlers(tree: ast.AST) -> dict[ast.AST, list[ast.ExceptHandler]]:
+    """Map every node to the `except` handlers of every `try` enclosing it.
+
+    Walked downwards from each `try` rather than upwards from each call, because
+    `ast` nodes carry no parent pointer and a call can sit many levels inside a
+    `with`, a comprehension or a nested loop.
+    """
+    handlers: dict[ast.AST, list[ast.ExceptHandler]] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Try):
+            continue
+        for guarded in node.body:
+            for descendant in ast.walk(guarded):
+                handlers.setdefault(descendant, []).extend(node.handlers)
+    return handlers
+
+
+def _catches_every_exception(handler: ast.ExceptHandler) -> bool:
+    """True for `except Exception` and bare `except:`, false for a named subset.
+
+    `except Exception` and not `except BaseException` is the deliberate limit:
+    `KeyboardInterrupt` and `SystemExit` are the operator stopping the process,
+    never a verdict on a document, and converting those would make the engine
+    unkillable-looking rather than honest.
+    """
+    if handler.type is None:
+        return True
+    return isinstance(handler.type, ast.Name) and handler.type.id in {
+        "Exception",
+        "BaseException",
+    }
+
+
+def test_every_vendor_call_in_the_reader_sits_inside_a_total_error_boundary() -> None:
+    """No third-party call may run outside a handler that catches `Exception`.
+
+    This is the test that makes the class non-recurring. It does not care WHICH
+    exception a vendor raises — that is exactly the question the old code got
+    wrong by trying to answer it in advance.
+
+    Falsify it by deleting any `except Exception` in `reader.py`, or by
+    narrowing one back to a named type: this turns red and names the call.
+    """
+    source = pathlib.Path(reader.__file__).read_text(encoding="utf-8")
+    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
+        pytest.skip(
+            "mutmut rewrote this module in its `mutants/` copy, so the source read "
+            "here is mutmut's instrumentation rather than ours. Asserting on it "
+            "measures the mutation tool, not the code under test — and a structural "
+            "assertion about OUR source cannot be evaluated against a file we did "
+            "not write. Skipped under mutation only; it runs in every ordinary suite."
+        )
+    tree = ast.parse(source)
+    handlers = _enclosing_handlers(tree)
+
+    unguarded: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        called = node.func.attr if isinstance(node.func, ast.Attribute) else None
+        if called not in VENDOR_CALLS:
+            continue
+        if not any(_catches_every_exception(h) for h in handlers.get(node, ())):
+            unguarded.append(f"{called}() at line {node.lineno}")
+
+    assert unguarded == [], (
+        f"these third-party calls in reader.py are not inside a handler that "
+        f"catches Exception: {unguarded}. A boundary that names exception types "
+        "is an allowlist over a set the vendor controls — PaddlePaddle raised a "
+        "C++ NotImplementedError through exactly such a gap. Wrap the call and "
+        "convert whatever crosses into this module's own named error."
+    )
+
+
+def test_the_boundary_validator_can_actually_fail() -> None:
+    """Falsification of the test above (§D.13): a validator that passes
+    everything is worse than no validator, because it reports safety.
+
+    Both halves are asserted on source this test writes itself, so the check is
+    proved on a known-bad and a known-good input rather than trusted.
+    """
+    unguarded = ast.parse("def f(engine, page):\n    return engine.predict(page)\n")
+    enumerated = ast.parse(
+        "def f(engine, page):\n"
+        "    try:\n"
+        "        return engine.predict(page)\n"
+        "    except ValueError as e:\n"
+        "        raise RecognitionFailedError() from e\n"
+    )
+    total = ast.parse(
+        "def f(engine, page):\n"
+        "    try:\n"
+        "        return engine.predict(page)\n"
+        "    except Exception as e:\n"
+        "        raise RecognitionFailedError() from e\n"
+    )
+
+    def guarded(tree: ast.AST) -> bool:
+        handlers = _enclosing_handlers(tree)
+        return all(
+            any(_catches_every_exception(h) for h in handlers.get(node, ()))
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in VENDOR_CALLS
+        )
+
+    assert not guarded(unguarded), "the validator accepted a vendor call with no try at all"
+    assert not guarded(enumerated), "the validator accepted an ENUMERATED handler - the whole bug"
+    assert guarded(total), "the validator rejects a correct total boundary; it would never pass"
+
+
 def test_no_unapproved_ocr_engine_is_even_installed() -> None:
     """The stack says 'do not install', not merely 'do not import'."""
     installed = {name for name in NOT_APPROVED if importlib.util.find_spec(name) is not None}
@@ -1845,6 +2003,103 @@ def test_a_genuinely_undecodable_page_is_still_an_unreadable_document(
         reader.read_by_ocr([b"this is plainly not an image"])
 
     assert not isinstance(raised.value, reader.RecognitionFailedError)
+
+
+#: Exception types deliberately chosen to be ones NOBODY enumerated. The old
+#: boundaries listed `UnidentifiedImageError`, `OSError` and `ValueError`, and
+#: the OCR path listed nothing at all. A vendor is free to raise any of these
+#: and the contract must not depend on having guessed which.
+#:
+#: `NotImplementedError` is first because it is the one paddle actually raised;
+#: the rest are the falsification — if the boundary only survives the measured
+#: failure, it was fitted to the instance rather than the class.
+UNGUESSABLE_VENDOR_FAILURES = [
+    NotImplementedError("(Unimplemented) some future C++ kernel"),
+    RuntimeError("CUDA driver version is insufficient"),
+    MemoryError("cannot allocate 4.2 GiB for tensor"),
+    AttributeError("'NoneType' object has no attribute 'shape'"),
+    KeyError("a key nobody documented"),
+    ZeroDivisionError("division by zero in a rescale"),
+    UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+    SystemError("PyEval_EvalFrameEx returned a result with an error set"),
+]
+
+
+@pytest.mark.parametrize("failure", UNGUESSABLE_VENDOR_FAILURES, ids=lambda f: type(f).__name__)
+def test_any_exception_a_recogniser_raises_becomes_the_named_reader_error(
+    failure: Exception, install_paddleocr: InstallFactory
+) -> None:
+    """The boundary is named by WHERE it is, never by what crosses it.
+
+    The old code enumerated exception types, which is an allowlist over a set
+    PaddleOCR controls. Eight unrelated types go in here and exactly one type
+    comes out - and the original is never lost.
+    """
+    install_paddleocr(_RecordingFactory(_FailingRecogniser(failure)))
+
+    with pytest.raises(reader.RecognitionFailedError) as raised:
+        reader.read_by_ocr([an_invoice_png()])
+
+    assert raised.value.__cause__ is failure
+    assert type(failure).__name__ in str(raised.value)
+
+
+@pytest.mark.parametrize("failure", UNGUESSABLE_VENDOR_FAILURES, ids=lambda f: type(f).__name__)
+def test_any_exception_pillow_raises_becomes_the_named_document_error(
+    failure: Exception, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The same rule at the OTHER vendor boundary, which used to enumerate three types.
+
+    `Image.open` is faked here because Pillow cannot be made to raise a
+    `ZeroDivisionError` on demand - the point is precisely that we do not get to
+    choose what it raises. Everything else in the path stays real.
+    """
+
+    opened: list[object] = []
+
+    def explode(stream: object) -> object:
+        opened.append(stream)
+        raise failure
+
+    # `Image` here is the very module object `reader` holds in its own globals -
+    # both files did `from PIL import Image` - so this replaces the exact
+    # function `reader` calls, at the narrowest edge, and nothing else.
+    monkeypatch.setattr(Image, "open", explode)
+
+    with pytest.raises(reader.UnreadableDocumentError) as raised:
+        reader._decode_image(an_invoice_png())
+
+    assert opened, "Pillow was never reached, so nothing was actually converted"
+
+    assert raised.value.__cause__ is failure
+    assert not isinstance(raised.value, reader.RecognitionFailedError)
+
+
+def test_an_import_failure_that_is_not_a_missing_module_becomes_a_named_reader_error(
+    monkeypatch: pytest.MonkeyPatch, a_clean_recogniser_cache: ForgetTheRecogniser
+) -> None:
+    """PaddleOCR present but failing to import is OUR tool breaking, not a missing one.
+
+    A broken C extension, a missing shared library or a vendor `__init__` that
+    raises all arrive here. Only `ModuleNotFoundError` crosses unconverted, and
+    the test above pins that; this is its other half.
+    """
+    failure = ImportError("libgomp.so.1: cannot open shared object file")
+    attempted: list[str] = []
+
+    def explode(name: str) -> object:
+        attempted.append(name)
+        raise failure
+
+    monkeypatch.setattr(importlib, "import_module", explode)
+    a_clean_recogniser_cache()
+
+    with pytest.raises(reader.RecognitionFailedError) as raised:
+        reader.read_by_ocr([an_invoice_png()])
+
+    assert attempted == ["paddleocr"]
+    assert raised.value.__cause__ is failure
+    assert not isinstance(raised.value, ModuleNotFoundError)
 
 
 def test_a_recogniser_that_cannot_be_built_raises_a_named_reader_error(

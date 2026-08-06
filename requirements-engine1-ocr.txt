@@ -87,10 +87,27 @@
 #
 # 11 of reader's tests exercise real OCR and are skipped when PaddleOCR is
 # absent. They are skipped the same way `test_input_engine_parser.py` skips its
-# Docling measurements, with a message that says so. **They do not run on CI
-# today, so the OCR path is not proven where proof lives** (Law 44). That is a
-# real gap and it is recorded as KNOWN_FAILURES.md F-009 rather than left to be
-# discovered by whoever trusts the green tick.
+# Docling measurements, with a message that says so.
+#
+# THEY NOW RUN ON CI. `tools/ci/run_ocr_tests.sh` builds this manifest into its
+# own interpreter for the `ocr tests` job, and asserts ZERO skips, so the OCR
+# path is exercised where proof lives (Law 44). That closed F-009's environment
+# half; the other half was a skip guard asking `find_spec` for the DISTRIBUTION
+# name `paddlepaddle` instead of the module name `paddle`, which no environment
+# could satisfy.
+#
+# WHAT THE FIRST REAL RUN FOUND, at commit c4fbb5f: 63 collected, 0 skipped,
+# 12 failed — every one of them the same `NotImplementedError` out of
+# PaddlePaddle's oneDNN instruction path. Two separate defects sat behind it and
+# both are fixed in `reader.py`, not here: a missing error boundary (the raw C++
+# error escaped Engine 1 unnamed) and PaddleOCR's `enable_mkldnn` defaulting to
+# True. NEITHER NEEDED A PIN CHANGED, which is why this file's versions are
+# untouched.
+#
+# STILL UNMEASURED: whether PaddleOCR, once it runs, MEETS the content
+# assertions those tests make — the exact invoice lines and 100% character
+# accuracy. Those assertions have never completed anywhere, so the accuracy of
+# this stack on this fixture is an open number, not a known one (Law 52).
 #
 # Versions read from installed metadata on 2026-08-05, never from memory.
 # Licences likewise: both Apache 2.0.
