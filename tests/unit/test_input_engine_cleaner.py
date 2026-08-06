@@ -99,6 +99,27 @@ def with_gaussian_noise(image: Image, sigma: float) -> Image:
     return _u8(np.clip(image.astype(np.float64) + noise, 0.0, 255.0).astype(np.uint8))
 
 
+def _png_bytes(image: Image) -> bytes:
+    """An array as the PNG bytes an image document actually arrives as.
+
+    Every test below that goes through `clean_artifact` — the single entry
+    point — needs bytes rather than an array, and PNG is lossless for the
+    8-bit one-, three- and four-channel frames this suite builds, so the
+    round trip through it changes no pixel and the assertion still measures
+    what it measured when the call took an array directly.
+    """
+    ok, buffer = cv2.imencode(".png", image)
+    assert ok, "the fixture image could not be encoded; the test would prove nothing"
+    return bytes(buffer.tobytes())
+
+
+#: The DPI `clean_artifact` is given wherever a test reaches the single entry
+#: point. Reused from this file's own existing artifact-path tests rather than
+#: chosen: an image path never rasterises, so the value cannot change any
+#: result here, and inventing a second one would imply it could (Law 52).
+RENDER_DPI = 150
+
+
 def _u8(array: object) -> Image:
     return np.asarray(array, dtype=np.uint8)
 
@@ -305,17 +326,17 @@ def test_a_float_image_is_refused_rather_than_silently_cast() -> None:
     it changes meaning. Refused, because a silent cast is a value modified.
     """
     with pytest.raises(cleaner.UnusableArtifactError, match="uint8"):
-        cleaner.clean(np.zeros((400, 400), dtype=np.float32), BASELINE)
+        cleaner._clean_image(np.zeros((400, 400), dtype=np.float32), BASELINE)
 
 
 def test_a_sixteen_bit_image_is_refused() -> None:
     with pytest.raises(cleaner.UnusableArtifactError, match="uint8"):
-        cleaner.clean(np.zeros((400, 400), dtype=np.uint16), BASELINE)
+        cleaner._clean_image(np.zeros((400, 400), dtype=np.uint16), BASELINE)
 
 
 def test_an_empty_image_is_refused() -> None:
     with pytest.raises(cleaner.UnusableArtifactError):
-        cleaner.clean(np.zeros((0, 0), dtype=np.uint8), BASELINE)
+        cleaner._clean_image(np.zeros((0, 0), dtype=np.uint8), BASELINE)
 
 
 def test_a_single_pixel_image_is_refused_because_the_search_window_cannot_fit() -> None:
@@ -323,17 +344,17 @@ def test_a_single_pixel_image_is_refused_because_the_search_window_cannot_fit() 
     a number this module invented.
     """
     with pytest.raises(cleaner.UnusableArtifactError, match="21"):
-        cleaner.clean(np.zeros((1, 1), dtype=np.uint8), BASELINE)
+        cleaner._clean_image(np.zeros((1, 1), dtype=np.uint8), BASELINE)
 
 
 def test_an_image_with_five_channels_is_refused() -> None:
     with pytest.raises(cleaner.UnusableArtifactError, match="channel"):
-        cleaner.clean(np.zeros((400, 400, 5), dtype=np.uint8), BASELINE)
+        cleaner._clean_image(np.zeros((400, 400, 5), dtype=np.uint8), BASELINE)
 
 
 def test_a_one_dimensional_array_is_refused() -> None:
     with pytest.raises(cleaner.UnusableArtifactError):
-        cleaner.clean(np.zeros((400,), dtype=np.uint8), BASELINE)
+        cleaner._clean_image(np.zeros((400,), dtype=np.uint8), BASELINE)
 
 
 # ── format normalisation ──────────────────────────────────────────────────
@@ -379,14 +400,14 @@ def test_decode_refuses_a_sixteen_bit_png_rather_than_downconverting_it() -> Non
 
 def test_a_colour_page_is_normalised_to_one_channel() -> None:
     colour = _u8(cv2.cvtColor(a_page(), cv2.COLOR_GRAY2BGR))
-    result = cleaner.clean(colour, BASELINE)
+    result = cleaner._clean_image(colour, BASELINE)
     assert result.cleaned.ndim == ONE_CHANNEL_NDIM
     assert result.cleaned.dtype == np.uint8
 
 
 def test_a_four_channel_page_is_normalised_to_one_channel() -> None:
     with_alpha = _u8(cv2.cvtColor(a_page(), cv2.COLOR_GRAY2BGRA))
-    result = cleaner.clean(with_alpha, BASELINE)
+    result = cleaner._clean_image(with_alpha, BASELINE)
     assert result.cleaned.ndim == ONE_CHANNEL_NDIM
 
 
@@ -402,7 +423,7 @@ def test_deskew_removes_a_known_seven_degree_skew() -> None:
     assert before is not None
     assert abs(before) > KNOWN_SKEW_DEGREES / 2.0, "the fixture failed to inject any skew"
 
-    result = cleaner.clean(skewed, BASELINE)
+    result = cleaner._clean_image(skewed, BASELINE)
     after = orientation_degrees(result.cleaned)
     assert after is not None
     assert abs(after) < MAX_RESIDUAL_SKEW_DEGREES, (
@@ -412,7 +433,9 @@ def test_deskew_removes_a_known_seven_degree_skew() -> None:
 
 def test_the_reported_skew_angle_matches_the_independent_oracle() -> None:
     skewed = turned(padded(a_page()), KNOWN_SKEW_DEGREES)
-    reported = cleaner.clean(skewed, BASELINE).observed(cleaner.SKEW_ANGLE, cleaner.Stage.ORIGINAL)
+    reported = cleaner._clean_image(skewed, BASELINE).observed(
+        cleaner.SKEW_ANGLE, cleaner.Stage.ORIGINAL
+    )
     oracle = orientation_degrees(skewed)
     assert reported.value is not None
     assert oracle is not None
@@ -425,7 +448,7 @@ def test_deskew_beyond_the_callers_limit_is_refused_and_said_so() -> None:
     usually a detector that failed, and rotating on it damages presentation.
     """
     skewed = turned(padded(a_page()), BEYOND_THE_LIMIT_DEGREES)
-    result = cleaner.clean(skewed, settings(max_deskew_degrees=15.0))
+    result = cleaner._clean_image(skewed, settings(max_deskew_degrees=15.0))
 
     applied = result.observed(cleaner.DESKEW_APPLIED, cleaner.Stage.CLEANED)
     assert applied.value == 0.0, "a skew beyond the limit was rotated anyway"
@@ -443,7 +466,7 @@ def test_the_same_skew_is_corrected_when_the_limit_allows_it() -> None:
     the detector quietly failing on a 32 deg page.
     """
     skewed = turned(padded(a_page()), BEYOND_THE_LIMIT_DEGREES)
-    result = cleaner.clean(skewed, settings(max_deskew_degrees=45.0))
+    result = cleaner._clean_image(skewed, settings(max_deskew_degrees=45.0))
     residual = orientation_degrees(result.cleaned)
     assert residual is not None
     assert abs(residual) < MAX_RESIDUAL_SKEW_DEGREES
@@ -451,7 +474,7 @@ def test_the_same_skew_is_corrected_when_the_limit_allows_it() -> None:
 
 def test_an_already_straight_page_is_not_bent() -> None:
     straight = padded(a_page())
-    result = cleaner.clean(straight, BASELINE)
+    result = cleaner._clean_image(straight, BASELINE)
     residual = orientation_degrees(result.cleaned)
     assert residual is not None
     assert abs(residual) < MAX_SKEW_OF_A_STRAIGHT_PAGE
@@ -462,7 +485,7 @@ def test_rotation_never_pushes_ink_off_the_canvas() -> None:
     by counting ink, not by reading the code that resizes.
     """
     skewed = turned(padded(a_page()), KNOWN_SKEW_DEGREES)
-    result = cleaner.clean(skewed, settings(crop_margin_pixels=0))
+    result = cleaner._clean_image(skewed, settings(crop_margin_pixels=0))
     kept = result.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED)
     assert kept.value == FULL_RETENTION
 
@@ -474,7 +497,9 @@ def test_enough_denoising_lowers_end_to_end_noise() -> None:
     """Measured: 11.382 -> 4.160 grey levels at denoise_strength 30."""
     noisy = with_gaussian_noise(padded(a_page()), INJECTED_NOISE_SIGMA)
     before = median_residual_sigma(noisy)
-    cleaned = cleaner.clean(noisy, settings(denoise_strength=STRONG_DENOISE_STRENGTH)).cleaned
+    cleaned = cleaner._clean_image(
+        noisy, settings(denoise_strength=STRONG_DENOISE_STRENGTH)
+    ).cleaned
     after = median_residual_sigma(cleaned)
     assert after < before, f"noise sigma {before:.3f} -> {after:.3f}, no reduction"
 
@@ -492,7 +517,7 @@ def test_the_cost_of_contrast_enhancement_is_reported_and_not_hidden() -> None:
     fails the moment that reporting is dropped or rounded away.
     """
     noisy = with_gaussian_noise(padded(a_page()), INJECTED_NOISE_SIGMA)
-    result = cleaner.clean(noisy, BASELINE)
+    result = cleaner._clean_image(noisy, BASELINE)
     before = result.observed(cleaner.NOISE_SIGMA, cleaner.Stage.ORIGINAL)
     after = result.observed(cleaner.NOISE_SIGMA, cleaner.Stage.CLEANED)
     assert before.value is not None
@@ -512,7 +537,7 @@ def test_the_reported_noise_numbers_agree_with_an_independent_estimator() -> Non
     noisy = with_gaussian_noise(padded(a_page()), INJECTED_NOISE_SIGMA)
     oracle_before = median_residual_sigma(noisy)
     for strength in (GENTLE_DENOISE_STRENGTH, BASELINE.denoise_strength, STRONG_DENOISE_STRENGTH):
-        result = cleaner.clean(noisy, settings(denoise_strength=strength))
+        result = cleaner._clean_image(noisy, settings(denoise_strength=strength))
         reported_before = result.observed(cleaner.NOISE_SIGMA, cleaner.Stage.ORIGINAL).value
         reported_after = result.observed(cleaner.NOISE_SIGMA, cleaner.Stage.CLEANED).value
         assert reported_before is not None
@@ -532,8 +557,8 @@ def test_a_higher_clip_limit_costs_strictly_more_noise() -> None:
     `contrast_clip_limit` differs. Measured: 13.301 -> 22.577 grey levels.
     """
     noisy = with_gaussian_noise(padded(a_page()), INJECTED_NOISE_SIGMA)
-    quiet = cleaner.clean(noisy, settings(contrast_clip_limit=LOW_CLIP_LIMIT))
-    loud = cleaner.clean(noisy, settings(contrast_clip_limit=BASELINE.contrast_clip_limit))
+    quiet = cleaner._clean_image(noisy, settings(contrast_clip_limit=LOW_CLIP_LIMIT))
+    loud = cleaner._clean_image(noisy, settings(contrast_clip_limit=BASELINE.contrast_clip_limit))
     assert median_residual_sigma(loud.cleaned) > median_residual_sigma(quiet.cleaned)
 
 
@@ -542,14 +567,14 @@ def test_a_stronger_denoise_setting_leaves_strictly_less_noise() -> None:
     identically and the difference cannot come from cropping or contrast.
     """
     noisy = with_gaussian_noise(padded(a_page()), INJECTED_NOISE_SIGMA)
-    gentle = cleaner.clean(noisy, settings(denoise_strength=GENTLE_DENOISE_STRENGTH))
-    strong = cleaner.clean(noisy, settings(denoise_strength=STRONG_DENOISE_STRENGTH))
+    gentle = cleaner._clean_image(noisy, settings(denoise_strength=GENTLE_DENOISE_STRENGTH))
+    strong = cleaner._clean_image(noisy, settings(denoise_strength=STRONG_DENOISE_STRENGTH))
     assert median_residual_sigma(strong.cleaned) < median_residual_sigma(gentle.cleaned)
 
 
 def test_the_reported_noise_estimate_falls_between_the_two_stages() -> None:
     noisy = with_gaussian_noise(padded(a_page()), INJECTED_NOISE_SIGMA)
-    result = cleaner.clean(noisy, settings(denoise_strength=STRONG_DENOISE_STRENGTH))
+    result = cleaner._clean_image(noisy, settings(denoise_strength=STRONG_DENOISE_STRENGTH))
     original = result.observed(cleaner.NOISE_SIGMA, cleaner.Stage.ORIGINAL)
     cleaned = result.observed(cleaner.NOISE_SIGMA, cleaner.Stage.CLEANED)
     assert original.value is not None
@@ -572,14 +597,14 @@ def a_low_contrast_page() -> Image:
 def test_a_higher_clip_limit_produces_strictly_more_contrast() -> None:
     """Differential. Only `contrast_clip_limit` differs between the two runs."""
     flat = a_low_contrast_page()
-    quiet = cleaner.clean(flat, settings(contrast_clip_limit=LOW_CLIP_LIMIT))
-    loud = cleaner.clean(flat, settings(contrast_clip_limit=HIGH_CLIP_LIMIT))
+    quiet = cleaner._clean_image(flat, settings(contrast_clip_limit=LOW_CLIP_LIMIT))
+    loud = cleaner._clean_image(flat, settings(contrast_clip_limit=HIGH_CLIP_LIMIT))
     assert rms_contrast(loud.cleaned) > rms_contrast(quiet.cleaned)
 
 
 def test_contrast_rises_on_a_page_that_crop_cannot_change() -> None:
     flat = a_low_contrast_page()
-    result = cleaner.clean(flat, settings(contrast_clip_limit=HIGH_CLIP_LIMIT))
+    result = cleaner._clean_image(flat, settings(contrast_clip_limit=HIGH_CLIP_LIMIT))
     before = rms_contrast(flat)
     after = rms_contrast(result.cleaned)
     assert after > before, f"rms contrast {before:.3f} -> {after:.3f}, no improvement"
@@ -587,7 +612,9 @@ def test_contrast_rises_on_a_page_that_crop_cannot_change() -> None:
 
 def test_the_reported_contrast_matches_the_independent_measure() -> None:
     flat = a_low_contrast_page()
-    reported = cleaner.clean(flat, BASELINE).observed(cleaner.RMS_CONTRAST, cleaner.Stage.ORIGINAL)
+    reported = cleaner._clean_image(flat, BASELINE).observed(
+        cleaner.RMS_CONTRAST, cleaner.Stage.ORIGINAL
+    )
     assert reported.value is not None
     assert reported.unit == "grey levels"
     assert reported.value == pytest.approx(rms_contrast(flat), abs=1e-6)
@@ -597,7 +624,7 @@ def test_the_reported_contrast_matches_the_independent_measure() -> None:
 
 
 def test_a_clean_that_loses_no_ink_reports_the_cleaned_form_as_safer() -> None:
-    result = cleaner.clean(padded(a_page()), BASELINE)
+    result = cleaner._clean_image(padded(a_page()), BASELINE)
     lost = result.observed(cleaner.INK_LOST_TO_DENOISE, cleaner.Stage.CLEANED)
     assert lost.value is not None
     assert lost.value < MAX_BASELINE_INK_LOSS
@@ -619,7 +646,7 @@ def test_a_denoise_that_erases_ink_flips_preservation_to_the_original() -> None:
     preserve the original and mark it. Proven by causing the damage.
     """
     hairlines = a_page_of_hairline_strokes()
-    result = cleaner.clean(hairlines, settings(denoise_strength=ERASING_DENOISE_STRENGTH))
+    result = cleaner._clean_image(hairlines, settings(denoise_strength=ERASING_DENOISE_STRENGTH))
     lost = result.observed(cleaner.INK_LOST_TO_DENOISE, cleaner.Stage.CLEANED)
     assert lost.value is not None
     assert lost.value > BASELINE.max_ink_loss_fraction, (
@@ -633,11 +660,11 @@ def test_the_preservation_rule_tracks_the_callers_threshold_and_not_a_constant()
     module ever hard-codes a limit, exactly one of these two goes red.
     """
     hairlines = a_page_of_hairline_strokes()
-    strict = cleaner.clean(
+    strict = cleaner._clean_image(
         hairlines,
         settings(denoise_strength=ERASING_DENOISE_STRENGTH, max_ink_loss_fraction=0.0),
     )
-    permissive = cleaner.clean(
+    permissive = cleaner._clean_image(
         hairlines,
         settings(denoise_strength=ERASING_DENOISE_STRENGTH, max_ink_loss_fraction=1.0),
     )
@@ -647,14 +674,14 @@ def test_the_preservation_rule_tracks_the_callers_threshold_and_not_a_constant()
 
 def test_the_original_is_never_discarded() -> None:
     page = padded(a_page())
-    result = cleaner.clean(page, BASELINE)
+    result = cleaner._clean_image(page, BASELINE)
     assert np.array_equal(result.original, page), "the original was altered"
     assert result.original is not result.cleaned
 
 
 def test_the_original_is_carried_in_the_colour_it_arrived_in() -> None:
     colour = _u8(cv2.cvtColor(a_page(), cv2.COLOR_GRAY2BGR))
-    result = cleaner.clean(colour, BASELINE)
+    result = cleaner._clean_image(colour, BASELINE)
     assert np.array_equal(result.original, colour)
 
 
@@ -665,7 +692,7 @@ def test_crop_keeps_every_ink_pixel() -> None:
     """The one operation that can literally delete content. `cleaner` may not
     discard anything it judges irrelevant, so retention must be exactly 1.
     """
-    result = cleaner.clean(padded(a_page()), BASELINE)
+    result = cleaner._clean_image(padded(a_page()), BASELINE)
     kept = result.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED)
     assert kept.value == FULL_RETENTION
     assert kept.unit == "fraction of ink pixels"
@@ -675,15 +702,15 @@ def test_crop_removes_the_blank_border_it_was_given() -> None:
     """Retention of 1.0 would also hold if crop did nothing at all, so the
     counterpart is that the 200px blank pad actually goes."""
     page = padded(a_page())
-    result = cleaner.clean(page, settings(crop_margin_pixels=0))
+    result = cleaner._clean_image(page, settings(crop_margin_pixels=0))
     assert result.cleaned.shape[0] < page.shape[0]
     assert result.cleaned.shape[1] < page.shape[1]
 
 
 def test_a_larger_crop_margin_keeps_a_larger_page() -> None:
     page = padded(a_page())
-    tight = cleaner.clean(page, settings(crop_margin_pixels=0))
-    loose = cleaner.clean(page, settings(crop_margin_pixels=40))
+    tight = cleaner._clean_image(page, settings(crop_margin_pixels=0))
+    loose = cleaner._clean_image(page, settings(crop_margin_pixels=40))
     assert loose.cleaned.shape[0] > tight.cleaned.shape[0]
     assert loose.cleaned.shape[1] > tight.cleaned.shape[1]
 
@@ -693,7 +720,7 @@ def test_a_larger_crop_margin_keeps_a_larger_page() -> None:
 
 def test_a_blank_page_is_reported_rather_than_crashed_on() -> None:
     blank: Image = np.full((400, 400), PAPER_INTENSITY, dtype=np.uint8)
-    result = cleaner.clean(blank, BASELINE)
+    result = cleaner._clean_image(blank, BASELINE)
     assert result.observed(cleaner.INK_FRACTION, cleaner.Stage.ORIGINAL).value == 0.0
     assert result.observed(cleaner.SKEW_ANGLE, cleaner.Stage.ORIGINAL).value is None
     assert result.observed(cleaner.DESKEW_APPLIED, cleaner.Stage.CLEANED).value == 0.0
@@ -702,13 +729,13 @@ def test_a_blank_page_is_reported_rather_than_crashed_on() -> None:
 
 def test_a_blank_page_is_not_cropped_to_nothing() -> None:
     blank: Image = np.full((400, 400), PAPER_INTENSITY, dtype=np.uint8)
-    result = cleaner.clean(blank, BASELINE)
+    result = cleaner._clean_image(blank, BASELINE)
     assert result.cleaned.shape == blank.shape
 
 
 def test_an_all_black_page_is_handled_too() -> None:
     black: Image = np.zeros((400, 400), dtype=np.uint8)
-    result = cleaner.clean(black, BASELINE)
+    result = cleaner._clean_image(black, BASELINE)
     assert result.cleaned.size > 0
 
 
@@ -717,7 +744,7 @@ def test_an_all_black_page_is_handled_too() -> None:
 
 def test_every_observation_carries_a_reason() -> None:
     """`ENGINE_1:626` - a bare score cannot become a good question downstream."""
-    result = cleaner.clean(padded(a_page()), BASELINE)
+    result = cleaner._clean_image(padded(a_page()), BASELINE)
     assert result.quality_observations
     for observation in result.quality_observations:
         assert observation.note.strip(), f"{observation.name} carries no reason"
@@ -725,14 +752,14 @@ def test_every_observation_carries_a_reason() -> None:
 
 
 def test_no_observation_is_reported_twice_for_one_stage() -> None:
-    result = cleaner.clean(padded(a_page()), BASELINE)
+    result = cleaner._clean_image(padded(a_page()), BASELINE)
     keys = [(o.name, o.stage) for o in result.quality_observations]
     assert len(keys) == len(set(keys)), f"a measurement is reported twice: {keys}"
 
 
 def test_both_stages_are_measured_so_an_improvement_can_be_stated() -> None:
     """Law 52. A claim that cleaning improved anything needs before and after."""
-    result = cleaner.clean(padded(a_page()), BASELINE)
+    result = cleaner._clean_image(padded(a_page()), BASELINE)
     stages = {o.stage for o in result.quality_observations}
     assert stages == {cleaner.Stage.ORIGINAL, cleaner.Stage.CLEANED}
     for name in (cleaner.NOISE_SIGMA, cleaner.RMS_CONTRAST, cleaner.LAPLACIAN_VARIANCE):
@@ -741,13 +768,13 @@ def test_both_stages_are_measured_so_an_improvement_can_be_stated() -> None:
 
 
 def test_asking_for_a_measurement_that_was_not_taken_fails_loudly() -> None:
-    result = cleaner.clean(padded(a_page()), BASELINE)
+    result = cleaner._clean_image(padded(a_page()), BASELINE)
     with pytest.raises(KeyError):
         result.observed("a measurement nobody took", cleaner.Stage.ORIGINAL)
 
 
 def test_the_result_is_frozen() -> None:
-    result = cleaner.clean(padded(a_page()), BASELINE)
+    result = cleaner._clean_image(padded(a_page()), BASELINE)
     #: Named rather than written literally: `setattr` with a literal attribute
     #: is a lint violation, and a suppression comment is a gate this repo blocks.
     frozen_field = "preservation_status"
@@ -808,10 +835,22 @@ def test_the_module_reads_no_text_and_owns_no_field_names() -> None:
 def test_cleaning_the_same_page_twice_gives_the_same_bytes() -> None:
     """Determinism. `MEASUREMENT_FRAMEWORK` cannot obtain a number from a stage
     that answers differently on two runs.
+
+    MOVED TO THE SINGLE ENTRY POINT (F-017) AND MADE STRICTER BY THE MOVE. It
+    called `clean()` twice and compared the two rasters, which is a claim about
+    the pixels. What the pipeline actually carries onward is
+    `CleanedArtifact.payload` — the encoded bytes `reader` and `parser` open —
+    and this now compares those as well, so the assertion finally checks what
+    the test has always been called: the same page twice gives the same BYTES.
+    Nothing that was asserted before was dropped.
     """
-    page = padded(a_page())
-    first = cleaner.clean(page, BASELINE)
-    second = cleaner.clean(page, BASELINE)
+    page = _png_bytes(padded(a_page()))
+    first = cleaner.clean_artifact(page, cleaner.MediaKind.IMAGE, BASELINE, render_dpi=RENDER_DPI)
+    second = cleaner.clean_artifact(page, cleaner.MediaKind.IMAGE, BASELINE, render_dpi=RENDER_DPI)
+
+    assert first.artifact is not None
+    assert second.artifact is not None
+    assert first.artifact.payload == second.artifact.payload
     assert np.array_equal(first.cleaned, second.cleaned)
     assert first.quality_observations == second.quality_observations
 
@@ -1131,16 +1170,24 @@ def test_encode_png_raises_the_exact_message_when_the_encoder_reports_failure(
 
 
 def test_the_image_path_artifact_matches_an_independent_clean_call_field_for_field() -> None:
-    """`clean_artifact`'s image path builds `document` with `clean()` and then
-    calls `replace_artifact(document, ...)`. Comparing the result to a
-    SEPARATE, direct `clean()` call on the same bytes and settings is an
-    independent oracle for every field `replace_artifact` is responsible for
-    copying — determinism (`test_cleaning_the_same_page_twice_gives_the_same_bytes`)
-    is what makes the two calls comparable at all.
+    """`clean_artifact`'s image path runs `_clean_image` and then calls
+    `replace_artifact(document, ...)`. Comparing the result to a SEPARATE,
+    direct `_clean_image` call on the same bytes and settings is an independent
+    oracle for every field `replace_artifact` is responsible for copying —
+    determinism (`test_cleaning_the_same_page_twice_gives_the_same_bytes`) is
+    what makes the two calls comparable at all.
+
+    ONE OF THE TWO CALLS IS DELIBERATELY THE PRIVATE ONE, and that is not a
+    bypass. The claim under test is *"the entry point copies what the image
+    cleaner produced, field for field"*, which cannot be checked without naming
+    both sides of the copy. Every other test in this file that reaches
+    `_clean_image` reaches it as the IMAGE CLEANER — the implementation
+    `CLEANERS` dispatches to — and none of them is a second route into the
+    module for production code, which has exactly one.
     """
     settings = a_settings()
     raw = an_image_page()
-    independent = cleaner.clean(cleaner.decode(raw), settings)
+    independent = cleaner._clean_image(cleaner.decode(raw), settings)
 
     via_artifact = cleaner.clean_artifact(raw, cleaner.MediaKind.IMAGE, settings, render_dpi=150)
 

@@ -116,14 +116,28 @@ STATED ASSUMPTION, BECAUSE IT IS AN ASSUMPTION AND NOT A FACT.
 
 from __future__ import annotations
 
-import importlib
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from types import MappingProxyType
+from typing import Protocol
 
 import cv2
 import numpy as np
 import numpy.typing as npt
+
+# THE PDF ENGINE, by name — see the import note in `reader.py` for why the
+# names and not the module: the Engine 1 boundary guard reads what an import
+# NAMES, and only this form names `accountant_dad.pdf_backend`.
+from accountant_dad.pdf_backend import (
+    close_pdf,
+    open_pdf,
+    page_count,
+    pdf_of_page_images,
+    plain_text,
+    render_page_png,
+)
 
 #: An 8-bit image. One channel after normalisation; one, three or four on input.
 Image = npt.NDArray[np.uint8]
@@ -1020,53 +1034,6 @@ def decode(data: bytes) -> Image:
     return _u8(decoded)
 
 
-def clean_artifact(
-    data: bytes, kind: MediaKind, settings: CleanerSettings, *, render_dpi: int
-) -> CleanedDocument:
-    """Clean a document and hand back something that is STILL that kind of document.
-
-    The one entry point every caller should use. `decode` + `clean` remain for
-    the raster path they were written for; this is the media-aware form that
-    makes a single pipeline possible.
-
-        IMAGE                 rasterise, clean, re-encode as an image
-        PDF with a text layer PASS THROUGH UNTOUCHED, and say so
-        PDF without one       rasterise each page, clean, rebuild a PDF
-
-    WHY A TEXT-LAYER PDF IS NOT CLEANED, which looks like a gap and is the
-    opposite. `cleaner` owns *"deskewing, rotation, denoising, cropping,
-    contrast"* — every one of them a defect of a PHOTOGRAPH. A
-    digitally-generated PDF has none of them: its characters are already
-    exact. Rasterising it to apply a deskew would replace exact characters with
-    pixels and destroy the text layer, which is the single thing that lets it
-    be read with no recognition and no confidence loss at all.
-
-    §1.1 forbids exactly that: cleaner *"cannot discard content"* and
-    *"alters presentation only"*. Passing through is not the absence of
-    cleaning; it is the correct cleaning of a document with no physical defect,
-    and `preservation_status` records which basis is safer either way.
-
-    `render_dpi` is the caller's, with no default, for the same reason
-    `reader.read` demands it: no document in this repository states one, and
-    choosing here would answer a question put to the owner (Law 52).
-    """
-    if not data:
-        raise UndecodableArtifactError("no bytes were supplied; there is nothing to clean.")
-
-    if kind is MediaKind.PDF:
-        return _clean_pdf(data, settings, render_dpi=render_dpi)
-
-    image = decode(data)
-    document = clean(image, settings)
-    payload = _encode_png(document.cleaned)
-    return replace_artifact(
-        document,
-        CleanedArtifact(
-            kind=MediaKind.IMAGE, payload=payload, original=data, raster=document.cleaned
-        ),
-    )
-
-
 def replace_artifact(document: CleanedDocument, artifact: CleanedArtifact) -> CleanedDocument:
     """A copy of `document` carrying `artifact`. Nothing measured is touched."""
     return CleanedDocument(
@@ -1093,16 +1060,19 @@ def _encode_png(image: Image) -> bytes:
 
 def _pdf_has_text_layer(data: bytes) -> bool:
     """True when any page carries embedded text. Measured, never assumed."""
-    fitz = importlib.import_module("pymupdf")
-    document = fitz.open(stream=data, filetype="pdf")
+    document = open_pdf(data)
     try:
-        return any(document[index].get_text("text").strip() for index in range(document.page_count))
+        return any(plain_text(document, index).strip() for index in range(page_count(document)))
     finally:
-        document.close()
+        close_pdf(document)
 
 
 def _clean_pdf(data: bytes, settings: CleanerSettings, *, render_dpi: int) -> CleanedDocument:
-    """A PDF in, a PDF out — always. The text layer decides how."""
+    """A PDF in, a PDF out — always. The text layer decides how.
+
+    THE PDF CLEANER, as F-017 names it. Registered against `MediaKind.PDF` in
+    `CLEANERS` below; nothing calls it by name from outside this module.
+    """
     if _pdf_has_text_layer(data):
         return _pdf_passed_through(data)
     return _pdf_rebuilt_from_cleaned_pages(data, settings, render_dpi=render_dpi)
@@ -1201,18 +1171,17 @@ def _pdf_rebuilt_from_cleaned_pages(
         and `confidence` — the only component allowed to turn these signals into
         a score (`ENGINE_1:109`) — cannot account for a page that emits nothing.
     """
-    fitz = importlib.import_module("pymupdf")
-    source = fitz.open(stream=data, filetype="pdf")
+    source = open_pdf(data)
     cleaned_pages: list[Image] = []
     per_page: list[CleanedDocument] = []
     try:
-        for index in range(source.page_count):
-            rendered = source[index].get_pixmap(dpi=render_dpi).tobytes("png")
-            document = clean(decode(rendered), settings)
+        for index in range(page_count(source)):
+            rendered = render_page_png(source, index, dpi=render_dpi)
+            document = _clean_image(decode(rendered), settings)
             cleaned_pages.append(document.cleaned)
             per_page.append(document)
     finally:
-        source.close()
+        close_pdf(source)
 
     if not per_page:
         raise UndecodableArtifactError(
@@ -1221,26 +1190,11 @@ def _pdf_rebuilt_from_cleaned_pages(
         )
     first = _every_page_reported(per_page)
 
-    rebuilt = fitz.open()
-    try:
-        for page in cleaned_pages:
-            encoded = _encode_png(page)
-            image_document = fitz.open(stream=encoded, filetype="png")
-            try:
-                # `convert_to_pdf` returns BYTES, not a Document, so it has to be
-                # reopened before `insert_pdf` will take it. Measured, not
-                # assumed: passing the bytes straight in raises
-                # `AttributeError: 'bytes' object has no attribute '_graft_id'`.
-                as_pdf = fitz.open("pdf", image_document.convert_to_pdf())
-                try:
-                    rebuilt.insert_pdf(as_pdf)
-                finally:
-                    as_pdf.close()
-            finally:
-                image_document.close()
-        payload = bytes(rebuilt.tobytes())
-    finally:
-        rebuilt.close()
+    # IN THE ORDER THE PAGES CAME OFF THE SOURCE, never sorted. `cleaned_pages`
+    # is appended to inside the loop above, so page n of the rebuilt PDF is the
+    # cleaned page n of the original — the property F-017 requires and the one a
+    # rebuild is most likely to lose.
+    payload = pdf_of_page_images([_encode_png(page) for page in cleaned_pages])
 
     return replace_artifact(
         first,
@@ -1248,8 +1202,25 @@ def _pdf_rebuilt_from_cleaned_pages(
     )
 
 
-def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
-    """Improve the artifact's physical quality. Change nothing it contains.
+def _clean_image(image: Image, settings: CleanerSettings) -> CleanedDocument:
+    """THE IMAGE CLEANER. Improve the pixels' physical quality; change nothing
+    they contain.
+
+    PRIVATE SINCE F-017, AND THAT IS THE POINT OF THIS NAME. It was `clean`,
+    public, and it was a SECOND ENTRY POINT into this module: it took an
+    `NDArray` and returned a `CleanedDocument` with no `artifact` on it, so a
+    caller who reached it directly got an object `pipeline._payload_of` refuses
+    and `reader`/`parser` cannot consume. Nothing in `src/` ever called it —
+    measured: zero call sites outside this file, against sixty-seven in
+    `tests/` — so it was a door kept open by its own tests and by nothing else.
+
+    F-017's ruling is *"Remove every legacy bypass and duplicate path."* The
+    coverage those sixty-seven tests bought is not a bypass and was not
+    removed: each one still runs, either through `clean_artifact` (the single
+    entry point) or against this function under its private name, which is
+    what it now is — one of the implementations `CLEANERS` dispatches to, and
+    the one `_clean_image_document` and `_pdf_rebuilt_from_cleaned_pages` both
+    call for the pixels of a single page.
 
     The order is normalise, measure, denoise, crop, contrast, deskew, crop.
     Denoising is first so every later stage sees a page whose strokes are
@@ -1408,3 +1379,150 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
         quality_observations=observations,
         preservation_status=safer,
     )
+
+
+class MediaCleaner(Protocol):
+    """What every per-kind cleaner IS: bytes in, a `CleanedDocument` out.
+
+    One signature for every media kind, so the dispatcher below needs to know
+    nothing about which kind it is calling. `render_dpi` is passed to all of
+    them, including those that never rasterise: a cleaner that ignores it
+    ignores it, and a signature that varied per kind would put a branch back
+    into the dispatcher, which is the whole thing being removed.
+    """
+
+    def __call__(
+        self, data: bytes, settings: CleanerSettings, *, render_dpi: int
+    ) -> CleanedDocument: ...
+
+
+def _clean_image_document(
+    data: bytes, settings: CleanerSettings, *, render_dpi: int
+) -> CleanedDocument:
+    """THE IMAGE CLEANER. Decode, clean the pixels, re-encode losslessly.
+
+    `render_dpi` is accepted and unused: an image arrives already rasterised at
+    whatever resolution it was captured at, so there is nothing to render. It is
+    in the signature because `MediaCleaner` is one signature for every kind —
+    see that Protocol for why that matters.
+    """
+    del render_dpi
+    document = _clean_image(decode(data), settings)
+    return replace_artifact(
+        document,
+        CleanedArtifact(
+            kind=MediaKind.IMAGE,
+            payload=_encode_png(document.cleaned),
+            original=data,
+            raster=document.cleaned,
+        ),
+    )
+
+
+#: WHICH IMPLEMENTATION CLEANS WHICH KIND. The whole of the dispatcher's
+#: knowledge, as data.
+#:
+#: F-017's ruling is *"a media-agnostic Document Cleaner as the single entry
+#: point for all supported document types. Internally it may dispatch to Image
+#: Cleaner, PDF Cleaner, Excel Cleaner, Email Cleaner, future cleaners."* This
+#: table is that dispatch, and it is a table rather than a chain of `if kind is
+#: ...` so that adding Excel later is a `MediaKind` member plus one entry here
+#: and NOTHING ELSE — `clean_artifact` below contains no branch on kind at all.
+#:
+#: `MappingProxyType` because a registry anything could mutate is a registry
+#: that can be changed from under a running pipeline. A caller that needs a
+#: different table passes one to `clean_artifact`; it never edits this one.
+#:
+#: NEITHER EXCEL NOR EMAIL IS IMPLEMENTED HERE. F-017 names them as future
+#: cleaners and `CLAUDE.md` Law 16 forbids building outside the current
+#: mission. What this change owes them is a seam, and the seam is proved by a
+#: test that registers a kind this module has never heard of and shows dispatch
+#: reaches it without a line of this file changing.
+CLEANERS: Mapping[MediaKind, MediaCleaner] = MappingProxyType(
+    {
+        MediaKind.IMAGE: _clean_image_document,
+        MediaKind.PDF: _clean_pdf,
+    }
+)
+
+
+class NoCleanerRegisteredError(LookupError):
+    """A media kind with no implementation behind it.
+
+    DELIBERATELY NOT AN `UnusableArtifactError`, and the distinction is the same
+    one `reader.RecognitionFailedError` draws. `UnusableArtifactError` is a
+    verdict about the DOCUMENT, and `pipeline.BUSINESS_FAILURE` turns it into an
+    artifact that records *"this document could not be read."* A kind nobody
+    registered is a verdict about THIS ENGINE — the user's file may be perfect —
+    so saying otherwise would assert something false about their document, which
+    `ENGINE_1_INPUT_ENGINE_RULES.md:337` forbids outright.
+    """
+
+
+def clean_artifact(
+    data: bytes,
+    kind: MediaKind,
+    settings: CleanerSettings,
+    *,
+    render_dpi: int,
+    cleaners: Mapping[MediaKind, MediaCleaner] = CLEANERS,
+) -> CleanedDocument:
+    """THE DOCUMENT CLEANER — the one entry point, for every supported kind.
+
+    F-017, approved by the owner 2026-08-06: *"Implement a media-agnostic
+    Document Cleaner as the single entry point for all supported document
+    types... Reader, Parser, Pipeline, Assembly, Validation and all downstream
+    modules must consume the Document Cleaner output. Remove every legacy
+    bypass and duplicate path."* This function is that entry point, and
+    `_clean_image` — which used to be the public `clean` — is now one of the
+    implementations it dispatches to rather than a second door into the module.
+
+        IMAGE                 decode, clean the pixels, re-encode as an image
+        PDF with a text layer PASS THROUGH UNTOUCHED, and say so
+        PDF without one       rasterise each page, clean, rebuild a PDF
+
+    THERE IS NO BRANCH ON `kind` IN THIS FUNCTION. The mapping is `CLEANERS`
+    above; this looks the kind up and calls what it finds. That is what makes
+    "adding Excel is a member plus an implementation" true rather than merely
+    intended, and it is what
+    `test_input_engine_cleaner.py::test_a_kind_this_module_has_never_heard_of_
+    dispatches_without_the_dispatcher_changing` checks by registering a kind
+    that does not exist.
+
+    WHY A TEXT-LAYER PDF IS NOT CLEANED, which looks like a gap and is the
+    opposite. `cleaner` owns *"deskewing, rotation, denoising, cropping,
+    contrast"* — every one of them a defect of a PHOTOGRAPH. A
+    digitally-generated PDF has none of them: its characters are already
+    exact. Rasterising it to apply a deskew would replace exact characters with
+    pixels and destroy the text layer, which is the single thing that lets it
+    be read with no recognition and no confidence loss at all.
+
+    §1.1 forbids exactly that: cleaner *"cannot discard content"* and
+    *"alters presentation only"*. Passing through is not the absence of
+    cleaning; it is the correct cleaning of a document with no physical defect,
+    and `preservation_status` records which basis is safer either way.
+
+    `render_dpi` is the caller's, with no default, for the same reason
+    `reader.read` demands it: no document in this repository states one, and
+    choosing here would answer a question put to the owner (Law 52).
+
+    `cleaners` defaults to the registry above and exists so a caller can supply
+    a different table WITHOUT this module being edited. It is not a mock seam:
+    every value in it is a real `MediaCleaner` run for real, which is why the
+    extensibility test is a proof about dispatch rather than about a stand-in
+    (`CLAUDE.md` §J.6).
+    """
+    if not data:
+        raise UndecodableArtifactError("no bytes were supplied; there is nothing to clean.")
+
+    try:
+        media_cleaner = cleaners[kind]
+    except KeyError as missing:
+        raise NoCleanerRegisteredError(
+            f"no cleaner is registered for media kind {kind!r}. Registered: "
+            f"{sorted(str(known) for known in cleaners)}. Refused rather than "
+            "falling back to another kind's implementation, which would clean "
+            "the document as something it is not."
+        ) from missing
+
+    return media_cleaner(data, settings, render_dpi=render_dpi)

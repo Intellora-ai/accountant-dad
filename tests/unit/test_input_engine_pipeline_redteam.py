@@ -71,6 +71,7 @@ import numpy.typing as npt
 import pymupdf
 import pytest
 
+from accountant_dad import pdf_backend
 from accountant_dad.artifacts.evidence import (
     ConfidenceReport,
     Corroborated,
@@ -79,7 +80,14 @@ from accountant_dad.artifacts.evidence import (
     Provenance,
     SourceType,
 )
-from accountant_dad.engines.input_engine import assembly, cleaner, parser, pipeline, reader
+from accountant_dad.engines.input_engine import (
+    assembly,
+    cleaner,
+    config,
+    parser,
+    pipeline,
+    reader,
+)
 from accountant_dad.engines.input_engine import confidence_report as confidence_report_module
 from accountant_dad.identity import (
     FIRST_VERSION,
@@ -234,11 +242,47 @@ def a_cleaner_settings() -> cleaner.CleanerSettings:
     )
 
 
+def a_confidence_parameters(
+    vision_fallback: Decimal = NO_FALLBACK,
+) -> config.ConfidenceParameters:
+    """All sixteen confidence parameters, in full, because none has a default.
+
+    `ENGINE_1_CONFIDENCE_PARAMETERS.md` marks every one of the sixteen `UNSET`,
+    and `CLAUDE.md` §P forbids a default for any of them — so anything that runs
+    Engine 1 must state all sixteen, and this factory is what that costs.
+
+    These are the TEST's own numbers and not recommended operating points
+    (Law 52). Only `ocr_vision_fallback` changes any behaviour today: it is the
+    one parameter Engine 1's pipeline consumes, handed to `reader.read` as its
+    vision-fallback threshold. The other fifteen are carried and unread, which
+    `MEASUREMENT_FRAMEWORK.md:258` — *"confidence gates nothing"* — says is the
+    correct state of this build.
+    """
+    return config.ConfidenceParameters(
+        ocr_region_accept=Decimal("0.0000"),
+        ocr_vision_fallback=vision_fallback,
+        field_confidence_floor=Decimal("0.0000"),
+        field_risky_mark=Decimal("0.0000"),
+        document_confidence_floor=Decimal("0.0000"),
+        human_review_trigger=Decimal("0.0000"),
+        retry_trigger=Decimal("0.0000"),
+        retry_max_attempts=0,
+        classification_accept=Decimal("0.0000"),
+        table_structure_accept=Decimal("0.0000"),
+        table_cell_accept=Decimal("0.0000"),
+        capture_fidelity_floor=Decimal("0.0000"),
+        document_score_rule=config.DocumentScoreRule.MIN,
+        document_score_weights={"the only field": Decimal("1.0000")},
+        worst_k=1,
+        processing_budget_ms=1,
+    )
+
+
 def a_pipeline_settings() -> pipeline.PipelineSettings:
     return pipeline.PipelineSettings(
         cleaner_settings=a_cleaner_settings(),
         render_dpi=RENDER_DPI,
-        vision_fallback_threshold=NO_FALLBACK,
+        confidence_parameters=a_confidence_parameters(NO_FALLBACK),
         table_structure=None,
     )
 
@@ -908,7 +952,7 @@ def test_a_failing_assembly_still_preserves_every_earlier_stage_unmodified(
             "cleaner",
             cleaner.UndecodableArtifactError,
         ),
-        ("one byte, PDF", b"%", reader.MediaType.PDF, "cleaner", pymupdf.FileDataError),
+        ("one byte, PDF", b"%", reader.MediaType.PDF, "cleaner", pdf_backend.BrokenPdfError),
         (
             "one byte, image",
             b"%",
@@ -921,7 +965,7 @@ def test_a_failing_assembly_still_preserves_every_earlier_stage_unmodified(
             b"this is not a pdf, it is a sentence",
             reader.MediaType.PDF,
             "cleaner",
-            pymupdf.FileDataError,
+            pdf_backend.BrokenPdfError,
         ),
     ],
 )

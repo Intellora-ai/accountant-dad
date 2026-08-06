@@ -142,17 +142,32 @@ def test_an_unimported_module_is_reported_and_an_imported_one_is_not() -> None:
 
     Without the second half a detector that returns its whole input passes the
     orphan check by accident.
+
+    THE NEGATIVE CONTROL IS `stub`, AND IT USED TO BE `classification`. That was
+    correct on the day it was written and it was WIRED TO EXPIRE: `classification`
+    was one of the three modules F-018 exists to get consumers for, so the day
+    the defect above was fixed this test asserted the opposite of the fix. A
+    self-test whose control is a module somebody is actively working to wire is
+    a self-test with a countdown on it.
+
+    `engines/input_engine/stub` cannot expire the same way. This file's own
+    header already states why: it is *"a declared placeholder that the real
+    pipeline replaced, and it is unreachable BY DESIGN"* — which is exactly why
+    it is excluded from `ENGINE_1_MODULES` and never reported as a defect. A
+    control that is unreachable on purpose is the only kind that stays valid,
+    and the assertion is otherwise unchanged: one module in, one module out,
+    both directions, no easing.
     """
     orphans = set(
         module_wiring.unreachable(
             APPLICATION_LAYER_ENTRY,
             {
                 "accountant_dad.engines.input_engine.cleaner",
-                "accountant_dad.engines.input_engine.classification",
+                "accountant_dad.engines.input_engine.stub",
             },
         )
     )
-    assert orphans == {"accountant_dad.engines.input_engine.classification"}
+    assert orphans == {"accountant_dad.engines.input_engine.stub"}
 
 
 def test_a_module_reachable_only_from_another_orphan_is_still_an_orphan() -> None:

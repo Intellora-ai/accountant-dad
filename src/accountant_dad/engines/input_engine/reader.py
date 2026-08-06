@@ -16,6 +16,12 @@ TWO PATHS, BECAUSE THE STACK NAMES TWO TOOLS FOR TWO DIFFERENT PROBLEMS.
     Tesseract, EasyOCR, Camelot, Tabula and Unstructured are *"explicitly NOT
     approved"* there and appear nowhere in this file or its dependencies.
 
+    PyMuPDF is reached through `accountant_dad.pdf_backend` and never directly.
+    The owner's F-001 ruling (2026-08-06) is *"abstract it behind a PDF Engine
+    interface so Engine 1 never depends directly on PyMuPDF"*, and this module
+    now names no PyMuPDF type, method, keyword or exception. Which library
+    sits behind that interface is the stack's decision, not this file's.
+
 THE CONFIDENCE OF A TEXT LAYER IS `None`, AND THAT IS THE WHOLE POINT.
     A PDF text layer is not recognised, it is *read* - the characters are the
     ones the producer embedded. No recogniser ran, so no recogniser scored
@@ -96,12 +102,27 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 from functools import cache
-from typing import Protocol, TypedDict, cast
+from typing import Protocol, cast
 
 import numpy
 import numpy.typing
-import pymupdf
 from PIL import Image
+
+# THE PDF ENGINE, BY NAME AND NOT BY MODULE, and the reason is a gate rather
+# than a preference. `test_package.py::test_engine_1_reaches_for_nothing_
+# outside_its_own_boundary` reads the module an import NAMES: this form records
+# `accountant_dad.pdf_backend`, while `from accountant_dad import pdf_backend`
+# would record a bare `accountant_dad` the guard cannot tell apart from a reach
+# into `artifacts.decision`. The dotted `import a.b as b` records the right name
+# too and is refused by ruff's PLR0402, so this is the one form both gates
+# accept. Function names are unambiguous on their own for the same reason.
+from accountant_dad.pdf_backend import (
+    close_pdf,
+    open_pdf,
+    page_count,
+    render_page_png,
+    structured_text,
+)
 
 #: An RGB page as PaddleOCR wants it: height x width x 3, one byte per channel.
 Page = numpy.typing.NDArray[numpy.uint8]
@@ -110,59 +131,25 @@ Page = numpy.typing.NDArray[numpy.uint8]
 Quadrilateral = numpy.typing.NDArray[numpy.int16]
 
 
-# ── typed facades over two untyped dependencies ───────────────────────────
+# ── a typed facade over one untyped dependency ────────────────────────────
 #
-# PyMuPDF ships `py.typed` but leaves its functions unannotated; PaddleOCR ships
-# no typing at all. Under `mypy --strict` both are errors, and the repository
-# runs a zero-new-suppressions gate, so silencing them per-line is unavailable -
-# and would be the wrong tool regardless.
+# PaddleOCR ships no typing at all. Under `mypy --strict` that is an error, and
+# the repository runs a zero-new-suppressions gate, so silencing it per-line is
+# unavailable - and would be the wrong tool regardless.
 #
 # Declaring the exact API surface this module uses is STRICTER than a
 # suppression, not looser: mypy then checks every call below against these
 # signatures, so a misspelled method or a wrong argument type is caught, where a
 # silenced line would have hidden all of it. The declarations were read off the
-# installed libraries (PyMuPDF 1.28.0, PaddleOCR 3.7.0), not from memory.
-
-
-class _Span(TypedDict):
-    text: str
-    bbox: tuple[float, float, float, float]
-
-
-class _Line(TypedDict):
-    spans: list[_Span]
-
-
-class _Block(TypedDict, total=False):
-    lines: list[_Line]
-
-
-class _TextPage(TypedDict):
-    blocks: list[_Block]
-
-
-class _Pixmap(Protocol):
-    def tobytes(self, output: str) -> bytes: ...
-
-
-class _PdfPage(Protocol):
-    def get_text(self, option: str) -> _TextPage: ...
-    def get_pixmap(self, *, dpi: int) -> _Pixmap: ...
-
-
-class _PdfDocument(Protocol):
-    page_count: int
-
-    def __getitem__(self, index: int) -> _PdfPage: ...
-    def close(self) -> None: ...
-
-
-class _OpenPdf(Protocol):
-    def __call__(self, *, stream: bytes, filetype: str) -> _PdfDocument: ...
-
-
-#: `pymupdf.open`, with the two keyword arguments this module actually passes.
-_open_pdf = cast(_OpenPdf, pymupdf.open)
+# installed library (PaddleOCR 3.7.0), not from memory.
+#
+# THE SECOND FACADE THAT USED TO SIT HERE HAS MOVED, AND THAT IS F-001. This
+# module declared `_Span`, `_Line`, `_Block`, `_TextPage`, `_Pixmap`,
+# `_PdfPage`, `_PdfDocument` and `_OpenPdf` over PyMuPDF, and `pipeline.py`
+# declared a second copy of four of them. `accountant_dad.pdf_backend` now owns
+# every one, so replacing the PDF library is a rewrite of that file and of
+# nothing in Engine 1 - which is exactly what the owner's F-001 ruling asked
+# for. This module names no PyMuPDF type, method, keyword or exception.
 
 
 class _OcrResult(Protocol):
@@ -337,7 +324,7 @@ def read_pdf_text_layer(document: bytes) -> Reading:
     Raises `UnreadableDocumentError` if the bytes are not an openable PDF.
     """
     try:
-        opened = _open_pdf(stream=document, filetype="pdf")
+        opened = open_pdf(document)
     except Exception as failure:
         raise UnreadableDocumentError(
             f"the bytes supplied could not be opened as a PDF: {failure}. "
@@ -353,13 +340,12 @@ def read_pdf_text_layer(document: bytes) -> Reading:
     # closed while putting the close itself under the same boundary as the read.
     try:
         try:
-            pages_read = opened.page_count
+            pages_read = page_count(opened)
             for page_index in range(pages_read):
-                page = opened[page_index]
-                # "dict" gives spans with their bounding boxes. `sort=False` is
-                # the default and is what we want: §1.2 forbids reordering, so
-                # the backend's own order is preserved rather than re-sorted.
-                for block in page.get_text("dict")["blocks"]:
+                # `structured_text` gives spans with their bounding boxes, in
+                # the backend's OWN order: §1.2 forbids reordering, so nothing
+                # here re-sorts and the backend is asked not to either.
+                for block in structured_text(opened, page_index)["blocks"]:
                     for line in block.get("lines", ()):
                         for span in line["spans"]:
                             text = span["text"]
@@ -384,7 +370,7 @@ def read_pdf_text_layer(document: bytes) -> Reading:
                                 )
                             )
         finally:
-            opened.close()
+            close_pdf(opened)
     except Exception as failure:
         # A PDF THAT OPENS CAN STILL BREAK ON PAGE 3, AND THIS USED TO LEAK.
         # Only the `_open_pdf` call above had a boundary; everything after it
@@ -411,7 +397,7 @@ def read_pdf_text_layer(document: bytes) -> Reading:
 def _render_pdf_pages(document: bytes, *, render_dpi: int) -> list[bytes]:
     """Rasterise every page to PNG at the CALLER's DPI. Raises on an unopenable PDF."""
     try:
-        opened = _open_pdf(stream=document, filetype="pdf")
+        opened = open_pdf(document)
     except Exception as failure:
         raise UnreadableDocumentError(
             f"the bytes supplied could not be opened as a PDF: {failure}"
@@ -420,11 +406,11 @@ def _render_pdf_pages(document: bytes, *, render_dpi: int) -> list[bytes]:
     try:
         try:
             return [
-                bytes(opened[index].get_pixmap(dpi=render_dpi).tobytes("png"))
-                for index in range(opened.page_count)
+                render_page_png(opened, index, dpi=render_dpi)
+                for index in range(page_count(opened))
             ]
         finally:
-            opened.close()
+            close_pdf(opened)
     except Exception as failure:
         # Same gap as `read_pdf_text_layer`: the open had a boundary, the
         # rasterisation did not. A page whose content stream is damaged, or one

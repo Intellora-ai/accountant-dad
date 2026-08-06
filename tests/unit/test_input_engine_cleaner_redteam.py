@@ -470,7 +470,7 @@ def test_a_gstin_flush_to_the_frame_edge_and_a_corner_stamp_both_stay_on_the_pag
 
     assert content_pixels(page) == EDGE_PAGE_CONTENT_PIXELS
 
-    result = cleaner.clean(page, settings())
+    result = cleaner._clean_image(page, settings())
 
     assert content_pixels(result.cleaned) == EDGE_PAGE_CONTENT_PIXELS
     assert separate_marks(result.cleaned) == MARKS_ON_THE_EDGE_PAGE
@@ -512,7 +512,7 @@ def test_a_real_deskew_of_a_page_whose_ink_reaches_every_edge_clips_nothing() ->
         dtype=np.uint8,
     )
 
-    result = cleaner.clean(skewed, settings())
+    result = cleaner._clean_image(skewed, settings())
 
     applied = result.observed(cleaner.DESKEW_APPLIED, cleaner.Stage.CLEANED).value
     assert applied is not None
@@ -597,7 +597,7 @@ def test_a_deskewed_page_is_left_tight_around_its_content_and_not_around_the_fil
         dtype=np.uint8,
     )
 
-    result = cleaner.clean(skewed, settings())
+    result = cleaner._clean_image(skewed, settings())
 
     applied = result.observed(cleaner.DESKEW_APPLIED, cleaner.Stage.CLEANED).value
     assert applied is not None
@@ -631,7 +631,7 @@ def test_a_till_receipt_twenty_one_pixels_tall_keeps_its_printed_line() -> None:
     strip: Image = np.full((21, 3000), PAPER, dtype=np.uint8)
     strip[8:12, 100:2900] = INK
 
-    result = cleaner.clean(strip, settings())
+    result = cleaner._clean_image(strip, settings())
 
     assert content_pixels(result.cleaned) == content_pixels(strip)
 
@@ -641,7 +641,7 @@ def test_the_smallest_page_the_callers_window_allows_keeps_its_ink() -> None:
     tiny: Image = np.full((21, 21), PAPER, dtype=np.uint8)
     tiny[8:12, 4:17] = INK
 
-    result = cleaner.clean(tiny, settings())
+    result = cleaner._clean_image(tiny, settings())
 
     assert content_pixels(result.cleaned) == content_pixels(tiny)
 
@@ -651,7 +651,7 @@ def test_a_page_carrying_exactly_one_ink_pixel_still_carries_it() -> None:
     page: Image = np.full((PAGE_HEIGHT, PAGE_WIDTH), PAPER, dtype=np.uint8)
     page[300, 450] = INK
 
-    result = cleaner.clean(page, settings())
+    result = cleaner._clean_image(page, settings())
 
     assert content_pixels(result.cleaned) == 1
     assert result.observed(cleaner.INK_LOST_TO_DENOISE, cleaner.Stage.CLEANED).value == 0.0
@@ -672,7 +672,7 @@ def test_a_hairline_table_rule_survives_the_denoise_strength_it_was_given() -> N
     ink_at_the_split = int(np.count_nonzero(page.astype(np.float64) <= split))
     assert ink_at_the_split == HAIRLINE_INK_PIXELS
 
-    result = cleaner.clean(page, settings())
+    result = cleaner._clean_image(page, settings())
 
     assert content_pixels(result.cleaned) == content_pixels(page)
     loss = result.observed(cleaner.INK_LOST_TO_DENOISE, cleaner.Stage.CLEANED)
@@ -700,7 +700,7 @@ def test_an_inverted_white_on_black_scan_keeps_its_strokes() -> None:
         inverted[row : row + 2, 60:840] = INVERTED_STROKE
     strokes_before = int(np.count_nonzero(inverted > MID_GREY))
 
-    result = cleaner.clean(inverted, settings(denoise_strength=ERASING_DENOISE_STRENGTH))
+    result = cleaner._clean_image(inverted, settings(denoise_strength=ERASING_DENOISE_STRENGTH))
 
     strokes_after = int(np.count_nonzero(result.cleaned > MID_GREY))
     assert strokes_after / strokes_before >= MIN_INVERTED_STROKE_RETENTION
@@ -718,7 +718,7 @@ def test_a_faint_total_inside_the_printed_bodys_box_survives_every_stage() -> No
     page = a_printed_body()
     page[200:212, 700:840] = FAINT_TOTAL
 
-    result = cleaner.clean(page, settings())
+    result = cleaner._clean_image(page, settings())
 
     assert pixels_in_band(page, FAINT_BAND_LOW, FAINT_BAND_HIGH) == FAINT_TOTAL_PIXELS
     assert pixels_in_band(result.cleaned, FAINT_BAND_LOW, FAINT_BAND_HIGH) == FAINT_TOTAL_PIXELS
@@ -750,7 +750,7 @@ def test_a_faint_gstin_below_the_printed_body_is_not_cropped_off_the_page() -> N
     page = a_page_with_a_faint_gstin()
     assert pixels_in_band(page, FAINT_BAND_LOW, FAINT_BAND_HIGH) == FAINT_GSTIN_PIXELS
 
-    result = cleaner.clean(page, settings())
+    result = cleaner._clean_image(page, settings())
 
     assert pixels_in_band(result.cleaned, FAINT_BAND_LOW, FAINT_BAND_HIGH) == FAINT_GSTIN_PIXELS
 
@@ -808,7 +808,7 @@ def test_content_the_crop_discarded_is_reported_instead_of_being_called_full_ret
     """
     page = a_page_with_a_faint_gstin()
 
-    result = cleaner.clean(page, settings())
+    result = cleaner._clean_image(page, settings())
 
     assert content_pixels(page) == GSTIN_PAGE_CONTENT_PIXELS
     assert content_pixels(result.cleaned) == GSTIN_PAGE_CONTENT_PIXELS
@@ -817,7 +817,7 @@ def test_content_the_crop_discarded_is_reported_instead_of_being_called_full_ret
     # away. Without this the assertion above passes on a constant.
     marked = a_scan_with_an_isolated_corner_mark()
 
-    discarded = cleaner.clean(marked, settings())
+    discarded = cleaner._clean_image(marked, settings())
 
     assert discarded.cleaned.shape[0] < HEIGHT_THAT_HOLDS_BODY_AND_MARK, (
         "the attack is void unless the crop actually discarded the mark"
@@ -830,7 +830,7 @@ def test_content_the_crop_discarded_is_reported_instead_of_being_called_full_ret
 
     # ...and does NOT fall on the identical scan with nothing to discard, so the
     # figure is answering the crop rather than the sensor noise.
-    intact = cleaner.clean(a_scan_of_a_printed_body(), settings())
+    intact = cleaner._clean_image(a_scan_of_a_printed_body(), settings())
 
     kept = intact.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED).value
     assert kept == FULL_RETENTION
@@ -875,7 +875,7 @@ def test_the_reported_ink_loss_is_never_smaller_than_the_ink_actually_erased() -
     truly_erased_fraction = truly_erased / ink_before
     assert truly_erased_fraction > TRUE_ERASED_FRACTION, "the attack erased too little to judge"
 
-    result = cleaner.clean(page, settings(denoise_strength=ERASING_DENOISE_STRENGTH))
+    result = cleaner._clean_image(page, settings(denoise_strength=ERASING_DENOISE_STRENGTH))
 
     reported = result.observed(cleaner.INK_LOST_TO_DENOISE, cleaner.Stage.CLEANED).value
     assert reported is not None
@@ -911,7 +911,7 @@ def test_a_decimal_point_erased_by_denoising_makes_the_original_the_safer_basis(
     assert point_before > 0, "the attack is void unless the decimal point started as ink"
     assert point_after == 0, "the attack is void unless the decimal point was erased"
 
-    result = cleaner.clean(
+    result = cleaner._clean_image(
         page,
         settings(
             denoise_strength=ERASING_DENOISE_STRENGTH,
@@ -1002,8 +1002,8 @@ def test_two_rgba_documents_with_different_content_do_not_clean_to_the_same_page
     destroyed the difference between them, and `ENGINE_1:457` required the
     original to be preserved and the uncertainty marked instead.
     """
-    stamped = cleaner.clean(an_alpha_carried_mark(), settings())
-    blank = cleaner.clean(a_fully_transparent_page(), settings())
+    stamped = cleaner._clean_image(an_alpha_carried_mark(), settings())
+    blank = cleaner._clean_image(a_fully_transparent_page(), settings())
 
     assert not np.array_equal(stamped.cleaned, blank.cleaned)
 
@@ -1019,7 +1019,7 @@ def test_a_document_whose_content_lives_in_alpha_is_not_flattened_to_one_grey() 
     visible = int(np.count_nonzero(page[..., 3]))
     assert visible > 0, "the attack is void unless the alpha channel carries a mark"
 
-    result = cleaner.clean(page, settings())
+    result = cleaner._clean_image(page, settings())
 
     assert float(np.std(result.cleaned.astype(np.float64))) > 0.0
 
@@ -1063,7 +1063,7 @@ def test_the_module_still_exposes_no_way_to_read_what_it_removed() -> None:
     "what the crop removed" because no such measurement is taken. Asserted so
     that adding one is a deliberate act rather than an accident.
     """
-    result = cleaner.clean(a_page_with_a_faint_gstin(), settings())
+    result = cleaner._clean_image(a_page_with_a_faint_gstin(), settings())
 
     names = {observation.name for observation in result.quality_observations}
     assert cleaner.INK_LOST_TO_DENOISE in names
@@ -1131,7 +1131,7 @@ def test_no_fraction_this_module_reports_can_exceed_the_whole_it_is_a_fraction_o
     left — so no honest retention here has any business being above 1.0.
     """
     page = a_hairline_page()
-    destroyed = cleaner.clean(page, settings(denoise_strength=ANNIHILATING_DENOISE_STRENGTH))
+    destroyed = cleaner._clean_image(page, settings(denoise_strength=ANNIHILATING_DENOISE_STRENGTH))
 
     # The oracle is this file's own: a fixed intensity the paper never reaches,
     # so it needs neither Otsu nor the module's noise estimate to be believed.

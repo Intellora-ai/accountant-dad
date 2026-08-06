@@ -59,6 +59,21 @@ PERMITTED_MODULES = {
     "ablation",  # the ID ablation harness — P2 (BLUEPRINT §2 line 135, INV-9)
     "conformance",  # conformance predicates — Amendment 2, permitted list
     "conformance_registry",  # the prohibition inventory and its negative controls
+    # F-001, approved by the owner 2026-08-06: *"Immediately abstract [PyMuPDF]
+    # behind a PDF Engine interface so Engine 1 never depends directly on
+    # PyMuPDF."* It sits HERE and not under `engines/input_engine/` for two
+    # reasons, both load-bearing. Amendment 3 released Engine 1's own modules,
+    # and a library adapter is not one of them — it produces no part of the
+    # Document Evidence Object and answers no question about any document, which
+    # is the same test `ENGINE_1_FACILITIES` applies. And "Engine 1 never depends
+    # directly on PyMuPDF" is only true if the file that does is outside Engine
+    # 1; a PyMuPDF import under `engines/input_engine/` is the dependency the
+    # ruling removes, wherever in that directory it sits.
+    #
+    # Amendment 2's own category is *"document-ingestion tooling"*: opening a
+    # PDF and handing back its text and its pixels is ingestion, and every
+    # decision about what that text MEANS stays in the sub-engine that asked.
+    "pdf_backend",  # the PDF Engine — one file, one library, replaceable (F-001)
     # Amendment 2 "Permitted now — exhaustive", remaining three categories.
     "ingestion",  # document-ingestion tooling
     "sealing",  # held-out sealing mechanism
@@ -349,7 +364,7 @@ def test_no_module_escapes_the_package_the_wheel_ships() -> None:
 # ══════════════════════════════════════════════════════════════════════════
 
 #: Engine 1's ENTIRE first-party reach. Exhaustive, and MEASURED rather than
-#: chosen: an AST sweep of `engines/input_engine/` found exactly these four
+#: chosen: an AST sweep of `engines/input_engine/` found exactly these five
 #: targets and no others, across all ten modules on disk.
 #:
 #: `COMMUNICATION_RULES_INPUT_ENGINE.md:14` — Engine 1 communicates with exactly
@@ -359,11 +374,19 @@ def test_no_module_escapes_the_package_the_wheel_ships() -> None:
 #: is: a rule such as "anything under artifacts/" would silently admit
 #: `artifacts/decision`, which is the Accounting Engine's output and the exact
 #: boundary this exists to hold.
+#:
+#: `pdf_backend` is the fifth, added by F-001. It is a strictly NARROWER reach
+#: than what it replaced: `cleaner`, `reader` and `pipeline` each imported
+#: PyMuPDF directly, and now one first-party module does. Widening this tuple
+#: for a library adapter is the price of Engine 1 naming no vendor type at all,
+#: and `test_no_engine_1_module_imports_the_pdf_library_directly` in
+#: `test_pdf_backend.py` is what stops it being used as a route back.
 ENGINE_1_MAY_IMPORT = (
     "accountant_dad.engines.input_engine",  # itself
     "accountant_dad.artifacts.evidence",  # its one output artifact (DATA_FLOW §2)
     "accountant_dad.identity",  # the identity envelope (INV-3, INV-5, INV-9)
     "accountant_dad.confidence",  # the ONE Confidence representation
+    "accountant_dad.pdf_backend",  # the PDF Engine, not the PDF library (F-001)
 )
 
 #: Vendor SDKs whose whole purpose is to have a model reason. CLAUDE.md §P keeps

@@ -241,14 +241,14 @@ THE BOUNDARIES THIS MODULE HOLDS ITSELF TO.
 
 from __future__ import annotations
 
+import os
 import tempfile
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import datetime
-from decimal import Decimal
 from pathlib import Path
-from typing import Protocol, cast
-
-import pymupdf
 
 from accountant_dad.artifacts.evidence import (
     ConfidenceReport,
@@ -264,40 +264,37 @@ from accountant_dad.artifacts.evidence import (
     UncertaintyMarker,
 )
 from accountant_dad.confidence import UNMEASURED, ConfidenceOrUnmeasured, UnmeasuredType
-from accountant_dad.engines.input_engine import assembly, cleaner, confidence_report, parser, reader
+from accountant_dad.engines.input_engine import (
+    assembly,
+    classification,
+    cleaner,
+    confidence_report,
+    config,
+    measurement,
+    parser,
+    reader,
+)
 from accountant_dad.identity import IdentityEnvelope
 
-# ── a typed facade over PyMuPDF's untyped API ─────────────────────────────
+# THE PDF ENGINE's own verdict type — see the import note in `reader.py`. This
+# module needs exactly one name from it: the error that used to be
+# `pymupdf.FileDataError` in `BUSINESS_FAILURE` below.
+from accountant_dad.pdf_backend import BrokenPdfError
+
+# ── the PyMuPDF facade that used to sit here is DELETED (F-001) ───────────
 #
-# `reader.py` already declares an identical facade for the identical reason:
-# PyMuPDF ships `py.typed` but leaves its functions unannotated, so
-# `mypy --strict` refuses a bare call, and this repository's zero-new-
-# suppressions gate rules out silencing it per line. `reader._PdfDocument`
-# and friends are module-private to `reader.py` and are not imported here —
-# duplicating the few lines a second untyped dependency-boundary needs is the
-# same choice `reader.py` itself made about PyMuPDF, not a second definition
-# of a shared concept (Law 14 governs LOGIC; a type declaration for an
-# external library's surface is not logic).
-
-
-class _Pixmap(Protocol):
-    def tobytes(self, output: str) -> bytes: ...
-
-
-class _Page(Protocol):
-    def get_pixmap(self, *, dpi: int) -> _Pixmap: ...
-
-
-class _PdfDocument(Protocol):
-    def __getitem__(self, index: int) -> _Page: ...
-    def close(self) -> None: ...
-
-
-class _OpenPdf(Protocol):
-    def __call__(self, *, stream: bytes, filetype: str) -> _PdfDocument: ...
-
-
-_open_pdf = cast(_OpenPdf, pymupdf.open)
+# This module declared `_Pixmap`, `_Page`, `_PdfDocument` and `_OpenPdf` over
+# PyMuPDF — a SECOND copy of what `reader.py` already declared — and then
+# `_open_pdf = cast(_OpenPdf, pymupdf.open)`. Measured before deleting: not one
+# of the five names was referenced anywhere in this file or any other. They were
+# the remains of defect 2's original workaround, which moved into
+# `cleaner.clean_artifact` when F-017 made the cleaner media-aware, and the
+# facade stayed behind because nothing fails when dead code is left in place.
+#
+# `accountant_dad.pdf_backend` now owns every PDF operation this repository
+# performs, so the one live PyMuPDF name that remained here —
+# `pymupdf.FileDataError`, in `BUSINESS_FAILURE` below — is the backend's own
+# `BrokenPdfError` instead. Engine 1 names no PyMuPDF type anywhere.
 
 #: `parser.parse` opens the file Docling receives by its extension; Docling
 #: reads that extension to pick a backend. Two entries only, matching
@@ -306,6 +303,10 @@ _TEMP_FILE_SUFFIX: dict[reader.MediaType, str] = {
     reader.MediaType.PDF: ".pdf",
     reader.MediaType.IMAGE: ".png",
 }
+
+#: `time.monotonic` reports seconds; `MeasurementRow.processing_time_ms` is
+#: milliseconds. A unit conversion, not a number anyone chose.
+_MILLISECONDS_PER_SECOND = 1000.0
 
 
 #: THE LINE BETWEEN "THIS DOCUMENT IS BAD" AND "THIS ENGINE IS BROKEN".
@@ -327,26 +328,34 @@ _TEMP_FILE_SUFFIX: dict[reader.MediaType, str] = {
 #:   `parser.DocumentUnreadableError`  *"The artifact could not be parsed at
 #:                                     all"* — whose docstring assigns the
 #:                                     conversion to THIS module by name
-#:   `pymupdf.FileDataError`           PyMuPDF's own verdict that the FILE's
+#:   `pdf_backend.BrokenPdfError`      the PDF Engine's verdict that the FILE's
 #:                                     data is broken. Measured: this is what a
-#:                                     corrupt PDF raises through the defect-2
-#:                                     render step. It is a statement about the
-#:                                     document, not a crash in our code, which
-#:                                     is the whole test for membership here.
+#:                                     corrupt PDF raises through the cleaner's
+#:                                     text-layer check. It is a statement about
+#:                                     the document, not a crash in our code,
+#:                                     which is the whole test for membership
+#:                                     here. It was `pymupdf.FileDataError`
+#:                                     until F-001; the event is identical and
+#:                                     the name is now Engine 1's own, so
+#:                                     replacing the PDF library cannot silently
+#:                                     empty this tuple.
 #:
 #: EVERYTHING ELSE RAISES, AND THE OMISSIONS ARE DELIBERATE.
 #: `VisionFallbackUnavailableError` and `ParserDependencyMissingError` mean a
 #: TOOL is missing, not that the document is bad — emitting "unreadable" for
 #: those would assert something false about the user's document, which is worse
 #: than crashing and is the fabrication `ENGINE_1_INPUT_ENGINE_RULES.md:337`
-#: forbids. `ImpossibleSettingError` is a caller mistake.
-#: `MalformedSignalError` and `MissingSubEngineOutputError` are Engine 1's own
-#: machinery contradicting itself. None of those is a fact about the document.
+#: forbids. `cleaner.NoCleanerRegisteredError` is in the same position for the
+#: same reason: a media kind nobody registered is this engine missing an
+#: implementation, never a fault in the user's file. `ImpossibleSettingError` is
+#: a caller mistake. `MalformedSignalError` and `MissingSubEngineOutputError`
+#: are Engine 1's own machinery contradicting itself. None is a fact about the
+#: document.
 BUSINESS_FAILURE: tuple[type[Exception], ...] = (
     cleaner.UnusableArtifactError,
     reader.UnreadableDocumentError,
     parser.DocumentUnreadableError,
-    pymupdf.FileDataError,
+    BrokenPdfError,
 )
 
 
@@ -394,14 +403,39 @@ class PipelinePartialResult:
 class PipelineSettings:
     """Every number and setting this module passes to a sub-engine.
 
-    All four are the caller's. None acquires a value here: `cleaner_settings`
-    and `table_structure` are the exact settings objects `cleaner.clean` and
-    `parser.parse` already require and validate themselves; `render_dpi` is
+    All of them are the caller's. None acquires a value here: `cleaner_settings`
+    and `table_structure` are the exact settings objects `cleaner.clean_artifact`
+    and `parser.parse` already require and validate themselves; `render_dpi` is
     the one number reused for two purposes — rasterising a PDF page for
-    `cleaner` (defect 2 above) and, unchanged, handed on to `reader.read` for
-    its own OCR-fallback rasterisation — never two different numbers invented
-    for what is the same physical quantity; `vision_fallback_threshold` is
-    `reader.read`'s own required threshold, passed straight through.
+    `cleaner` and, unchanged, handed on to `reader.read` for its own OCR-fallback
+    rasterisation — never two different numbers invented for what is the same
+    physical quantity.
+
+    `confidence_parameters` REPLACED a bare `vision_fallback_threshold: Decimal`,
+    and that is F-018's fix for `config`, not a convenience. The number
+    `reader.read` needs is `ENGINE_1_CONFIDENCE_PARAMETERS.md` #2,
+    `ocr_vision_fallback` — *"the score below which the vision fallback replaces
+    PaddleOCR"* — and this pipeline used to take it as a loose `Decimal` while
+    `config.py` sat beside it holding the same parameter, validated, named,
+    unread by anything. Two representations of one number is exactly the drift
+    Law 19 forbids, and the loose one had no range check at all. `run` now reads
+    `settings.confidence_parameters.ocr_vision_fallback`, so the value
+    `reader.read` receives is one `config` parsed and validated.
+
+    NOTHING ELSE IN THE SIXTEEN IS CONSUMED YET, AND THAT IS STATED RATHER THAN
+    IMPLIED. `MEASUREMENT_FRAMEWORK.md:258` — *"confidence gates nothing"* — and
+    `ENGINE_1_ARCHITECTURE.md` G9.2 keeps threshold behaviour out of this build
+    until separation is measured. Carrying all sixteen and consuming one is
+    honest; consuming none was the defect, and inventing a gate for the other
+    fifteen would be building outside the mission (Law 16).
+
+    `measurement_store` is where `measurement.append` writes this run's
+    calibration row. `None` means NO STORE IS CONFIGURED — the row is still
+    built, from the same real signals, and simply has nowhere to go. It is not a
+    number and not a threshold, so it is not the kind of default
+    `CLAUDE.md` §P forbids: no locked document names a location for the store,
+    and a path invented here would be this module choosing where a deployment
+    keeps its records.
 
     `table_structure` defaults to `None` because `parser.parse` itself
     defaults it to `None`, tested there as "the default must be None — 'do not
@@ -410,8 +444,9 @@ class PipelineSettings:
 
     cleaner_settings: cleaner.CleanerSettings
     render_dpi: int
-    vision_fallback_threshold: Decimal
+    confidence_parameters: config.ConfidenceParameters
     table_structure: parser.TableStructureSettings | None = None
+    measurement_store: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -886,6 +921,196 @@ def confidence_output(
     )
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# F-018 — `classification`, `config` and `measurement` get real consumers.
+#
+# All three were fully implemented, individually tested and mutation-hardened,
+# and NOTHING IN `src/` IMPORTED ANY OF THEM. `test_module_wiring.py` names the
+# cause exactly: every gate that existed asked a question about a module IN
+# ISOLATION. `unit tests` imports it directly and proves it works; `coverage`
+# counts the lines those tests ran; `mutation` kills the mutants those tests
+# kill. All three go green on a module nothing calls, because none of them asks
+# whether the module is REACHED from anything that runs.
+#
+# What the three do here, and why each belongs to THIS module:
+#
+#   config          `run` reads `ocr_vision_fallback` out of it and hands that
+#                   to `reader.read`. Engine 1's runner is the only thing that
+#                   calls `reader.read`, so it is the only thing that can.
+#   classification  needs `reader.Reading` AND `parser.ParsedStructure` — the
+#                   two outputs only this module holds at the same moment.
+#   measurement     step 2 of `ENGINE_1_CONFIDENCE_PARAMETERS.md`'s "only
+#                   route" records ONE ROW PER PROCESSED DOCUMENT, and this is
+#                   the only place a document is processed.
+#
+# NOTHING BELOW ENTERS THE DOCUMENT EVIDENCE OBJECT. `test_package.py` classes
+# all three as FACILITIES precisely because the artifact has no document-type
+# component and gains none: *"The moment a facility's output enters the Document
+# Evidence Object it has produced a fifth part and has stopped being a
+# facility."* The classification result and the measurement row travel to the
+# calibration store and nowhere else.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def _region_signals(reading: reader.Reading) -> tuple[measurement.NamedSignal, ...]:
+    """`reader`'s per-region extraction scores, as calibration signals.
+
+    NAMED BY ORDINAL, LOCATED BY `region`. `measurement._no_duplicate_names`
+    refuses a category that names one signal twice, and two regions can carry
+    identical text or an identical box on a pathological page — an ordinal in
+    `reader`'s own order cannot collide, and `reader`'s order is stable because
+    `SUB_ENGINE_RESPONSIBILITIES.md` §1.2 forbids it reordering anything.
+
+    `value=None` is UNREADABLE in `measurement`'s vocabulary and is exactly
+    right for a PDF text layer: the region WAS read and no recogniser scored it
+    (`reader.py`, "THE CONFIDENCE OF A TEXT LAYER IS `None`"). No number is
+    invented for it here, and `float` is only applied to a score that exists.
+    """
+    return tuple(
+        measurement.NamedSignal(
+            name=f"region {ordinal}",
+            value=None
+            if region.extraction_confidence is None
+            else float(region.extraction_confidence),
+            instrument=reading.backend.value,
+            region=repr(region.location),
+        )
+        for ordinal, region in enumerate(reading.regions, start=1)
+    )
+
+
+def _field_signals(
+    parsed: parser.ParsedStructure, reading: reader.Reading
+) -> tuple[measurement.NamedSignal, ...]:
+    """`parser`'s mapped fields and their scores, as calibration signals.
+
+    A different INSTRUMENT'S view of the same document from `_region_signals`,
+    kept in its own category because `CONFIDENCE_SPECIFICATION.md` §3.2 says
+    instruments are independent scales that must never be silently merged.
+
+    The name is `parser`'s own — `page N region M`, unique by construction
+    because `map_fields` counts the ordinal within each page. The instrument is
+    `reader`'s backend, because the backend is what produced the NUMBER; naming
+    `parser` here would credit the score to the sub-engine that only labelled it.
+    """
+    return tuple(
+        measurement.NamedSignal(
+            name=field.name,
+            value=None
+            if field.extraction_confidence is None
+            else float(field.extraction_confidence),
+            instrument=reading.backend.value,
+            region=field.source_location,
+        )
+        for field in parsed.mapped_fields
+    )
+
+
+def _classification_signals(
+    result: classification.ClassificationResult,
+) -> tuple[measurement.NamedSignal, ...]:
+    """One signal per catalogued document type whose cues were found.
+
+    `value` IS ALWAYS `None`, AND THAT IS NOT A GAP. `classification.py` scores
+    nothing on purpose — `ENGINE_1_CONFIDENCE_PARAMETERS.md` #9,
+    `classification_accept`, is `UNSET`, and its own docstring says it "counts
+    nothing and scores nothing" so that even a raw float cannot invite a caller
+    to threshold it. `None` is `measurement`'s word for "this named thing was
+    attempted and no number came back", which is the true statement.
+
+    `region=None` because a document-type observation is about the WHOLE
+    document, never one page location — `measurement.py`'s own docstring uses
+    this exact case as its example of when `None` is a real answer rather than
+    a missing one.
+
+    An empty tuple, on an `UNKNOWN` document, means the category was attempted
+    and legitimately found nothing — a third state, distinct from `ABSENT`.
+    """
+    return tuple(
+        measurement.NamedSignal(
+            name=candidate.document_type.value,
+            value=None,
+            instrument="classification",
+            region=None,
+        )
+        for candidate in result.candidates
+    )
+
+
+def _table_signals(parsed: parser.ParsedStructure) -> tuple[measurement.NamedSignal, ...]:
+    """Every table band's detector score, named by where it sits in the grid.
+
+    Ordinals again, for the same reason as `_region_signals`: two bands may
+    carry the same label — a table has many rows all labelled `row` — and a
+    category that named one signal twice is refused at construction.
+    """
+    return tuple(
+        measurement.NamedSignal(
+            name=f"table {table_index} band {band_index}",
+            value=band.score,
+            instrument=table.detector,
+            region=repr(band.box),
+        )
+        for table_index, table in enumerate(parsed.tables, start=1)
+        for band_index, band in enumerate(table.bands, start=1)
+    )
+
+
+def _stated_document_type(result: classification.ClassificationResult) -> str:
+    """What the row records as the document's kind. Never a guess.
+
+    `MeasurementRow.source_document_type` is *"whatever the caller states it to
+    be — this module records the claim, it does not classify the document."* So
+    the claim recorded is exactly what `classification` concluded, including
+    when it concluded nothing: `UNKNOWN` and `AMBIGUOUS` are written as
+    themselves rather than resolved into a type, which is the same refusal
+    `ClassificationResult.document_type` makes by returning `None` for both.
+    """
+    named = result.document_type
+    return result.status.name if named is None else named.value
+
+
+def measurement_row(
+    artifact: DocumentEvidenceObject,
+    reading: reader.Reading,
+    parsed: parser.ParsedStructure,
+    classified: classification.ClassificationResult,
+    *,
+    processing_time_ms: float,
+) -> measurement.MeasurementRow:
+    """This run's calibration record — step 2 of the only route a threshold may take.
+
+    Built on EVERY completed run, whether or not a store is configured, so that
+    what a configured deployment writes is the same row an unconfigured one
+    would have written. A row built only when someone is watching is a row
+    nobody can trust.
+
+    `document_score` is `ABSENT`, not zero and not computed:
+    `ENGINE_1_CONFIDENCE_PARAMETERS.md` #13 — the rule that combines per-field
+    scores into one document score — is UNDEFINED, and `measurement.py` is
+    explicit that computing one here *"would be this module quietly making the
+    decision the whole file says nobody has made yet."*
+
+    `correctness` is left at its default `UNLABELLED`. Whether the extraction
+    was ACTUALLY correct is ground truth, which is P1's and has not run. This
+    module never sets `CORRECT`.
+
+    `failed_fields` is `parser`'s own absent-field list, which is empty today
+    because `parser.parse` is given no expected-field list — a consequence of
+    that fact, not a choice made here.
+    """
+    return measurement.MeasurementRow(
+        document_id=artifact.document_id,
+        source_document_type=_stated_document_type(classified),
+        processing_time_ms=processing_time_ms,
+        per_region_ocr=_region_signals(reading),
+        per_field=_field_signals(parsed, reading),
+        classification=_classification_signals(classified),
+        table=_table_signals(parsed),
+        failed_fields=tuple(parsed.missing_field_information.absent_fields),
+    )
+
+
 def _human_capture_evidence(
     human_business_context: HumanBusinessContext | None,
 ) -> confidence_report.HumanCaptureEvidence | None:
@@ -1108,6 +1333,15 @@ def run(
     given = _RunInputs(
         intake=intake, identity=identity, human_business_context=human_business_context
     )
+    # A DURATION, not a timestamp, and `time.monotonic` rather than the injected
+    # clock. `Sources.now` exists so the ARTIFACT is reproducible — two runs of
+    # one document must produce equal evidence — and `recorded_at` is still the
+    # only clock any artifact field sees. This number never enters the artifact:
+    # it is `processing_time_ms` on the calibration row, where a real elapsed
+    # time is the whole point and an injected constant would be a fabricated
+    # measurement (Law 24). A monotonic source is used because a wall clock can
+    # step backwards and report a negative duration.
+    started = time.monotonic()
 
     try:
         cleaned = cleaner.clean_artifact(
@@ -1133,7 +1367,12 @@ def run(
             cleaned_document,
             media_type=intake.media_type,
             render_dpi=settings.render_dpi,
-            vision_fallback_threshold=settings.vision_fallback_threshold,
+            # `ENGINE_1_CONFIDENCE_PARAMETERS.md` #2, `ocr_vision_fallback` —
+            # *"the score below which the vision fallback replaces PaddleOCR"* —
+            # which is exactly the number `reader.read` requires. Read out of
+            # the parameters `config` parsed and validated, so there is one
+            # representation of it rather than two (F-018, Law 19).
+            vision_fallback_threshold=settings.confidence_parameters.ocr_vision_fallback,
         )
     except Exception as exc:
         return _stopped("reader", exc, preserved, given)
@@ -1164,7 +1403,7 @@ def run(
             parser=parser_output(parsed, recorded_at=recorded_at),
             confidence=confidence_output(report, unmeasured_field_scores(parsed)),
         )
-        return assembly.assemble(
+        artifact = assembly.assemble(
             parts=parts,
             identity=identity,
             source_references=intake.source_references,
@@ -1172,6 +1411,109 @@ def run(
         )
     except Exception as exc:
         raise PipelineStageError("assembly", exc, preserved) from exc
+
+    # AFTER the artifact exists, and deliberately outside every `try` above.
+    #
+    # After, because the row is keyed by `artifact.document_id` and Engine 1
+    # mints that in `assembly.assemble` (`ENGINE_1:95`, `:253`) — a row keyed by
+    # anything else could not be joined to the document it describes.
+    #
+    # Outside, because this is a calibration record and NOT a stage: it produces
+    # no part of the Document Evidence Object, and wrapping it in a
+    # `PipelineStageError` would name a sub-engine that does not exist. If the
+    # store cannot be written the exception raises as itself, loudly (Law 11) —
+    # a document processed but silently unrecorded is a hole in the very count
+    # calibration will later divide by.
+    _record(
+        measurement_row(
+            artifact,
+            reading,
+            parsed,
+            classification.classify(reading, parsed),
+            processing_time_ms=(time.monotonic() - started) * _MILLISECONDS_PER_SECOND,
+        ),
+        settings.measurement_store,
+    )
+    return artifact
+
+
+def _record(row: measurement.MeasurementRow, store: Path | None) -> None:
+    """Append `row` to the calibration store, when a deployment configured one.
+
+    `None` is "no store configured", never "do not measure": the row above was
+    built either way, from the same real signals, so a configured deployment and
+    an unconfigured one differ in where the record goes and never in what it
+    says.
+    """
+    if store is not None:
+        measurement.append(store, row)
+
+
+@contextmanager
+def _document_on_disk(document: bytes, *, suffix: str) -> Iterator[Path]:
+    """Materialise `document` as a file and yield its path. Remove it after.
+
+    EVERY BYTE IS ON THE DEVICE BEFORE THE PATH IS HANDED OVER, and that is the
+    whole reason this is a function rather than four lines inline.
+
+    THE MECHANISM, MEASURED, AND IT IS THE OPPOSITE WAY ROUND FROM THE OBVIOUS
+    GUESS. `tempfile.NamedTemporaryFile` wraps a `BufferedWriter` whose buffer
+    is `io.DEFAULT_BUFFER_SIZE` — 8192 bytes on this interpreter. A LARGE write
+    is written straight through and is never at risk; a SMALL one is held
+    entirely in user-space memory and the file on disk is EMPTY. Measured here,
+    by bisection, on CPython 3.12.13:
+
+        write     100 bytes -> 0 bytes on disk before flush
+        write    4096 bytes -> 0 bytes on disk before flush
+        write    4097 bytes -> 4097 bytes on disk before flush
+        write 1048576 bytes -> 1048576 bytes on disk before flush
+
+    So the dangerous payload is a SMALL one, and small is what this pipeline
+    actually carries: the three-line text-layer invoice this repository's own
+    fixtures build is 1118 bytes. A reader handed that path unflushed opens a
+    ZERO-BYTE file, and a zero-byte PDF reads as a damaged document — a false
+    statement about the user's file, which is the fabrication
+    `ENGINE_1_INPUT_ENGINE_RULES.md:337` forbids.
+
+    `flush()` moves the bytes from Python's buffer to the operating system;
+    `os.fsync()` moves them from the operating system's cache to the device.
+    Both, in that order, before `handle.name` becomes a path anyone can open.
+
+    WHAT CHANGED, AND THE TRADE-OFF, STATED RATHER THAN HIDDEN. The old shape
+    took `Path(handle.name)` inside the `with` and called `parser.parse` after
+    it, so the context manager's own close had already flushed. That was
+    correct — and correct only for as long as nobody moved the parse call
+    inside the block. `semgrep`'s
+    `python.lang.correctness.tempfile.tempfile-without-flush` marked it ERROR at
+    `pipeline.py:1200`, which was a true statement about the SHAPE and not about
+    that day's behaviour. A `# nosemgrep` would have silenced the shape and kept
+    the fragility.
+
+    The path is now yielded while the handle is still OPEN, which is what makes
+    the flush and the fsync load-bearing instead of belt-and-braces — and
+    therefore what makes
+    `test_a_document_smaller_than_the_write_buffer_reaches_the_reader_whole` a
+    real regression test: delete either line and it goes red. The cost is that
+    the file is reopened by name while a write handle is still held, which is
+    fine on POSIX and is not on Windows, where `NamedTemporaryFile` takes an
+    exclusive share. Every gate in `.github/workflows` runs `ubuntu-24.04`, so
+    nothing this repository measures is affected; a future Windows target would
+    have to close before yielding and would lose the test with it.
+
+    `delete=False` with an explicit `unlink` rather than the context manager's
+    own deletion, so the removal happens when THIS function says so rather than
+    when the handle closes. The file is removed whether the body returns or
+    raises.
+    """
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as handle:
+        handle.write(document)
+        handle.flush()
+        os.fsync(handle.fileno())
+        temp_path = Path(handle.name)
+        try:
+            yield temp_path
+        finally:
+            temp_path.unlink(missing_ok=True)
 
 
 def _parse_document(
@@ -1193,17 +1535,10 @@ def _parse_document(
     payload. Passing it is defect 1's fix: `parser` maps `reader`'s values
     instead of only laying out a document it opened for itself.
     """
-    with tempfile.NamedTemporaryFile(
-        suffix=_TEMP_FILE_SUFFIX[intake.media_type], delete=False
-    ) as handle:
-        handle.write(document)
-        temp_path = Path(handle.name)
-    try:
+    with _document_on_disk(document, suffix=_TEMP_FILE_SUFFIX[intake.media_type]) as temp_path:
         return parser.parse(
             temp_path,
             source_reference=intake.source_references[0],
             extracted_regions=regions,
             table_structure=settings.table_structure,
         )
-    finally:
-        temp_path.unlink(missing_ok=True)

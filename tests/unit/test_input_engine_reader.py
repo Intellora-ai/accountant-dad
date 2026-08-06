@@ -64,6 +64,7 @@ import pytest
 from authored_source import authored_path, authored_source, authored_tree
 from PIL import Image
 
+from accountant_dad import pdf_backend
 from accountant_dad.engines.input_engine import reader
 
 # ── which tests can run here ──────────────────────────────────────────────
@@ -442,14 +443,23 @@ def test_render_pdf_pages_declares_pdf_the_callers_dpi_and_png_to_pymupdf(
     real, unmocked PyMuPDF call - every one of the three still runs for real
     underneath (`CLAUDE.md` §J.6/§J.7 - fake only at the narrowest I/O edge,
     and even here nothing is faked, only observed on the way through).
+
+    THE SPY MOVED WITH THE LITERALS (F-001). `reader` no longer writes 'pdf' or
+    'png' anywhere: `accountant_dad.pdf_backend` owns every PyMuPDF option
+    string, which is what makes the library replaceable at all. So the recorder
+    now wraps the ADAPTER's own handle on PyMuPDF, and the assertion is
+    unchanged in what it proves — that a real `reader._render_pdf_pages` call,
+    with the caller's DPI, reaches the real PyMuPDF with exactly 'pdf', that
+    DPI and 'png'. Reader's path is still the thing under test; only the place
+    the literals live has changed.
     """
     filetype_calls: list[str] = []
     dpi_calls: list[int] = []
     format_calls: list[str] = []
-    real_open_pdf = reader._open_pdf
+    real_open_stream = pdf_backend._open_stream
 
     class _RecordedPixmap:
-        def __init__(self, real: reader._Pixmap) -> None:
+        def __init__(self, real: pdf_backend._Pixmap) -> None:
             self._real = real
 
         def tobytes(self, output: str) -> bytes:
@@ -457,7 +467,7 @@ def test_render_pdf_pages_declares_pdf_the_callers_dpi_and_png_to_pymupdf(
             return self._real.tobytes(output)
 
     class _RecordedPage:
-        def __init__(self, real: reader._PdfPage) -> None:
+        def __init__(self, real: pdf_backend._Page) -> None:
             self._real = real
 
         def get_pixmap(self, *, dpi: int) -> _RecordedPixmap:
@@ -465,7 +475,7 @@ def test_render_pdf_pages_declares_pdf_the_callers_dpi_and_png_to_pymupdf(
             return _RecordedPixmap(self._real.get_pixmap(dpi=dpi))
 
     class _RecordedDocument:
-        def __init__(self, real: reader._PdfDocument) -> None:
+        def __init__(self, real: pdf_backend._Document) -> None:
             self._real = real
 
         @property
@@ -478,11 +488,11 @@ def test_render_pdf_pages_declares_pdf_the_callers_dpi_and_png_to_pymupdf(
         def close(self) -> None:
             self._real.close()
 
-    def spy_open_pdf(*, stream: bytes, filetype: str) -> _RecordedDocument:
+    def spy_open_stream(*, stream: bytes, filetype: str) -> _RecordedDocument:
         filetype_calls.append(filetype)
-        return _RecordedDocument(real_open_pdf(stream=stream, filetype=filetype))
+        return _RecordedDocument(real_open_stream(stream=stream, filetype=filetype))
 
-    monkeypatch.setattr(reader, "_open_pdf", spy_open_pdf)
+    monkeypatch.setattr(pdf_backend, "_open_stream", spy_open_stream)
 
     pages = reader._render_pdf_pages(an_image_only_pdf(), render_dpi=FIXTURE_DPI)
 
@@ -969,8 +979,13 @@ def test_the_reader_imports_only_the_approved_stack() -> None:
         "enum",
         "functools",
         "typing",
-        # TECHNOLOGY_STACK.md, Engine 1
-        "pymupdf",
+        # TECHNOLOGY_STACK.md, Engine 1 — reached through the PDF Engine, never
+        # directly. This entry was `pymupdf` until F-001, and the swap is the
+        # whole point of that ruling: *"Engine 1 never depends directly on
+        # PyMuPDF."* If `pymupdf` ever reappears in this set, that ruling has
+        # been undone, and this test is one of the two places it shows
+        # (`test_pdf_backend.py` sweeps the whole engine for the same thing).
+        "accountant_dad",
         # transitive requirements of the approved two, for decoding and arrays
         "numpy",
         "PIL",
