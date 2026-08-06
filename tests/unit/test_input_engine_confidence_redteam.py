@@ -47,7 +47,6 @@ from __future__ import annotations
 import ast
 import dataclasses
 import inspect
-import os
 import pathlib
 import re
 from datetime import UTC, datetime
@@ -64,18 +63,9 @@ from accountant_dad.artifacts.evidence import (
     SourceType,
 )
 from accountant_dad.confidence import MAX, MIN
-from accountant_dad.engines.input_engine import config as config_module
 from accountant_dad.engines.input_engine import confidence_report as recorder_module
+from accountant_dad.engines.input_engine import config as config_module
 from accountant_dad.engines.input_engine.cleaner import CleanedDocument, PreservationStatus
-from accountant_dad.engines.input_engine.config import (
-    PARAMETER_CATALOG,
-    ConfidenceParameters,
-    ConfigurationError,
-    DocumentScoreRule,
-    ParameterSpec,
-    load_confidence_parameters,
-    load_confidence_parameters_from_environment,
-)
 from accountant_dad.engines.input_engine.confidence_report import (
     CAPTURE_FIDELITY_FIELD_NAME,
     HumanCaptureEvidence,
@@ -85,8 +75,21 @@ from accountant_dad.engines.input_engine.confidence_report import (
     capture_fidelity,
     record_confidence,
 )
+from accountant_dad.engines.input_engine.config import (
+    PARAMETER_CATALOG,
+    ConfidenceParameters,
+    ConfigurationError,
+    DocumentScoreRule,
+    ParameterSpec,
+    load_confidence_parameters,
+    load_confidence_parameters_from_environment,
+)
 
 WHEN = datetime(2026, 8, 5, 9, 0, tzinfo=UTC)
+
+#: Python accepts `1_000` as an int literal, and so does `int()`. The test
+#: proves the underscore form is READ, not merely that some number came back.
+THOUSAND_WITH_UNDERSCORES = 1000
 
 HIGH = Decimal("0.9800")
 LOW = Decimal("0.0100")
@@ -792,7 +795,7 @@ def test_a_count_written_with_pythons_digit_separator_is_read_as_the_number_it_s
     loaded = load_confidence_parameters(
         a_valid_environment(**{retry_max_attempts.env_var: "1_000"})
     )
-    assert loaded.retry_max_attempts == 1000
+    assert loaded.retry_max_attempts == THOUSAND_WITH_UNDERSCORES
 
 
 @pytest.mark.parametrize(

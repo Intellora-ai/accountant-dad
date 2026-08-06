@@ -70,10 +70,11 @@ NO CLOCK, NO RANDOMNESS, NO I/O.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from accountant_dad.artifacts.clarification import (
     ClarificationPriority,
@@ -127,7 +128,14 @@ from accountant_dad.artifacts.validation import (
     ValidationFinding,
     ValidationStatus,
 )
-from accountant_dad.conformance import Enforcement, NegativeControl, Prohibition, Registry
+from accountant_dad.conformance import (
+    Enforcement,
+    Exclusion,
+    NegativeControl,
+    Prohibition,
+    Registry,
+    Uncovered,
+)
 from accountant_dad.identity import ArtifactId, IdentityEnvelope, ParentVersion, TransactionId
 
 # ── fixed material ────────────────────────────────────────────────────────
@@ -142,6 +150,12 @@ _MOMENT = datetime(2026, 8, 3, 12, 0, tzinfo=UTC)
 #: One confidence, everywhere a clean payload needs one. Four places, the scale
 #: `confidence.py` fixed; Decimal, because float is refused at the type.
 _CONFIDENCE = Decimal("0.9000")
+
+#: A reading the engine is NOT sure about. Used only where the point of the
+#: payload is that a low score stays low — `NO_UPGRADED_SCORE` needs a value
+#: whose provenance and report score can differ, and two identical numbers
+#: cannot differ. Deliberately far from `_CONFIDENCE` so the gap is visible.
+_UNSURE = Decimal("0.4000")
 
 #: A real UUID, hyphenated, that `decision.py`'s INV-9 pattern matches. Used as
 #: hostile input, never as an identity.
@@ -545,6 +559,35 @@ def _review_only(
     )
 
 
+def _control(
+    prohibition: str, *, clean: Callable[[], object], violating: Callable[[], object]
+) -> NegativeControl:
+    """One control, declaring how a payload in THIS inventory gets refused.
+
+    `ValidationError`, and nothing else. Every payload below is a pydantic
+    model, so a refusal arrives as a `ValidationError` and anything else that
+    escapes is a crash on the way to the check — a validator reaching into a
+    key that is no longer there, a builder calling a helper that moved.
+
+    Measured, not assumed: deleting the missing-score branch of `evidence.py`
+    left `scores[field.name]` raising `KeyError`, and before this declaration
+    existed the conformance gate reported that as
+
+        ENGINE_1:245/every-reading-carries-its-confidence -> enforced
+        :: refused by KeyError                                  GATE: GREEN
+
+    Deleting an enforcement made the gate greener. It now goes red, because a
+    `KeyError` is no longer one of the ways this payload can be refused.
+
+    Declared in ONE place rather than 43 times (Law 14) — and read back by a
+    test over the live `CONTROLS`, so a control that reaches `NegativeControl`
+    by some other route and keeps the permissive default is refused there.
+    """
+    return NegativeControl(
+        prohibition, clean=clean, violating=violating, refusal=(ValidationError,)
+    )
+
+
 IMMUTABLE = "SYSTEM_INVARIANTS:142/an-artifact-is-immutable-after-creation"
 LINEAGE = "SYSTEM_INVARIANTS:150/a-later-version-records-its-parents"
 NO_IDENTIFIER = "SYSTEM_INVARIANTS:215/no-identifier-in-artifact-text"
@@ -555,6 +598,17 @@ EXTRACTED_NOT_HUMAN = "ENGINE_1:233/extracted-evidence-never-claims-a-human-orig
 READING_IS_SCORED = "ENGINE_1:245/every-reading-carries-its-confidence"
 THREE_STATES = "ENGINE_1:569/absent-zero-and-unreadable-stay-distinct"
 MARKER_HAS_A_REASON = "ENGINE_1:626/every-uncertainty-marker-carries-a-reason"
+
+# ── Engine 1's communication contract ─────────────────────────────────────
+#
+# `COMMUNICATION_RULES_INPUT_ENGINE.md` governs the only engine that is built
+# and running, and until now not one line of it was in this inventory. The
+# contract for live code was the one contract nothing checked.
+NO_CONCLUSIONS = "INPUT_ENGINE:57/evidence-carries-observations-never-interpretations"
+VALUE_IS_TRACEABLE = "INPUT_ENGINE:113/every-extracted-value-carries-source-and-score"
+NO_UPGRADED_SCORE = "INPUT_ENGINE:137/low-confidence-never-becomes-a-higher-score"
+PROVENANCE_INTACT = "INPUT_ENGINE:158/all-six-provenance-attributes-cross-intact"
+NOTE_RAISES_NOTHING = "ENGINE_1:289/a-human-note-never-raises-reliability-by-existing"
 
 UNKNOWNS_INTACT = "ENGINE_2:645/unknowns-are-carried-intact"
 RESULT_REPORTS = "ENGINE_2:350/no-result-reports-nothing"
@@ -643,6 +697,47 @@ PROHIBITIONS: tuple[Prohibition, ...] = (
         "Every uncertainty marker carries a reason.",
         "docs/ENGINE_1_INPUT_ENGINE_RULES.md:626",
         "Confidence Report",
+    ),
+    # ── Engine 1's communication contract ─────────────────────────────────
+    #
+    # WHAT THESE FOUR ARE ABOUT, AND WHAT THEY ARE NOT ABOUT.
+    #     Each is a structural property of the SCHEMA — the artifact has no
+    #     field a conclusion could sit in, no way to drop a provenance
+    #     attribute, no way to state a score the reading itself does not carry.
+    #     That is real, and it is not the same claim as "the Input Engine obeys
+    #     this contract". A schema that refuses a bad payload says nothing about
+    #     whether the engine ever builds a good one.
+    #
+    #     The second claim needs the real engine, which this module may not
+    #     import: `conformance_registry` runs in the `conformance` job, which
+    #     installs `requirements-ci.txt` only, and Engine 1 needs OpenCV,
+    #     PyMuPDF and Docling. So the against-the-real-artifact predicates live
+    #     in `tests/unit/test_conformance_registry.py`, under `unit tests`,
+    #     where those dependencies exist. They are RED. See that module.
+    _predicate(
+        NO_CONCLUSIONS,
+        "It does not send **interpretations**.",
+        "docs/COMMUNICATION_RULES_INPUT_ENGINE.md:57",
+        "Document Evidence Object",
+    ),
+    _predicate(
+        VALUE_IS_TRACEABLE,
+        "Every extracted value must maintain:",
+        "docs/COMMUNICATION_RULES_INPUT_ENGINE.md:113",
+        "Detected Field",
+    ),
+    _predicate(
+        NO_UPGRADED_SCORE,
+        "An upgraded confidence score.",
+        "docs/COMMUNICATION_RULES_INPUT_ENGINE.md:137",
+        "Document Evidence Object",
+    ),
+    _predicate(
+        PROVENANCE_INTACT,
+        "**Evidence provenance crosses intact** — Source Type, Source ID, Evidence "
+        "Reference, Timestamp, Confidence and Corroborated travel with every fact",
+        "docs/COMMUNICATION_RULES_INPUT_ENGINE.md:158",
+        "Provenance",
     ),
     # ── Engine 2 ──────────────────────────────────────────────────────────
     _predicate(
@@ -821,6 +916,23 @@ PROHIBITIONS: tuple[Prohibition, ...] = (
         "P4",
     ),
     _review_only(
+        NOTE_RAISES_NOTHING,
+        "A human note must never increase Evidence Reliability simply because it exists.",
+        "docs/ENGINE_1_INPUT_ENGINE_RULES.md:289",
+        "Document Evidence Object",
+        # The other half of `COMMUNICATION_RULES_INPUT_ENGINE.md:158` item 8,
+        # and it is a DIFFERENT kind of claim from the provenance half above.
+        # "Raised" is a comparison between two runs of the same document — one
+        # with the note, one without. A single artifact carries one set of
+        # scores and looks identical either way, so no payload can witness it.
+        #
+        # P3 is when the comparison becomes runnable in CI: `BLUEPRINT:136`
+        # puts one hardcoded document end to end there, which is the first
+        # point a with-note/without-note pair exists as a CI result rather than
+        # as a local experiment (Law 44).
+        "P3",
+    ),
+    _review_only(
         "ENGINE_2:852/facts-never-accounting-conclusions",
         "The Understanding Engine sends facts, never accounting conclusions.",
         "docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:852",
@@ -879,14 +991,14 @@ CONTROLS: tuple[NegativeControl, ...] = (
     #
     # The violating half writes a field back to the value it already holds, so
     # the ONLY difference from the clean half is that a write was attempted.
-    NegativeControl(IMMUTABLE, clean=_evidence, violating=lambda: _mutate(_evidence())),
-    NegativeControl(IMMUTABLE, clean=_understanding, violating=lambda: _mutate(_understanding())),
-    NegativeControl(IMMUTABLE, clean=_decision, violating=lambda: _mutate(_decision())),
-    NegativeControl(IMMUTABLE, clean=_clarification, violating=lambda: _mutate(_clarification())),
-    NegativeControl(IMMUTABLE, clean=_validation, violating=lambda: _mutate(_validation())),
-    NegativeControl(IMMUTABLE, clean=_execution, violating=lambda: _mutate(_execution())),
+    _control(IMMUTABLE, clean=_evidence, violating=lambda: _mutate(_evidence())),
+    _control(IMMUTABLE, clean=_understanding, violating=lambda: _mutate(_understanding())),
+    _control(IMMUTABLE, clean=_decision, violating=lambda: _mutate(_decision())),
+    _control(IMMUTABLE, clean=_clarification, violating=lambda: _mutate(_clarification())),
+    _control(IMMUTABLE, clean=_validation, violating=lambda: _mutate(_validation())),
+    _control(IMMUTABLE, clean=_execution, violating=lambda: _mutate(_execution())),
     # ── lineage ───────────────────────────────────────────────────────────
-    NegativeControl(
+    _control(
         LINEAGE,
         clean=lambda: _envelope(
             version=2,
@@ -895,7 +1007,7 @@ CONTROLS: tuple[NegativeControl, ...] = (
         violating=lambda: _envelope(version=2, parent_versions=()),
     ),
     # ── INV-9, at the two places the invariant names first ────────────────
-    NegativeControl(
+    _control(
         NO_IDENTIFIER,
         clean=lambda: _decision(supporting_reasoning="An earlier entry treated this the same way."),
         violating=lambda: _decision(
@@ -903,13 +1015,13 @@ CONTROLS: tuple[NegativeControl, ...] = (
             "choose the same treatment."
         ),
     ),
-    NegativeControl(
+    _control(
         NO_IDENTIFIER,
         clean=lambda: _journal_line(ledger="Office Equipment"),
         violating=lambda: _journal_line(ledger=f"Office Equipment {_LEAKED_IDENTIFIER}"),
     ),
     # ── INV-10: two things claiming one name ──────────────────────────────
-    NegativeControl(
+    _control(
         ONE_OWNER,
         clean=lambda: _structured_document(
             detected_fields=(_detected_field(name="Amount"), _detected_field(name="Vendor"))
@@ -918,7 +1030,7 @@ CONTROLS: tuple[NegativeControl, ...] = (
             detected_fields=(_detected_field(name="Amount"), _detected_field(name="Amount"))
         ),
     ),
-    NegativeControl(
+    _control(
         ONE_OWNER,
         clean=lambda: _confidence_report(
             confidence_scores=(
@@ -934,7 +1046,7 @@ CONTROLS: tuple[NegativeControl, ...] = (
         ),
     ),
     # ── INV-11: a human claim filed as anything else ──────────────────────
-    NegativeControl(
+    _control(
         ORIGINS_UNMERGED,
         clean=lambda: HumanBusinessContext(
             original_user_text="bought a laptop for the office",
@@ -946,7 +1058,7 @@ CONTROLS: tuple[NegativeControl, ...] = (
         ),
     ),
     # ── Engine 1 ──────────────────────────────────────────────────────────
-    NegativeControl(
+    _control(
         EXTRACTED_NOT_HUMAN,
         clean=lambda: _structured_document(
             detected_fields=(_detected_field(provenance=_provenance()),)
@@ -955,20 +1067,20 @@ CONTROLS: tuple[NegativeControl, ...] = (
             detected_fields=(_detected_field(provenance=_provenance(source_type=SourceType.HUMAN)),)
         ),
     ),
-    NegativeControl(
+    _control(
         READING_IS_SCORED,
         clean=_evidence,
         # The reading survives; only its score is withdrawn.
         violating=lambda: _evidence(confidence_report=_confidence_report(confidence_scores=())),
     ),
-    NegativeControl(
+    _control(
         THREE_STATES,
         # "0" is a zero that was read; None would be unreadable. "" collapses
         # the two, and the collapse is invisible downstream.
         clean=lambda: _detected_field(value="0"),
         violating=lambda: _detected_field(value=""),
     ),
-    NegativeControl(
+    _control(
         MARKER_HAS_A_REASON,
         # WHAT THIS CONTROL DOES AND DOES NOT ESTABLISH. `""` is refused. A
         # PADDED blank — `"   "` — is ACCEPTED, because `evidence.py` builds its
@@ -984,8 +1096,73 @@ CONTROLS: tuple[NegativeControl, ...] = (
         clean=lambda: UncertaintyMarker(subject="Amount", reason="the last digit is smudged"),
         violating=lambda: UncertaintyMarker(subject="Amount", reason=""),
     ),
+    # ── Engine 1's communication contract ─────────────────────────────────
+    _control(
+        NO_CONCLUSIONS,
+        # `extra="forbid"` is the enforcement, and it is the strongest kind
+        # available: there is nowhere in the artifact a conclusion could sit.
+        # `COMMUNICATION_RULES_INPUT_ENGINE.md:71` gives the test the field name
+        # is chosen from — a sentence that could be "wrong about the business"
+        # rather than "wrong about the document" is an interpretation.
+        clean=_evidence,
+        violating=lambda: _evidence(transaction_type="Purchase of machinery"),
+    ),
+    _control(
+        VALUE_IS_TRACEABLE,
+        # The SOURCE half of Rule 4's three. `provenance` is required, so a
+        # reading cannot be emitted with nowhere it came from.
+        #
+        # The CONFIDENCE half is `READING_IS_SCORED` above. The UNCERTAINTY half
+        # is enforced NOWHERE — `uncertainty_markers` may legally be empty, so
+        # an artifact can state that no value is doubtful without ever having
+        # asked. Named here rather than papered over; see the excluded-clause
+        # list for the debt it belongs to.
+        clean=_detected_field,
+        violating=lambda: DetectedField.model_validate({"name": "Amount", "value": "1180.00"}),
+    ),
+    _control(
+        NO_UPGRADED_SCORE,
+        # Both halves read the SAME value at the SAME low confidence. The only
+        # difference is what the Confidence Report claims about it: 0.4000 in
+        # the clean half, 0.9000 in the violating one. The upgrade has no new
+        # evidence behind it — nothing about the reading changed — which is
+        # exactly the thing Rule 5 forbids low confidence from producing.
+        clean=lambda: _evidence(
+            structured_document=_structured_document(
+                detected_fields=(_detected_field(provenance=_provenance(confidence=_UNSURE)),)
+            ),
+            confidence_report=_confidence_report(
+                confidence_scores=(FieldConfidence(field_name="Amount", confidence=_UNSURE),)
+            ),
+        ),
+        violating=lambda: _evidence(
+            structured_document=_structured_document(
+                detected_fields=(_detected_field(provenance=_provenance(confidence=_UNSURE)),)
+            ),
+            confidence_report=_confidence_report(
+                confidence_scores=(FieldConfidence(field_name="Amount", confidence=_CONFIDENCE),)
+            ),
+        ),
+    ),
+    _control(
+        PROVENANCE_INTACT,
+        # `corroborated` is the attribute chosen deliberately: it is the one
+        # with a single legal member, so dropping it looks harmless and costs
+        # nothing to omit. If any of the six can go missing quietly, that one
+        # can. It cannot.
+        clean=_provenance,
+        violating=lambda: Provenance.model_validate(
+            {
+                "source_type": SourceType.DOCUMENT,
+                "source_id": "invoice-2026-0041.pdf",
+                "evidence_reference": "page 1, line 4",
+                "timestamp": _MOMENT,
+                "confidence": _CONFIDENCE,
+            }
+        ),
+    ),
     # ── Engine 2 ──────────────────────────────────────────────────────────
-    NegativeControl(
+    _control(
         UNKNOWNS_INTACT,
         clean=lambda: _understanding(
             supporting_understanding_data=_results_raising_an_unknown(),
@@ -996,14 +1173,14 @@ CONTROLS: tuple[NegativeControl, ...] = (
             identified_unknowns=(),
         ),
     ),
-    NegativeControl(
+    _control(
         RESULT_REPORTS,
         clean=lambda: TransactionUnderstandingResult(
             confidence=_CONFIDENCE, identified_event=(_fact(),)
         ),
         violating=lambda: TransactionUnderstandingResult(confidence=_CONFIDENCE),
     ),
-    NegativeControl(
+    _control(
         DESCRIPTION_QUOTES,
         clean=lambda: ItemUnderstandingResult(
             confidence=_CONFIDENCE, descriptions=(_fact(stated_text="Laptop, 1 unit"),)
@@ -1012,21 +1189,21 @@ CONTROLS: tuple[NegativeControl, ...] = (
             confidence=_CONFIDENCE, descriptions=(_fact(stated_text=None),)
         ),
     ),
-    NegativeControl(
+    _control(
         NO_VOCABULARY,
         clean=lambda: TransactionStory(narrative="The buyer received twelve units and paid."),
         violating=lambda: TransactionStory(
             narrative="The buyer received twelve units: a fixed asset purchase."
         ),
     ),
-    NegativeControl(
+    _control(
         TWO_READINGS,
         clean=_conflict,
         violating=lambda: _conflict(
             competing_readings=(_fact(statement="The printed total reads 1,180.00."),)
         ),
     ),
-    NegativeControl(
+    _control(
         TWO_READINGS,
         # Two readings that say the same thing do not disagree, so nothing here
         # is a conflict — the label without the substance.
@@ -1038,12 +1215,12 @@ CONTROLS: tuple[NegativeControl, ...] = (
             )
         ),
     ),
-    NegativeControl(
+    _control(
         NO_RESOLUTION,
         clean=_conflict,
         violating=lambda: _conflict(resolution="the printed total wins"),
     ),
-    NegativeControl(
+    _control(
         CONFIDENCE_CAPPED,
         clean=lambda: _assessment(
             evidence_confidence=Decimal("0.6000"), understanding_confidence=Decimal("0.6000")
@@ -1052,7 +1229,7 @@ CONTROLS: tuple[NegativeControl, ...] = (
             evidence_confidence=Decimal("0.6000"), understanding_confidence=Decimal("0.9000")
         ),
     ),
-    NegativeControl(
+    _control(
         CONFIDENCE_CAPPED,
         # The same rule at the second place it is enforced: a Result more
         # certain than the evidence the whole artifact rests on.
@@ -1069,7 +1246,7 @@ CONTROLS: tuple[NegativeControl, ...] = (
             )
         ),
     ),
-    NegativeControl(
+    _control(
         NO_FREE_CONFIDENCE,
         # One Result sits at 0.7000. Story Builder introduces no evidence, so
         # 0.8000 would be certainty it was never handed — and 0.8000 is still
@@ -1083,68 +1260,68 @@ CONTROLS: tuple[NegativeControl, ...] = (
             confidence_assessment=_assessment(understanding_confidence=Decimal("0.8000")),
         ),
     ),
-    NegativeControl(
+    _control(
         FACT_CITES_EVIDENCE,
         clean=lambda: _fact(evidence_references=("page 1, line 4",)),
         violating=lambda: _fact(evidence_references=()),
     ),
     # ── Engine 3 ──────────────────────────────────────────────────────────
-    NegativeControl(
+    _control(
         PAISA,
         clean=lambda: _journal_line(amount=Decimal("1180.00")),
         violating=lambda: _journal_line(amount=Decimal("1180.005")),
     ),
-    NegativeControl(
+    _control(
         PAISA,
         # float is refused rather than converted, because the conversion IS the
         # loss and it would happen before any check could object.
         clean=lambda: _journal_line(amount=Decimal("1180.00")),
         violating=lambda: _journal_line(amount=1180.00),
     ),
-    NegativeControl(
+    _control(
         BALANCE,
         clean=_decision,
         violating=lambda: _decision(
             credit_entries=(_journal_line(ledger="Bank", amount=Decimal("1000.00")),)
         ),
     ),
-    NegativeControl(
+    _control(
         COMPLETE_POSTS,
         # Both halves balance. The empty one balances VACUOUSLY — 0 == 0 — and
         # would sail through a naive conservation check while asserting nothing.
         clean=_decision,
         violating=lambda: _decision(debit_entries=(), credit_entries=()),
     ),
-    NegativeControl(
+    _control(
         INCOMPLETE_NAMES_IT,
         clean=_incomplete_decision,
         violating=lambda: _incomplete_decision(unresolved_doubts=()),
     ),
     # ── Engine 4 ──────────────────────────────────────────────────────────
-    NegativeControl(
+    _control(
         NO_ANSWER_FIELD,
         # `extra="forbid"` is what refuses this. There is nowhere in the
         # artifact an answer could sit, so the Request cannot carry a guess.
         clean=_clarification,
         violating=lambda: _clarification(answer="the goods arrived on the 3rd"),
     ),
-    NegativeControl(
+    _control(
         BLANK_NAMES_NOTHING,
         clean=lambda: _clarification(affected_decision="the accounting period of the entry"),
         violating=lambda: _clarification(affected_decision="   "),
     ),
-    NegativeControl(
+    _control(
         REQUEST_CITES_EVIDENCE,
         clean=lambda: _clarification(supporting_evidence_references=("page 1, line 4",)),
         violating=lambda: _clarification(supporting_evidence_references=()),
     ),
     # ── Engine 5 ──────────────────────────────────────────────────────────
-    NegativeControl(
+    _control(
         NO_REPAIR_FIELD,
         clean=_validation,
         violating=lambda: _validation(corrected_ledger="Office Equipment"),
     ),
-    NegativeControl(
+    _control(
         NO_APPROVAL_ON_CRITICAL,
         # A High finding is left standing in the clean half deliberately: the
         # difference between the two payloads is the SEVERITY, not the presence
@@ -1154,7 +1331,7 @@ CONTROLS: tuple[NegativeControl, ...] = (
             validation_findings=(_finding(blocking_severity=Severity.CRITICAL),)
         ),
     ),
-    NegativeControl(
+    _control(
         REFUSAL_SAYS_WHY,
         clean=lambda: _validation(
             validation_status=ValidationStatus.REJECTED, validation_findings=(_finding(),)
@@ -1163,12 +1340,12 @@ CONTROLS: tuple[NegativeControl, ...] = (
             validation_status=ValidationStatus.REJECTED, validation_findings=()
         ),
     ),
-    NegativeControl(
+    _control(
         FINDING_SHOWS_EVIDENCE,
         clean=lambda: _finding(supporting_evidence_references=("page 1, line 4",)),
         violating=lambda: _finding(supporting_evidence_references=()),
     ),
-    NegativeControl(
+    _control(
         BLAME_IS_UPSTREAM,
         # Validation blaming itself leaves a finding nobody can act on: the
         # engine that found the defect is the one forbidden to repair it.
@@ -1176,12 +1353,12 @@ CONTROLS: tuple[NegativeControl, ...] = (
         violating=lambda: _finding(responsible_engine="Validation"),
     ),
     # ── Engine 6 ──────────────────────────────────────────────────────────
-    NegativeControl(
+    _control(
         NO_SELF_CORRECTION,
         clean=lambda: _execution(corrects_execution_result=ExecutionId(_uuid("9"))),
         violating=lambda: _execution(corrects_execution_result=ExecutionId(_uuid("6"))),
     ),
-    NegativeControl(
+    _control(
         AUDIT_POINTS_HOME,
         clean=lambda: _execution(
             audit_reference=AuditReference(execution_id=ExecutionId(_uuid("6")))
@@ -1190,7 +1367,7 @@ CONTROLS: tuple[NegativeControl, ...] = (
             audit_reference=AuditReference(execution_id=ExecutionId(_uuid("9")))
         ),
     ),
-    NegativeControl(
+    _control(
         TRANSPORT_ONLY,
         clean=_execution,
         violating=lambda: _execution(accounting_treatment="Purchase of office equipment"),

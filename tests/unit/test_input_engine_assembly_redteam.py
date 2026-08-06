@@ -219,18 +219,28 @@ def parts_carrying(
     detected_tables: tuple[DetectedTable, ...] = (),
     confidence_scores: tuple[FieldConfidence, ...] = (),
     uncertainty_markers: tuple[UncertaintyMarker, ...] = (),
-    reliability_information: str = "scan legible; totals block unclear",
-    risky_fields: tuple[str, ...] = (),
+    confidence: ConfidenceOutput | None = None,
 ) -> SubEngineOutputs:
+    """The four parts almost every test varies, flat; anything else via
+    `confidence=a_confidence_output(...)`.
+
+    `reliability_information` and `risky_fields` used to sit here too, which put
+    six parameters on one builder. They are passed at two call sites out of
+    twenty-seven, so they moved behind the escape hatch rather than being
+    silenced with a suppression — this repository's suppression budget is a
+    ratchet and spending one to keep a convenience is the wrong trade.
+    """
+    if confidence is not None and (confidence_scores or uncertainty_markers):
+        # Both routes at once would make the flat arguments silently useless.
+        raise TypeError("pass the flat confidence arguments or `confidence=`, not both")
     return SubEngineOutputs(
         cleaner=a_cleaner_output(),
         reader=a_reader_output(),
         parser=a_parser_output(detected_fields=detected_fields, detected_tables=detected_tables),
-        confidence=a_confidence_output(
+        confidence=confidence
+        or a_confidence_output(
             confidence_scores=confidence_scores,
             uncertainty_markers=uncertainty_markers,
-            reliability_information=reliability_information,
-            risky_fields=risky_fields,
         ),
     )
 
@@ -730,7 +740,7 @@ def test_reliability_information_crosses_assembly_byte_for_byte() -> None:
     """
     stated = "  scan legible;\n\ttotals block unclear  "
     result = assemble(
-        parts=parts_carrying(reliability_information=stated),
+        parts=parts_carrying(confidence=a_confidence_output(reliability_information=stated)),
         identity=an_identity(),
         source_references=("upload:x.pdf",),
     )
@@ -745,7 +755,7 @@ def test_a_duplicated_risky_field_is_refused_rather_than_silently_deduplicated()
     """
     with pytest.raises(ValidationError):
         assemble(
-            parts=parts_carrying(risky_fields=("Amount", "Amount")),
+            parts=parts_carrying(confidence=a_confidence_output(risky_fields=("Amount", "Amount"))),
             identity=an_identity(),
             source_references=("upload:x.pdf",),
         )

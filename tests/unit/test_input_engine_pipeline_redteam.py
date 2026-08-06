@@ -72,6 +72,7 @@ import pymupdf
 import pytest
 
 from accountant_dad.artifacts.evidence import (
+    ConfidenceReport,
     Corroborated,
     DocumentEvidenceObject,
     HumanBusinessContext,
@@ -352,6 +353,7 @@ def observed_run() -> StagesObserved:
             identity=an_identity(),
             settings=a_pipeline_settings(),
             human_business_context=a_human_business_context(),
+            recorded_at=WHEN,
         )
     return observed
 
@@ -399,7 +401,10 @@ def substituted_cleaning_run() -> StagesObserved:
         _install_spies(patch, observed)
         patch.setattr(cleaner, "clean_artifact", substituting_clean)
         observed.result = pipeline.run(
-            intake, identity=an_identity(), settings=a_pipeline_settings()
+            intake,
+            identity=an_identity(),
+            settings=a_pipeline_settings(),
+            recorded_at=WHEN,
         )
     return observed
 
@@ -425,7 +430,9 @@ def test_a_scanned_pdf_hands_reader_the_rebuilt_cleaned_bytes_not_the_intake() -
     with pytest.MonkeyPatch.context() as patch:
         _install_spies(patch, observed)
         with pytest.raises(pipeline.PipelineStageError) as raised:
-            pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+            pipeline.run(
+                intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+            )
 
     assert raised.value.stage == "reader"
     cleaned = raised.value.preserved.cleaned
@@ -528,7 +535,9 @@ def test_the_temporary_file_is_removed_even_when_parser_refuses() -> None:
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+        )
 
     assert raised.value.stage == "parser"
     assert set(Path(tempfile.gettempdir()).glob("*.pdf")) - before == set()
@@ -595,7 +604,7 @@ def test_the_conversion_functions_give_the_same_answer_in_any_order(
 
     reversed_order = (
         pipeline.confidence_output(report),
-        pipeline.parser_output(parsed),
+        pipeline.parser_output(parsed, recorded_at=WHEN),
         pipeline.reader_output(reading),
         pipeline.region_readings(reading),
         pipeline.missing_fields(parsed),
@@ -606,7 +615,7 @@ def test_the_conversion_functions_give_the_same_answer_in_any_order(
         pipeline.missing_fields(parsed),
         pipeline.region_readings(reading),
         pipeline.reader_output(reading),
-        pipeline.parser_output(parsed),
+        pipeline.parser_output(parsed, recorded_at=WHEN),
         pipeline.confidence_output(report),
     )
 
@@ -713,7 +722,7 @@ def test_the_confidence_stage_failing_names_itself_and_keeps_all_three_before_it
         parsed_fields: tuple[confidence_report_module.ParsedField, ...],
         missing_fields: tuple[confidence_report_module.MissingField, ...],
         human_capture: confidence_report_module.HumanCaptureEvidence | None = None,
-    ) -> confidence_report_module.ConfidenceReport:
+    ) -> ConfidenceReport:
         # The full parameter list is repeated deliberately, not shortened to
         # `*args`: this stands in for the real `record_confidence`, and a
         # substitute with a looser signature would keep passing after the real
@@ -726,7 +735,9 @@ def test_the_confidence_stage_failing_names_itself_and_keeps_all_three_before_it
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(confidence_report_module, "record_confidence", refusing_record)
         with pytest.raises(pipeline.PipelineStageError) as raised:
-            pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+            pipeline.run(
+                intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+            )
 
     assert raised.value.stage == "confidence"
     assert raised.value.cause is injected
@@ -754,7 +765,9 @@ def assembly_failure() -> pipeline.PipelineStageError:
         source_references=("upload:dup.pdf", "upload:dup.pdf"),
     )
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+        )
     return raised.value
 
 
@@ -837,7 +850,9 @@ def test_a_degenerate_document_stops_at_the_named_stage_with_nothing_preserved(
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+        )
 
     assert raised.value.stage == expected_stage
     assert isinstance(raised.value.cause, expected_cause)
@@ -866,7 +881,9 @@ def test_a_valid_container_holding_nothing_is_cleaned_then_refused_not_returned_
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+        )
 
     assert raised.value.stage == "reader"
     assert isinstance(raised.value.cause, ModuleNotFoundError)
@@ -889,7 +906,9 @@ def test_a_pdf_whose_only_text_is_whitespace_is_refused_rather_than_read_as_empt
     )
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+        pipeline.run(
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+        )
 
     assert raised.value.stage == "reader"
     assert raised.value.preserved.cleaned is not None
@@ -947,7 +966,9 @@ def test_a_missing_cleaned_artifact_escapes_as_a_bare_pipeline_error_losing_the_
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(cleaner, "clean_artifact", clean_without_an_artifact)
         with pytest.raises(pipeline.PipelineError, match="no media-aware artifact") as raised:
-            pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+            pipeline.run(
+                intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+            )
 
     # it refuses rather than falling back to the intake — the property that matters
     assert "reinstate the bypass" in str(raised.value)
@@ -987,7 +1008,9 @@ def test_a_reader_failure_leaves_parser_uncalled_entirely() -> None:
     with pytest.MonkeyPatch.context() as patch:
         _install_spies(patch, observed)
         with pytest.raises(pipeline.PipelineStageError) as raised:
-            pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+            pipeline.run(
+                intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+            )
 
     assert raised.value.stage == "reader"
     assert observed.reader_document is not None
@@ -1004,7 +1027,9 @@ def test_a_cleaner_failure_leaves_both_reader_and_parser_uncalled() -> None:
     with pytest.MonkeyPatch.context() as patch:
         _install_spies(patch, observed)
         with pytest.raises(pipeline.PipelineStageError) as raised:
-            pipeline.run(intake, identity=an_identity(), settings=a_pipeline_settings())
+            pipeline.run(
+                intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+            )
 
     assert raised.value.stage == "cleaner"
     assert observed.cleaner_data == b""
@@ -1068,7 +1093,7 @@ def test_the_pipeline_returns_a_document_evidence_object_only_through_assembly(
         parts=assembly.SubEngineOutputs(
             cleaner=pipeline.cleaner_output(cleaned),
             reader=pipeline.reader_output(reading),
-            parser=pipeline.parser_output(parsed),
+            parser=pipeline.parser_output(parsed, recorded_at=WHEN),
             confidence=pipeline.confidence_output(report),
         ),
         identity=an_identity(),

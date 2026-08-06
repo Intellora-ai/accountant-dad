@@ -158,6 +158,13 @@ INVOICE_LINES: tuple[str, ...] = (
 #: `reader.read` still requires the caller to supply one (see the signature test).
 FIXTURE_DPI = 300
 
+#: RGB, not RGBA and not greyscale. The recogniser is handed a real
+#: three-channel array, never the PNG bytes PyMuPDF produced.
+RGB_CHANNELS = 3
+#: A two-page document must reach the recogniser as two pages — one page
+#: would mean the second was silently dropped.
+BOTH_PAGES = 2
+
 #: Likewise: a value chosen so the fallback does NOT trigger in tests that are
 #: about something else. It is not a product threshold and reader.py holds no
 #: copy of it.
@@ -1352,7 +1359,7 @@ def test_a_pdf_with_no_text_layer_is_rasterised_and_then_recognised(
     assert len(factory.recogniser.pages_seen) == 1
     # The rasterised page reached the recogniser as a real three-channel RGB
     # array, not as the PNG bytes PyMuPDF produced.
-    assert factory.recogniser.pages_seen[0].shape[2] == 3
+    assert factory.recogniser.pages_seen[0].shape[2] == RGB_CHANNELS
 
 
 def test_a_recognised_line_that_is_only_whitespace_is_dropped_not_emitted(
@@ -1487,7 +1494,7 @@ def test_the_recogniser_is_built_once_and_reused_for_every_later_read(
         )
 
     assert factory.languages == ["en"], "the recogniser was rebuilt rather than reused"
-    assert len(factory.recogniser.pages_seen) == 2
+    assert len(factory.recogniser.pages_seen) == BOTH_PAGES
 
 
 def test_the_reader_asks_the_recogniser_for_exactly_the_three_documented_keys(

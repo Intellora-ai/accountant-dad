@@ -314,6 +314,7 @@ def run_pipeline(
         identity=identity,
         settings=a_pipeline_settings(),
         human_business_context=a_human_business_context(),
+        recorded_at=WHEN,
     )
 
 

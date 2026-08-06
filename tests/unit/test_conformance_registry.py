@@ -120,6 +120,10 @@ from accountant_dad.conformance_registry import (
 from accountant_dad.engines.input_engine import cleaner, parser, pipeline, reader
 from accountant_dad.identity import ArtifactId, IdentityEnvelope, ParentVersion, TransactionId
 
+#: A fixed clock. `pipeline.run` records when a reading was taken, so a
+#: test passing `datetime.now()` could differ between two runs of itself.
+RECORDED_AT = datetime(2026, 8, 6, 0, 0, tzinfo=UTC)
+
 #: Explicit, so a silent deletion is a red test rather than a smaller number
 #: nobody notices. Raising these is normal; lowering one is a claim that a rule
 #: stopped needing proof, and that claim has to be made out loud.
@@ -1502,6 +1506,9 @@ def emitted_evidence() -> DocumentEvidenceObject:
             vision_fallback_threshold=_NO_VISION_FALLBACK,
             table_structure=cast(parser.TableStructureSettings | None, None),
         ),
+        # A fixed instant, never `datetime.now()`: this fixture is shared, and a
+        # wall-clock reading would make two runs of the same suite differ.
+        recorded_at=RECORDED_AT,
     )
 
 

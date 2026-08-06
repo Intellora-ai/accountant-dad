@@ -212,12 +212,7 @@ class Prohibition:
         ):
             if not value.strip():
                 raise ValueError(f"a prohibition needs a {name}")
-        if ":" not in self.source:
-            # `docs/ENGINE_5_VALIDATION_ENGINE_RULES.md:467`, not a bare file.
-            raise ValueError(
-                f"source {self.source!r} must name a line, as `path:line`; a "
-                "prohibition attributed to a whole document cannot be re-checked"
-            )
+        _must_name_a_line(self.source, "prohibition")
         if self.enforcement is Enforcement.REVIEW_ONLY:
             if self.expiry is None:
                 raise ValueError(
@@ -238,6 +233,72 @@ class Prohibition:
 
 
 @dataclass(frozen=True, slots=True)
+class Exclusion:
+    """One prohibition clause in `docs/` that the inventory does NOT cover, and
+    the reason it does not.
+
+    An exclusion is not permission. It is the written admission that a rule the
+    specifications state has nothing enforcing it — visible, attributable, and
+    argued with in a code review rather than discovered years later by someone
+    wondering why a wrong entry got posted.
+
+    `source` is `path:line`, exactly as a `Prohibition`'s is, so a clause is
+    named the same way whether it is covered or not and the two lists can be
+    compared by a machine instead of by eye.
+    """
+
+    source: str
+    kind: Uncovered
+    #: Why. Not "out of scope" — the specific thing about this clause that no
+    #: artifact can witness, or the specific predicate nobody has written yet.
+    reason: str
+    #: Required for RESTATEMENT, forbidden otherwise. The identifier of the rule
+    #: that already carries this clause; `Registry` checks it exists.
+    restates: str | None = None
+    #: Required for NOT_YET_A_PREDICATE, forbidden otherwise.
+    expiry: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.source.strip():
+            raise ValueError("an exclusion needs a source")
+        if not self.reason.strip():
+            raise ValueError(
+                f"{self.source}: an exclusion needs a reason. An unexplained "
+                "exclusion is an omission with a nicer name."
+            )
+        _must_name_a_line(self.source, "exclusion")
+        if self.kind is Uncovered.RESTATEMENT:
+            if not (self.restates or "").strip():
+                raise ValueError(
+                    f"{self.source}: a restatement must name the rule that carries it. "
+                    "'Covered somewhere else' is not a citation."
+                )
+        elif self.restates is not None:
+            raise ValueError(
+                f"{self.source}: only a restatement names a rule that carries it, "
+                f"got restates={self.restates!r} on {self.kind.value}"
+            )
+        if self.kind is Uncovered.NOT_YET_A_PREDICATE:
+            if self.expiry is None:
+                raise ValueError(
+                    f"{self.source}: a clause excluded as 'not yet a predicate' must "
+                    "name the phase by which it becomes one. A debt with no due date "
+                    "is a decision never to pay it."
+                )
+            if self.expiry not in PHASES:
+                raise ValueError(
+                    f"{self.source}: expiry {self.expiry!r} is not a phase; "
+                    f"expected one of {sorted(PHASES)}"
+                )
+        elif self.expiry is not None:
+            raise ValueError(
+                f"{self.source}: only a clause that is 'not yet a predicate' owes work "
+                f"at a later phase, so nothing else may carry an expiry, got "
+                f"{self.expiry!r}"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class NegativeControl:
     """Two payloads differing in exactly one prohibition.
 
@@ -251,6 +312,16 @@ class NegativeControl:
     violating: Callable[[], object]
     #: Builds the same payload with that one violation removed. Must succeed.
     clean: Callable[[], object]
+    #: What a REFUSAL of this payload looks like, as exception types. Anything
+    #: else that escapes is a crash — the rule was never reached — and is
+    #: reported `CONTROL_CRASHED` rather than counted as enforcement.
+    #:
+    #: The default is `(Exception,)`, which is the behaviour this harness had
+    #: before the distinction existed. It is deliberately NOT narrowed here:
+    #: see "WHY `refusal` STILL DEFAULTS" in the module docstring. Every control
+    #: in `conformance_registry` names `ValidationError` and a test refuses any
+    #: that does not.
+    refusal: tuple[type[BaseException], ...] = (Exception,)
 
 
 @dataclass(frozen=True, slots=True)
@@ -266,36 +337,60 @@ class Finding:
         return self.attribution is Attribution.ENFORCED
 
 
+def _names(refusal: tuple[type[BaseException], ...]) -> str:
+    """The declared refusal types, for a message a human can act on."""
+    return ", ".join(kind.__name__ for kind in refusal)
+
+
 def attribute(control: NegativeControl) -> Finding:
     """Run one control. The clean half is checked FIRST, and that order matters.
 
     Checking `violating` first and `clean` second would let a broken control
     report a rejection it did not cause, which is precisely the attribution
     error this whole module exists to prevent.
+
+    BOTH halves are caught broadly and THEN classified against
+    `control.refusal`. Catching narrowly would let an undeclared exception
+    escape and take the run down with a traceback instead of a finding; the
+    classification is what separates *"the model refused this payload"* from
+    *"the control itself is broken"*, and only the first is enforcement.
     """
     try:
         control.clean()
-    # Broad on purpose: a control is invalidated by ANY refusal, not only a
-    # ValidationError. A narrower catch here would let an unrelated TypeError
-    # through as a pass, which is the false green this module exists to stop.
-    except Exception as refused:
+    except Exception as raised:
+        if not isinstance(raised, control.refusal):
+            return Finding(
+                control.prohibition,
+                Attribution.CONTROL_CRASHED,
+                f"the clean payload did not fail, it BROKE: {type(raised).__name__} "
+                f"is not how this payload is refused ({_names(control.refusal)}). "
+                f"Fix the control, not the schema: {raised}",
+            )
         return Finding(
             control.prohibition,
             Attribution.CONTROL_INVALID,
             f"the clean payload was refused too, so a rejection cannot be "
-            f"attributed to this rule: {type(refused).__name__}: {refused}",
+            f"attributed to this rule: {type(raised).__name__}: {raised}",
         )
 
     try:
         control.violating()
-    # Broad for the same reason: the enforcement is the refusal, whatever
-    # raised it. Insisting on ValidationError would silently exempt any rule
-    # enforced by a plain TypeError from a frozen dataclass.
-    except Exception as refused:
+    except Exception as raised:
+        if not isinstance(raised, control.refusal):
+            # THE DEFECT THIS BRANCH EXISTS FOR. Without it a validator that
+            # crashed on the way to its own check reported `enforced`, and
+            # deleting the enforcement made the gate greener, not redder.
+            return Finding(
+                control.prohibition,
+                Attribution.CONTROL_CRASHED,
+                f"{type(raised).__name__} is not how this payload is refused "
+                f"({_names(control.refusal)}), so nothing was established: a crash "
+                f"on the way to a check is not the check passing. {raised}",
+            )
         return Finding(
             control.prohibition,
             Attribution.ENFORCED,
-            f"refused by {type(refused).__name__}",
+            f"refused by {type(raised).__name__}",
         )
     return Finding(
         control.prohibition,
@@ -307,19 +402,28 @@ def attribute(control: NegativeControl) -> Finding:
 class Registry:
     """The inventory, and the proof that it is complete.
 
-    Two completeness rules, both refusing rather than warning:
+    Four completeness rules, all refusing rather than warning:
 
       - every PREDICATE has at least one negative control. A rule declared
         enforced with nothing exercising it is a claim, not an enforcement.
       - every REVIEW_ONLY has NO control and an expiry. A control against a
         review-only rule means one of the two labels is wrong.
+      - no two exclusions name one line, for the same reason no two
+        prohibitions may: the second is invisible.
+      - no line is both cited by a prohibition and listed as excluded. That
+        pair says the rule is enforced AND admits it is not, and whichever a
+        reader believes, the other one was a lie.
     """
 
     def __init__(
-        self, prohibitions: Iterable[Prohibition], controls: Iterable[NegativeControl]
+        self,
+        prohibitions: Iterable[Prohibition],
+        controls: Iterable[NegativeControl],
+        exclusions: Iterable[Exclusion] = (),
     ) -> None:
         self._prohibitions = tuple(prohibitions)
         self._controls = tuple(controls)
+        self._exclusions = tuple(exclusions)
 
         seen: set[str] = set()
         for prohibition in self._prohibitions:
@@ -345,6 +449,28 @@ class Registry:
                     "should be a predicate, or the control does not test it."
                 )
 
+        cited = {prohibition.source for prohibition in self._prohibitions}
+        excluded: set[str] = set()
+        for exclusion in self._exclusions:
+            if exclusion.source in excluded:
+                raise ValueError(
+                    f"two exclusions name the line {exclusion.source!r}; the second "
+                    "is invisible, and a reason nobody reads is not a reason"
+                )
+            if exclusion.source in cited:
+                raise ValueError(
+                    f"{exclusion.source!r} is both cited by a prohibition and listed "
+                    "as excluded. One of the two is false — either the rule is "
+                    "enforced or it is not."
+                )
+            if exclusion.restates is not None and exclusion.restates not in known:
+                raise ValueError(
+                    f"{exclusion.source!r} says it restates {exclusion.restates!r}, "
+                    "which is not in the inventory. A clause excused by a rule nobody "
+                    "wrote down is excused by nothing."
+                )
+            excluded.add(exclusion.source)
+
     @property
     def prohibitions(self) -> tuple[Prohibition, ...]:
         return self._prohibitions
@@ -352,6 +478,22 @@ class Registry:
     @property
     def controls(self) -> tuple[NegativeControl, ...]:
         return self._controls
+
+    @property
+    def exclusions(self) -> tuple[Exclusion, ...]:
+        return self._exclusions
+
+    def accounted_for(self) -> frozenset[str]:
+        """Every `path:line` this inventory has an answer about — covered by a
+        rule or admitted as uncovered. A clause outside this set is an
+        omission, which is the one state the inventory may not be in."""
+        return frozenset(
+            {prohibition.source for prohibition in self._prohibitions}
+            | {exclusion.source for exclusion in self._exclusions}
+        )
+
+    def by_uncovered(self, kind: Uncovered) -> tuple[Exclusion, ...]:
+        return tuple(item for item in self._exclusions if item.kind is kind)
 
     def by_enforcement(self, enforcement: Enforcement) -> tuple[Prohibition, ...]:
         return tuple(item for item in self._prohibitions if item.enforcement is enforcement)
