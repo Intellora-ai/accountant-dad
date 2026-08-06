@@ -28,6 +28,20 @@ reader can look like it worked while lying:
 REAL DEPENDENCIES, NO MOCKS (`CLAUDE.md` §J.6). Every fixture is built with
 PyMuPDF at test time and read with the real PaddleOCR. A mock of an OCR engine
 proves only that the mock returns what it was told to.
+
+ONE EXCEPTION, NAMED HERE RATHER THAN LEFT TO BE DISCOVERED. `reader.read`'s
+ESCALATION BRANCH - the decision that a reading is too unsure to stand and must
+go to the vision fallback - had never executed, in either direction. It sits
+after `read_by_ocr`, and `read_by_ocr` calls PaddleOCR before it does anything
+else, so no argument to `reader.read` reaches it while PaddleOCR is absent
+(`KNOWN_FAILURES.md` F-009). That branch is the one thing standing between
+Engine 1 and a confident wrong answer, so the last section of this file
+substitutes the `paddleocr` MODULE - the narrowest external edge there is
+(`CLAUDE.md` §J.7) - and substitutes nothing else. PyMuPDF, PIL, numpy, the
+score conversion, the polygon arithmetic, the routing and the comparison itself
+all run for real. Those tests measure `reader`'s OWN logic and measure NOTHING
+about PaddleOCR's accuracy; the `@needs_the_real_ocr` tests above remain the
+only place that is measured, and none of them is changed.
 """
 
 from __future__ import annotations
@@ -37,9 +51,14 @@ import importlib.util
 import inspect
 import io
 import pathlib
+import sys
+import types
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Protocol, cast
 
+import numpy
 import pymupdf
 import pytest
 from PIL import Image
@@ -1021,3 +1040,460 @@ def test_a_reading_is_immutable_once_produced() -> None:
     attribute = "text"
     with pytest.raises((AttributeError, TypeError)):
         setattr(reading.regions[0], attribute, "something else")
+
+
+# ── the escalation branch, driven both ways ───────────────────────────────
+#
+# `reader.read` decides, on the OCR path, whether a reading is too unsure to
+# stand: ANY region scored below the caller's threshold goes to the vision
+# fallback; everything else comes back as read. Neither outcome had ever
+# executed. Everything on that path runs after `read_by_ocr`, and
+# `read_by_ocr` calls `_recogniser()` before it does anything else, so with
+# PaddleOCR absent (F-009) there is no argument to `reader.read` that reaches
+# the comparison at all.
+#
+# So the recogniser is substituted at the narrowest edge available - the
+# `paddleocr` module - and nothing else is. `reader._recogniser` still runs for
+# real, including its `importlib` lookup, its factory call and its cache; so
+# does every line of `read_by_ocr`, the rasteriser, the image decode and the
+# comparison under test.
+#
+# NO THRESHOLD IS INVENTED HERE. `TECHNOLOGY_STACK.md` records the real
+# vision-fallback threshold as "UNKNOWN - REQUIRES A NUMBER FROM THE OWNER" and
+# it stays unknown. Every threshold below is one of the scores the recogniser
+# just reported, reached with `min`, `max` or `sorted`, and the properties
+# asserted are orderings that hold for ANY numbers: nothing is strictly below
+# the minimum, and the minimum is strictly below the maximum.
+
+Corner = tuple[int, int]
+Outline = tuple[Corner, Corner, Corner, Corner]
+
+
+@dataclass(frozen=True, slots=True)
+class ScriptedLine:
+    """One line a substituted recogniser will report: text, score, outline."""
+
+    text: str
+    score: float
+    box: Outline
+
+
+def a_box_at(row: int) -> Outline:
+    """A 100x20 outline whose FIRST corner is the bottom-right one.
+
+    Deliberately not top-left-first. A real recogniser returns the corners in
+    the order it found them, and a rotated or skewed line genuinely arrives
+    like this. The order is what tells `min`/`max` over the whole polygon apart
+    from "take the first point", which a tidy axis-aligned box would hide.
+    """
+    top = 10 + 20 * row
+    return ((110, top + 20), (10, top + 20), (10, top), (110, top))
+
+
+#: What the substituted recogniser reports. These are RECOGNISER OUTPUT - test
+#: input - and every threshold used below is derived from them.
+SCRIPTED_LINES: tuple[ScriptedLine, ...] = (
+    ScriptedLine(text="TAX INVOICE", score=0.9, box=a_box_at(0)),
+    ScriptedLine(text="Taxable Value 165000.00", score=0.2, box=a_box_at(1)),
+    ScriptedLine(text="Total 194700.00", score=0.55, box=a_box_at(2)),
+)
+
+SCRIPTED_TEXTS: tuple[str, ...] = tuple(line.text for line in SCRIPTED_LINES)
+SCRIPTED_SCORES: tuple[Decimal, ...] = tuple(Decimal(str(line.score)) for line in SCRIPTED_LINES)
+
+#: Derived, never chosen. Nothing is strictly below the lowest score reported,
+#: and the lowest is strictly below both of the others - true of any three
+#: distinct numbers, which is why these are thresholds and not a threshold.
+LOWEST_SCORE_REPORTED = min(SCRIPTED_SCORES)
+MIDDLE_SCORE_REPORTED = sorted(SCRIPTED_SCORES)[1]
+HIGHEST_SCORE_REPORTED = max(SCRIPTED_SCORES)
+
+
+class _ScriptedResult:
+    """One PaddleOCR result, exposing exactly the keys 3.7.0 populates.
+
+    A plain dict would serve, but recording which keys were read pins the three
+    `reader` documents. A fourth arriving later would be a field the real
+    backend may not populate at all, and it would be invisible in the output.
+    """
+
+    def __init__(self, payload: dict[str, object], asked: list[str]) -> None:
+        self._payload = payload
+        self._asked = asked
+
+    def __getitem__(self, key: str) -> object:
+        self._asked.append(key)
+        return self._payload[key]
+
+
+class _ScriptedRecogniser:
+    """Reports `lines` for every page it is shown, and records what it was shown."""
+
+    def __init__(self, lines: tuple[ScriptedLine, ...]) -> None:
+        self._lines = lines
+        self.pages_seen: list[reader.Page] = []
+        self.keys_asked: list[str] = []
+
+    def predict(self, image: reader.Page) -> list[reader._OcrResult]:
+        self.pages_seen.append(image)
+        payload: dict[str, object] = {
+            "rec_texts": [line.text for line in self._lines],
+            "rec_scores": [line.score for line in self._lines],
+            "rec_polys": [numpy.array(line.box, dtype=numpy.int16) for line in self._lines],
+        }
+        return [_ScriptedResult(payload, self.keys_asked)]
+
+
+class _RecordingFactory:
+    """Stands in for `paddleocr.PaddleOCR`, and records how `reader` builds it."""
+
+    def __init__(self, recogniser: _ScriptedRecogniser) -> None:
+        self.recogniser = recogniser
+        self.languages: list[str] = []
+        self.preprocessing: list[tuple[bool, bool, bool]] = []
+
+    def __call__(
+        self,
+        *,
+        lang: str,
+        use_doc_orientation_classify: bool,
+        use_doc_unwarping: bool,
+        use_textline_orientation: bool,
+    ) -> reader._Recogniser:
+        self.languages.append(lang)
+        self.preprocessing.append(
+            (use_doc_orientation_classify, use_doc_unwarping, use_textline_orientation)
+        )
+        return self.recogniser
+
+
+class _FakePaddleOcr(types.ModuleType):
+    """A real module object carrying one attribute, so `import_module` finds it."""
+
+    PaddleOCR: reader._RecogniserFactory
+
+
+InstallRecogniser = Callable[[tuple[ScriptedLine, ...]], _RecordingFactory]
+
+
+@pytest.fixture
+def substitute_the_recogniser(monkeypatch: pytest.MonkeyPatch) -> Iterator[InstallRecogniser]:
+    """Put a scripted recogniser behind `importlib.import_module("paddleocr")`.
+
+    `reader._recogniser` is `@cache`d, so the substitution is cleared out of it
+    on the way IN and again on the way OUT. Left behind, a scripted recogniser
+    would silently answer every later test in the process - including the
+    `@needs_the_real_ocr` ones wherever PaddleOCR is genuinely installed, whose
+    whole value is that they run against the real backend. That is a false
+    green of exactly the kind §J exists to prevent, so it is closed by
+    construction rather than by remembering (§J.6).
+    """
+    reader._recogniser.cache_clear()
+
+    def install(lines: tuple[ScriptedLine, ...]) -> _RecordingFactory:
+        factory = _RecordingFactory(_ScriptedRecogniser(lines))
+        module = _FakePaddleOcr("paddleocr")
+        module.PaddleOCR = factory
+        monkeypatch.setitem(sys.modules, "paddleocr", module)
+        reader._recogniser.cache_clear()
+        return factory
+
+    yield install
+
+    reader._recogniser.cache_clear()
+
+
+def test_no_region_below_the_threshold_returns_the_reading_exactly_as_read(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """The branch's other outcome, and the strict-comparison boundary at once.
+
+    The threshold IS the lowest score reported, so the lowest-scored region sits
+    exactly ON it. `<` is strict, so nothing is below it and nothing escalates.
+    A comparison loosened to `<=` escalates here and turns this red - which is
+    the only way to tell the two apart from outside.
+
+    `COMMUNICATION_RULES_INPUT_ENGINE.md` §3 Rule 5: low confidence creates no
+    guessed value, no default value, no silently omitted field and no upgraded
+    score. So all three lines come back, in order, carrying the score the
+    backend reported - including the low one, which is the one Rule 5 is about.
+    """
+    factory = substitute_the_recogniser(SCRIPTED_LINES)
+
+    reading = reader.read(
+        an_invoice_png(),
+        media_type=reader.MediaType.IMAGE,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+    )
+
+    assert reading.backend is reader.Backend.OCR
+    assert tuple(region.text for region in reading.regions) == SCRIPTED_TEXTS
+    assert tuple(region.extraction_confidence for region in reading.regions) == SCRIPTED_SCORES
+    assert reading.pages_read == 1
+    assert len(factory.recogniser.pages_seen) == 1, "the recogniser was never actually reached"
+
+
+def test_one_region_below_the_threshold_escalates_instead_of_returning_the_reading(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """The branch that decides "OCR was too unsure" - never executed until now.
+
+    The threshold is the HIGHEST score reported, so the lowest is strictly below
+    it and the highest is not: `any` is true, `all` is false. A comparison
+    rewritten to demand every region be below the threshold returns a reading
+    here and turns this red.
+
+    The escalation is a raise, not a quieter reading. `TECHNOLOGY_STACK.md`
+    records no API key and no threshold for the Gemini fallback, so the only
+    honest outcome is refusal - and the refusal is what a caller must be unable
+    to mistake for evidence.
+    """
+    substitute_the_recogniser(SCRIPTED_LINES)
+
+    with pytest.raises(reader.VisionFallbackUnavailableError) as raised:
+        reader.read(
+            an_invoice_png(),
+            media_type=reader.MediaType.IMAGE,
+            render_dpi=FIXTURE_DPI,
+            vision_fallback_threshold=HIGHEST_SCORE_REPORTED,
+        )
+
+    assert str(LOWEST_SCORE_REPORTED) in str(raised.value)
+    assert str(HIGHEST_SCORE_REPORTED) in str(raised.value)
+
+
+def test_the_escalation_names_the_lowest_score_and_the_threshold_it_was_given(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """The uncertainty is RECORDED and NAMED, not merely signalled by a type.
+
+    With the threshold set to the middle score, exactly one region is below it.
+    The message must say which score triggered the escalation - the lowest one -
+    and against which threshold. Asserting only that the error fired would stay
+    green through a message that named the wrong number, and a human reading
+    that message is the whole reason the number is in it (`ENGINE_1:511`).
+
+    The highest score must NOT appear: reporting it would mean the fallback was
+    handed the wrong end of the reading.
+    """
+    substitute_the_recogniser(SCRIPTED_LINES)
+
+    with pytest.raises(reader.VisionFallbackUnavailableError) as raised:
+        reader.read(
+            an_invoice_png(),
+            media_type=reader.MediaType.IMAGE,
+            render_dpi=FIXTURE_DPI,
+            vision_fallback_threshold=MIDDLE_SCORE_REPORTED,
+        )
+
+    assert str(raised.value).startswith(
+        f"OCR returned a region scored {LOWEST_SCORE_REPORTED}, below the supplied "
+        f"vision-fallback threshold {MIDDLE_SCORE_REPORTED}, "
+    )
+    assert str(HIGHEST_SCORE_REPORTED) not in str(raised.value)
+
+
+def test_the_escalation_carries_no_reading_out_with_it(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """Inversion: the dangerous kindness is attaching the OCR reading to the error.
+
+    `reader.py` states the OCR reading is *"deliberately NOT returned in its
+    place"*, and a caller who received it anyway - as an argument, or as an
+    attribute someone added later to be helpful - would have no way to know
+    which backend produced the evidence it went on to use. Returning it is
+    already impossible because the function raises; smuggling it is not, so it
+    is asserted rather than assumed.
+    """
+    substitute_the_recogniser(SCRIPTED_LINES)
+
+    with pytest.raises(reader.VisionFallbackUnavailableError) as raised:
+        reader.read(
+            an_invoice_png(),
+            media_type=reader.MediaType.IMAGE,
+            render_dpi=FIXTURE_DPI,
+            vision_fallback_threshold=HIGHEST_SCORE_REPORTED,
+        )
+
+    smuggled = [item for item in raised.value.args if isinstance(item, reader.Reading)]
+    smuggled += [item for item in vars(raised.value).values() if isinstance(item, reader.Reading)]
+    assert smuggled == [], f"the OCR reading left the failure inside the error: {smuggled}"
+
+
+def test_a_pdf_with_no_text_layer_is_rasterised_and_then_recognised(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """The whole PDF route, end to end, for the first time.
+
+    `test_an_image_only_pdf_reaches_the_ocr_path_before_failing_on_missing_paddleocr`
+    proves the router GETS to the recogniser; it cannot prove what happens after,
+    because the process dies there. This one runs the rest: rasterise, decode,
+    recognise, compare against the threshold, return.
+    """
+    factory = substitute_the_recogniser(SCRIPTED_LINES)
+
+    reading = reader.read(
+        an_image_only_pdf(),
+        media_type=reader.MediaType.PDF,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+    )
+
+    assert reading.backend is reader.Backend.OCR
+    assert tuple(region.text for region in reading.regions) == SCRIPTED_TEXTS
+    assert len(factory.recogniser.pages_seen) == 1
+    # The rasterised page reached the recogniser as a real three-channel RGB
+    # array, not as the PNG bytes PyMuPDF produced.
+    assert factory.recogniser.pages_seen[0].shape[2] == 3
+
+
+def test_a_recognised_line_that_is_only_whitespace_is_dropped_not_emitted(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """A blank recognition is not a reading, and must not pad the region count.
+
+    The same property the text-layer path is already held to
+    (`test_a_whitespace_only_span_is_skipped_not_emitted_as_an_empty_region`),
+    asserted for the OCR path, where it had never run. An empty region carries
+    no evidence a human could check and would still count as something read.
+    """
+    lines = (
+        SCRIPTED_LINES[0],
+        ScriptedLine(text="   ", score=0.5, box=a_box_at(1)),
+        SCRIPTED_LINES[2],
+    )
+    substitute_the_recogniser(lines)
+
+    reading = reader.read(
+        an_invoice_png(),
+        media_type=reader.MediaType.IMAGE,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+    )
+
+    assert tuple(region.text for region in reading.regions) == (
+        SCRIPTED_LINES[0].text,
+        SCRIPTED_LINES[2].text,
+    )
+
+
+def test_the_reported_score_is_carried_verbatim_and_never_re_expanded(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """`Decimal(str(score))`, not `Decimal(score)` - and the difference is visible.
+
+    None of these three scores is exactly representable in binary, so
+    `Decimal(0.2)` is `0.200000000000000011102230246251565404236316680908203125`
+    - a number PaddleOCR never reported. Pinning the STRING form catches that
+    substitution; pinning only "is a Decimal in [0, 1]" would not.
+    """
+    substitute_the_recogniser(SCRIPTED_LINES)
+
+    reading = reader.read(
+        an_invoice_png(),
+        media_type=reader.MediaType.IMAGE,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+    )
+
+    assert [str(region.extraction_confidence) for region in reading.regions] == [
+        "0.9",
+        "0.2",
+        "0.55",
+    ]
+
+
+def test_a_recognised_region_is_located_by_its_whole_outline_not_its_first_corner(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """`a_box_at` puts the bottom-right corner first, so the two differ.
+
+    `ENGINE_1:511` - source locations are emitted even for low-confidence
+    extractions, because that is what makes a later human check possible. A
+    location taken from `polygon[0]` would put every box's left edge at its
+    right edge, and a human sent to check the value would be sent to the wrong
+    place while every other assertion in this file stayed green.
+    """
+    substitute_the_recogniser(SCRIPTED_LINES)
+
+    reading = reader.read(
+        an_invoice_png(),
+        media_type=reader.MediaType.IMAGE,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+    )
+
+    corners = [
+        (region.location.left, region.location.top, region.location.right, region.location.bottom)
+        for region in reading.regions
+    ]
+    assert corners == [(10.0, 10.0, 110.0, 30.0), (10.0, 30.0, 110.0, 50.0), (10.0, 50.0, 110.0, 70.0)]
+    assert all(region.location.page_index == 0 for region in reading.regions)
+
+
+def test_the_recogniser_is_built_with_every_preprocessing_stage_switched_off(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """`ENGINE_1` §8.1 - `cleaner` owns document preprocessing, and only `cleaner`.
+
+    Orientation classification, unwarping and text-line orientation are all
+    document cleanup. Running them inside `reader` would put one responsibility
+    in two places (INV-10) and would make `cleaner`'s output not the thing the
+    recogniser actually saw. The construction is invisible in the reading, so it
+    is asserted on the call rather than on the result.
+    """
+    factory = substitute_the_recogniser(SCRIPTED_LINES)
+
+    reader.read(
+        an_invoice_png(),
+        media_type=reader.MediaType.IMAGE,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+    )
+
+    assert factory.preprocessing == [(False, False, False)]
+    assert factory.languages == ["en"]
+
+
+def test_the_recogniser_is_built_once_and_reused_for_every_later_read(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """Constructing it loads model weights; a fresh one per read pays for it again.
+
+    Two reads, one construction. A `@cache` removed from `_recogniser` would
+    build it twice and turn this red - and would otherwise be invisible, because
+    every reading returned would be identical.
+    """
+    factory = substitute_the_recogniser(SCRIPTED_LINES)
+
+    for _ in range(2):
+        reader.read(
+            an_invoice_png(),
+            media_type=reader.MediaType.IMAGE,
+            render_dpi=FIXTURE_DPI,
+            vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+        )
+
+    assert factory.languages == ["en"], "the recogniser was rebuilt rather than reused"
+    assert len(factory.recogniser.pages_seen) == 2
+
+
+def test_the_reader_asks_the_recogniser_for_exactly_the_three_documented_keys(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """`reader.py` names the three keys PaddleOCR 3.7.0 populates for a text-only
+    pipeline, read off a real result rather than assumed. A fourth key read
+    later would be a field the real backend may not populate at all, and the
+    reading would be missing or wrong in a way no assertion on text would see.
+    """
+    factory = substitute_the_recogniser(SCRIPTED_LINES)
+
+    reader.read(
+        an_invoice_png(),
+        media_type=reader.MediaType.IMAGE,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+    )
+
+    assert set(factory.recogniser.keys_asked) == {"rec_texts", "rec_scores", "rec_polys"}
