@@ -392,8 +392,36 @@ def test_the_three_absences_never_share_a_repr() -> None:
     assert len(reprs) == len(absences), f"two absent states print the same word: {sorted(reprs)}"
 
 
-@pytest.mark.parametrize("absence", [UNMEASURED, NOT_APPLICABLE, FAILED])
-def test_no_absent_state_is_a_number_or_will_pretend_to_be_one(absence: UnmeasuredType) -> None:
+#: The four comparisons a confidence gate is written with, in one place so the
+#: forward and reflected assertions below can never drift to different sets.
+#: `__eq__` is deliberately absent: equality is answered, not refused (see
+#: `test_the_sentinel_is_never_equal_to_a_score_at_either_end_of_the_scale`).
+ORDERINGS = (operator.lt, operator.le, operator.gt, operator.ge)
+
+
+def ordering_refusal(state_name: str, other: object) -> str:
+    """`_refuse_comparison`'s exact words, for `state_name` against `other`.
+
+    Written out here rather than imported, for the reason `test_state.py`'s
+    `impostor_refusal` is: a helper that read the message off the module under
+    test would agree with any message that module happened to produce.
+    """
+    return (
+        f"{state_name} has no magnitude, so it cannot be ordered "
+        f"against {other!r}. A comparison is how a confidence gate gets "
+        "written, and MEASUREMENT_FRAMEWORK.md holds that confidence may "
+        "gate nothing until calibration passes. Ask `measurement_state(x)` "
+        "which state this is instead."
+    )
+
+
+@pytest.mark.parametrize(
+    ("absence", "state_name"),
+    [(UNMEASURED, "NOT_MEASURED"), (NOT_APPLICABLE, "NOT_APPLICABLE"), (FAILED, "FAILED")],
+)
+def test_no_absent_state_is_a_number_or_will_pretend_to_be_one(
+    absence: UnmeasuredType, state_name: str
+) -> None:
     # Ordering and arithmetic must be IMPOSSIBLE, not merely discouraged. If
     # any of these succeeded, an absence would have a magnitude, and a
     # threshold comparison written against it would silently take a branch.
@@ -408,9 +436,24 @@ def test_no_absent_state_is_a_number_or_will_pretend_to_be_one(absence: Unmeasur
     # leaving Python's generic "not supported between instances of" — a reader
     # who wrote `if confidence < floor:` needs to be told there is no floor to
     # be below, not that two types are unrelated.
-    for compare in (operator.lt, operator.le, operator.gt, operator.ge):
-        with pytest.raises(TypeError, match="has no magnitude"):
+    #
+    # PINNED BY EQUALITY, NOT BY `match=`. This assertion read the fragment
+    # "has no magnitude" until commit d7a8ed9, where mutation testing measured
+    # eight edits to the three sentences AFTER that fragment surviving the whole
+    # suite green — deleted, re-cased, and emptied text, all of it still raising
+    # and still matching. The fragment names the symptom; the sentences carry
+    # the entire argument for why ordering RAISES rather than answering, and
+    # they name the document that settles it. A reader who gets back "has no
+    # magnitude" and nothing else goes looking for a floor to compare against.
+    #
+    # If this fails, the message changed. Read the new one and decide whether
+    # the change was intended — do NOT relax the assertion to make it pass.
+    for compare in ORDERINGS:
+        with pytest.raises(TypeError) as ordered:
             compare(absence, MIN)
+        assert str(ordered.value) == ordering_refusal(state_name, MIN), (
+            f"{compare.__name__} refused in words a caller cannot act on"
+        )
 
     # And it is not a number by the stdlib's own reckoning either.
     assert not isinstance(absence, numbers.Number)
@@ -421,6 +464,56 @@ def test_no_absent_state_is_a_number_or_will_pretend_to_be_one(absence: Unmeasur
     # red at the moment it is added rather than at the first wrong entry.
     for numeric_protocol in ("__float__", "__int__", "__index__", "__complex__"):
         assert not hasattr(absence, numeric_protocol)
+
+
+@pytest.mark.parametrize("other", [MAX, "0.9800", None, 1])
+@pytest.mark.parametrize(
+    ("absence", "state_name"),
+    [(UNMEASURED, "NOT_MEASURED"), (NOT_APPLICABLE, "NOT_APPLICABLE"), (FAILED, "FAILED")],
+)
+def test_the_refusal_names_what_it_was_compared_against_from_either_side(
+    absence: UnmeasuredType, state_name: str, other: object
+) -> None:
+    """The disconfirming half of the test above, in three directions at once.
+
+    WHICH SIDE. `floor < confidence` is as ordinary a line as
+    `confidence < floor`, and Python answers it through the REFLECTED operator
+    — `Decimal.__lt__` returns `NotImplemented` and `absence.__gt__` is what
+    actually runs. A refusal wired onto only two of the four dunders would pass
+    every forward assertion and let one written the other way round fall
+    through to Python's own generic message, which says nothing about
+    measurement states.
+
+    WHICH VALUE. `{other!r}` is what tells the reader WHAT their gate was
+    comparing against, and `!r` is load-bearing: `"0.9800"` and
+    `Decimal("0.9800")` print identically under `str` and differently under
+    `repr`, so a message built without it would report a string that was never
+    a score as though it had been one. `None` and `1` are here because they are
+    the two values a caller reaches a confidence slot with by mistake.
+
+    WHICH STATE. The name is interpolated from the value, so a message that
+    hardcoded one state's name would still satisfy a single-state assertion.
+    All three are asserted, and they are asserted to DIFFER by construction.
+    """
+    expected = ordering_refusal(state_name, other)
+    for compare in ORDERINGS:
+        # `other` is deliberately un-orderable, so the checker is right to
+        # object and the objection is coded rather than blanket: THAT the
+        # comparison is ill-typed is the assertion, and a caller who writes it
+        # anyway is exactly who this refusal is for.
+        with pytest.raises(TypeError) as forward:
+            compare(absence, other)  # type: ignore[arg-type]
+        assert str(forward.value) == expected
+
+        with pytest.raises(TypeError) as reflected:
+            compare(other, absence)  # type: ignore[arg-type]
+        assert str(reflected.value) == expected, (
+            f"{compare.__name__} written with the absence on the right refused "
+            "in different words from the same comparison written the other way"
+        )
+
+    assert repr(other) in expected, "the refusal does not say what was compared against"
+    assert expected.startswith(state_name), "the refusal does not say which state refused"
 
 
 def test_no_absent_state_is_a_decimal_by_class_and_not_merely_by_instance() -> None:
@@ -635,8 +728,20 @@ def test_no_absence_may_be_constructed_without_a_stated_reason(
     # applies to a source id, applied to the reason a measurement is missing.
     # `ENGINE_1_INPUT_ENGINE_RULES.md:626`: a bare score cannot become a good
     # question downstream, and a bare absence is worse than a bare score.
-    with pytest.raises(ValueError, match="non-blank basis"):
+    #
+    # PINNED BY EQUALITY. `match="non-blank basis"` read six words and cleared
+    # six mutations of the rest — measured at commit d7a8ed9. One of them
+    # replaced `type(self).__name__` with a constant, so every one of the three
+    # classes would have reported the SAME name, telling two of three callers
+    # which class to fix and getting it wrong. That is why all three kinds are
+    # parametrised and why the name is asserted rather than skipped over.
+    with pytest.raises(ValueError) as raised:
         kind(blank)
+    assert str(raised.value) == (
+        f"{kind.__name__} needs a non-blank basis saying why no "
+        "measurement exists. An absence with no stated reason is a gap "
+        "that reads as a decision nobody made."
+    )
 
 
 @pytest.mark.parametrize("state", list(MeasurementState))
@@ -717,9 +822,19 @@ def test_a_python_mode_dump_still_hands_back_the_value_itself(state: Measurement
     assert DUMPED.dump_python(value) is value
 
 
-@pytest.mark.parametrize("impostor", [1.0, 0, True, "0.98", None, ABSENT])
+@pytest.mark.parametrize(
+    ("impostor", "shown", "type_name"),
+    [
+        (1.0, "1.0", "float"),
+        (0, "0", "int"),
+        (True, "True", "bool"),
+        ("0.98", "'0.98'", "str"),
+        (None, "None", "NoneType"),
+        (ABSENT, "ABSENT", "AbsentType"),
+    ],
+)
 def test_nothing_that_merely_looks_like_a_score_is_reported_as_measured(
-    impostor: object,
+    impostor: object, shown: str, type_name: str
 ) -> None:
     """The inspector is hostile, not permissive, and this is why.
 
@@ -730,9 +845,25 @@ def test_nothing_that_merely_looks_like_a_score_is_reported_as_measured(
     value is in (Law 24). `ABSENT` is in the list because it is the mistake a
     reader is most likely to make — both are module-level capitals meaning
     "nothing here" — and it means a different thing.
+
+    PINNED BY EQUALITY, AND THE TYPE NAME IS THE REASON. `match=` read one
+    clause and cleared five mutations of the rest, measured at commit
+    `d7a8ed9`. One of them replaced `type(value).__name__` with a constant, so
+    every refusal here would have said "NoneType" — and `0`, `True` and
+    `Decimal("0.98")` all print in ways that make the TYPE the only thing that
+    tells the reader what they actually handed in. `shown` and `type_name` are
+    written out rather than computed from `impostor`, because a helper that
+    called `repr()` itself would agree with a message that had stopped calling
+    it.
     """
-    with pytest.raises(TypeError, match="neither a Decimal measurement nor a stated absence"):
+    with pytest.raises(TypeError) as raised:
         _state_of(impostor)
+    assert str(raised.value) == (
+        f"{shown} is neither a Decimal measurement nor a stated absence of "
+        f"one, so it has no measurement state. {type_name} was "
+        "refused rather than reported as measured: a value that only looks "
+        "like a score is the fabrication this type exists to prevent."
+    )
 
 
 # The sentinel's behaviour as a field on a real frozen model is asserted in
