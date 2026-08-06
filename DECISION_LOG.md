@@ -589,3 +589,51 @@ from commits that are accidentally red — which is F-026.
 **Impact.** Two rules follow. A recovery commit **must** state what it measured, not what the
 previous agent claimed. And a branch carrying deliberate reds **must not be pushed as if it
 were finished** — which is why 24 commits sit unpushed, and why that is itself now tracked.
+
+---
+
+## D-016 · CI job timeouts raised from 10 to 20 and 30 minutes
+
+**Context.** `unit tests` and `coverage` both carried `timeout-minutes: 10`. The
+suite grew from ~2,400 to **3,264 tests** as Engine 1 was completed, and the
+`coverage` job runs the suite **twice** — once for the head, once for the base
+branch to compute the ratchet.
+
+**Measured, from real GitHub runs** (not local; runner speed is what decides this):
+
+```
+unit tests    max 6.87 min    successes 4.83 – 6.15 min
+coverage      max 9.67 min    successes 5.73 – 6.80 min
+```
+
+Those ran at ~2,400 tests. At 3,264 the projection is `unit tests ≈ 9.3 min` and
+`coverage ≈ 13.2 min`. **`coverage` cannot fit in 10 minutes and `unit tests`
+would be a coin flip.**
+
+**Alternatives considered.**
+
+| Option | Rejected because |
+|---|---|
+| Make the suite faster | The top 25 tests are 38% of the time; the rest is spread across ~2,800 tests doing real Engine 1 work on real documents. Trimming the two outliers buys ~60s against a multi-minute gap. |
+| Drop or skip slow tests | Making a gate pass by measuring less. Law 4, §J.4. |
+| A very large ceiling (e.g. 360) | A timeout is a kill switch, not a target. At 360 a deadlock burns six hours of runner time before surfacing. Fails the stated criterion *"does not waste CI time."* |
+
+**Decision.** `unit tests` **10 → 20**, `coverage` **10 → 30**.
+
+**Reasoning.** Roughly **2.2×** the projected runtime for each. GitHub runner
+speed varies about 2× on a bad day, so 2.2× absorbs that without hiding a hang:
+a genuine deadlock now surfaces in 20–30 minutes rather than 6 hours.
+
+**Trade-off.** Gained: two required gates that can actually complete. Lost: a
+hung job now costs up to 30 runner-minutes instead of 10. Accepted, because a
+gate that cannot finish provides no signal at all.
+
+**Impact.** `.github/workflows/testing.yml`, two lines. No gate added, removed
+or renamed; the count stays 23. No other value touched.
+
+**Revisit.** These are measurements, not preferences. If later runs show the
+suite is faster, lower them; if it grows, raise them. The rule is the smallest
+value that completes stably.
+
+**Authority.** Delegated by the owner, 2026-08-06, with the explicit instruction
+to measure real runs and justify the value here.
