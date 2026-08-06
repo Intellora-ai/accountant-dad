@@ -34,10 +34,12 @@ means anything.
 from __future__ import annotations
 
 import pathlib
+import re
 
 import audit_dependency_manifests as audit
 import pytest
-from authored_source import authored_path
+import yaml
+from authored_source import authored_path, authored_repo_root
 
 REPO = pathlib.Path(__file__).resolve()
 while not (REPO / "requirements-ci.txt").is_file():
@@ -422,3 +424,191 @@ def test_the_shell_entry_point_derives_the_list_audits_it_and_verifies_it() -> N
         "installed, which is the half F-023 measured at 13 distributions"
     )
     assert "set -euo pipefail" in text, "an unset variable or a failed command would pass silently"
+
+
+# ── the file mode, which is the difference between running and exit 126 ──────
+#
+# `dependency scan` went red on `da2e6a2` with:
+#
+#     tools/ci/audit_dependency_manifests.sh: Permission denied
+#     Process completed with exit code 126
+#
+# The script was committed `100644`. Everything above this line passed — the
+# text was right, `bash -n` was clean, the YAML parsed, no step was removed.
+# None of those questions is *"can the runner EXECUTE it?"*, and a workflow that
+# invokes a script by bare path is asking exactly that.
+#
+# WHY THE DISK MODE IS THE RIGHT THING TO READ, given git records the exec bit.
+# CI checks out from the index, so in CI — the only place a result exists at all
+# (Law 44) — the mode on disk IS the mode in the index. Locally the two diverge
+# only while someone has run `chmod +x` and not staged it, and that leaves the
+# working tree dirty; CI then reads the index and this assertion goes red there.
+#
+# Shelling out to `git ls-files --stage` was the first version and was dropped:
+# ruff's S603 makes any subprocess call here need a lint suppression, and a
+# suppression added in order to prove a mode bit is precisely the escape hatch
+# the suppression budget exists to stop. Writing that rule code in prose trips
+# both ruff and the budget's own grep, so it is described rather than spelled.
+
+#: A path in command position — the start of a command, or after a shell
+#: operator. `python3 tools/ci/x.py` is deliberately NOT matched: the
+#: interpreter is the command there and the file needs no exec bit. Only a BARE
+#: path does.
+_COMMAND_POSITION_SCRIPT = re.compile(
+    r"(?:^|&&|\|\||\||;|\()\s*(tools/[A-Za-z0-9_./-]+)",
+    re.MULTILINE,
+)
+
+#: A shell line continuation. Joined BEFORE the scan above runs, because
+#: `merge.yml` continues an argument list onto its own line:
+#:
+#:     python3 .../declared_exceptions.py \
+#:       tools/ci/declared_placeholder_gates.txt
+#:
+#: Scanning raw text reads that second line as a command and demands an exec bit
+#: on a DATA file. Measured: this exact false positive, on this exact file.
+_LINE_CONTINUATION = re.compile(r"\\\n\s*")
+
+
+def _run_scripts(workflow_text: str) -> list[str]:
+    """The body of every `run:` step, and nothing else in the workflow.
+
+    Reading the whole file as text would also scan `env:`, `with:`, comments and
+    `paths:` lists, none of which the runner ever executes.
+    """
+    document = yaml.safe_load(workflow_text) or {}
+    bodies: list[str] = []
+    for job in (document.get("jobs") or {}).values():
+        for step in (job or {}).get("steps") or []:
+            body = (step or {}).get("run")
+            if isinstance(body, str):
+                bodies.append(body)
+    return bodies
+
+
+def _scripts_ci_invokes_by_bare_path() -> set[str]:
+    """Every `tools/...` path a workflow runs as a command, not as an argument."""
+    workflows = authored_repo_root() / ".github" / "workflows"
+    assert workflows.is_dir(), (
+        f"no workflow directory at {workflows}; this test would otherwise assert "
+        "nothing at all while reporting green"
+    )
+    found: set[str] = set()
+    for workflow in sorted(workflows.glob("*.yml")):
+        for body in _run_scripts(workflow.read_text(encoding="utf-8")):
+            found.update(_COMMAND_POSITION_SCRIPT.findall(_LINE_CONTINUATION.sub(" ", body)))
+    return found
+
+
+def _not_executable(scripts: set[str], root: pathlib.Path) -> list[tuple[str, str]]:
+    """The scripts CI would fail to execute, each with why. Empty is the pass."""
+    problems: list[tuple[str, str]] = []
+    for script in sorted(scripts):
+        path = root / script
+        if not path.is_file():
+            problems.append((script, "NO SUCH FILE"))
+        elif not path.stat().st_mode & 0o111:
+            problems.append((script, f"mode {path.stat().st_mode & 0o777:04o}, no execute bit"))
+    return problems
+
+
+def test_every_script_ci_runs_by_bare_path_is_executable() -> None:
+    """The whole class, not the one script that shipped broken.
+
+    A new `run: tools/ci/whatever.sh` step is one commit away from the same exit
+    126, and nothing else in this repository asks the question.
+    """
+    scripts = _scripts_ci_invokes_by_bare_path()
+    assert scripts, (
+        "no workflow invokes a tools/ script by bare path. Either the workflows "
+        "moved or this pattern stopped matching; an empty set would make every "
+        "assertion below vacuous."
+    )
+    problems = _not_executable(scripts, authored_repo_root())
+    assert problems == [], (
+        f"CI runs these by bare path but cannot execute them: {problems}. The "
+        "runner answers 'Permission denied' and exits 126, which reads like a "
+        "broken script rather than a missing mode bit. Fix with "
+        "`chmod +x <path> && git update-index --chmod=+x <path>`."
+    )
+
+
+def test_the_mode_check_would_catch_a_script_that_is_not_executable(
+    tmp_path: pathlib.Path,
+) -> None:
+    """§J.5 — the assertion above must be able to go red.
+
+    A guard whose predicate can only ever be satisfied is not a guard, and
+    `assert problems == []` is the easiest shape in this file to make vacuously
+    true. Driven against a real non-executable file and a real missing one.
+    """
+    (tmp_path / "tools" / "ci").mkdir(parents=True)
+    not_executable = tmp_path / "tools" / "ci" / "plain.sh"
+    not_executable.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+    not_executable.chmod(0o644)
+    executable = tmp_path / "tools" / "ci" / "runnable.sh"
+    executable.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+    executable.chmod(0o755)
+
+    assert _not_executable({"tools/ci/plain.sh"}, tmp_path) == [
+        ("tools/ci/plain.sh", "mode 0644, no execute bit")
+    ]
+    assert _not_executable({"tools/ci/absent.sh"}, tmp_path) == [
+        ("tools/ci/absent.sh", "NO SUCH FILE")
+    ]
+    # And it must ACCEPT the clean case, or a checker that rejects everything
+    # would pass both assertions above while proving nothing.
+    assert _not_executable({"tools/ci/runnable.sh"}, tmp_path) == []
+
+
+def test_an_interpreted_script_is_not_required_to_be_executable() -> None:
+    """`python3 tools/ci/x.py` needs no exec bit, and demanding one would be a
+    false failure that pushes someone to loosen the real assertion above."""
+    matched = _COMMAND_POSITION_SCRIPT.findall(
+        "python3 tools/ci/assert_steps_not_removed.py a b\ntools/ci/real.sh\n"
+    )
+    assert matched == ["tools/ci/real.sh"], (
+        f"expected only the bare-path invocation, got {matched}. Matching the "
+        "argument of an interpreter would demand an exec bit no runner needs."
+    )
+
+
+def test_a_continued_argument_line_is_not_read_as_a_command() -> None:
+    """The false positive this guard actually produced, trapped permanently.
+
+    `merge.yml` passes `tools/ci/declared_placeholder_gates.txt` as a continued
+    argument. Scanned as raw lines it sits in command position and the guard
+    demanded an exec bit on a text file — a red that would have been "fixed" by
+    marking a data file executable.
+    """
+    body = (
+        "python3 /tmp/base-tools-ci/declared_exceptions.py \\\n"
+        "  /tmp/base-tools-ci/declared_placeholder_gates.txt \\\n"
+        "  tools/ci/declared_placeholder_gates.txt\n"
+        "tools/ci/genuinely_executed.sh\n"
+    )
+    joined = _LINE_CONTINUATION.sub(" ", body)
+    assert _COMMAND_POSITION_SCRIPT.findall(joined) == ["tools/ci/genuinely_executed.sh"]
+    # And without the join it really does misfire — otherwise the join is dead
+    # code and this test proves nothing.
+    assert "tools/ci/declared_placeholder_gates.txt" in _COMMAND_POSITION_SCRIPT.findall(body)
+
+
+def test_only_run_bodies_are_scanned_not_the_whole_workflow() -> None:
+    """`env:`, `with:` and comments are not executed, so a path mentioned there
+    must never be required to be executable."""
+    workflow = (
+        "jobs:\n"
+        "  a:\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@v4\n"
+        "        with:\n"
+        "          path: tools/ci/not_run.sh\n"
+        "      - run: tools/ci/really_run.sh\n"
+    )
+    bodies = _run_scripts(workflow)
+    assert bodies == ["tools/ci/really_run.sh"]
+    found: set[str] = set()
+    for body in bodies:
+        found.update(_COMMAND_POSITION_SCRIPT.findall(body))
+    assert found == {"tools/ci/really_run.sh"}

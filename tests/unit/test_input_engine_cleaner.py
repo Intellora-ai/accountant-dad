@@ -24,17 +24,19 @@ stage as the only possible cause of the difference.
 
 from __future__ import annotations
 
+import ast
 import importlib
 import inspect
 import math
 from decimal import Decimal
+from types import ModuleType
 from typing import cast
 
 import cv2
 import numpy as np
 import numpy.typing as npt
 import pytest
-from authored_source import authored_source
+from authored_source import authored_source, authored_tree
 
 from accountant_dad.engines.input_engine import cleaner, reader
 
@@ -1245,6 +1247,30 @@ def test_reader_consumes_cleaner_output_and_the_text_layer_survives() -> None:
 # ══════════════════════════════════════════════════════════════════════════
 
 
+def _authored_top_level_names(module: ModuleType) -> set[str]:
+    """Every name `module` binds at its top level, AS AUTHORED.
+
+    Definitions, assignments and imported aliases — the module's DECLARED
+    surface, read from the authored file rather than from the loaded namespace
+    so that no tool which rewrites the module can add to it (L-013).
+
+    Imported aliases are included deliberately: `from ._legacy import clean_page`
+    is exactly the bypass F-017 removed, and a scan of `def` statements alone
+    would not see it.
+    """
+    names: set[str] = set()
+    for node in authored_tree(module).body:
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            names.add(node.name)
+        elif isinstance(node, ast.Assign):
+            names.update(target.id for target in node.targets if isinstance(target, ast.Name))
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            names.add(node.target.id)
+        elif isinstance(node, ast.Import | ast.ImportFrom):
+            names.update((alias.asname or alias.name).split(".")[0] for alias in node.names)
+    return names
+
+
 def test_the_module_offers_exactly_one_public_way_to_clean_a_document() -> None:
     """F-017's *"remove every legacy bypass"*, checked rather than asserted.
 
@@ -1256,8 +1282,24 @@ def test_the_module_offers_exactly_one_public_way_to_clean_a_document() -> None:
     This reads the module's public surface for ANY callable whose name says it
     cleans, so restoring the old door under a new name — `clean_image`,
     `clean_page` — fails here too. A denylist of one name would not have.
+
+    WHICH NAMES EXIST IS A FACT ABOUT THE REPOSITORY, so it is read from the
+    authored file (L-013). This asked `vars(cleaner)`, which answers a different
+    question — *what is this interpreter running* — and under `mutmut` the
+    answer also contains 245 injected `x__clean_image__mutmut_N` clones. Every
+    one of them is public, is a function, and contains "clean", so this
+    assertion went red inside mutmut's stats pass. That pass runs the whole
+    suite ONCE before the first mutant and aborts on the first failure, so a
+    single red test here left all 4097 mutants reported `not checked` and the
+    `mutation` gate scoring nothing at all — a broken gate that reads exactly
+    like an unbuilt one.
+
+    The interpreter still decides what is a FUNCTION, because that is a fact
+    about the object. It is only ever asked about names the authored file
+    declares, so an injected clone cannot enter the set by construction.
     """
-    public = {name for name in vars(cleaner) if not name.startswith("_")}
+    declared = _authored_top_level_names(cleaner)
+    public = {name for name in declared if not name.startswith("_")}
     # FUNCTIONS, not everything callable. `CleanedDocument`, `CleanerSettings`
     # and `MediaCleaner` are types whose names contain "clean" and are not doors
     # into the module; a `callable()` test would have flagged all three and this
@@ -1265,13 +1307,23 @@ def test_the_module_offers_exactly_one_public_way_to_clean_a_document() -> None:
     cleaning_entry_points = {
         name
         for name in public
-        if inspect.isfunction(getattr(cleaner, name)) and "clean" in name.lower()
+        if inspect.isfunction(getattr(cleaner, name, None)) and "clean" in name.lower()
     }
     assert cleaning_entry_points == {"clean_artifact"}, (
         f"the module offers {sorted(cleaning_entry_points)} as ways to clean. "
         "There is exactly one entry point, `clean_artifact`, and every media "
         "kind reaches its implementation through `CLEANERS`. A second public "
         "cleaner is the bypass F-017 removed, whatever it is called."
+    )
+    # BOTH directions, because neither implies the other: the authored check
+    # catches `clean` being written back into the file even if something later
+    # deletes it from the namespace, and the `hasattr` check catches `clean`
+    # being bound at runtime by something the file does not say.
+    assert "clean" not in declared, (
+        "`clean` was declared again in the authored module. It is `_clean_image` "
+        "— the IMAGE CLEANER the registry dispatches to — and it is private "
+        "because it returns a `CleanedDocument` with no `artifact`, which the "
+        "pipeline refuses by design."
     )
     assert not hasattr(cleaner, "clean"), (
         "`clean` came back as a public name. It is `_clean_image` — the IMAGE "
