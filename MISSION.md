@@ -1,32 +1,14 @@
 # MISSION.md
 
-> **Pointer, not a copy.** The mission and vision are stated in
-> [`CLAUDE.md` §B](CLAUDE.md) — the constitution, which outranks this file.
-> Duplicating them here would create a second place to update and one to forget.
+> **Pointer.** The mission and the two absolute non-goals live in
+> [`CLAUDE.md`](CLAUDE.md) §B — one copy.
 
-## In one line
+**accountant dad** is an accounting platform where a user takes a photo or writes
+something and an **AI accountant** does the accounting, as well as a human one.
 
-A user photographs a document or writes a sentence, and an **AI accountant** does the
-accounting — as well as a human one.
+**The two non-goals are absolute, and they are why there are six engines and not one
+model:** it must NEVER hallucinate, and it must NEVER post a wrong entry.
 
-## The two absolute non-goals
-
-```
-It must NEVER hallucinate.
-It must NEVER post a wrong entry.
-```
-
-These are not preferences. They are why the architecture has **six separate engines
-instead of one model**: every boundary in `docs/` exists to make one of them
-*structurally impossible* rather than merely unlikely.
-
-## Scope
-
-| | |
-|---|---|
-| **Solves** | bookkeeping — later, audit, and eventually acting as a CA itself |
-| **For** | businesses that want accounting without spending a lot on it, and those already overspending |
-| **MVP** | integrated into **Tally**, Indian GST regime |
-| **Stakes** | this posts entries into real businesses' books. A wrong entry is not a bug — it is a financial misstatement someone else answers for |
-
-**Full text:** [`CLAUDE.md` §B](CLAUDE.md) · **Architecture:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
+Everything else: [`CLAUDE.md`](CLAUDE.md) §B · the map,
+[`engineering/README.md`](engineering/README.md) · the product architecture,
+[`ARCHITECTURE.md`](ARCHITECTURE.md).

@@ -1,16 +1,13 @@
 # VISION.md
 
-> **Pointer, not a copy.** See [`CLAUDE.md` §B](CLAUDE.md) and [`MISSION.md`](MISSION.md).
+> **Pointer.** [`CLAUDE.md`](CLAUDE.md) §B is the single copy.
 
-**Perfect outcome:** the world's best accounting system, universally.
+Bookkeeping first. Then smart enough to **audit and act as a CA itself**.
 
-**The path:** bookkeeping first → then audit → then acting as a CA itself.
+MVP: integrated into **Tally**, Indian GST regime. Target users: businesses that want
+accounting without spending a lot of money, and businesses already spending
+unnecessary money on it.
 
-**What makes it possible:** the AI accountant *acts as a human accountant and is as good
-as one* — not a model that guesses, but six engines each with one narrow, checkable job.
-
-**Law 53 in practice.** A human accountant reads a document and simply *knows*. Copying
-that mechanism gives one model that reads and posts, and an unsolvable verification
-problem. The transform gave **six engines, each with a narrow checkable job** — same
-outcome, far easier problem. Every hard thing after this gets the same treatment before
-anyone writes code.
+**No accuracy claim about this system is currently provable, therefore none may be
+made** (Laws 52 and 54). CI proves the pipeline is enforced. It proves nothing yet
+about accounting correctness.
