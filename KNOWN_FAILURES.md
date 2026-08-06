@@ -414,21 +414,87 @@ answer, and guessing it stacks a fifth wrong assumption on four.
 | | |
 |---|---|
 | **Severity** | MEDIUM — a workflow constraint, not a product defect |
-| **Status** | ⬜ OPEN · unfixable locally; CI is the only route |
+| **Status** | ✅ **RESOLVED 2026-08-06** — the cause was `setproctitle`, not `fork`, and `mutmut==3.7.0` already fixes it. Mutation runs on macOS today |
 | **Found** | 2026-08-05 (re-derived the expensive way; first noted earlier the same day) |
 
-**Description.** `mutmut run` on this machine produces **zero usable data**. Measured on a
-scratch copy scoped to Engine 1:
+### THE RECORDED ROOT CAUSE WAS WRONG — falsified by experiment, 2026-08-06
+
+This entry blamed `fork()` after OpenCV/torch/Accelerate initialise threads. **That is
+false.** Measured at commit `a467bb2`, macOS 25.4.0 arm64, Python 3.12.13:
 
 ```
-2133 / 2133 mutants     🎉 0 killed   🙁 0 survived   ⏰ 0 timeout
-every single one: segfault
+import cv2 / torch / torchvision / transformers / docling / timm / pypdfium2 / PIL / pymupdf
+  -> os.fork() -> child runs pytest      ALL exit 0.  Not one segfault.
+parent USES the libraries first (BLAS, parallel_for_, ATen), then forks,
+  then the child uses them again          exit 0.
 ```
 
-**Root cause.** mutmut calls `multiprocessing.set_start_method('fork')`. On macOS,
-`fork()` without `exec()` in a process that has already initialised OpenCV, torch or
-Accelerate leaves the child with broken thread state, and it dies with SIGSEGV before
-running a single test. Engine 1 imports all three.
+Every library the entry accused is innocent. The bisect that finds the real cause needs
+**no libraries at all**:
+
+```
+setproctitle in parent? | fork | setproctitle in child | result
+------------------------|------|-----------------------|--------------
+no                      | yes  | yes                   | exit 0
+YES                     | yes  | yes                   | SIGNAL 11 SIGSEGV
+```
+
+**Root cause.** `setproctitle` uses CoreFoundation on macOS, which is not fork-safe.
+mutmut's worker calls it as its first action after `os.fork()` (`__main__.py:1476`).
+Upstream says so in mutmut's own source — `mutmut/utils/safe_setproctitle.py`:
+*"setproctitle uses CoreFoundation APIs on macOS which aren't fork-safe. Calling
+setproctitle after fork() causes segfaults in the child process."*
+
+Two further corrections to the old text. mutmut does call
+`multiprocessing.set_start_method('fork')`, but its workers are created by a **raw
+`os.fork()`**, so multiprocessing was never in the path. And mutmut maps **both `-11`
+(SIGSEGV) and `-9` (SIGKILL)** to the label "segfault" (`mutmut/__init__.py:101-102`), so
+the original "every single one: segfault" could not distinguish a crash from a kill.
+
+### THE FIX WAS ALREADY IN THE TREE
+
+`requirements-ci.txt` pins `mutmut==3.7.0`, which routes through `safe_setproctitle` and
+defaults `use_setproctitle` to `not platform.system() == "Darwin"` — **off on macOS**
+(`mutmut/configuration.py:151-153`). Nothing needed to be written. The entry was stale.
+
+**Proof — one variable, same tree, same commit, same interpreter, same machine:**
+
+```
+LOCAL ONLY — NOT AUTHORITATIVE      commit a467bb2      mutmut 3.7.0      macOS
+arm  use_setproctitle   tried   killed   survived   segfault-bucket
+ a   false (default)     2345     2020        135        176   ( 7.5%)
+ b   true  (pre-3.7.0)   1349        0          0       1349   (100%)
+```
+
+Arm b reproduces the recorded failure exactly. Arm a scores 2020 mutants. **Mutation
+testing runs on macOS.** The 176 residual in arm a is not explained here and is not
+claimed to be segfaults — the bucket conflates SIGSEGV with the SIGKILL that mutmut's own
+`RLIMIT_CPU` and wall-clock timeout produce.
+
+### TWO BLOCKERS REMAIN, AND NEITHER IS macOS
+
+Both abort mutmut's **stats phase**, which runs the whole suite with `-x` before the first
+fork. One red test there scores **zero** mutants, on every platform:
+
+1. `tests/unit/test_declared_dependencies.py` reads the RUNNING tree
+   (`Path(__file__).resolve().parents[2]`), which under mutation is `mutants/`, where
+   mutmut has injected `from mutmut.mutation.trampoline import ...` into every module. The
+   test then reports `import mutmut` as an undeclared dependency. Measured: the same test,
+   same interpreter, run from `mutants/` **fails**; run from the authored tree, **7
+   passed**. This is exactly the L-013 class and the fix is `tools/ci/authored_source.py`.
+   That test did **not exist** at `7e0efe2`, the last commit whose CI mutation run
+   completed — which is why CI was green then and is not now.
+2. `tests/unit/test_module_wiring.py` is **deliberately red** at HEAD (it is F-018's
+   marker). `-x` stops on it.
+
+Neither file is owned by this workstream, so both are recorded rather than changed. Until
+one of them is addressed, `mutmut run` scores nothing **anywhere**, not just on macOS.
+
+**Original root-cause text, kept for the record.** mutmut calls
+`multiprocessing.set_start_method('fork')`. On macOS, `fork()` without `exec()` in a
+process that has already initialised OpenCV, torch or Accelerate leaves the child with
+broken thread state, and it dies with SIGSEGV before running a single test. Engine 1
+imports all three. — **This is the paragraph the experiment above falsified.**
 
 **Impact — and this is the part worth internalising.** Law 44 says *"a result exists only
 if GitHub CI produced it."* For mutation that is not a policy preference, it is a hardware
@@ -1350,6 +1416,75 @@ lockfile, no hashes; `pydantic` pinned in `requirements-ci.txt` and unpinned in
 still depends on manifest install order. `rapidocr` still arrives transitively through
 `docling`, a second OCR engine against `TECHNOLOGY_STACK.md`'s one-tool-per-capability
 lock. None of that is fixed by a version assertion.
+
+### THREE MORE HOLES, MEASURED AND CLOSED — 2026-08-06, commit `a467bb2`
+
+**1. A shadow outside site-packages defeated BOTH guards.** Every check in
+`assert_imports_match_pins.sh` and `tests/unit/test_runtime_library_versions.py` imported
+a module and then asked it what version it was. Neither asked **where it came from**. So a
+file `cv2.py` earlier on `sys.path` than site-packages, containing one line
+`__version__ = "5.0.0"`, satisfied everything. Measured, both directions:
+
+```
+with the shadow planted on PYTHONPATH:
+  assert_imports_match_pins.sh (at HEAD)  -> exit 0
+     "every pinned distribution is installed, unshadowed, and imports at its pin"
+  test_runtime_library_versions.py        -> 9 passed
+after the fix:
+  assert_imports_match_pins.sh            -> exit 1, naming the exact file
+  test_runtime_library_versions.py        -> 2 failed, 9 passed
+  shadow removed                          -> exit 0 / 11 passed   (no false positive)
+```
+
+This is not a contrived path: five CI jobs run with `PYTHONPATH=tools/ci:src`, so those
+two directories already outrank every installed package. Closed by a site-location check
+in both guards.
+
+**2. A pinned distribution could pass with ZERO of its versions actually verified.**
+`__version__` was treated as the rule rather than a convention. `pypdfium2` — an Engine 1
+library `parser.py` loads — exposes no `__version__`; it exposes `PYPDFIUM_INFO`. All four
+of its modules printed *"(exposes no `__version__`)"* and the run still reported success,
+having verified nothing about its version. The shell guard now searches the same attribute
+list the unit test already used, so `pypdfium2` reports `5.12.1` against its pin. The run
+now also prints how many pins rest on **metadata alone** — 4 of 22 (`mypy`,
+`pytest-randomly`, `ruff`, `types-PyYAML`), which genuinely ship no runtime version.
+Reported, not refused: refusing them would fail a correct environment.
+
+**3. 13 installed distributions are reachable from no manifest at all.** Independently
+re-measured; the same 13 this entry recorded, all from the OCR tree:
+
+```
+aistudio-sdk  bce-python-sdk  crc32c  future  imagesize  modelscope  modelscope-hub
+prettytable  py-cpuinfo  pycryptodome  python-bidi  ruamel-yaml  ujson
+```
+
+Auditing manifests proves things about what was **asked for**. Nothing asked what is
+actually **there**. `tools/ci/audit_dependency_manifests.py --orphans` now walks the
+installed dependency graph from the pinned roots and names whatever falls outside it. It
+is reachability, not membership — demanding that every installed package be pinned would
+fail every correct environment.
+
+### THE KNOWN SCOPE HOLE — `dependency scan` audited one manifest of three
+
+`.github/workflows/security.yml:99-145` runs pip-audit against `requirements-ci.txt` and
+`pyproject.toml`. It has **never** run against `requirements-engine1.txt` or
+`requirements-engine1-ocr.txt`, which four other CI jobs install. Six pinned
+distributions, `torch` among them, entered every CI environment with zero advisory
+scanning:
+
+```
+docling==2.118.0   transformers==5.8.1   torch==2.13.0
+torchvision==0.28.0   timm==1.0.28   pypdfium2==5.12.1
+```
+
+**Tooling built, and it runs:** `tools/ci/audit_dependency_manifests.{py,sh}` derives the
+manifest set by walking the tree — never a written-down list, because a list in a workflow
+is the same defect one level out — audits every one, then verifies against the filesystem
+that the loop actually covered them all. Measured end to end at `a467bb2`:
+**3 files, 24 pins, no known vulnerabilities.**
+
+**Still open:** the workflow does not call it yet. `.github/**` is not modified by this
+workstream; the exact one-step wiring is in the handover report.
 
 **Original description, kept.**
 
