@@ -84,6 +84,18 @@ commercial licence, or write a §M amendment moving the locked stack to a permis
 licensed PDF reader. **Not an engineer's call:** a locked component is not swapped on
 judgement, and `CLAUDE.md` §E.8 forbids removing what the owner specified.
 
+**The second route is now costed and awaiting the owner** —
+`AMENDMENT_DRAFT_F001_PDF_BACKEND.md`, written on commit `fd479eb`, all numbers
+`LOCAL ONLY — NOT AUTHORITATIVE`. It evaluates `pypdfium2` (already pinned at
+`requirements-engine1.txt:104`, so no new dependency), the `pdfplumber`/`pdfminer.six`
+family and `img2pdf`, each licence read from installed metadata. Two findings decide it:
+**pypdfium2 covers all eight `pdf_backend` operations alone**, and **pdfminer.six /
+pdfplumber emit `(cid:N)` glyph identifiers as ordinary text — 2,660 fabricated ASCII
+digits on 79 of 219 pages**, which `CLAUDE.md` §B.8 forbids outright. The draft
+recommends REPLACE, names eight costs, and names the one experiment that would overturn
+it. **Nothing was changed: `docs/TECHNOLOGY_STACK.md`, the manifests and
+`pdf_backend.py` are untouched.**
+
 ---
 
 ## F-002 · Two OpenCV distributions in one environment
@@ -2206,3 +2218,62 @@ pixel`, which asserts the exact SHAPE of the difference — identical rasters, i
 length, and every differing byte after the trailer — so the day a rebuild starts
 differing in a pixel, or before the trailer, it goes red instead of reading as the same
 known-harmless noise.
+
+---
+
+## F-028 · A cleaned scan comes back `render_dpi / 96` times its original page size
+
+| | |
+|---|---|
+| **Severity** | HIGH — every `SourceLocation` read from a cleaned scan is in the wrong coordinate space |
+| **Status** | ⬜ OPEN · recorded, deliberately not fixed (`CLAUDE.md` §E.7 — found while evaluating F-001 backends, outside that mission) |
+| **Found** | 2026-08-06, probing whether a candidate PDF backend preserves page geometry |
+
+**Description.** `cleaner._pdf_rebuilt_from_cleaned_pages` renders each page at
+`render_dpi`, cleans the pixels, re-encodes with `cleaner._encode_png`, and hands the
+list to `pdf_backend.pdf_of_page_images`. The rebuilt document's pages are **not** the
+size the original's were.
+
+**Measured**, `LOCAL ONLY — NOT AUTHORITATIVE`, commit `fd479eb`, through the real
+`accountant_dad.pdf_backend` and the real `cv2.imencode` call, on a one-page 595 x 842 pt
+PDF:
+
+| render_dpi | rendered raster | PNG carries a `pHYs` chunk | rebuilt page | scale |
+|---|---|---|---|---|
+| 150 | 1240 x 1755 px | no | 930.0 x 1316.2 pt | **1.563x** |
+| 200 | 1653 x 2339 px | no | 1239.8 x 1754.2 pt | **2.084x** |
+| 300 | 2480 x 3509 px | no | 1860.0 x 2631.8 pt | **3.126x** |
+| 400 | 3306 x 4678 px | no | 2479.5 x 3508.5 pt | **4.167x** |
+
+The scale is exactly `render_dpi / 96` in every row.
+
+**Root cause.** PyMuPDF recovers a page's size from the PNG's embedded resolution and
+falls back to 96 dpi when there is none. `pdf_backend.render_page_png` DOES embed it —
+its PNGs report `dpi=(199.9996, 199.9996)` at `dpi=200` — but `cleaner._encode_png` uses
+`cv2.imencode(".png", image)`, and OpenCV's PNG encoder writes no `pHYs` chunk. The
+resolution is therefore lost between rendering the page and rebuilding it, in the one
+step between them.
+
+**Impact.** `reader.py:358-368` emits every `SourceLocation` in PDF points read from the
+document it was given. A cleaned scan re-read downstream carries locations scaled by
+`render_dpi / 96` against the original the human would check them on. Nothing in the
+pipeline compares the two, so nothing rejects it. This is the silent direction: the
+numbers stay positive, stay on the right page, and stay in plausible units.
+
+Bounded, and the bound matters: only the **scanned** branch reaches here.
+`cleaner._clean_pdf` passes a PDF with a text layer straight through
+(`cleaner.py:1076-1078`), so a born-digital invoice is untouched.
+
+**Workaround.** None in place. Nothing currently asserts the rebuilt page size.
+
+**Permanent fix — not an engineer's call, and it is two decisions.** Either
+`_encode_png` writes the resolution it rendered at, or `pdf_of_page_images` takes the DPI
+as an argument instead of inferring it from the image. The second changes a signature in
+the file F-001's containment is built on; the first changes what `cleaner` writes. Both
+touch behaviour the owner has not been asked about, and F-017 — the entry this sits under
+— is already **BLOCKED on an owner decision (§M)** about the same code path.
+
+**What would guard it.** A test that renders a page at two different DPIs, rebuilds, and
+asserts the rebuilt page size equals the ORIGINAL page size in both — which fails today
+at every DPI other than 96. Not added here: writing a red test into the suite would break
+the build for a defect this task was not authorized to fix.
