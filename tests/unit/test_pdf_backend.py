@@ -45,9 +45,22 @@ class _Pixmap(Protocol):
     def tobytes(self, output: str) -> bytes: ...
 
 
+class _AuthoredRect(Protocol):
+    """PyMuPDF's rectangle, opaque — the fixtures only pass it straight back."""
+
+
+class _MakeRect(Protocol):
+    def __call__(
+        self, left: float, top: float, right: float, bottom: float, /
+    ) -> _AuthoredRect: ...
+
+
 class _AuthoringPage(Protocol):
     def insert_text(self, point: tuple[float, float], text: str) -> int: ...
     def get_pixmap(self, *, dpi: int) -> _Pixmap: ...
+    def draw_rect(
+        self, rectangle: _AuthoredRect, *, fill: tuple[float, float, float]
+    ) -> object: ...
 
 
 class _AuthoringDocument(Protocol):
@@ -68,6 +81,7 @@ class _OpenStream(Protocol):
 
 new_pdf = cast(_NewDocument, pymupdf.open)
 open_stream = cast(_OpenStream, pymupdf.open)
+authored_rect = cast(_MakeRect, pymupdf.Rect)
 
 #: Every spelling of the backend a first-party module could import. `fitz` is
 #: PyMuPDF's own legacy top-level name and resolves to the same package, so a
@@ -442,6 +456,72 @@ def test_a_rebuilt_page_stores_its_image_compressed_not_raw(dpi: int) -> None:
         f"the rebuilt PDF is {len(rebuilt):,} bytes for an image whose pixels are "
         f"{raw_pixel_bytes:,} bytes uncompressed, so the page is being stored as "
         "raw pixels. The save has lost `deflate=True` (F-028's regression)."
+    )
+
+
+@pytest.mark.parametrize("dpi", [150, 300])
+def test_a_rebuilt_page_renders_back_to_the_exact_pixels_it_was_built_from(dpi: int) -> None:
+    """THE INVARIANT F-028's SIZE TEST DOES NOT REACH: the image must FILL the page
+    it was given, at the origin, unresampled.
+
+    A page can be exactly the right size in points and still carry its image
+    shifted, inset or rescaled inside it — and then every coordinate is wrong
+    again, for a different reason, with the size assertion still green. Found by
+    mutation, not by reading: `_rectangle(0, 0, w, h)` mutated to
+    `_rectangle(1, 0, w, h)` and `(0, 1, w, h)` SURVIVED the size test and the
+    compression test both.
+
+    Rendering the rebuilt page back at the DPI it was built at is the strongest
+    available check, because it is decidable and needs no tolerance. Measured on
+    a page carrying an asymmetric black rectangle, at 150 and 300 dpi:
+
+        correct rect (0,0)   np.array_equal -> True    max channel diff   0
+        mutant  rect (1,0)   np.array_equal -> False   max channel diff 255
+
+    IT ALSO PROVES THE REBUILD IS LOSSLESS, which nothing else asserted. Engine 1
+    may never lose information a document had; a rebuild that silently resampled,
+    recompressed lossily or shifted a half pixel would satisfy every other test in
+    this file. `np.array_equal` on the full raster is the honest form of that
+    claim, and it holds exactly — not approximately.
+    """
+    blank = new_pdf()
+    try:
+        page = blank.new_page(width=612, height=792)
+        # ASYMMETRIC ON PURPOSE. A centred or full-page mark is invariant under a
+        # flip and under some shifts, so it would let the very mutants that
+        # motivated this test survive again.
+        page.draw_rect(authored_rect(20, 30, 120, 90), fill=(0, 0, 0))
+        source = bytes(blank.tobytes())
+    finally:
+        blank.close()
+
+    opened = pdf_backend.open_pdf(source)
+    try:
+        rendered = pdf_backend.render_page_png(opened, 0, dpi=dpi)
+    finally:
+        pdf_backend.close_pdf(opened)
+    before = cv2.imdecode(np.frombuffer(rendered, np.uint8), cv2.IMREAD_COLOR)
+    assert before is not None, "the backend's own PNG did not decode"
+    png = cv2.imencode(".png", before)[1].tobytes()
+
+    rebuilt = pdf_backend.open_pdf(pdf_backend.pdf_of_page_images([png], dpi=dpi))
+    try:
+        returned = pdf_backend.render_page_png(rebuilt, 0, dpi=dpi)
+    finally:
+        pdf_backend.close_pdf(rebuilt)
+    after = cv2.imdecode(np.frombuffer(returned, np.uint8), cv2.IMREAD_COLOR)
+    assert after is not None, "the rebuilt page's PNG did not decode"
+
+    assert after.shape == before.shape, (
+        f"the rebuilt page renders to {after.shape} pixels at {dpi} dpi, not the "
+        f"{before.shape} it was built from — the image does not fill its page."
+    )
+    assert np.array_equal(before, after), (
+        f"the rebuilt page's pixels differ from the ones it was built from at {dpi} "
+        f"dpi (max channel difference "
+        f"{int(np.abs(before.astype(int) - after.astype(int)).max())}). The image is "
+        "shifted, rescaled or resampled inside its page, so every coordinate "
+        "reported against it is wrong even though the page size is right."
     )
 
 
