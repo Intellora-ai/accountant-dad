@@ -1,0 +1,22 @@
+{
+  "id": "CO-FS-DEVIATION-DISCLOSURE-001",
+  "status": "VERIFIED",
+  "if": [
+    "financial statements of a company do not comply with the accounting standards referred to in s.129(1)"
+  ],
+  "then": "the company SHALL disclose in its financial statements the deviation from the accounting standards, the reasons for such deviation, and the financial effects, if any, arising out of such deviation",
+  "source_section": "Companies Act, 2013, s.129(5)",
+  "note": "Disclosure does not legalise the deviation. Sub-section (5) opens 'Without prejudice to sub-section (1)', so the s.129(1) obligation to comply survives it. Three things must be disclosed, not one: the deviation, the reasons, and the financial effects. UNKNOWN — source is the Act as enacted 2013; amendments not held locally.",
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(5)",
+      "quote": "Without prejudice to sub-section (1),"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(5)",
+      "quote": "where the financial statements of a company do not comply with the accounting standards referred to in sub-section (1), the company shall disclose in its financial statements, the deviation from the accounting standards, the reasons for such deviation and the financial effects, if any, arising out of such deviation"
+    }
+  ]
+}

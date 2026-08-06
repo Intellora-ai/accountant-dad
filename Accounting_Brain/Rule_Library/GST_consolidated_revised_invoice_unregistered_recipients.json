@@ -1,0 +1,23 @@
+{
+  "id": "GST-INV-REVISED-002",
+  "status": "VERIFIED",
+  "if": [
+    "revised tax invoices are being issued under rule 53(2)",
+    "the recipient is not registered under the Act"
+  ],
+  "then": "a consolidated revised tax invoice MAY be issued for all taxable supplies made to that recipient during the period; and for inter-State supplies not exceeding two lakh fifty thousand rupees in value, a consolidated revised invoice MAY be issued separately for all unregistered recipients located in a State",
+  "source_section": "CGST Rules 2017, rule 53(2), first and second provisos",
+  "note": "Two thresholds sit side by side here: no value limit for the recipient-wise consolidation, and two lakh fifty thousand rupees per supply for the State-wise inter-State consolidation.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(2), first proviso",
+      "quote": "Provided that the registered person may issue a consolidated revised tax invoice in respect of all taxable supplies made to a recipient who is not registered under the Act during such period:"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(2), second proviso",
+      "quote": "Provided further that in the case of inter-State supplies, where the value of a supply does not exceed two lakh and fifty thousand rupees, a consolidated revised invoice may be issued separately in respect of all the recipients located in a State, who are not registered under the Act."
+    }
+  ]
+}

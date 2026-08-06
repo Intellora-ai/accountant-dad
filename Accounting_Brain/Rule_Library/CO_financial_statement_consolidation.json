@@ -1,0 +1,33 @@
+{
+  "id": "CO-FS-CONSOLIDATION-001",
+  "status": "VERIFIED",
+  "if": [
+    "a company has one or more subsidiaries or associate companies"
+  ],
+  "then": "it SHALL, in addition to the financial statements provided under s.129(2), prepare a consolidated financial statement of the company and of all the subsidiaries and associate companies in the same form and manner as that of its own and in accordance with applicable accounting standards, and SHALL lay it before the annual general meeting along with the laying of its own financial statement",
+  "source_section": "Companies Act, 2013, s.129(3)",
+  "note": "The printed sub-section (3) is NOT the 2013 enactment: the Act's own footnote records substitution by Act 1 of 2018, s.33, with effect from 7 May 2018. Treat the wording as of that date, not as of enactment. UNKNOWN — source is the Act as enacted 2013; amendments not held locally.",
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(3)",
+      "quote": "Where a company has one or more subsidiaries or associate companies, it shall, in addition to financial statements provided under sub-section (2), prepare a consolidated financial statement of the company and of all the subsidiaries and associate companies in the same form and manner as that of its own and in accordance with applicable accounting standards"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(3)",
+      "quote": "which shall also be laid before the annual general meeting of the company along with the laying of its financial statement under sub-section (2)"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129(2)",
+      "quote": "At every annual general meeting of a company, the Board of Directors of the company shall lay before such meeting financial statements for the financial year"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.129, footnote 1",
+      "quote": "Subs. by Act 1 of 2018, s. 33, for sub-section (3) (w.e.f. 7-5-2018)",
+      "extraction_note": "The Act's own footnote, quoted as direct evidence that the sub-section as printed is substituted text."
+    }
+  ]
+}

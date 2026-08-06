@@ -1,0 +1,113 @@
+{
+  "id": "GST-INV-REVISED-TAX-INVOICE",
+  "name": "Revised tax invoice",
+  "status": "VERIFIED",
+  "definition": "A revised tax invoice is issued under rule 53 by a person whose registration took effect before the certificate of registration was issued, covering taxable supplies made in that gap. Rule 53(1) lists the particulars, (a) to (j), and clause (a) requires the words 'Revised Invoice' to be shown prominently.",
+  "why_it_exists": "Registration can be backdated. Supplies made in the gap were invoiced without a GSTIN. The revised invoice re-documents them, which is why it must point at the original document it revises.",
+  "inputs": [
+    "the document",
+    "the effective date of registration",
+    "the date of issuance of the certificate of registration",
+    "the original tax invoice or bill of supply being revised"
+  ],
+  "outputs": [
+    "the set of rule 53(1) particulars found",
+    "the set of mandatory particulars absent"
+  ],
+  "preconditions": [
+    "registration was granted with effect from a date earlier than the date the certificate was issued"
+  ],
+  "rules": [
+    "GST-INV-FIELD-053-A",
+    "GST-INV-FIELD-053-B",
+    "GST-INV-FIELD-053-C",
+    "GST-INV-FIELD-053-D",
+    "GST-INV-FIELD-053-E",
+    "GST-INV-FIELD-053-F",
+    "GST-INV-FIELD-053-G",
+    "GST-INV-FIELD-053-H",
+    "GST-INV-FIELD-053-I",
+    "GST-INV-FIELD-053-J",
+    "GST-INV-REVISED-001",
+    "GST-INV-REVISED-002",
+    "GST-INV-ITC-001",
+    "GST-INV-SPECIAL-001"
+  ],
+  "exceptions": [
+    "a consolidated revised tax invoice may be issued for all supplies to one unregistered recipient in the period",
+    "for inter-State supplies not exceeding two lakh fifty thousand rupees, a consolidated revised invoice may be issued per State for unregistered recipients"
+  ],
+  "common_mistakes": [
+    "using a revised tax invoice to correct a price or a tax error \u2014 that is a credit or debit note under section 34",
+    "issuing one without the words 'Revised Invoice' shown prominently",
+    "omitting the serial number and date of the document being revised, which clause (h) requires"
+  ],
+  "dependencies": [
+    "GST-INV-TAX-INVOICE"
+  ],
+  "related_concepts": [
+    "GST-INV-CREDIT-OR-DEBIT-NOTE",
+    "GST-INV-BILL-OF-SUPPLY"
+  ],
+  "legal_references": [
+    "CGST Rules 2017, rule 53(1)",
+    "CGST Rules 2017, rule 53(2)",
+    "UNKNOWN \u2014 section 31 of the CGST Act, which rule 53 refers to, was not read for this record"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE"
+  ],
+  "gst_references": [
+    "CGST Rules 2017, rule 53",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally",
+    "UNKNOWN \u2014 in this compilation the words 'and credit or debit notes referred to in section 34' in rule 53(1), and clauses (c) and (i), are bracketed with footnote markers 118, 119 and 120, each reading 'Omitted vide Notf no. 03/2019-CT dt. 29.01.2019 wef 01.02.2019'. Whether those words therefore stand omitted from rule 53(1) is an interpretation of the compilation's bracket convention and REQUIRES HUMAN ACCOUNTANT before any validation depends on it"
+  ],
+  "evidence_required": [
+    "the document",
+    "the certificate of registration and its effective date",
+    "the original invoice or bill of supply"
+  ],
+  "confidence_factors": [
+    "weak when the original document being revised cannot be located",
+    "weak because the amendment status of clauses (c) and (i) is unresolved in this source"
+  ],
+  "validation_checks": [
+    "the words 'Revised Invoice' appear prominently",
+    "clause (h) names the serial number and date of the corresponding tax invoice or bill of supply",
+    "the supplies fall between the effective date of registration and the date the certificate was issued"
+  ],
+  "examples": [
+    "a document headed 'Revised Invoice' naming original invoice 44 dated 2 June, issued after a certificate of registration effective 1 June"
+  ],
+  "counterexamples": [
+    "a document headed 'Revised Invoice' that names no original document \u2014 clause (h) fails"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1)",
+      "quote": "53. Revised tax invoice and credit or debit notes.-(1)A revised tax invoice referred to in section 31"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1)(a)",
+      "quote": "Revised Invoice",
+      "extraction_note": "The words stand between the extraction's U+2015 and U+2016 quotation marks; the quote takes the words alone."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1)(a)",
+      "quote": "wherever applicable, indicated prominently;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1)(h)",
+      "quote": "serial number and date of the corresponding tax invoice or, as the case may be, bill of supply; and"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53, footnote 118",
+      "quote": "118 Omitted vide Notf no. 03/2019-CT dt. 29.01.2019 wef 01.02.2019"
+    }
+  ]
+}

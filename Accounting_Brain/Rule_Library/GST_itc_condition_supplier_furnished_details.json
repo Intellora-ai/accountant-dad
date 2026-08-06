@@ -1,0 +1,29 @@
+{
+  "id": "GST-ITC-16-2-AA",
+  "status": "CONFLICT",
+  "if": [
+    "input tax credit is claimed on an invoice or debit note",
+    "the details of that invoice or debit note have NOT been furnished by the supplier in the statement of outward supplies, or have not been communicated to the recipient in the manner specified under section 37"
+  ],
+  "then": "CONFLICT \u2014 one locally held source makes this a condition that denies the credit; the other does not contain the clause at all. Neither is adopted here",
+  "source_section": "CGST Act s.16(2)(aa)",
+  "note": "The clause is absent from the primary source, the Act as updated 31-08-2021, and present in the IndiaCode consolidated text as on 11-06-2026, which footnotes it as inserted by Act 13 of 2021 with effect from 1-1-2022. It is a fifth cumulative condition and, where it applies, makes an ITC claim depend on the supplier's filing. Recorded as CONFLICT rather than adopted: this file does not decide which text governs a given period.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.16(2)(aa) (source B, IndiaCode consolidated text as on 11-06-2026)",
+      "quote": "the details of the invoice or debit note referred to in clause (a) has been furnished by the supplier in the statement of outward supplies and such details have been communicated to the recipient of such invoice or debit note in the manner specified under section 37;"
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.16, footnote 1",
+      "quote": "Ins. by Act 13 of 2021, s. 109 (w.e.f. 1-1-2022)."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(a) and (b) (source A, Act as updated 31-08-2021)",
+      "quote": "he is in possession of a tax invoice or debit note issued by a supplier registered under this Act, or such other tax paying documents as may be prescribed;",
+      "extraction_note": "Cited to show what source A places between clause (a) and clause (b): nothing. Clause (b) follows clause (a) directly, with no clause (aa) between them."
+    }
+  ]
+}

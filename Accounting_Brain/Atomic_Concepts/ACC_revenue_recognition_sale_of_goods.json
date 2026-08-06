@@ -1,0 +1,84 @@
+{
+  "id": "ACC-REV-GOODS",
+  "name": "Revenue recognition \u2014 sale of goods",
+  "status": "VERIFIED",
+  "definition": "Revenue from a sale of goods is recognised when performance is achieved: the seller has transferred the property in the goods, or all significant risks and rewards of ownership, and retains no effective control; and no significant uncertainty exists about the amount of consideration.",
+  "why_it_exists": "Fixes WHEN a sale enters the books. Recognising too early overstates profit for the period; too late understates it. The trigger is transfer of risk and reward, not the invoice date and not the payment date.",
+  "inputs": [
+    "evidence of transfer of property or of risks and rewards",
+    "consideration amount",
+    "evidence of retained control, if any"
+  ],
+  "outputs": [
+    "recognise revenue in this period",
+    "or postpone recognition"
+  ],
+  "preconditions": [
+    "a sale-of-goods transaction, not a service",
+    "performance assessable under AS-9 para 11"
+  ],
+  "rules": [
+    "ACC-REV-GOODS-001",
+    "ACC-REV-POSTPONE-001"
+  ],
+  "exceptions": [
+    "UNKNOWN \u2014 AS-9 scope exclusions not yet extracted"
+  ],
+  "common_mistakes": [
+    "recognising on invoice date when risks and rewards have not transferred",
+    "recognising on payment receipt, which is a cash-basis error",
+    "ignoring retained effective control, which defeats transfer"
+  ],
+  "dependencies": [
+    "ACC-ACCRUAL-BASIS"
+  ],
+  "related_concepts": [
+    "ACC-REV-SERVICES",
+    "ACC-REV-INTEREST-ROYALTY-DIVIDEND"
+  ],
+  "legal_references": [
+    "UNKNOWN \u2014 statutory backing via Companies Act s.129 not yet extracted"
+  ],
+  "icai_references": [
+    "AS 9, paragraphs 10 and 11"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE \u2014 GST time of supply is a separate determination and must not be conflated with accounting revenue recognition"
+  ],
+  "evidence_required": [
+    "document evidencing transfer of property or risk",
+    "stated consideration"
+  ],
+  "confidence_factors": [
+    "weak when delivery terms are absent from the document",
+    "weak when the document does not show whether control was retained"
+  ],
+  "validation_checks": [
+    "recognition date is not before the transfer of risks and rewards",
+    "consideration amount is certain, or recognition is postponed"
+  ],
+  "examples": [
+    "goods delivered, title passed, price agreed, no return right retained \u2014 recognise"
+  ],
+  "counterexamples": [
+    "goods shipped on sale-or-return with unexpired return right \u2014 significant risks not transferred"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 11(i)",
+      "quote": "the seller of goods has transferred to the buyer the property in the goods for a price",
+      "extraction_note": "The span continuing 'or allsignificant risks and rewards' is quoted separately: the PDF extraction joins 'all' and 'significant'. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 11(i)",
+      "quote": "the seller retains no effective control of the goods transferred to a degree usually associated with ownership"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 11(ii)",
+      "quote": "no significant uncertainty exists regarding the amount of the consideration that will be derived from the sale of the goods"
+    }
+  ]
+}

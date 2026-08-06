@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-FIELD-046-M",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a tax invoice required by section 31 and issued under rule 46 of the CGST Rules, 2017",
+    "no provision of rule 54 (tax invoice in special cases) displaces the particular"
+  ],
+  "then": "the tax invoice MUST carry the amount of tax charged, identified by head: central tax, State tax, integrated tax, Union territory tax or cess",
+  "source_section": "CGST Rules 2017, rule 46(m)",
+  "note": "One mandatory particular of rule 46(m), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(m)",
+      "quote": "amount of tax charged in respect of taxable goods or services (central tax, State tax, integrated tax, Union territory tax or cess);"
+    }
+  ]
+}

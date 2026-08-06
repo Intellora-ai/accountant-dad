@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-REVISED-001",
+  "status": "VERIFIED",
+  "if": [
+    "a registered person was granted registration with effect from a date earlier than the date the certificate of registration was issued",
+    "taxable supplies were made in the period from the effective date of registration to the date of issuance of the certificate"
+  ],
+  "then": "the person MAY issue revised tax invoices in respect of those supplies",
+  "source_section": "CGST Rules 2017, rule 53(2)",
+  "note": "This is what a revised tax invoice is FOR under rule 53(2): backdated registration, not correcting an ordinary mistake. A change in taxable value or tax charged after supply is a credit or debit note under section 34, not a revised invoice.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(2)",
+      "quote": "Every registered person who has been granted registration with effect from a date earlier than the date of issuance of certificate of registration to him, may issue revised tax invoices in respect of taxable supplies effected during the period starting from the effective date of registration till the date of the issuance of the certificate of registration:"
+    }
+  ]
+}

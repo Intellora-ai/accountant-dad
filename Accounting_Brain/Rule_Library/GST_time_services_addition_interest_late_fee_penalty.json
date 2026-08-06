@@ -1,0 +1,18 @@
+{
+  "id": "GST-TIME-SERVICES-012",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of services",
+    "the value of supply is increased by interest, late fee or penalty for delayed payment of any consideration"
+  ],
+  "then": "the time of supply FOR THAT ADDITION is the date on which the supplier RECEIVES the addition in value",
+  "source_section": "CGST s.13(6)",
+  "note": "Worded as in s.12(6). The original supply keeps its own time of supply; only the addition takes this date.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(6)",
+      "quote": "The time of supply to the            extent   it relates   to  an  addition     in  the  value   of supply by way of interest, late fee or penalty for delayed payment of any consideration shall be the date on which the supplier receives such addition in value."
+    }
+  ]
+}

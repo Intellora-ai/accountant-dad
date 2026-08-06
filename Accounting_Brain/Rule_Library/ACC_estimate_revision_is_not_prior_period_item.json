@@ -1,0 +1,28 @@
+{
+  "id": "ACC-PRIORPERIOD-ESTIMATE-001",
+  "status": "VERIFIED",
+  "if": [
+    "an estimate is revised because circumstances changed, or because of new information, more experience or subsequent developments"
+  ],
+  "then": "the revision is NOT an extraordinary item and NOT a prior period item",
+  "source_section": "AS 5 paras 18 and 21",
+  "note": "AS 5 para 18 gives the discriminating example: income or expense recognised on the outcome of a contingency that previously could not be estimated reliably does not constitute a prior period item. The prior statements were not wrong; the information did not exist yet.",
+  "evidence": [
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 21",
+      "quote": "An estimate may have to be revised if changes occur regarding the circumstances on which the estimate was based, or as a result of new information, more experience or subsequent developments."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 21",
+      "quote": "the definitions of an extraordinary item or a prior period item.",
+      "extraction_note": "The sentence reads 'The revision of the estimate, by itsnature, does not bringthe adjustmentwithin the definitions...', joined by the extraction at three points, so only the unjoined tail is quoted. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 18",
+      "quote": "Prior period items are generally infrequent in nature and can be distinguished from changes in accounting estimates. Accounting estimates by their nature are approximations that may need revision as additional information becomes known. For example, income or expense recognised on the outcome of a contingency which previously could not be estimated reliably does not constitute a prior period item."
+    }
+  ]
+}

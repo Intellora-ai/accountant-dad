@@ -1,0 +1,16 @@
+{
+  "id": "ACC-REV-DISCLOSE-001",
+  "status": "VERIFIED",
+  "if": ["financial statements are being prepared for a period",
+         "revenue recognition was postponed in that period pending the resolution of significant uncertainties"],
+  "then": "the enterprise SHOULD DISCLOSE THE CIRCUMSTANCES of the postponement, IN ADDITION TO the disclosures required by AS 1 on Disclosure of Accounting Policies",
+  "source_section": "AS 9 para 14",
+  "note": "'In addition to' is load-bearing: satisfying AS 1 does not satisfy this. The standard requires the CIRCUMSTANCES, not merely an amount. A postponement made correctly and then left undisclosed defeats the purpose of postponing — the reader cannot distinguish revenue withheld from revenue never earned.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 14",
+     "quote": "In addition to the disclosures required by Accounting Standard 1 on ‘Disclosure of Accounting Policies’",
+     "extraction_note": "The continuation reads '(A S 1) ,an enterprise': the PDF extraction splits 'AS' into 'A S' and joins ',an'. The next quote resumes after them. The artifact is in the extraction, not in the standard."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 14",
+     "quote": "enterprise should also disclose the circumstances in which revenue recognition has been postponed pending the resolution of significant uncertainties"}
+  ]
+}

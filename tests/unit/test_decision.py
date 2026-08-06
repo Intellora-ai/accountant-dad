@@ -26,10 +26,11 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import Callable
 from decimal import Decimal
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from accountant_dad.artifacts.decision import (
     PAISA_PLACES,
@@ -596,3 +597,183 @@ def test_a_decision_may_carry_no_assumptions_and_no_risks() -> None:
     made = decision(accounting_assumptions=(), risk_indicators=())
     assert made.accounting_assumptions == ()
     assert made.risk_indicators == ()
+
+
+# ── the refusal itself, word for word ─────────────────────────────────────
+# This artifact refuses far more often than it explains, and the refusal is
+# the only thing a producer ever reads. Asserting `match="must be a Decimal"`
+# proves the first four words survived and says nothing about the rest — so
+# the sentence explaining WHY a float is refused, and the one telling a
+# producer what INV-9 actually forbids, could both rot away unseen.
+#
+# Measured, not assumed: mutation run 30946373087 left 20 mutants alive in
+# this module. Every one of them was a corrupted refusal — a message segment
+# blanked, shouted, or reporting `NoneType` instead of the type the producer
+# really sent — and every existing substring assertion still passed.
+
+#: `ACCOUNTING_DEFINITIONS.md` §1, in full. The trailing sentence is the part
+#: that stops a producer "fixing" the refusal by sending a string instead.
+NOT_A_DECIMAL = (
+    "amount must be a Decimal, got {kind}. "
+    "float is refused rather than converted because the conversion is "
+    "the precision loss; int and str are refused because two accepted "
+    "spellings of one amount is two ways for producers to drift."
+)
+
+#: Refused, never rounded. The message has to say so, or the obvious next
+#: move is to round and retry.
+FINER_THAN_A_PAISA = (
+    "amount {value} is finer than a paisa; 2 decimal places "
+    "is the limit. Refused rather than rounded: zero tolerance."
+)
+
+#: INV-9 in full. Naming the identifier alone would let a producer delete
+#: that one string; the rest of the sentence is what says the whole CLASS of
+#: identifier-citing reasoning is forbidden.
+INV_9_REFUSAL = (
+    "INV-9 — {field} contains an identifier: {found}. "
+    "IDs identify objects; they never influence reasoning, ledger "
+    "selection, journal creation or tax treatment. Reasoning that "
+    "cites an identifier is the failure the invariant names."
+)
+
+
+def refusal(raised: pytest.ExceptionInfo[ValidationError]) -> str:
+    """The refusal, exactly as pydantic produced it.
+
+    Compared by EQUALITY rather than searched for. `pytest.raises(match=...)`
+    runs `re.search`, so it accepts a message that merely CONTAINS the right
+    words — `"XXmust not be empty or blankXX"` passes a search for
+    `"must not be empty or blank"` and is not the message this code writes.
+    Equality is the only assertion that pins both ends of the sentence.
+    """
+    errors = raised.value.errors()
+    assert len(errors) == 1
+    return str(errors[0]["msg"]).removeprefix("Value error, ")
+
+
+@pytest.mark.parametrize(
+    ("bad", "kind"),
+    [(1.15, "float"), (100, "int"), ("100.00", "str"), (Decimal, "type")],
+)
+def test_a_non_decimal_amount_is_refused_in_full_and_by_its_actual_type(
+    bad: object, kind: str
+) -> None:
+    """The reported type is the diagnostic. A refusal naming a type the
+    producer did not send is worse than one naming none: it sends them to
+    the wrong field."""
+    with pytest.raises(ValidationError) as raised:
+        JournalLine.model_validate({"ledger": "Computers", "amount": bad})
+    assert refusal(raised) == NOT_A_DECIMAL.format(kind=kind)
+
+
+@pytest.mark.parametrize("bad", ["1.234", "1.230", "0.001", "50000.12345"])
+def test_a_sub_paisa_amount_is_refused_in_full_and_quotes_what_was_sent(bad: str) -> None:
+    """`1.230` is in the list on purpose: the scale the producer WROTE is what
+    is checked, so the message must echo the value verbatim rather than a
+    normalised rendering of it."""
+    with pytest.raises(ValidationError) as raised:
+        JournalLine(ledger="Computers", amount=Decimal(bad))
+    assert refusal(raised) == FINER_THAN_A_PAISA.format(value=bad)
+
+
+def test_the_paisa_limit_in_the_message_is_the_constant_and_not_a_second_copy() -> None:
+    """One source of truth (Law 19). A message hard-coding `2` would keep
+    saying `2` after the constant changed."""
+    assert f"{PAISA_PLACES} decimal places is the limit" in FINER_THAN_A_PAISA.format(value="1.234")
+
+
+@pytest.mark.parametrize(
+    ("field", "build"),
+    [
+        ("ledger", lambda text: JournalLine(ledger=text, amount=Decimal("1.00"))),
+        (
+            "assumed",
+            lambda text: AccountingAssumption(assumed=text, why="Because the invoice says so."),
+        ),
+        (
+            "why",
+            lambda text: AccountingAssumption(assumed="It is a fixed asset.", why=text),
+        ),
+        (
+            "indicator",
+            lambda text: RiskIndicator(indicator=text, reason="The amount is unusually round."),
+        ),
+        (
+            "reason",
+            lambda text: RiskIndicator(indicator="Aggressive capitalisation.", reason=text),
+        ),
+        (
+            "missing_fact",
+            lambda text: UnresolvedDoubt(
+                missing_fact=text, required_clarification="Confirm the place of supply."
+            ),
+        ),
+        (
+            "required_clarification",
+            lambda text: UnresolvedDoubt(
+                missing_fact="Whether IGST applies.", required_clarification=text
+            ),
+        ),
+    ],
+)
+def test_every_inv_9_refusal_is_stated_in_full_and_names_its_own_field(
+    field: str, build: Callable[[str], BaseModel]
+) -> None:
+    """INV-9's documented failure is reasoning that cites an identifier. Each
+    field refuses under its OWN name — a shared message is not shared code,
+    and a refusal naming the wrong field is a defect report pointing
+    elsewhere."""
+    text = f"Because {UNRELATED_UUID} existed before, choose the same treatment."
+    expected = INV_9_REFUSAL.format(field=field, found=str(UNRELATED_UUID))
+    with pytest.raises(ValidationError) as raised:
+        build(text)
+    assert refusal(raised) == expected
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "accounting_treatment",
+        "ledger_classification",
+        "journal_structure",
+        "tax_treatment",
+        "supporting_reasoning",
+    ],
+)
+def test_every_prose_field_on_the_artifact_gives_the_inv_9_refusal_in_full(field: str) -> None:
+    expected = INV_9_REFUSAL.format(field=field, found=str(UNRELATED_UUID))
+    with pytest.raises(ValidationError) as raised:
+        decision(**{field: f"Reasoning that cites {UNRELATED_UUID} for its treatment."})
+    assert refusal(raised) == expected
+
+
+def test_the_inv_9_refusal_quotes_the_bare_hex_spelling_it_actually_matched() -> None:
+    """`uuid.hex` is the same identifier with the hyphens removed, and the
+    message must echo the spelling it found rather than a re-formatted one —
+    otherwise a producer searching their own payload for the quoted string
+    finds nothing."""
+    bare = UNRELATED_UUID.hex
+    expected = INV_9_REFUSAL.format(field="missing_fact", found=bare)
+    with pytest.raises(ValidationError) as raised:
+        UnresolvedDoubt(
+            missing_fact=f"The earlier decision {bare} treated this differently.",
+            required_clarification="Confirm the place of supply.",
+        )
+    assert refusal(raised) == expected
+
+
+@pytest.mark.parametrize("blank", ["", " ", "\t", "\n  \n"])
+def test_a_blank_ledger_name_is_refused_in_those_exact_words(blank: str) -> None:
+    """`ACCOUNTING_DEFINITIONS.md` §1 — a near-miss is a wrong ledger, so the
+    schema must refuse the blank rather than quietly explain it away."""
+    with pytest.raises(ValidationError) as raised:
+        JournalLine(ledger=blank, amount=Decimal("1.00"))
+    assert refusal(raised) == "must not be empty or blank"
+
+
+@pytest.mark.parametrize(("bad", "kind"), [(7, "int"), (7.5, "float"), (b"Computers", "bytes")])
+def test_a_non_string_ledger_name_is_refused_by_its_actual_type(bad: object, kind: str) -> None:
+    with pytest.raises(ValidationError) as raised:
+        JournalLine.model_validate({"ledger": bad, "amount": Decimal("1.00")})
+    assert refusal(raised) == f"must be a string, got {kind}"

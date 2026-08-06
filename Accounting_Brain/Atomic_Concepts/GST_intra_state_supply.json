@@ -1,0 +1,132 @@
+{
+  "id": "GST-SUPPLY-INTRA-STATE",
+  "name": "Intra-State supply",
+  "status": "VERIFIED",
+  "definition": "A supply is intra-State when s.8 of the IGST Act says it is. For goods, s.8(1) — subject to s.10 — the location of the supplier and the place of supply of goods are in the same State or same Union territory. For services, s.8(2) — subject to s.12 — the location of the supplier and the place of supply of services are in the same State or same Union territory. Three supplies of goods are excluded by the proviso to s.8(1) even when the two locations coincide: a supply to or by a Special Economic Zone developer or unit, goods imported into the territory of India till they cross the customs frontiers of India, and supplies made to a tourist referred to in s.15. The proviso to s.8(2) excludes Special Economic Zone services in the same way. Explanation 1 to s.8 treats separate establishments of one person as establishments of distinct persons, and Explanation 2 treats a branch, agency or representational office in a territory as an establishment in that territory.",
+  "why_it_exists": "It is the mirror of the inter-State test, and the one that puts central tax and State tax on an invoice instead of integrated tax. CGST s.9(1) levies central tax on intra-State supplies, so this determination — not the rate, not the amount — is what decides which government is paid.",
+  "inputs": [
+    "the location of the supplier",
+    "the place of supply, determined first under s.10 for goods and s.12 for services",
+    "whether either party is a Special Economic Zone developer or a Special Economic Zone unit",
+    "whether the goods were imported and whether they have crossed the customs frontiers of India",
+    "whether the recipient is a tourist referred to in s.15",
+    "where a person has more than one establishment, which establishment made or received the supply"
+  ],
+  "outputs": [
+    "a determination that the supply IS or IS NOT an intra-State supply",
+    "or an escalation, where the location of the supplier or the place of supply cannot be established on the evidence held"
+  ],
+  "preconditions": [
+    "the transaction is a supply under s.7 of the CGST Act (GST-SUPPLY-SCOPE)",
+    "the place of supply has ALREADY been determined — s.8(1) and s.8(2) are expressly subject to s.10 and s.12 (GST-POS-GOODS, GST-POS-SERVICES-INDIA)",
+    "it is known whether the supply is of goods or of services, because s.8(1) and s.8(2) are separate limbs"
+  ],
+  "rules": [],
+  "exceptions": [
+    "a supply of goods to or by a Special Economic Zone developer or unit — proviso to s.8(1), never intra-State",
+    "goods imported into the territory of India till they cross the customs frontiers of India — proviso to s.8(1)",
+    "supplies made to a tourist referred to in s.15 — proviso to s.8(1); s.15 has NOT been extracted, so this limb cannot be evaluated here",
+    "a supply of services to or by a Special Economic Zone developer or unit — proviso to s.8(2), never intra-State",
+    "UNKNOWN — s.9 of the IGST Act (supplies in territorial waters) is a further special case and has not been extracted here",
+    "UNKNOWN — source is the IGST Act as on 23-05-2025; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "reading 'same State' as 'same address' — the test is same State or same Union territory, not same city, pincode or premises",
+    "comparing the supplier's State with the RECIPIENT's State instead of with the place of supply",
+    "treating a Special Economic Zone supply as intra-State because both parties sit in one State — both provisos exclude it",
+    "treating two branches of one company in different States as internal and therefore outside the comparison — Explanation 1 makes them establishments of distinct persons",
+    "assuming intra-State by default when the place of supply could not be determined — s.10(2) prescribes a determination, it does not permit a guess"
+  ],
+  "dependencies": [
+    "GST-POS-GOODS",
+    "GST-POS-SERVICES-INDIA",
+    "GST-POS-LOCATION-SERVICES",
+    "GST-SUPPLY-SCOPE",
+    "UNKNOWN — the IGST Act defines 'location of the supplier of services' (s.2(15)) but defines NO 'location of the supplier of goods'. The goods limb of s.8(1) therefore rests on a term the Act does not define.",
+    "UNKNOWN — IGST s.15 (tourist) is not extracted, so the third limb of the proviso to s.8(1) cannot be evaluated"
+  ],
+  "related_concepts": [
+    "GST-SUPPLY-INTER-STATE",
+    "GST-CHARGE-IGST-OR-CGST-AND-STATE-TAX",
+    "GST-POS-GOODS",
+    "GST-POS-SERVICES-INDIA"
+  ],
+  "legal_references": [
+    "IGST Act, 2017 s.8 — Intra-State supply",
+    "IGST Act, 2017 s.10 — referenced by s.8(1)",
+    "IGST Act, 2017 s.12 — referenced by s.8(2)",
+    "IGST Act, 2017 s.15 — referenced by the proviso to s.8(1); NOT extracted",
+    "CGST Act, 2017 s.2(103) — 'State' includes a Union territory with Legislature"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE — whether a supply is intra-State is a question of statutory charge, not of accounting measurement."
+  ],
+  "gst_references": [
+    "IGST Act, 2017 s.8(1) and s.8(2), including both provisos and Explanations 1 and 2"
+  ],
+  "evidence_required": [
+    "the location of the supplier, evidenced by the place of business from which the supply was made",
+    "the place of supply as determined under s.10 or s.12, with the limb relied on named",
+    "for a multi-establishment supplier or recipient: which establishment made or received the supply",
+    "for a Special Economic Zone counterparty: proof of developer or unit status"
+  ],
+  "confidence_factors": [
+    "zero until the place of supply has been determined — the whole test is subject to s.10 and s.12",
+    "weak for goods, because 'location of the supplier' is undefined in the Act for goods",
+    "weak when the supplier or recipient has establishments in more than one State — Explanation 1 makes the choice of establishment decisive",
+    "zero for a supply to a tourist, because s.15 is not held locally"
+  ],
+  "validation_checks": [
+    "the place of supply is determined and recorded BEFORE the intra-State test is applied",
+    "the comparison recorded is supplier location against PLACE OF SUPPLY, never against the recipient's address",
+    "no Special Economic Zone supply is ever recorded as intra-State",
+    "an intra-State determination and an inter-State determination are never both recorded for one supply",
+    "where the supplier has establishments in several States, the establishment relied on is named"
+  ],
+  "examples": [
+    "goods sold and delivered within one State by a supplier whose place of business is in that State — the place of supply under s.10(1)(a) is in the same State, so s.8(1) is satisfied",
+    "a service supplied to a registered person whose registered place of business is in the supplier's own State — the place of supply under s.12(2)(a) is the location of that person, the same State, so s.8(2) is satisfied"
+  ],
+  "counterexamples": [
+    "a supplier and a Special Economic Zone unit both located in one State — the locations coincide but the proviso to s.8(1) removes it from intra-State supply",
+    "a company supplying from its branch in one State to its own branch in another — Explanation 1 makes the two establishments distinct persons, so the comparison is made between two States and s.8 is not satisfied"
+  ],
+  "evidence": [
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.8, sub-section (1), goods",
+      "quote": "(1) Subject to the provisions of section 10, supply of goods where the location of the supplier and the place of supply of goods are in the same State or same Union territory shall be treated as intra-State supply:"
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.8, proviso to sub-section (1)",
+      "quote": "Provided that the following supply of goods shall not be treated as intra-State supply, namely:–– (i) supply of goods to or by a Special Economic Zone developer or a Special Economic Zone unit; (ii) goods imported into the territory of India till they cross the customs frontiers of India; or (iii) supplies made to a tourist referred to in section 15."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.8, sub-section (2), services",
+      "quote": "(2) Subject to the provisions of section 12, supply of services where the location of the supplier and the place of supply of services are in the same State or same Union territory shall be treated as intra-State supply:"
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.8, proviso to sub-section (2)",
+      "quote": "Provided that the intra-State supply of services shall not include supply of services to or by a Special Economic Zone developer or a Special Economic Zone unit."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.8, Explanation 1",
+      "quote": "Explanation 1.––For the purposes of this Act, where a person has, –– (i) an establishment in India and any other establishment outside India; (ii) an establishment in a State or Union territory and any other establishment outside th at State or Union territory; or",
+      "extraction_note": "The extraction breaks the word 'that' across a line as 'th at' and pads before the dash. Quoted exactly as extracted; the artifact is in the extraction, not in the Act."
+    },
+    {
+      "file": "IGST-Act-2017-as-on-23052025-IndiaCode.pdf",
+      "section": "IGST Act s.8, Explanation 2",
+      "quote": "Explanation 2.––A person carrying on a business through a branch or an agency or a representational office in any territory shall be treated as having an establishment in that territory"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(103)",
+      "quote": "(103) ―State‖ includes a Union territory with Legislature;"
+    }
+  ]
+}

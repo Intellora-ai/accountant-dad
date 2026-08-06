@@ -1,0 +1,168 @@
+{
+  "id": "ACC-REV-SCOPE-EXCLUSIONS",
+  "name": "AS-9 scope exclusions — what the standard does not decide",
+  "status": "VERIFIED",
+  "definition": "AS 9 deals with revenue from the sale of goods, the rendering of services, and the use by others of enterprise resources yielding interest, royalties and dividends. It does NOT deal with revenue from construction contracts, hire-purchase and lease agreements, government grants and other similar subsidies, or the revenue of insurance companies arising from insurance contracts. Separately, paragraph 3 lists items that fall outside the definition of revenue altogether.",
+  "why_it_exists": "Answering with AS 9 for a transaction AS 9 excludes is a specific and silent failure mode: the answer looks sourced and is wrong, because the governing standard was never opened. This concept exists to make the boundary an explicit precondition of every other AS-9 concept, so an out-of-scope input is refused rather than answered.",
+  "inputs": [
+    "the transaction type",
+    "the counterparty type, where it decides scope (an insurance company's insurance contracts)",
+    "whether the inflow meets the AS-9 definition of revenue at all"
+  ],
+  "outputs": [
+    "IN SCOPE — AS 9 decides recognition",
+    "OUT OF SCOPE — AS 9 does not deal with it, and another standard must be consulted",
+    "NOT REVENUE — the item is outside the definition of revenue for the purpose of AS 9"
+  ],
+  "preconditions": [
+    "a candidate inflow has been identified",
+    "this check runs BEFORE any AS-9 recognition rule is applied"
+  ],
+  "rules": [
+    "ACC-REV-SCOPE-001"
+  ],
+  "exceptions": [
+    "NOT APPLICABLE — a scope boundary has no exceptions; a transaction is either dealt with by AS 9 or it is not"
+  ],
+  "common_mistakes": [
+    "applying AS-9 sale-of-goods criteria to a hire-purchase or lease agreement",
+    "applying AS 9 to a construction contract, which AS 9 explicitly does not deal with",
+    "treating a government grant or similar subsidy as AS-9 revenue",
+    "recording an unrealised holding gain on current assets, or an appreciation in the value of fixed assets, as revenue",
+    "recording the gross inflow in an agency relationship as revenue instead of the commission",
+    "treating trade discounts and volume rebates received as revenue, when they are a reduction of cost"
+  ],
+  "dependencies": [],
+  "related_concepts": [
+    "ACC-REV-GOODS",
+    "ACC-REV-SERVICES",
+    "ACC-REV-INTEREST-ROYALTY-DIVIDEND",
+    "ACC-REV-DISCLOSURE"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted from any downloaded source in this pass"
+  ],
+  "icai_references": [
+    "AS 9, paragraphs 1, 2, 3 and 4.1; and AS 9 Appendix A.9 for trade discounts and volume rebates"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — an AS-9 scope exclusion says nothing about whether a transaction is a supply under GST; the two boundaries are unrelated"
+  ],
+  "evidence_required": [
+    "the document evidencing the transaction type",
+    "for an agency relationship, evidence of the agency and of the commission amount"
+  ],
+  "confidence_factors": [
+    "weak when the document does not distinguish a lease or hire-purchase from an outright sale",
+    "weak when the document does not reveal whether the enterprise acts as principal or as agent",
+    "weak when a subsidy's source is not identifiable as governmental"
+  ],
+  "validation_checks": [
+    "the transaction is not one of the four kinds AS 9 does not deal with, before any AS-9 recognition rule is applied",
+    "the inflow is not one of the five kinds listed in paragraph 3 as outside the definition of revenue",
+    "in an agency relationship, the amount recorded as revenue is the commission, not the gross inflow"
+  ],
+  "examples": [
+    "goods sold and delivered by a trading enterprise — in scope, decided by ACC-REV-GOODS",
+    "an annual maintenance contract — in scope, decided by ACC-REV-SERVICES"
+  ],
+  "counterexamples": [
+    "a construction contract — AS 9 does not deal with it (para 2(i))",
+    "an insurance company's revenue from insurance contracts — AS 9 does not deal with it (para 2(iv))",
+    "appreciation in the value of fixed assets — outside the definition of revenue (para 3(i))",
+    "a realised gain from discharging an obligation below its carrying amount — outside the definition of revenue (para 3(iv))"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 1",
+      "quote": "The Statement is concerned",
+      "extraction_note": "The continuation reads 'with the recognitionof revenue arising in the courseof the ordinaryactivities': the PDF extraction joins 'recognition of', 'course of' and 'ordinary activities'. The three in-scope limbs are quoted separately below."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 1, first limb",
+      "quote": "the sale of goods,"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 1, second limb",
+      "quote": "the rendering of services, and"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 1, third limb",
+      "quote": "the use by others of enterprise resources yielding interest, royalties and dividends."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 2",
+      "quote": "This Statement does not deal with the following aspects of revenue recognition to which special considerations apply"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 2(i)",
+      "quote": "Revenue arising from construction contracts",
+      "extraction_note": "In the extracted text this is immediately followed by ';5', the footnote marker referring to AS 7. The quote stops before it."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 2(ii)",
+      "quote": "Revenue arising from hire-purchase, lease agreements"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 2(iii)",
+      "quote": "Revenue arising from government grants and other similar subsidies"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 2(iv)",
+      "quote": "insurance companies arising from insurance contracts",
+      "extraction_note": "The words before read 'Revenueof': the PDF extraction joins 'Revenue of'. The quote resumes after that join."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 3",
+      "quote": "Examples of items not included within the definition of “revenue” for the purpose of this Statement are"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 3(i)",
+      "quote": "non-current assets e.g. appreciation in the value of fixed assets",
+      "extraction_note": "The words before read 'Realisedgains resulting from the disposal of, and unrealisedgains resulting from theholding of,': the PDF extraction joins 'Realised gains', 'unrealised gains' and 'the holding'. The quote resumes after them."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 3(ii)",
+      "quote": "Unrealised holding gains resulting from the change in value of current assets, and the natural increases in herds and agricultural and forest products"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 3(iii)",
+      "quote": "Realised or unrealised gains resulting from changes in foreign exchange",
+      "extraction_note": "The continuation reads 'ratesand adjustmentsarisingonthetranslation of foreign currency financial statements': the PDF extraction joins 'rates and' and runs 'adjustments arising on the translation' into one token. The quote stops before them."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 3(iv)",
+      "quote": "Realised gains resulting from the discharge of an obligation at less than its carrying amount"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 3(v)",
+      "quote": "Unrealised gains resulting from the restatement of the carrying amount of an obligation"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 4.1",
+      "quote": "In an agency relationship, the revenue is the amount of commission and not the gross inflow of cash, receivables or other consideration."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 Appendix A.9",
+      "quote": "Trade discounts and volume rebates received are not encompassed within the definition of revenue, since they represent a reduction of cost.",
+      "extraction_note": "The Appendix states of itself: \"This appendix is illustrative only and does not form part of the accounting standard set forth in\" this Statement. It is recorded here as illustration, not as the operative rule."
+    }
+  ]
+}

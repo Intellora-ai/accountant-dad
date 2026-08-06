@@ -45,6 +45,23 @@ EXPECTED_STATUSES = 4
 EXPECTED_SEVERITIES = 4
 EXPECTED_ENGINES = 4
 
+#: The exact words `_meaningful_text` refuses a blank with. A rejection test
+#: that asserts only `ValidationError` passes when the validator rejects for
+#: the WRONG reason, so the reason is pinned here and asserted by every blank
+#: test below.
+BLANK_REASON = "must not be empty or blank"
+
+
+def messages(raised: pytest.ExceptionInfo[ValidationError]) -> list[str]:
+    """Every message pydantic reported, EXACTLY as the validator worded it.
+
+    Substring matching is not enough: a message padded either side still
+    contains the words. Equality against this list is what makes the assertion
+    a real check on the reason rather than on a fragment of it.
+    """
+    return [str(error["msg"]) for error in raised.value.errors()]
+
+
 AWARE = datetime(2026, 8, 3, 12, 0, 0, tzinfo=UTC)
 NAIVE = datetime(2026, 8, 3, 12, 0, 0)
 
@@ -329,8 +346,9 @@ def test_a_finding_with_no_evidence_reference_is_refused() -> None:
 
 
 def test_a_blank_evidence_reference_is_refused() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         finding(supporting_evidence_references=("   ",))
+    assert f"Value error, {BLANK_REASON}" in messages(raised)
 
 
 def test_a_finding_keeps_every_evidence_reference_it_was_given() -> None:
@@ -429,15 +447,17 @@ def test_an_approved_decision_needs_no_issues() -> None:
 
 
 def test_a_decision_with_empty_reasoning_is_refused() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         decision(validation_reasoning="")
+    assert f"Value error, {BLANK_REASON}" in messages(raised)
 
 
 def test_a_decision_with_whitespace_only_reasoning_is_refused() -> None:
     # A space is not an explanation. `ENGINE_5:556` — *"Every approval and every
     # rejection must be explainable."*
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         decision(validation_reasoning="   \n\t ")
+    assert f"Value error, {BLANK_REASON}" in messages(raised)
 
 
 @pytest.mark.parametrize(
@@ -445,8 +465,9 @@ def test_a_decision_with_whitespace_only_reasoning_is_refused() -> None:
     ["what_failed", "why_it_failed", "affected_artifact", "recommended_next_step"],
 )
 def test_a_blank_component_of_a_finding_is_refused(field: str) -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         finding(**{field: " "})
+    assert f"Value error, {BLANK_REASON}" in messages(raised)
 
 
 def test_text_is_stored_verbatim_and_never_trimmed() -> None:
@@ -660,8 +681,11 @@ def test_a_decision_derived_from_an_earlier_version_records_its_parents() -> Non
 def test_a_blank_failed_rule_name_is_refused() -> None:
     # `VALIDATION_INTERNAL:110` — a finding is *"never merged into a summary
     # that loses its rule identity."* An empty name is that loss.
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         decision(failed_validation_rules=("",))
+    # Asserting only "it raised" would pass while the validator rejected for
+    # some other reason entirely. The reason is the thing under test.
+    assert f"Value error, {BLANK_REASON}" in messages(raised)
 
 
 def test_failed_validation_rules_are_carried_in_the_order_given() -> None:
@@ -675,5 +699,36 @@ def test_failed_validation_rules_are_carried_in_the_order_given() -> None:
 
 
 def test_a_blank_decision_level_evidence_reference_is_refused() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         decision(supporting_evidence_references=(" ",))
+    assert f"Value error, {BLANK_REASON}" in messages(raised)
+
+
+# ── The rejection reason itself, asserted exactly ───────────────────────────
+
+
+@pytest.mark.parametrize("blank", ["", " ", "\t", "\n", "   \n\t "])
+def test_every_shape_of_blank_is_refused_for_the_blank_reason(blank: str) -> None:
+    # Whitespace-only is the interesting boundary: it is truthy, so a validator
+    # that tested `if not value` instead of `if not value.strip()` would let it
+    # through. Each shape is checked, and each must fail for the SAME stated
+    # reason — a blank that is refused as "not a string" would be a different
+    # bug wearing a passing test.
+    with pytest.raises(ValidationError) as raised:
+        finding(what_failed=blank)
+    assert f"Value error, {BLANK_REASON}" in messages(raised)
+
+
+@pytest.mark.parametrize(
+    ("value", "type_name"),
+    [(42, "int"), (None, "NoneType"), (3.5, "float"), ((), "tuple"), (b"x", "bytes")],
+)
+def test_a_non_string_is_refused_and_names_the_type_it_was_given(
+    value: object, type_name: str
+) -> None:
+    # The message has to name the ACTUAL type. A validator that reported a
+    # fixed type would still raise, still pass a bare `pytest.raises`, and
+    # still tell a debugger the wrong thing about the artifact it refused.
+    with pytest.raises(ValidationError) as raised:
+        finding(what_failed=value)
+    assert f"Value error, must be a string, got {type_name}" in messages(raised)

@@ -1,0 +1,17 @@
+{
+  "id": "GST-INV-MANNER-003",
+  "status": "VERIFIED",
+  "if": [
+    "invoices were issued during a tax period"
+  ],
+  "then": "the serial numbers of those invoices MUST be furnished electronically through the common portal in FORM GSTR-1",
+  "source_section": "CGST Rules 2017, rule 48(3)",
+  "note": "This is a reporting obligation on the numbers themselves, separate from reporting the supplies.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(3)",
+      "quote": "The serial number of invoices issued during a tax period shall be furnished electronically through the common portal in FORM GSTR-1."
+    }
+  ]
+}

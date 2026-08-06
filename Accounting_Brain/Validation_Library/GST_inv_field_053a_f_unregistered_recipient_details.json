@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-FIELD-053A-F",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a credit note or a debit note referred to in section 34",
+    "it is issued under rule 53(1A) of the CGST Rules, 2017",
+    "the recipient is un-registered"
+  ],
+  "then": "where the recipient is unregistered, the credit or debit note MUST carry the recipient's name and address, the address of delivery, and the State name and State code",
+  "source_section": "CGST Rules 2017, rule 53(1A)(f)",
+  "note": "One mandatory particular of rule 53(1A)(f), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1A)(f)",
+      "quote": "name and address of the recipient and the address of delivery, along with the name of State and its code, if such recipient is un-registered;"
+    }
+  ]
+}

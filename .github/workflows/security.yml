@@ -122,13 +122,50 @@ jobs:
             echo "BLOCKED - dependency scan is HOLLOW: it passed a known-vulnerable pin."
             exit 1
           fi
-          echo "canary rejected as expected - dependency scan is live"
+          # ─────────────────────────────────────────────────────────────
+          # A CHECKER THAT REJECTS EVERYTHING PASSES THE TEST ABOVE TOO.
+          # `if tool args; then fail; fi` reads EVERY non-zero exit as "rejected
+          # as expected" — a missing binary (127), a segfault (139), an OOM kill
+          # (137), a network error or an internal tool fault all look identical
+          # to a genuine refusal. The half above proves only that the command
+          # did not exit 0.
+          #
+          # So the clean case must be ACCEPTED. Both halves together prove the
+          # tool RAN and DISCRIMINATED; either half alone proves nothing.
+          # `tools/ci/run_ocr_tests.sh:221-231` is where this shape already
+          # existed; it was the only canary in the repository that had it.
+          # ─────────────────────────────────────────────────────────────
+          printf '' > /tmp/canary-clean-req.txt
+          if ! pip-audit --strict --requirement /tmp/canary-clean-req.txt; then
+            echo "BLOCKED - dependency scan rejects a requirements file with no known"
+            echo "advisory. It would never pass, so its red says nothing."
+            exit 1
+          fi
+          echo "canary rejected the vulnerable and accepted the clean - dependency scan discriminates"
       - name: audit the CI toolchain
         # This gate is INTENTIONALLY non-deterministic, and that is correct.
         # The advisory database changes daily, so a dependency that was safe
         # yesterday and vulnerable today SHOULD turn the build red. The database
         # is never cached for the same reason.
         run: pip-audit --strict --requirement requirements-ci.txt
+      - name: audit EVERY dependency manifest, not just the CI toolchain
+        # SCOPE HOLE, measured and now closed. The step above audits exactly one
+        # manifest. `requirements-engine1.txt` and `requirements-engine1-ocr.txt`
+        # were audited by NOTHING, while being INSTALLED by four other CI jobs —
+        # so six pinned distributions, `torch` among them, entered every CI
+        # environment with zero advisory scanning.
+        #
+        # ADDED rather than folded into the step above, deliberately. Renaming
+        # that step to widen it reads as a REMOVAL to
+        # `tools/ci/assert_steps_not_removed.py`, which identifies a step by its
+        # name — and it is right to: a step that disappears and a step that is
+        # renamed are indistinguishable from outside. The narrow assertion stays
+        # independently verifiable and the broad one is new.
+        #
+        # The manifest set is DERIVED from the tree, never restated, so a fourth
+        # manifest is covered the day it appears rather than the day someone
+        # remembers it.
+        run: tools/ci/audit_dependency_manifests.sh
       - name: audit the package's own dependencies
         run: |
           set -euo pipefail

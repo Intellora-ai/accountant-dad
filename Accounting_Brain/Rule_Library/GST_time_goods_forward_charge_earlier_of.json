@@ -1,0 +1,23 @@
+{
+  "id": "GST-TIME-GOODS-001",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of goods",
+    "tax is NOT paid or liable to be paid on reverse charge basis"
+  ],
+  "then": "the time of supply is the EARLIER of the two dates in s.12(2)(a) and s.12(2)(b) \u2014 see GST-TIME-GOODS-002 and GST-TIME-GOODS-003",
+  "source_section": "CGST s.12(1) and s.12(2)",
+  "note": "EARLIER, not later, and not the accounting recognition date. s.12(1) ties the liability itself to this date, so the date chosen here is the date the tax becomes payable.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(1)",
+      "quote": "The liability to pay tax on goods shall arise at the time of supply, as determined in accordance with the provisions of this                    section."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(2)",
+      "quote": "The   time   of  supply    of  goods    shall  be  the   earlier  of  the  following     dates,"
+    }
+  ]
+}

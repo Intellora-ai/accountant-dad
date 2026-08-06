@@ -57,12 +57,12 @@ already proven in `test_clarification.py` and are deliberately not repeated here
 from __future__ import annotations
 
 import ast
-import pathlib
 import re
 import uuid
 from decimal import Decimal
 
 import pytest
+from authored_source import authored_source
 
 from accountant_dad.artifacts.clarification import (
     ClarificationPriority,
@@ -252,7 +252,7 @@ def test_the_module_imports_no_other_engine_no_application_layer_and_no_brain() 
     check that depends on what some other test happened to import already is a
     check that passes or fails by test order.
     """
-    source = pathlib.Path(str(stub.__file__)).read_text(encoding="utf-8")
+    source = authored_source(stub)
     imported: set[str] = set()
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):

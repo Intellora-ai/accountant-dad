@@ -1,0 +1,18 @@
+{
+  "id": "GST-ITC-16-2-D",
+  "status": "VERIFIED",
+  "if": [
+    "input tax credit is claimed on a supply",
+    "the registered person has NOT furnished the return under section 39"
+  ],
+  "then": "credit of that input tax is DENIED",
+  "source_section": "CGST Act s.16(2)(d)",
+  "note": "The credit is taken in a return; no return, no credit. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(d)",
+      "quote": "he has furnished the return under section 39:"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-FIELD-051-E",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a refund voucher referred to in clause (e) of sub-section (3) of section 31",
+    "it is issued under rule 51 of the CGST Rules, 2017"
+  ],
+  "then": "the refund voucher MUST carry the number and date of the receipt voucher it reverses",
+  "source_section": "CGST Rules 2017, rule 51(e)",
+  "note": "One mandatory particular of rule 51(e), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 51(e)",
+      "quote": "number and date of receipt voucher issued in accordance with the provisions of rule 50;"
+    }
+  ]
+}

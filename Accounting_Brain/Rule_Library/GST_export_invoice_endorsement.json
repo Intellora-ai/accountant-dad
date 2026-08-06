@@ -1,0 +1,34 @@
+{
+  "id": "GST-INV-EXPORT-001",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is an export of goods or services"
+  ],
+  "then": "the invoice MUST carry the prescribed export endorsement, and MUST carry, in place of the rule 46(e) details, the recipient's name and address, the address of delivery, and the name of the country of destination",
+  "source_section": "CGST Rules 2017, rule 46, third proviso",
+  "note": "Two endorsements exist: one for supplies made on payment of integrated tax, one for supplies made under bond or Letter of Undertaking without payment of integrated tax.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, third proviso",
+      "quote": "Provided also that in the case of the export of goods or services, the invoice shall carry an endorsement"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, third proviso",
+      "quote": "SUPPLY MEANT FOR EXPORT/SUPPLY TO SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS ON PAYMENT OF INTEGRATED TAX",
+      "extraction_note": "The endorsement stands between the extraction's U+2015 and U+2016 quotation marks and is quoted without them."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, third proviso",
+      "quote": "SUPPLY MEANT FOR EXPORT/SUPPLY TO SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX",
+      "extraction_note": "Quoted without the surrounding U+2015 / U+2016 quotation marks, as above."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, third proviso",
+      "quote": "as the case may be, and shall, in lieu of the details specified in clause (e), contain the following details, namely,- (i) name and address of the recipient; (ii) address of delivery; and (iii) name of the country of destination:"
+    }
+  ]
+}

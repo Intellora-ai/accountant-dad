@@ -1,0 +1,24 @@
+{
+  "id": "GST-ITC-17-4",
+  "status": "VERIFIED",
+  "if": [
+    "the registered person is a banking company, or a financial institution including a non-banking financial company",
+    "it is engaged in supplying services by way of accepting deposits, extending loans or advances"
+  ],
+  "then": "it MAY OPT either to comply with s.17(2), or to avail every month an amount equal to FIFTY PER CENT. of the eligible input tax credit on inputs, capital goods and input services in that month, the rest lapsing",
+  "source_section": "CGST Act s.17(4)",
+  "note": "An option, not a default. If it is not exercised, s.17(2) applies in the ordinary way. Under the fifty per cent. route the unavailed half LAPSES \u2014 it is not carried forward and not added to cost as a deferred credit. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(4)",
+      "quote": "A banking company or a financial institution including a non-banking financial company, engaged in supplying services by way of accepting deposits, extending loans or advances shall have the option to either comply with the provisions of sub-",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the sentence is quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(4), continued",
+      "quote": "section (2), or avail of, every month, an amount equal to fifty per cent. of the eligible input tax credit on inputs, capital goods and input services in that month and the rest shall lapse:"
+    }
+  ]
+}

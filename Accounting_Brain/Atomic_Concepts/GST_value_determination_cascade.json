@@ -1,0 +1,144 @@
+{
+  "id": "GST-VAL-CASCADE",
+  "name": "When transaction value is rejected \u2014 the ordered cascade into the valuation Rules",
+  "status": "VERIFIED",
+  "definition": "Section 15(4) says that where the value cannot be determined under s.15(1), it shall be determined in such manner as may be prescribed. Section 15(5) goes further: for supplies notified by the Government on the recommendations of the Council, the prescribed manner applies NOTWITHSTANDING s.15(1) and s.15(4). The prescribed manner is Chapter IV of the CGST Rules, and it is an ORDERED cascade, not a menu. Rule 27 governs consideration not wholly in money; rule 28 governs distinct or related persons other than through an agent; rule 29 governs goods supplied through an agent; rule 30 values at one hundred and ten percent of cost where no preceding rule of the Chapter determines the value; rule 31 is the residual, available only where rules 27 to 30 cannot determine it. Rules 31A and 32 open with a non obstante clause over the Chapter for the supplies they name.",
+  "why_it_exists": "A rejected transaction value must still produce a number, and the number must be reproducible by anyone auditing it. The cascade does that by fixing the ORDER: each rule names the rules it falls back to and the order in which they apply. An engine that picks whichever rule yields a convenient figure produces a defensible-looking value that no second party can reproduce \u2014 which is indistinguishable from an invented one.",
+  "inputs": [
+    "which s.15(1) condition failed \u2014 relatedness, or sole consideration, or both",
+    "whether the supply is between distinct or related persons (s.25(4), s.25(5), the s.15 Explanation)",
+    "whether the supply is made through an agent",
+    "whether the supply is one notified under s.15(5)",
+    "whether the supply is one named in rule 31A or rule 32",
+    "for rule 30: the cost of production or manufacture, the cost of acquisition, or the cost of provision"
+  ],
+  "outputs": [
+    "the rule that governs, named",
+    "the position in the cascade at which the value was determined",
+    "the value, or an explicit failure naming the input that could not be obtained"
+  ],
+  "preconditions": [
+    "s.15(1) has been tested and does not apply (GST-VAL-TRANSACTION-VALUE), or s.15(5) applies notwithstanding it",
+    "the supply has been classified as goods or services, since rule 31's proviso is available only for services"
+  ],
+  "rules": [
+    "GST-VALUE-009",
+    "GST-VALUE-010",
+    "UNKNOWN \u2014 no atomic rule has been written into Rule_Library for the ordering of rules 27 to 31; Rule_Library was not modified by this record"
+  ],
+  "exceptions": [
+    "rule 31A opens 'Notwithstanding anything contained in the provisions of this Chapter' for lottery, betting, gambling and horse racing \u2014 it displaces the cascade for those supplies",
+    "rule 32 opens with the same non obstante clause but the special valuations it carries are AT THE OPTION OF THE SUPPLIER, not mandatory",
+    "rule 31, proviso \u2014 for a supply of services the supplier may opt for the residual rule, ignoring rule 30; the option exists for services only",
+    "UNKNOWN \u2014 the list of supplies notified under s.15(5) is not held locally, so whether a given supply is inside s.15(5) cannot be determined from the sources in this library",
+    "UNKNOWN \u2014 notifications made under the Act and the Rules are not held locally. A notification can narrow or displace a limb without the section or rule text changing.",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "treating rules 27 to 31 as alternatives and selecting the most convenient \u2014 each rule states the rule it falls back to and the order",
+    "reaching rule 30 or rule 31 without first showing that every preceding rule of the Chapter failed",
+    "applying rule 30's one hundred and ten percent to a supply where rule 28 or rule 29 could have produced a value",
+    "using the rule 31 proviso for a supply of goods \u2014 the proviso names supply of services only",
+    "assuming that satisfying both s.15(1) conditions ends the enquiry \u2014 s.15(5) overrides s.15(1) for notified supplies",
+    "computing a value under the Rules and then forgetting the s.15(2) additions still apply to the supply"
+  ],
+  "dependencies": [
+    "GST-VAL-TRANSACTION-VALUE",
+    "GST-VAL-OPEN-MARKET"
+  ],
+  "related_concepts": [
+    "GST-VALUE-SUPPLY",
+    "GST-VAL-NON-MONEY",
+    "GST-VAL-RELATED-DISTINCT",
+    "GST-VAL-AGENT",
+    "GST-VAL-COST-RESIDUAL"
+  ],
+  "legal_references": [
+    "CGST Act 2017, s.15(4) \u2014 value not determinable under s.15(1)",
+    "CGST Act 2017, s.15(5) \u2014 notified supplies, notwithstanding s.15(1) and s.15(4)",
+    "CGST Rules 2017, rules 27 to 31 \u2014 the prescribed manner, in order"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 the cascade is a statutory computation. No accounting standard determines which valuation rule applies"
+  ],
+  "gst_references": [
+    "CGST Act 2017, s.15(4) and s.15(5)",
+    "CGST Rules 2017, rule 27, rule 28, rule 29, rule 30, rule 31, rule 31A and rule 32",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the determination that s.15(1) does not apply, and which condition failed",
+    "the facts that select the governing rule \u2014 relatedness, distinctness, agency, or non-money consideration",
+    "for rule 30: the costing records supporting cost of production, manufacture, acquisition or provision",
+    "for rule 31: a written record of why rules 27 to 30 could not determine the value, and of the reasonable means used"
+  ],
+  "confidence_factors": [
+    "zero where the failed s.15(1) condition has not been identified, because the condition that failed selects the rule",
+    "weak at rule 31 by construction \u2014 'reasonable means' is not a computation, and two competent people can reach two numbers",
+    "weak wherever open market value is asserted without evidence of an actual comparable supply (GST-VAL-OPEN-MARKET)",
+    "UNKNOWN for s.15(5) \u2014 the notification listing those supplies is not held locally, so a supply cannot be cleared of being inside it"
+  ],
+  "validation_checks": [
+    "the governing rule is named explicitly, never implied by the arithmetic used",
+    "where rule 30 or rule 31 was used, the failure of every preceding rule of the Chapter is recorded",
+    "the rule 31 proviso is used only for a supply of services",
+    "the s.15(2) additions have been applied to a value determined under the Rules, not only to a transaction value",
+    "a value that cannot be determined is reported as undetermined \u2014 never completed with an estimate"
+  ],
+  "examples": [
+    "a supply for consideration not wholly in money where the open market value is available \u2014 rule 27(a) determines the value and the cascade stops there"
+  ],
+  "counterexamples": [
+    "valuing a related-party supply at one hundred and ten percent of cost under rule 30 without first testing rule 28's open market value and like kind and quality limbs \u2014 the cascade was entered out of order",
+    "a supplier of goods electing the rule 31 residual method to avoid rule 30 \u2014 the proviso permits that only for a supply of services"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(4)",
+      "quote": "Where the value of the supply of goods or services or both cannot be determined under sub-section (1), the same shall be determined in such manner as may be prescribed."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.15(5)",
+      "quote": "Notwithstanding anything contained in sub-section (1) or sub-section (4), the value of such supplies as may be notified by the Government on the recommendations of the Council shall be determined in such manner as may be prescribed."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 27(d)",
+      "quote": "if the value is not determinable under clause (a) or clause (b) or clause (c), be the sum total of consideration in money and such further amount in money that is equivalent to consideration not in money as determined by the application of rule 30 or rule 31 in that order."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 28(c)",
+      "quote": "if the value is not determinable under clause (a) or (b), be the value as determined by the application of rule 30 or rule 31, in that order:"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 30",
+      "quote": "Where the value of a supply of goods or services or both is not determinable by any of the preceding rules of this Chapter, the value shall be one hundred and ten percent of the cost of production or manufacture or the cost of acquisition of such goods or the cost of provision of such services."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 31",
+      "quote": "Where the value of supply of goods or services or both cannot be determined under rules 27 to 30, the same shall be determined using reasonable means consistent with the principles and the general provisions of section 15 and the provisions of this Chapter:"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 31, proviso",
+      "quote": "Provided that in the case of supply of services, the supplier may opt for this rule, ignoring rule 30."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 31A(1)",
+      "quote": "Notwithstanding anything contained in the provisions of this Chapter, the value in respect of supplies specified below shall be determined in the manner provided hereinafter."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 32(1)",
+      "quote": "Notwithstanding anything contained in the provisions of this Chapter, the value in respect of supplies specified below shall, at the option of the supplier, be determined in the manner provided hereinafter."
+    }
+  ]
+}

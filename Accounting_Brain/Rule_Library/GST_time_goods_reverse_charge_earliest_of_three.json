@@ -1,0 +1,39 @@
+{
+  "id": "GST-TIME-GOODS-005",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of goods",
+    "tax is paid or liable to be paid on reverse charge basis"
+  ],
+  "then": "the time of supply is the EARLIEST of: the date of receipt of goods; the date of payment as entered in the recipient's books of account or the date the payment is debited to his bank account (whichever is earlier); and the date immediately following THIRTY days from the date of issue of invoice",
+  "source_section": "CGST s.12(3)",
+  "note": "EARLIEST of three, not earlier of two, and the clock is THIRTY days for goods. Services run sixty (GST-TIME-SERVICES-006) \u2014 mixing the two is the single most likely reverse-charge error.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(3)",
+      "quote": "In case of supplies in respect of which tax is paid or liable to be paid on reverse  charge     basis,   the  time   of   supply   shall   be   the  earliest   of  the  following     dates,"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(3)(a)",
+      "quote": "the date of the receipt of goods"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(3)(b)",
+      "quote": "the date of payment as entered in the books of account of the recipient or the",
+      "extraction_note": "Clause (b) is split by a page break in the extraction \u2014 footnote 35 and the running header 'CHAPTER IV TIME AND VALUE OF SUPPLY' fall between the two halves. Quoted as two spans."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(3)(b)",
+      "quote": "date on which the payment is debited in his bank account, whichever is earlier"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(3)(c)",
+      "quote": "the date immediately following thirty days from the date of issue of invoice or any other document, by whatever name called, in lieu thereof by the supplier"
+    }
+  ]
+}

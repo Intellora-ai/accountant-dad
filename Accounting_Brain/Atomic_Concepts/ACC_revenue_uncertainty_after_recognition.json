@@ -1,0 +1,114 @@
+{
+  "id": "ACC-REV-UNCERTAINTY-AFTER-RECOGNITION",
+  "name": "Uncertainty arising AFTER revenue was recognised",
+  "status": "VERIFIED",
+  "definition": "When the uncertainty relating to collectability arises subsequent to the time of sale or the rendering of the service, AS 9 states it is more appropriate to make a separate provision to reflect the uncertainty rather than to adjust the amount of revenue originally recorded.",
+  "why_it_exists": "Doubt has two different answers depending on WHEN it arose, and the difference is the whole point. Doubt existing at the time of the claim stops revenue from being recognised at all (ACC-REV-POSTPONE-001). Doubt arriving later leaves the original revenue alone and creates a provision instead — because at the moment of recognition the revenue was correctly recognised, and rewriting it would misstate a period that was right when it closed.",
+  "inputs": [
+    "the date revenue was originally recognised",
+    "the date the uncertainty about collectability arose",
+    "the amount originally recorded as revenue"
+  ],
+  "outputs": [
+    "a separate provision reflecting the uncertainty",
+    "the originally recorded revenue, unadjusted"
+  ],
+  "preconditions": [
+    "revenue was already recognised under AS 9",
+    "the uncertainty relates to collectability",
+    "the uncertainty arose subsequent to the time of sale or the rendering of the service"
+  ],
+  "rules": [
+    "ACC-REV-LATER-DOUBT-001",
+    "ACC-REV-POSTPONED-PERIOD-001"
+  ],
+  "exceptions": [
+    "UNKNOWN — AS 9 para 9.3 states the treatment as what is 'more appropriate' and names no exception to it in the extracted text"
+  ],
+  "common_mistakes": [
+    "reversing or reducing the original revenue when a customer later becomes doubtful — AS 9 para 9.3 points to a separate provision instead",
+    "confusing this with the pre-existing postponement rule: postponement applies to doubt at the time of raising the claim, this applies to doubt arising after",
+    "netting the provision against revenue instead of keeping it separate",
+    "recognising revenue late on the basis that payment is by instalments — where there is no uncertainty as to ultimate collection, revenue is recognised at the time of sale or rendering of service even though payments are made by instalments"
+  ],
+  "dependencies": [
+    "ACC-REV-POSTPONE-001"
+  ],
+  "related_concepts": [
+    "ACC-REV-GOODS",
+    "ACC-REV-SERVICES",
+    "ACC-REV-INTEREST-ROYALTY-DIVIDEND",
+    "ACC-REV-DISCLOSURE"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted from any downloaded source in this pass"
+  ],
+  "icai_references": [
+    "AS 9, paragraphs 9.2, 9.3 and 9.5"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — a provision for a doubtful receivable does not alter the GST already accounted on the supply; that is a separate determination"
+  ],
+  "evidence_required": [
+    "the date and document of original recognition",
+    "the event or document that raised the later doubt, with its date",
+    "the two dates must be distinguishable, or the rule cannot be selected"
+  ],
+  "confidence_factors": [
+    "weak when the document does not date the uncertainty, because the whole rule turns on before-versus-after",
+    "weak when original recognition cannot be located, so it is unknown whether revenue was ever recognised",
+    "REQUIRES HUMAN ACCOUNTANT when the uncertainty plausibly existed at the time of sale and only became visible later — AS 9 turns on when the uncertainty AROSE, and the documents rarely settle that"
+  ],
+  "validation_checks": [
+    "the originally recorded revenue amount is unchanged",
+    "a separate provision exists, and is not netted against revenue",
+    "the uncertainty is dated after the time of sale or the rendering of the service"
+  ],
+  "examples": [
+    "goods sold and revenue recognised in April; in September the customer enters difficulty — the April revenue stands, and a separate provision is made"
+  ],
+  "counterexamples": [
+    "a price escalation claim raised where the ability to assess ultimate collection with reasonable certainty is lacking at the time of raising the claim — revenue recognition is postponed to the extent of the uncertainty (para 9.2), and no revenue was recognised to provide against",
+    "a sale collected in instalments with no uncertainty as to ultimate collection — revenue is recognised at the time of sale, and no provision arises from the instalment terms alone"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 9.3",
+      "quote": "When the uncertainty relating",
+      "extraction_note": "The continuation reads 'tocollectability arises': the PDF extraction joins 'to collectability'. The next quote resumes after that join."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 9.3",
+      "quote": "arises subsequent to the time of sale or the rendering of the service,",
+      "extraction_note": "The continuation reads 'itis more appropriate': the PDF extraction joins 'it is'. The next quote resumes after that join."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 9.3",
+      "quote": "more appropriate to make a separate provision to reflect the uncertainty rather than to adjust the amount of revenue originally recorded"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 9.2",
+      "quote": "revenue is recognised at the time of sale or rendering of service even though payments are made by instalments"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 9.5",
+      "quote": "When recognition of revenue is postponed due to the effect of uncertainties,",
+      "extraction_note": "The continuation reads 'itisconsidered as revenue of the period in which itis properly recognised': the PDF extraction joins 'it is considered' into one token and 'it is' into another. The remaining fragments are quoted separately below."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 9.5",
+      "quote": "as revenue of the period in which"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 9.5",
+      "quote": "properly recognised"
+    }
+  ]
+}

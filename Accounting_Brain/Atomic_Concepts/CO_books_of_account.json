@@ -1,0 +1,148 @@
+{
+  "id": "CO-BOOKS-OF-ACCOUNT",
+  "name": "Books of account — what a company must keep (Companies Act, 2013, s.128)",
+  "status": "VERIFIED",
+  "definition": "Books of account are the records a company keeps of all sums of money received and expended, all sales and purchases of goods and services, its assets and liabilities, and prescribed items of cost. Every company must prepare and keep them, with other relevant books and papers and the financial statement, at its registered office for every financial year, on accrual basis and according to the double entry system of accounting, so that they give a true and fair view of the state of the affairs of the company and explain the transactions effected.",
+  "why_it_exists": "This is the statutory floor an accounting standard stands on. It fixes WHAT must be recorded, WHERE it is kept, in WHAT form (accrual, double entry), and for HOW LONG. Without s.128 the phrase 'the books' has no legal content and a standard has nothing to attach to.",
+  "inputs": [
+    "transactions effected at the registered office and at branch offices",
+    "vouchers relevant to any entry in the books of account",
+    "summarized returns sent periodically by a branch office"
+  ],
+  "outputs": [
+    "books of account and other relevant books and papers, for the financial year",
+    "financial statement for the financial year"
+  ],
+  "preconditions": [
+    "the entity is a company to which the Companies Act, 2013 applies",
+    "a financial year as defined in s.2(41) can be identified"
+  ],
+  "rules": [
+    "CO-BOOKS-ACCRUAL-DOUBLE-ENTRY-001",
+    "CO-BOOKS-RETENTION-001",
+    "CO-BOOKS-LOCATION-001"
+  ],
+  "exceptions": [
+    "s.128(2) — where a company has a branch office in India or outside India, keeping proper books at that branch and sending proper summarized returns periodically to the registered office is deemed to comply with s.128(1)",
+    "UNKNOWN — source is the Act as enacted 2013; amendments not held locally"
+  ],
+  "common_mistakes": [
+    "keeping books on a cash basis — s.128(1) requires accrual basis",
+    "maintaining only a receipts-and-payments record — s.128(1) requires the double entry system of accounting",
+    "recording sales but not assets and liabilities — s.2(13) requires both",
+    "treating the definition as goods-only — s.2(13)(ii) covers sales and purchases of services as well",
+    "moving books away from the registered office without a Board decision and the seven-day notice to the Registrar",
+    "discarding records before the eight-financial-year period in s.128(5) has run"
+  ],
+  "dependencies": [
+    "CO-FINANCIAL-YEAR"
+  ],
+  "related_concepts": [
+    "CO-FINANCIAL-STATEMENT",
+    "CO-DEPRECIATION-SCHEDULE-II"
+  ],
+  "legal_references": [
+    "Companies Act, 2013, section 128",
+    "Companies Act, 2013, section 2(13) — definition of “books of account”",
+    "Companies Act, 2013, section 2(12) — definition of “book and paper”"
+  ],
+  "icai_references": [
+    "UNKNOWN — s.128 names no ICAI Accounting Standard; the route from the Act to ICAI standards runs through s.129(1) and s.133, not through s.128"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — record-keeping under the CGST Act is a separate statutory obligation and must not be conflated with s.128"
+  ],
+  "evidence_required": [
+    "the voucher relevant to the entry — s.128(5) requires vouchers to be kept with the books",
+    "where books are kept away from the registered office: the Board decision and the notice filed with the Registrar",
+    "where books are kept at a branch: the periodic summarized returns sent to the registered office"
+  ],
+  "confidence_factors": [
+    "weak when the entity type is unknown — s.128 binds a company, not a proprietorship or a partnership",
+    "weak when the document does not reveal whether recording is on accrual or cash basis",
+    "the printed text of s.128(6) carries a footnote recording words omitted by Act 29 of 2020, so the operative penalty already differs from the enacted wording"
+  ],
+  "validation_checks": [
+    "the entry is supported by a voucher",
+    "the entry is recorded on accrual basis, not on receipt or payment of cash",
+    "the entry falls in a financial year as defined in s.2(41)",
+    "the records cover the s.2(13) categories in scope: money received and expended, sales and purchases of goods AND services, assets and liabilities"
+  ],
+  "examples": [
+    "a credit sale recorded when the sale is effected rather than when cash arrives — accrual basis under s.128(1)",
+    "a purchase of a service recorded in the books — s.2(13)(ii) covers services, not only goods"
+  ],
+  "counterexamples": [
+    "a cash book of receipts and payments only — does not satisfy the double entry system of accounting required by s.128(1)",
+    "books kept at a director's home with no Board decision and no notice to the Registrar — outside the first proviso to s.128(1)"
+  ],
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(13)",
+      "quote": "“books of account” includes records maintained in respect of"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(13)(i)",
+      "quote": "all sums of money received and expended by a company and matters in relation to which the receipts and expenditure take place"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(13)(ii)",
+      "quote": "all sales and purchases of goods and services by the company"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(13)(iii)",
+      "quote": "the assets and liabilities of the company"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(13)(iv)",
+      "quote": "the items of cost as may be prescribed under section 148 in the case of a company which belongs to any class of companies specified under that section"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(12)",
+      "quote": "“book and paper” and “book or paper” include books of account, deeds, vouchers, writings, documents, minutes and registers maintained on paper or in electronic form"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(1)",
+      "quote": "Every company shall prepare and keep at its registered office books of account and other relevant books and papers and financial statement for every financial year which give a true and fair view of the state of the affairs of the company"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(1)",
+      "quote": "including that of its branch office or offices, if any, and explain the transactions effected both at the registered office and its branches"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(1)",
+      "quote": "such books shall be kept on accrual basis and according to the double entry system of accounting"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(2)",
+      "quote": "Where a company has a branch office in India or outside India, it shall be deemed to have complied with the provisions of sub-section (1), if proper books of account relating to the transactions effected at the branch office are kept at that office and proper summarized returns periodically are sent by the branch office to the company at its registered office or the other place referred to in sub-section (1)"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(3)",
+      "quote": "The books of account and other books and papers maintained by the company within India shall be open for inspection at the registered office of the company or at such other place in India by any director during business hours"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(6)",
+      "quote": "with fine which shall not be less than fifty thousand rupees but which may extend to five lakh rupees",
+      "extraction_note": "Quoted from 'with fine' onward. The printed text carries the footnote marker '1***' immediately before it, marking words omitted by a later Act. The marker is in the enacted compilation itself, not an extraction artifact."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(6), footnote 1",
+      "quote": "The words “with imprisonment for a term which may extend to one year or” omitted by Act 29 of 2020, s. 24",
+      "extraction_note": "This is the Act's own footnote, quoted as direct evidence that the printed section has been amended since enactment."
+    }
+  ]
+}

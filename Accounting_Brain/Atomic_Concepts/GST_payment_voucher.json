@@ -1,0 +1,97 @@
+{
+  "id": "GST-INV-PAYMENT-VOUCHER",
+  "name": "Payment voucher for a reverse charge payment",
+  "status": "VERIFIED",
+  "definition": "A payment voucher is issued under clause (g) of section 31(3) at the time of making payment to a supplier where the recipient pays the tax. Rule 52 fixes ten particulars, (a) to (j); clause (a) is the only particular in this chapter that qualifies the SUPPLIER's identity with 'if registered'.",
+  "why_it_exists": "Under reverse charge the person paying the tax is not the person making the supply. The payment voucher is the document the tax-paying recipient creates, which is why the supplier may have no GSTIN to state.",
+  "inputs": [
+    "the document",
+    "whether the supplier is registered",
+    "the amount paid"
+  ],
+  "outputs": [
+    "the set of rule 52 particulars found",
+    "the set of mandatory particulars absent"
+  ],
+  "preconditions": [
+    "tax on the supply is payable by the recipient",
+    "a payment is being made to the supplier"
+  ],
+  "rules": [
+    "GST-INV-FIELD-052-A",
+    "GST-INV-FIELD-052-B",
+    "GST-INV-FIELD-052-C",
+    "GST-INV-FIELD-052-D",
+    "GST-INV-FIELD-052-E",
+    "GST-INV-FIELD-052-F",
+    "GST-INV-FIELD-052-G",
+    "GST-INV-FIELD-052-H",
+    "GST-INV-FIELD-052-I",
+    "GST-INV-FIELD-052-J",
+    "GST-INV-SPECIAL-001"
+  ],
+  "exceptions": [
+    "rule 54(5) extends the rule 54(2) and 54(4) relaxations to payment vouchers"
+  ],
+  "common_mistakes": [
+    "rejecting a payment voucher because the supplier has no GSTIN \u2014 clause (a) says 'if registered'",
+    "expecting a reverse-charge flag \u2014 rule 52 has no such particular, because the whole document exists for a reverse charge payment",
+    "treating the payment voucher as the document that creates the tax liability rather than as the record of the payment"
+  ],
+  "dependencies": [
+    "GST-INV-TAX-INVOICE"
+  ],
+  "related_concepts": [
+    "GST-INV-RECEIPT-VOUCHER",
+    "GST-INV-REFUND-VOUCHER"
+  ],
+  "legal_references": [
+    "CGST Rules 2017, rule 52",
+    "UNKNOWN \u2014 clause (g) of sub-section (3) of section 31 of the CGST Act was not read for this record"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE"
+  ],
+  "gst_references": [
+    "CGST Rules 2017, rule 52",
+    "CGST Rules 2017, rule 46(p)",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the document",
+    "the supplier's registration status",
+    "the amount paid"
+  ],
+  "confidence_factors": [
+    "weak when it is unknown whether the supply attracts reverse charge at all",
+    "weak when the supplier is unregistered and cannot be identified by GSTIN"
+  ],
+  "validation_checks": [
+    "all ten particulars (a) to (j) are present, subject to (i) applying only to inter-State supplies",
+    "the absence of a supplier GSTIN is not reported as a defect where the supplier is unregistered",
+    "the amount paid is present"
+  ],
+  "examples": [
+    "a voucher for a payment to an unregistered goods transport operator, showing the operator's name and address without a GSTIN"
+  ],
+  "counterexamples": [
+    "a voucher with no amount paid \u2014 clause (f) fails"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 52",
+      "quote": "52. Payment voucher.-A payment voucher referred to in clause (g) of sub-section (3) of section 31 shall contain the following particulars, namely:-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 52(a)",
+      "quote": "name, address and Goods and Services Tax Identification Number of the supplier if registered;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 52(f)",
+      "quote": "amount paid;"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "GST-ITC-RCM-PAYMENT-VOUCHER",
+  "status": "VERIFIED",
+  "if": [
+    "a registered person is liable to pay tax under s.9(3) or s.9(4)",
+    "he makes payment to the supplier"
+  ],
+  "then": "he SHALL ISSUE A PAYMENT VOUCHER at the time of making that payment",
+  "source_section": "CGST Act s.31(3)(g)",
+  "note": "A separate document from the self-invoice in s.31(3)(f), with a different trigger: the self-invoice is triggered by receipt from an unregistered supplier, the payment voucher by making payment, and this clause is not limited to unregistered suppliers. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.31(3)(g)",
+      "quote": "section (4) of section 9 shall issue a payment voucher at the time of making payment to the supplier.",
+      "extraction_note": "The extractor breaks 'sub-section' across the page here; the opening words 'a registered person who is liable to pay tax under sub-' sit on the preceding page and are quoted separately in GST-ITC-RCM-SELF-INVOICE."
+    }
+  ]
+}

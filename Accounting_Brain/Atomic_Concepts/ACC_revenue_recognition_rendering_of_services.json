@@ -1,0 +1,164 @@
+{
+  "id": "ACC-REV-SERVICES",
+  "name": "Revenue recognition — rendering of services",
+  "status": "VERIFIED",
+  "definition": "Revenue from a service transaction is recognised as the service is performed, measured either by the proportionate completion method or by the completed service contract method, whichever relates the revenue to the work accomplished, and only when no significant uncertainty exists about the amount of the consideration.",
+  "why_it_exists": "A service is consumed over time, so there is no single moment of delivery to anchor recognition to. AS-9 replaces that missing moment with a measure of performance. Without it, an enterprise could book a twelve-month contract on day one or on the last day, and both would look defensible.",
+  "inputs": [
+    "the contract and what it requires the enterprise to do",
+    "whether performance is one act or more than one act",
+    "degree of completion evidence: contract value, associated costs, number of acts, or other suitable basis",
+    "the consideration amount"
+  ],
+  "outputs": [
+    "the recognition method: proportionate completion or completed service contract",
+    "revenue recognised for the period, or postponed"
+  ],
+  "preconditions": [
+    "a service transaction, not a sale of goods",
+    "the transaction is not one of the AS-9 scope exclusions (see ACC-REV-SCOPE-EXCLUSIONS)"
+  ],
+  "rules": [
+    "ACC-REV-SERVICES-001",
+    "ACC-REV-SERVICES-002",
+    "ACC-REV-POSTPONE-001"
+  ],
+  "exceptions": [
+    "AS 9 does not deal with revenue from construction contracts, hire-purchase and lease agreements, government grants and other similar subsidies, or insurance contracts of insurance companies — see ACC-REV-SCOPE-EXCLUSIONS"
+  ],
+  "common_mistakes": [
+    "recognising the whole contract value on signing, when performance consists of more than one act",
+    "using straight line spreading where the acts are determinate and countable — AS 9 permits straight line only for an indeterminate number of acts over a specific period, and only where no other method better represents the pattern of performance",
+    "recognising on the final act when performance actually consists of many acts, which defers revenue that was already earned",
+    "treating the completed service contract method as a free choice — AS 9 ties the method to the pattern of performance"
+  ],
+  "dependencies": [
+    "ACC-ACCRUAL-BASIS"
+  ],
+  "related_concepts": [
+    "ACC-REV-GOODS",
+    "ACC-REV-INTEREST-ROYALTY-DIVIDEND",
+    "ACC-REV-SCOPE-EXCLUSIONS",
+    "ACC-REV-UNCERTAINTY-AFTER-RECOGNITION"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted from any downloaded source in this pass"
+  ],
+  "icai_references": [
+    "AS 9, paragraphs 4.2, 4.3, 7.1 and 12"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — GST time of supply for services is a separate determination and must not be conflated with accounting revenue recognition"
+  ],
+  "evidence_required": [
+    "the service contract or its terms",
+    "evidence of what has been performed to date",
+    "the basis used to measure completion: contract value, associated costs, number of acts, or other stated basis"
+  ],
+  "confidence_factors": [
+    "weak when the document does not show whether performance is one act or many",
+    "weak when no measurable basis of completion appears in the document",
+    "weak when the contract period is not stated, because straight line spreading then has no period to spread over"
+  ],
+  "validation_checks": [
+    "the method chosen matches the stated pattern of performance, not the convenience of the period",
+    "revenue recognised does not exceed the proportion of performance evidenced",
+    "no significant uncertainty exists regarding the amount of the consideration, or recognition is postponed"
+  ],
+  "examples": [
+    "annual maintenance contract, twelve monthly visits of equal scope, no other pattern evidenced — proportionate completion, straight line over the period",
+    "a single valuation report delivered and chargeable on delivery — completed service contract method, recognised when the final act takes place"
+  ],
+  "counterexamples": [
+    "a construction contract — excluded from AS 9 by paragraph 2(i), so this concept does not decide it",
+    "advance fee received before any act is performed — receipt is not performance, so nothing is recognised on receipt alone"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 7.1",
+      "quote": "Revenue from service transactions",
+      "extraction_note": "The continuation reads 'isusually' in the extracted text: the PDF extraction joins 'is' and 'usually'. The next quote resumes after that join. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 7.1",
+      "quote": "recognised as the service is performed, either by the proportionate completion method or by the completed service contract method"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 12",
+      "quote": "In a transaction involving the rendering of services, performance should be measured either under the completed service contract method or under the proportionate completion method, whichever relates the revenue to the work accomplished."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 12",
+      "quote": "Such performance should be regarded as being achieved when no significant uncertainty exists regarding the amount of the consideration that will be derived from rendering the service."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 4.3",
+      "quote": "Proportionate completion method",
+      "extraction_note": "The words following in the extracted text read 'isa method': the PDF extraction joins 'is' and 'a'. The next quote resumes after that join."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 4.3",
+      "quote": "method of accounting which recognises revenue in the statement of profit and loss proportionately with the degree of completion of services under a contract"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 4.2",
+      "quote": "Completed service contract method is a method of accounting which",
+      "extraction_note": "The continuation reads 'recognisesrevenue in the statement of profit andloss only whenthe rendering': the PDF extraction joins three word pairs. The next quote resumes after them."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 4.2",
+      "quote": "of services under a contract is completed or substantially completed"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 7.1(i), proportionate completion method",
+      "quote": "Performance consists of the execution of more than one act. Revenue is recognised proportionately by reference to the performance of each act."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 7.1(i), proportionate completion method",
+      "quote": "The revenue recognised under this method would be determined on the basis of contract value, associated costs, number of acts or other suitable basis."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 7.1(i), proportionate completion method",
+      "quote": "For practical purposes, when services are provided",
+      "extraction_note": "The continuation reads 'byan indeterminatenumber of acts over aspecificperiod of time': the PDF extraction joins 'by an', 'indeterminate number' and 'a specific period'. The next quote resumes after them."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 7.1(i), proportionate completion method",
+      "quote": "revenue is recognised on a straight line basis over the specific period unless there is evidence that some other method better represents the pattern of performance"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 7.1(ii), completed service contract method",
+      "quote": "Performance consists of the execution of",
+      "extraction_note": "The continuation reads 'asingle act.Alternatively,': the PDF extraction joins 'a single' and runs 'act.' into 'Alternatively,'. The next quote resumes after them."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 7.1(ii), completed service contract method",
+      "quote": "services are performed in more than a single act, and the services yet to be performed are so significant in relation to the transaction taken as a whole that performance cannot be deemed to have been completed until the execution of those acts."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 7.1(ii), completed service contract method",
+      "quote": "The completed service contract method is relevant to these patterns of performance and accordingly revenue",
+      "extraction_note": "The continuation reads 'isrecognised when the sole or finalact': the PDF extraction joins 'is recognised' and 'final act'. The next quote resumes after them."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 7.1(ii), completed service contract method",
+      "quote": "takes place and the service becomes chargeable"
+    }
+  ]
+}

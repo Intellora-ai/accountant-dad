@@ -1,0 +1,83 @@
+{
+  "id": "GST-INV-INVOICE-CUM-BILL-OF-SUPPLY",
+  "name": "Invoice-cum-bill of supply",
+  "status": "VERIFIED",
+  "definition": "Where a registered person supplies taxable AND exempted goods or services to an UNREGISTERED person, rule 46A permits one document \u2014 an invoice-cum-bill of supply \u2014 for all of those supplies, notwithstanding rule 46, rule 49 and rule 54.",
+  "why_it_exists": "Without it a retail counter selling one taxed item and one exempt item to a walk-in customer would have to issue two documents for one transaction. It exists to stop the paperwork from splitting a single sale.",
+  "inputs": [
+    "whether the supplies include both taxable and exempted items",
+    "whether the recipient is registered"
+  ],
+  "outputs": [
+    "one combined document is permitted",
+    "or separate documents are required"
+  ],
+  "preconditions": [
+    "the supplier is a registered person",
+    "the recipient is an unregistered person",
+    "the supplies include taxable as well as exempted goods or services or both"
+  ],
+  "rules": [
+    "GST-INV-CUM-001"
+  ],
+  "exceptions": [
+    "UNKNOWN \u2014 rule 46A states no exception and enumerates no particulars of its own"
+  ],
+  "common_mistakes": [
+    "using it for a registered recipient \u2014 rule 46A is limited to an unregistered person",
+    "using it where every item is taxable \u2014 the rule requires taxable AS WELL AS exempted supplies",
+    "assuming the rule 46 particulars are waived \u2014 rule 46A says only that a single document may be issued; it does not say what it must contain"
+  ],
+  "dependencies": [
+    "GST-INV-TAX-INVOICE",
+    "GST-INV-BILL-OF-SUPPLY"
+  ],
+  "related_concepts": [
+    "GST-INV-BILL-OF-SUPPLY",
+    "GST-INV-SPECIAL-CASES"
+  ],
+  "legal_references": [
+    "CGST Rules 2017, rule 46A"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE"
+  ],
+  "gst_references": [
+    "CGST Rules 2017, rule 46A",
+    "UNKNOWN \u2014 the particulars required on an invoice-cum-bill of supply are not stated in rule 46A and were not found elsewhere in this source",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the document",
+    "the registration status of the recipient",
+    "the taxable or exempt character of each line"
+  ],
+  "confidence_factors": [
+    "weak when the exempt lines are not distinguishable from the taxable lines on the face of the document",
+    "weak because the required particulars are not defined by the rule"
+  ],
+  "validation_checks": [
+    "the recipient is unregistered",
+    "at least one line is taxable and at least one line is exempt",
+    "REQUIRES HUMAN ACCOUNTANT before rejecting such a document for a missing particular, because rule 46A does not enumerate particulars"
+  ],
+  "examples": [
+    "a shop selling a taxed packaged good and an exempt unbranded good to a walk-in customer on one document"
+  ],
+  "counterexamples": [
+    "a document to a GSTIN-holding buyer \u2014 rule 46A does not reach a registered recipient"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46A",
+      "quote": "46A. Invoice-cum-bill of supply.- Notwithstanding anything contained in rule 46 or rule 49 or rule 54, where a registered person is supplying taxable as well as exempted goods or services or both to an unregistered person, a single",
+      "extraction_note": "The sentence ends '\u2015invoice-cum-bill of supply\u2016 may be issued for all such supplies.'; the quote stops before the extraction's U+2015 quotation mark."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46A",
+      "quote": "may be issued for all such supplies."
+    }
+  ]
+}

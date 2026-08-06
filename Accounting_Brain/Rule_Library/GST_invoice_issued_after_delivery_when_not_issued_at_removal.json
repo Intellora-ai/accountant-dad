@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-CHALLAN-003",
+  "status": "VERIFIED",
+  "if": [
+    "goods being transported are for the purpose of supply to the recipient",
+    "the tax invoice could not be issued at the time of removal of the goods"
+  ],
+  "then": "the supplier MUST issue a tax invoice after delivery of the goods",
+  "source_section": "CGST Rules 2017, rule 55(4)",
+  "note": "The invoice obligation is deferred, never cancelled. A delivery challan on file with no later invoice is an open obligation, not a closed transaction.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(4)",
+      "quote": "Where the goods being transported are for the purpose of supply to the recipient but the tax invoice could not be issued at the time of removal of goods for the purpose of supply, the supplier shall issue a tax invoice after delivery of goods."
+    }
+  ]
+}

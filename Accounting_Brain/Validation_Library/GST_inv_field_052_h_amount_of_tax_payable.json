@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-FIELD-052-H",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a payment voucher referred to in clause (g) of sub-section (3) of section 31",
+    "it is issued under rule 52 of the CGST Rules, 2017"
+  ],
+  "then": "the payment voucher MUST carry the amount of tax payable on the goods or services, by head",
+  "source_section": "CGST Rules 2017, rule 52(h)",
+  "note": "One mandatory particular of rule 52(h), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 52(h)",
+      "quote": "amount of tax payable in respect of taxable goods or services (central tax, State tax, integrated tax, Union territory tax or cess);"
+    }
+  ]
+}

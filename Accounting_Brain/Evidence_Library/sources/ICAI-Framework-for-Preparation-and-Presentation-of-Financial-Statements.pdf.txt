@@ -1,0 +1,1125 @@
+Framework for the Preparation and Presentation of
+Financial Statements*
+
+The following is the text of the ‘Framework for the Preparation and Presentation
+of  Financial  Statements’  issued  by  the  Accounting  Standards  Board  of  the
+Institute of Chartered Accountants of India.
+
+Introduction
+
+Purpose and Status
+
+1.    This Framework sets out the concepts that underlie the preparation and
+presentation  of  financial  statements  for  external  users.  The  purpose  of  the
+Framework is to:
+
+      (a)      assist  preparers  of  financial  statements  in  applying  Accounting
+               Standards and in dealing with topics that have yet to form the subject
+               of an Accounting Standard;
+
+      (b)      assist the Accounting Standards Board in the development of future
+               Accounting  Standards  and  in  its  review  of  existing  Accounting
+               Standards;
+
+      (c)      assist the Accounting Standards Board in promoting harmonisation
+               of regulations, accounting standards and procedures relating to the
+               preparation and presentation of financial statements by providing a
+               basis for reducing the number of alternative accounting treatments
+               permitted by Accounting Standards;
+
+      (d)      assist  auditors  in  forming  an  opinion  as  to  whether  financial
+               statements conform with Accounting Standards;
+
+      (e)      assist users of financial statements in interpreting the information
+               contained  in  financial  statements  prepared  in  conformity  with
+               Accounting Standards; and
+
+      (f)      provide  those  who  are  interested  in  the  work  of  the  Accounting
+               Standards   Board   with   information   about   its   approach   to   the
+               formulation of Accounting Standards.
+
+
+* Issued in July 2000.
+     Framework for the Preparation and Presentation of Financial Statements
+
+2.    This Framework is not an Accounting Standard and hence does not define
+standards for any particular measurement or disclosure issue. Nothing in this
+Framework overrides any specific Accounting Standard.
+
+3.    The Accounting Standards Board recognises that in a limited number of
+cases  there  may  be  a  conflict  between  the  Framework  and  an  Accounting
+Standard. In those cases where there is a conflict, the requirements of the
+Accounting Standard prevail over those of the Framework. As, however, the
+Accounting   Standards   Board   will   be   guided   by   the   Framework   in   the
+development of future Standards and in its review of existing Standards, the
+number of cases of conflict between the Framework and Accounting Standards
+will diminish through time.
+
+4.    The  Framework  will  be  revised  from  time  to  time  on  the  basis  of  the
+experience of the Accounting Standards Board of working with it.
+
+Scope
+
+5.    The Framework deals with:
+
+      (a)    the objective of financial statements;
+
+      (b)    the   qualitative   characteristics   that   determine   the   usefulness   of
+             information provided in financial statements;
+
+      (c)    definition, recognition and measurement of the elements from which
+             financial statements are constructed; and
+
+      (d)    concepts of capital and capital maintenance.
+
+6.    The Framework is concerned with general purpose financial statements
+(hereafter referred to as ‘financial statements’). Such financial statements are
+prepared and presented at least annually and are directed toward the common
+information needs of a wide range of users. Some of these users may require,
+and have the power to obtain, information in addition to that contained in the
+financial  statements.  Many  users,  however,  have  to  rely  on  the  financial
+statements  as  their major source  of  financial  information  and  such  financial
+statements should, therefore, be prepared and presented with their needs in
+view.   Special   purpose   financial   reports,   for   example,           prospectuses   and
+computations  prepared  for  taxation  purposes,  are  outside  the  scope  of  this
+Framework. Nevertheless, the Framework may be applied in the preparation of
+such special purpose reports where their requirements permit.
+
+     Framework for the Preparation and Presentation of Financial Statements
+
+7.    Financial  statements  form  part  of  the  process  of  financial  reporting.  A
+complete  set  of  financial  statements  normally  includes  a  balance  sheet,  a
+statement of profit and loss (also known as ‘income statement’), a cash flow
+statement and those notes and other statements and explanatory material that
+are  an  integral  part  of  the  financial  statements.  They  may  also  include
+supplementary  schedules  and  information  based  on  or  derived  from,  and
+expected to be read with, such statements. Such schedules and supplementary
+information may deal, for example, with financial information about business and
+geographical segments, and disclosures about the effects of changing prices.
+Financial statements do not, however, include such items as reports by directors,
+statements by the chairman, discussion and analysis by management and similar
+items that may be included in a financial or annual report.
+
+8.    The  Framework  applies  to  the  financial  statements  of  all  reporting
+enterprises engaged in commercial, industrial and business activities, whether in
+the public or in the private sector. A reporting enterprise is an enterprise for
+which there are users who rely on the financial statements as their major source
+of financial information about the enterprise.
+
+Users and Their Information Needs
+
+9.    The users of financial statements include present and potential investors,
+employees, lenders, suppliers and other trade creditors, customers, governments
+and their agencies and the public. They use financial statements in order to
+satisfy some of their information needs. These needs include the following:
+
+      (a)      Investors. The providers of risk capital are concerned with the risk
+               inherent in, and return provided by, their investments. They need
+               information to help them determine whether they should buy, hold or
+               sell. They are also interested in information which enables them to
+               assess the ability of the enterprise to pay dividends.
+
+      (b)      Employees.       Employees   and   their   representative   groups   are
+               interested in information about the stability and profitability of their
+               employers. They are also interested in information which enables
+               them to assess the ability of the enterprise to provide remuneration,
+               retirement benefits and employment opportunities.
+
+      (c)      Lenders. Lenders are interested in information which enables them
+               to determine whether their loans, and the interest attaching to them,
+               will be paid when due.
+
+     Framework for the Preparation and Presentation of Financial Statements
+
+
+      (d)      Suppliers and other trade creditors. Suppliers and other creditors are
+               interested in information which enables them to determine whether
+               amounts owing to them will be paid when due. Trade creditors are
+               likely to be interested in an enterprise over a shorter period than
+               lenders  unless  they  are  dependent  upon  the  continuance  of  the
+               enterprise as a major customer.
+
+      (e)      Customers.      Customers  have  an  interest  in  information  about  the
+               continuance of an enterprise, especially when they have a long- term
+               involvement with, or are dependent on, the enterprise.
+
+      (f)      Governments and their agencies.             Governments and their agencies
+               are  interested  in  the  allocation  of  resources  and,  therefore,  the
+               activities of enterprises. They also require information in order to
+               regulate the activities of enterprises and determine taxation policies,
+               and to serve as the basis for determination of national income and
+               similar statistics.
+
+      (g)      Public. Enterprises affect members of the public in a variety of ways.
+               For example, enterprises may make a substantial contribution to the
+               local economy in many ways including the number of people they
+               employ and their patronage of local suppliers. Financial statements
+               may assist the public by providing information about the trends and
+               recent developments in the prosperity of the enterprise and the range
+               of its activities.
+
+10.   While all of the information needs of these users cannot be met by financial
+statements, there are needs which are common to all users. As providers of risk
+capital to the enterprise, investors need more comprehensive information than
+other users. The provision of financial statements that meet their needs will also
+meet most of the needs of other users that financial statements can satisfy.
+
+11.   The management of an enterprise has the responsibility for the preparation
+and presentation of the financial statements of the enterprise. Management is
+also interested in the information contained in the financial statements even
+though it has access to additional management and financial information that
+helps  it  carry  out  its  planning,  decision-making  and  control  responsibilities.
+Management has the ability to determine the form and content of such additional
+information in order to meet its own needs. The reporting of such information,
+however, is beyond the scope of this Framework.
+
+     Framework for the Preparation and Presentation of Financial Statements
+The Objective of Financial Statements
+
+12.   The objective of financial statements is to provide information about the
+financial position, performance and cash flows of an enterprise that is useful to a
+wide range of users in making economic decisions.
+
+13.   Financial statements prepared for this purpose meet the common needs of
+most users. However, financial statements do not provide all the information that
+users may need to make economic decisions since (a) they largely portray the
+financial effects of past events, and (b) do not necessarily provide non-financial
+information.
+
+14.   Financial   statements   also   show   the   results   of   the   stewardship   of
+management, or the accountability of management for the resources entrusted to
+it.  Those  users  who  wish  to  assess  the  stewardship  or  accountability  of
+management do so in order that they may make economic decisions; these
+decisions may include, for example, whether to hold or sell their investment in
+the enterprise or whether to reappoint or replace the management.
+
+Financial Position, Performance and Cash Flows
+
+15.   The economic decisions that are taken by users of financial statements
+require an evaluation of the ability of an enterprise to generate cash and cash
+equivalents  and  of  the  timing  and  certainty  of  their  generation.  This  ability
+ultimately  determines,  for  example,  the  capacity  of  an  enterprise  to  pay  its
+employees  and  suppliers,  meet  interest  payments,  repay  loans,  and  make
+distributions  to  its  owners.  Users  are  better  able  to  evaluate  this  ability  to
+generate cash and cash equivalents if they are provided with information that
+focuses on the financial position, performance and cash flows of an enterprise.
+
+16.   The  financial  position  of  an  enterprise  is  affected  by  the  economic
+resources it controls, its financial structure, its liquidity and solvency,                 and   its
+capacity to adapt to changes in the environment in which it operates. Information
+about the economic resources controlled by the enterprise and its capacity in the
+past to alter these resources is useful in predicting the ability of the enterprise to
+generate cash and cash equivalents in the future. Information about financial
+structure is useful in predicting future borrowing needs and how future profits and
+cash flows will be distributed among those with an interest in the enterprise; it is
+also useful in predicting how successful the enterprise is likely to be in raising
+further finance. Information about liquidity and solvency is useful in predicting the
+ability  of  the  enterprise  to  meet  its  financial  commitments  as  they  fall  due.
+Liquidity refers to the availability of cash in the near future to meet financial
+     Framework for the Preparation and Presentation of Financial Statements
+
+commitments over this period. Solvency refers to the availability of cash over the
+longer term to meet financial commitments as they fall due.
+
+17.   Information  about  the  performance  of  an  enterprise,  in  particular  its
+profitability, is required in order to assess potential changes in the economic
+resources that it is likely to control in the future. Information about variability of
+performance is important in this respect. Information about performance is useful
+in  predicting  the  capacity  of  the  enterprise  to  generate  cash  flows  from  its
+existing  resource  base.  It  is  also  useful  in  forming  judgements  about  the
+effectiveness with which the enterprise might employ additional resources.
+
+18.   Information concerning cash flows of an enterprise is useful in order to
+evaluate  its  investing,  financing  and  operating  activities  during  the  reporting
+period. This information is useful in providing the users with a basis to assess the
+ability of the enterprise to generate cash and cash equivalents and the needs of
+the enterprise to utilise those cash flows.
+
+19.   Information about financial position is primarily provided in a balance sheet.
+Information about performance is primarily provided in a statement of profit and
+loss. Information about cash flows is provided in the financial statements by
+means of a cash flow statement.
+
+20.   The component parts of the financial statements are interrelated because
+they reflect different aspects of the same transactions or other events. Although
+each statement provides information that is different from the others, none is
+likely to serve only a single purpose nor to provide all the information necessary
+for particular needs of users.
+
+Notes and Supplementary Schedules
+
+21.   The financial statements also contain notes and supplementary schedules
+and other information. For example, they may contain additional information that
+is relevant to the needs of users about the items in the balance sheet and
+statement of profit and loss. They may include disclosures about the risks and
+uncertainties  affecting  the  enterprise  and  any  resources  and  obligations  not
+recognised in the balance sheet (such as mineral reserves). Information about
+business and geographical segments and the effect of changing prices on the
+enterprise may also be provided in the form of supplementary information.
+
+
+
+     Framework for the Preparation and Presentation of Financial Statements
+Underlying Assumptions
+
+Accrual Basis
+
+22.   In order to meet their objectives, financial statements are prepared on the
+accrual basis of accounting. Under this basis, the effects of transactions and
+other  events  are  recognised  when  they  occur  (and  not  as  cash  or  a  cash
+equivalent is received or paid) and they are recorded in the accounting records
+and reported in the financial statements of the periods to which they relate.
+Financial statements prepared on the accrual basis inform users not only of past
+events involving the payment and receipt of cash but also of obligations to pay
+cash in the future and of resources that represent cash to be received in the
+future. Hence, they provide the type of information about past transactions and
+other events that is most useful to users in making economic decisions.
+
+Going Concern
+
+23.   The financial statements are normally prepared on the assumption that an
+enterprise is a going concern and will continue in operation for the foreseeable
+future. Hence, it is assumed that the enterprise has neither the intention nor the
+need to liquidate or curtail materially the scale of its operations; if such an
+intention or need exists, the financial statements may have to be prepared on a
+different basis and, if so, the basis used is disclosed.
+
+Consistency
+
+24.   In  order  to  achieve  comparability  of  the  financial  statements  of  an
+enterprise through time, the accounting policies are followed consistently from
+one period to another; a change in an accounting policy is made only in certain
+exceptional circumstances.
+
+Qualitative Characteristics of Financial Statements
+
+25.   Qualitative  characteristics  are  the  attributes  that  make  the  information
+provided in financial statements useful to users. The four principal qualitative
+characteristics are understandability, relevance, reliability and comparability.
+
+Understandability
+
+26.   An essential quality of the information provided in financial statements is
+that it must be readily understandable by users. For this purpose, it is assumed
+     Framework for the Preparation and Presentation of Financial Statements
+
+that users have a reasonable knowledge of business and economic activities and
+accounting  and  study  the  information  with  reasonable  diligence.  Information
+about  complex  matters  that  should  be  included  in  the  financial  statements
+because of its relevance to the economic decision-making needs of users should
+not be excluded merely on the ground that it may be too difficult for certain users
+to understand.
+
+Relevance
+
+27.   To be useful, information must be relevant to the decision-making needs of
+users. Information has the quality of relevance when it influences the economic
+decisions of users by helping them evaluate past, present or future events or
+confirming, or correcting, their past evaluations.
+
+28.   The predictive and confirmatory roles of information are interrelated. For
+example, information about the current level and structure of asset holdings has
+value to users when they endeavour to predict the ability of the enterprise to take
+advantage of opportunities and its ability to react to adverse situations. The same
+information plays a confirmatory role in respect of past predictions about, for
+example, the way in which the enterprise would be structured or the outcome of
+planned operations.
+
+29.   Information  about  financial  position  and  past  performance  is  frequently
+used as the basis for predicting future financial position and performance and
+other matters in which users are directly interested, such as dividend and wage
+payments, share price movements and the ability of the enterprise to meet its
+commitments as they fall due. To have predictive value, information need not be
+in the form of an explicit forecast. The ability to make predictions from financial
+statements is enhanced, however, by the manner in which information on past
+transactions and events is displayed. For example, the predictive value of the
+statement of profit and loss is         enhanced if unusual, abnormal and infrequent
+items of income and expense are separately disclosed.
+
+Materiality
+
+30.   The relevance of information is affected by its materiality. Information is
+material  if  its  misstatement  (i.e.,  omission  or  erroneous  statement)  could
+influence the economic decisions of users taken on the basis of the financial
+information. Materiality depends on the size and nature of the item or error,
+judged in the particular circumstances of its misstatement. Materiality provides a
+threshold or cut-off point rather than being a primary qualitative characteristic
+which the information must have if it is to be useful.
+     Framework for the Preparation and Presentation of Financial Statements
+
+Reliability
+
+31.   To be useful, information must also be reliable. Information has the quality
+of reliability when it is free from material error and bias and can be depended
+upon by users to represent faithfully that which it either purports to represent or
+could reasonably be expected to represent.
+
+32.   Information may be relevant but so unreliable in nature or representation
+that its recognition may be potentially misleading. For example, if the validity and
+amount of a claim for damages under a legal action against the enterprise are
+highly uncertain, it may be inappropriate for the enterprise to recognise the
+amount of the claim in the balance sheet, although it may be appropriate to
+disclose the amount and circumstances of the claim.
+
+Faithful Representation
+
+33.   To be reliable, information must represent faithfully the transactions and
+other events it either purports to represent or could reasonably be expected to
+represent. Thus, for example, a balance sheet should represent faithfully the
+transactions and other events that result in assets, liabilities and equity of the
+enterprise at the reporting date which meet the recognition criteria.
+
+34.   Most financial information is subject to some risk of being less than a
+faithful representation of that which it purports to portray. This is not due to bias,
+but rather to inherent difficulties either in identifying the transactions and other
+events  to  be  measured  or  in  devising  and  applying  measurement  and
+presentation techniques that can convey messages that correspond with those
+transactions  and events.  In certain  cases,  the measurement of  the  financial
+effects  of  items  could  be  so  uncertain  that  enterprises  generally  would  not
+recognise  them  in  the  financial  statements;  for  example,  although  most
+enterprises generate goodwill internally over time, it is usually difficult to identify
+or measure that goodwill reliably. In other cases, however, it may be relevant to
+recognise items and to disclose the risk of error surrounding their recognition and
+measurement.
+
+Substance Over Form
+
+35.   If information is to represent faithfully the transactions and other events that
+it purports to represent, it is necessary that they are accounted for and presented
+in accordance with their substance and economic reality and not merely their
+legal  form.  The  substance  of  transactions  or  other  events  is  not  always
+consistent with that which is apparent from their legal or contrived form. For
+     Framework for the Preparation and Presentation of Financial Statements
+
+example,  where  rights  and  beneficial  interest  in  an  immovable  property  are
+transferred  but  the  documentation  and  legal  formalities  are  pending,  the
+recording of acquisition/disposal (by the transferee and transferor respectively)
+would in substance represent the transaction entered into.
+
+Neutrality
+
+36.   To be reliable, the information contained in financial statements must be
+neutral, that is, free from bias. Financial statements are not neutral if, by the
+selection or presentation of information, they influence the making of a decision
+or judgement in order to achieve a predetermined result or outcome.
+
+Prudence
+
+37.   The   preparers   of   financial   statements   have   to   contend   with   the
+uncertainties that inevitably surround many events and circumstances, such as
+the collectability of receivables, the probable useful life of plant and machinery,
+and the warranty claims that may occur. Such uncertainties are recognised by
+the disclosure of their nature and extent and by the exercise of prudence in the
+preparation of the financial statements. Prudence is the inclusion of a degree of
+caution  in  the  exercise  of  the  judgements  needed  in  making  the  estimates
+required under conditions of uncertainty, such that assets or income are not
+overstated and liabilities or expenses are not understated. However, the exercise
+of prudence does not allow, for example, the creation of hidden reserves or
+excessive provisions, the deliberate understatement of assets or income, or the
+deliberate  overstatement  of         liabilities  or  expenses,  because  the  financial
+statements would then not be neutral and, therefore, not have the quality of
+reliability.
+
+Completeness
+
+38.   To be reliable, the information in financial statements must be complete
+within the bounds of materiality and cost. An omission can cause information to
+be false or misleading and thus unreliable and deficient in terms of its relevance.
+
+Comparability
+
+39.   Users must be able to compare the financial statements of an enterprise
+through time in order to identify trends in its financial position, performance and
+cash flows. Users must also be able to compare the financial statements of
+different  enterprises  in  order  to  evaluate  their  relative  financial  position,
+performance  and  cash  flows.  Hence,  the  measurement  and  display  of  the
+     Framework for the Preparation and Presentation of Financial Statements
+
+financial effects of like transactions and other events must be carried out in a
+consistent way throughout an enterprise and over time for that enterprise and in
+a consistent way for different enterprises.
+
+40.   An important implication of the qualitative characteristic of comparability is
+that users be informed of the accounting policies employed in the preparation of
+the financial statements, any changes in those policies and the effects of such
+changes. Users need to be able to identify differences between the accounting
+policies for like transactions and other events used by the same enterprise from
+period  to  period  and  by  different  enterprises.  Compliance  with  Accounting
+Standards,  including  the  disclosure          of  the  accounting  policies  used  by  the
+enterprise, helps to achieve comparability.
+
+41.   The need for comparability should not be confused with mere uniformity
+and should not be allowed to become an impediment to the introduction of
+improved accounting standards. It is not appropriate for an enterprise to continue
+accounting in the same manner for a transaction or other event if the policy
+adopted is not in keeping with the qualitative characteristics of relevance and
+reliability. It is also inappropriate for an enterprise to leave its accounting policies
+unchanged when more relevant and reliable alternatives exist.
+
+42.   Users wish to compare the financial position, performance and cash flows
+of an enterprise over time. Hence, it is important that the financial statements
+show corresponding information for the preceding period(s).
+
+Constraints on Relevant and Reliable Information
+
+Timeliness
+
+43.   If  there  is  undue  delay  in  the  reporting  of  information  it  may  lose  its
+relevance.  Management  may  need  to  balance  the  relative  merits  of  timely
+reporting and the provision of reliable information. To provide information on a
+timely  basis  it  may  often  be  necessary  to  report  before  all  aspects  of  a
+transaction or other event are known, thus impairing reliability. Conversely, if
+reporting is delayed until all aspects are known, the information may be highly
+reliable but of little use to users who have had to make decisions in the interim.
+In  achieving  a  balance  between  relevance  and  reliability,  the  overriding
+consideration is how best to satisfy the information needs of users.
+
+Balance between Benefit and Cost
+
+44.   The balance between benefit and cost is a pervasive constraint rather than
+     Framework for the Preparation and Presentation of Financial Statements
+
+a qualitative characteristic. The benefits derived from information should exceed
+the  cost  of  providing  it.  The  evaluation  of  benefits  and  costs  is,  however,
+substantially a judgmental process. Furthermore, the costs do not necessarily fall
+on those users who enjoy the benefits. Benefits may also be enjoyed by users
+other than those for whom the information is prepared. For these reasons, it is
+difficult  to  apply  a  cost-benefit  test  in  any  particular  case.  Nevertheless,
+standard-setters in particular, as well as the preparers and users of financial
+statements, should be aware of this constraint.
+
+Balance between Qualitative Characteristics
+
+45.   In practice, a balancing, or trade-off, between qualitative characteristics is
+often necessary. Generally the aim is to achieve an appropriate balance among
+the characteristics in order to meet the objective of financial statements. The
+relative  importance  of  the  characteristics  in  different  cases  is  a  matter  of
+professional judgment.
+
+True and Fair View
+
+46.   Financial statements are frequently described as showing a true and fair
+view of the financial position, performance and cash flows of an enterprise.
+Although  this  Framework  does  not  deal  directly  with  such  concepts,  the
+application   of   the   principal   qualitative   characteristics  and   of   appropriate
+accounting standards normally results in financial statements that convey what is
+generally understood as a true and fair view of such information.
+
+The Elements of Financial Statements
+
+47.   Financial statements portray the financial effects of transactions and other
+events  by  grouping  them  into  broad  classes  according  to  their  economic
+characteristics.  These  broad  classes  are  termed  the  elements  of  financial
+statements.  The  elements  directly  related  to  the  measurement  of  financial
+position in the balance sheet are assets, liabilities and equity. The elements
+directly related to the measurement of performance in the statement of profit and
+loss  are  income  and  expenses.  The  cash  flow  statement  usually  reflects
+elements of statement of profit and loss and changes in balance sheet elements;
+accordingly,  this  Framework  identifies  no  elements  that  are  unique  to  this
+statement.
+
+48.   The presentation of these elements in the balance sheet and the statement
+of profit and loss involves a process of sub-classification. For example, assets
+and liabilities may be classified by their nature or function in the business of the
+     Framework for the Preparation and Presentation of Financial Statements
+
+enterprise in order to display information in the manner most useful to users for
+purposes of making economic decisions.
+
+Financial Position
+
+49.   The elements directly related to the measurement of financial position are
+assets, liabilities and equity. These are defined as follows:
+
+      (a)      An asset is a resource controlled by the enterprise as a result of past
+               events from which future economic benefits are expected to flow to
+               the enterprise.
+
+      (b)      A liability is a present obligation of the enterprise arising from past
+               events, the settlement of which is expected to result in an outflow
+               from the enterprise of resources embodying economic benefits.
+
+      (c)      Equity    is the residual interest in the assets of the enterprise after
+               deducting all its liabilities.
+
+50.   The definitions of an asset and a liability identify their essential features but
+do  not  attempt  to  specify  the  criteria  that  need  to  be  met  before  they  are
+recognised in the balance sheet. Thus, the definitions embrace items that are not
+recognised as assets or liabilities in the balance sheet because they do not
+satisfy the criteria for recognition discussed in paragraphs 81 to 97. In particular,
+the expectation that future economic benefits will flow to or from an enterprise
+must be sufficiently certain to meet the probability criterion in paragraph 82
+before an asset or liability is recognised.
+
+51.   In assessing whether an item meets the definition of an asset, liability or
+equity,  consideration  needs  to  be  given  to  its  underlying  substance  and
+economic reality and not merely its legal form. Thus, for example, in the case of
+hire purchase, the substance and economic reality are that the hire purchaser
+acquires the economic benefits of the use of the asset in return for entering into
+an obligation to pay for that right an amount approximating to the fair value of the
+asset and the related finance charge. Hence, the hire purchase gives rise to
+items that satisfy the definition of an asset and a liability and are recognised as
+such in the hire purchaser’s balance sheet.
+
+Assets
+
+52.   The  future  economic  benefit  embodied  in  an  asset  is  the  potential  to
+contribute, directly or indirectly, to the flow of cash and cash equivalents to the
+     Framework for the Preparation and Presentation of Financial Statements
+
+enterprise. The potential may be a productive one that is part of the operating
+activities of the enterprise. It may also take the form of con- vertibility into cash or
+cash equivalents or a capability to reduce cash outflows, such as when an
+alternative manufacturing process lowers the costs of production.
+
+53.   An enterprise usually employs its assets to produce goods or services
+capable of satisfying the wants or needs of customers; because these goods or
+services can satisfy these wants or needs, customers are prepared to pay for
+them  and  hence  contribute  to  the  cash  flows  of  the  enterprise.  Cash  itself
+renders  a  service  to  the  enterprise  because  of  its  command  over  other
+resources.
+
+54.   The  future  economic  benefits  embodied  in  an  asset  may  flow  to  the
+enterprise in a number of ways. For example, an asset may be:
+
+      (a)    used singly or in combination with other assets in the production of
+             goods or services to be sold by the enterprise;
+
+      (b)    exchanged for other assets;
+
+      (c)    used to settle a liability; or
+
+      (d)    distributed to the owners of the enterprise.
+
+55.   Many assets, for example, plant and machinery, have a physical form.
+However, physical form is not essential to the existence of an asset; hence
+patents and copyrights, for example, are assets if future economic benefits are
+expected to flow from them and if they are controlled by the enterprise.
+
+56.   Many assets, for example, receivables and property, are associated with
+legal rights, including the right of ownership. In determining the existence of an
+asset, the right of ownership is not essential; thus, for example, an item held
+under a hire purchase is an asset of the hire purchaser since the hire purchaser
+controls the benefits which are expected to flow from the item. Although the
+capacity of an enterprise to control benefits is usually the result of legal rights, an
+item may nonetheless satisfy the definition of an asset even when there is no
+legal control. For example, know-how obtained from a development activity may
+meet the definition of an asset when, by keeping that know-how secret, an
+enterprise controls the benefits that are expected to flow from it.
+
+57.   The assets of an enterprise result from past transactions or other past
+events. Enterprises normally obtain assets by purchasing or producing them, but
+     Framework for the Preparation and Presentation of Financial Statements
+
+other transactions or events may also generate assets; examples include land
+received by an enterprise from government as part of a programme to encourage
+economic growth in an area and the discovery of mineral deposits. Transactions
+or other events expected to occur in the future do not in themselves give rise to
+assets; hence, for example, an intention to purchase inventory does not, of itself,
+meet the definition of an asset.
+
+58.   There is a close association between incurring expenditure and obtaining
+assets but the two do not necessarily coincide. Hence, when an enterprise incurs
+expenditure,  this  may  provide  evidence  that  future  economic  benefits  were
+sought but is not conclusive proof that an item satisfying the definition of an asset
+has been obtained. Similarly, the absence of a related expenditure does not
+preclude an item from satisfying the definition of an asset and thus becoming a
+candidate for recognition in the balance sheet.
+
+Liabilities
+
+59.   An essential characteristic of a liability is that the enterprise has a present
+obligation. An obligation is a duty or responsibility to act or perform in a certain
+way. Obligations may be legally enforceable as a consequence of a binding
+contract or statutory requirement. This is normally the case, for example, with
+amounts  payable  for  goods  and  services  received.  Obligations                   also  arise,
+however, from normal business practice, custom and a desire to maintain good
+business relations or act in an equitable manner. If, for example, an enterprise
+decides as a matter of policy to rectify faults in its products even when these
+become apparent after the warranty period has expired, the amounts that are
+expected to be expended in respect of goods already sold are liabilities.
+
+60.   A distinction needs to be drawn between a present obligation and a future
+commitment. A decision by the management of an enterprise to acquire assets in
+the future does not, of itself, give rise to a present obligation. An obligation
+normally arises only when the asset is delivered or the enterprise enters into an
+irrevocable agreement to acquire the asset. In the latter case, the irrevocable
+nature of the agreement means that the economic consequences of failing to
+honour the obligation, for example, because of the existence of a substantial
+penalty, leave the enterprise with little, if any, discretion to avoid the outflow of
+resources to another party.
+
+61.   The settlement of a present obligation usually involves the enterprise giving
+up resources embodying economic benefits in order to satisfy the claim of the
+other party. Settlement of a present obligation may occur in a number of ways,
+for example, by:
+     Framework for the Preparation and Presentation of Financial Statements
+
+
+      (a)      payment of cash;
+
+      (b)      transfer of other assets;
+
+      (c)      provision of services;
+
+      (d)      replacement of that obligation with another obligation; or
+
+      (e)      conversion of the obligation to equity.
+
+An obligation may also be extinguished by other means, such as a creditor
+waiving or forfeiting its rights.
+
+62.   Liabilities  result  from  past  transactions  or  other  past  events.  Thus,  for
+example, the acquisition of goods and the use of services give rise to trade
+creditors (unless paid for in advance or on delivery) and the receipt of a bank
+loan results in an obligation to repay the loan. An enterprise may also recognise
+future rebates based on annual purchases by customers as liabilities; in this
+case, the sale of the goods in the past is the transaction that gives rise to the
+liability.
+
+63.   Some liabilities can be measured only by using a substantial degree of
+estimation. Such liabilities are commonly described as ‘provisions’. Examples
+include  provisions  for  payments  to  be  made  under  existing  warranties  and
+provisions to cover pension obligations.
+
+Equity
+
+64.   Although equity is defined in paragraph 49 as a residual, it may be sub-
+classified  in  the  balance  sheet.  For  example,  funds  contributed  by  owners,
+reserves  representing  appropriations  of  retained  earnings,  unappropriated
+retained earnings and reserves representing capital maintenance adjustments
+may be shown separately. Such classifications can be relevant to the decision-
+making needs of the users of financial statements when they indicate legal or
+other restrictions on the ability of the enterprise to distribute or otherwise apply its
+equity. They may also reflect the fact that parties with ownership interests in an
+enterprise  have  differing  rights  in  relation  to  the  receipt of  dividends  or the
+repayment of capital.
+
+65.   The creation of reserves is sometimes required by law in order to give the
+enterprise and its creditors an added measure of protection from the effects of
+     Framework for the Preparation and Presentation of Financial Statements
+
+losses. Reserves may also be created when tax laws grant exemptions from, or
+reductions in, taxation liabilities if transfers to such reserves are made. The
+existence and size of such reserves is information that can be relevant to the
+decision-making needs of users. Transfers to such reserves are appropriations of
+retained earnings rather than expenses.
+
+66.   The amount at which equity is shown in the balance sheet is dependent on
+the measurement of assets and liabilities. Normally, the aggregate amount of
+equity only by coincidence corresponds with the aggregate market value of the
+shares of the enterprise or the sum that could be raised by disposing of either the
+net assets on a piecemeal basis or the enterprise as a whole on a going concern
+basis.
+
+67.   Commercial,  industrial  and  business  activities  are  often  undertaken  by
+means of enterprises such as sole proprietorships, partnerships and trusts and
+various types of government business undertakings. The legal and regulatory
+framework for such enterprises is often different from that applicable to corporate
+enterprises.  For  example,  unlike  corporate  enterprises,  in  the  case  of  such
+enterprises, there may be few, if any, restrictions on the distribution to owners or
+other beneficiaries of amounts included in equity. Nevertheless, the definition of
+equity  and  the  other  aspects  of  this  Framework  that  deal  with  equity  are
+appropriate for such enterprises.
+
+Performance
+
+68.   Profit is frequently used as a measure of performance or as the basis for
+other  measures,  such  as  return  on  investment  or  earnings  per  share.  The
+elements directly related to the measurement of profit are income and expenses.
+The recognition and measurement of income and expenses, and hence profit,
+depends in part on the concepts of capital and capital maintenance used by the
+enterprise in preparing its financial statements. These concepts are discussed in
+paragraphs 101 to 109.
+
+69.   Income and expenses are defined as follows:
+
+      (a)      Income is increase in economic benefits during the accounting period
+               in the form of inflows or enhancements of assets or decreases of
+               liabilities that result in increases in equity, other than those relating to
+               contributions from equity participants.
+
+      (b)      Expenses are decreases in economic benefits during the accounting
+               period in the form of outflows or depletions of assets or incurrences
+     Framework for the Preparation and Presentation of Financial Statements
+
+               of  liabilities  that  result  in  decreases  in  equity,  other  than  those
+               relating to distributions to equity participants.
+
+70.   The definitions of income and expenses identify their essential features but
+do  not  attempt  to  specify  the  criteria  that  need  to  be  met  before  they  are
+recognised in the statement of profit and loss. Criteria for recognition of income
+and expenses are discussed in paragraphs 81 to 97.
+
+71.   Income and expenses may be presented in the statement of profit and loss
+in  different  ways  so  as  to  provide information  that is  relevant  for economic
+decision-making. For example, it is a common practice to distinguish between
+those items of income and expenses that arise in the course of the ordinary
+activities of the enterprise and those that do not. This distinction is made on the
+basis  that  the  source  of  an  item  is  relevant  in  evaluating  the  ability  of  the
+enterprise  to  generate  cash  and  cash  equivalents  in  the  future.  When
+distinguishing between items in this way, consideration needs to be given to the
+nature of the enterprise and its operations. Items that arise from the ordinary
+activities of one enterprise may be extraordinary in respect of another.
+
+72.   Distinguishing between items of income and expense and combining them
+in different ways also permits several measures of enterprise performance to be
+displayed.  These  have  differing  degrees  of  inclusiveness.               For  example,  the
+statement of profit and loss could display gross margin, profit from ordinary
+activities before taxation, profit from ordinary activities after taxation, and net
+profit.
+
+Income
+
+73.   The definition of income encompasses both revenue and gains. Revenue
+arises in the course of the ordinary activities of an enterprise and is referred to by
+a variety of different names including sales, fees, interest, dividends, royalties
+and rent.
+
+74.   Gains represent other items that meet the definition of income and may, or
+may not, arise in the course of the ordinary activities of an enterprise. Gains
+represent increases in economic benefits and as such are no different in nature
+from  revenue.  Hence,  they are not  regarded  as  a  separate  element  in  this
+Framework.
+75.   The definition of income includes unrealised gains. Gains also include, for
+example,  those  arising  on  the  disposal  of  fixed  assets.  When  gains  are
+recognised  in  the  statement  of  profit  and  loss,  they  are  usually  displayed
+separately  because  knowledge  of  them  is useful  for the  purpose of making
+     Framework for the Preparation and Presentation of Financial Statements
+
+economic decisions.
+
+76.   Various kinds of assets may be received or enhanced by income; examples
+include cash,  receivables  and  goods  and  services  received  in  exchange  for
+goods  and  services  supplied.  Income  may  also  result  in  the  settlement  of
+liabilities. For example, an enterprise may provide goods and services to a lender
+in settlement of an obligation to repay an outstanding loan.
+
+Expenses
+
+77.   The definition of expenses encompasses those expenses that arise in the
+course of the ordinary activities of the enterprise, as well as losses. Expenses
+that arise in the course of the ordinary activities of the enterprise include, for
+example, cost of goods sold, wages, and depreciation. They take the form of an
+outflow or depletion of assets or enhancement of liabilities.
+
+78.   Losses represent other items that meet the definition of expenses and may,
+or may not, arise in the course of the ordinary activities of the enterprise. Losses
+represent decreases in economic benefits and as such they are no different in
+nature  from  other  expenses.  Hence,  they  are  not  regarded  as  a  separate
+element in this Framework.
+
+79.   Losses include, for example, those resulting from disasters such as fire and
+flood, as well as those arising on the disposal of fixed assets. The definition of
+expenses also includes unrealised losses. When losses are recognised in the
+statement  of  profit  and  loss,  they  are  usually  displayed  separately  because
+knowledge of them is useful for the purpose of making economic decisions.
+
+Capital Maintenance Adjustments
+
+80.   The  revaluation  or  restatement  of  assets  and  liabilities  gives  rise  to
+increases or decreases in equity. While these increases or decreases meet the
+definition of income and expenses, they are not included in the statement of
+profit and loss under certain concepts of capital maintenance. Instead, these
+items are included in equity as capital maintenance adjustments or revaluation
+reserves. These concepts of capital maintenance are discussed in paragraphs
+101 to 109 of this Framework.
+
+Recognition of the Elements of Financial Statements
+
+81.   Recognition  is  the  process  of  incorporating  in  the  balance  sheet  or
+statement of profit and loss an item that meets the definition of an element and
+     Framework for the Preparation and Presentation of Financial Statements
+
+satisfies  the  criteria  for  recognition  set  out  in  paragraph  82.  It  involves  the
+depiction of the item in words and by a monetary amount and the inclusion of
+that amount in the totals of balance sheet or statement of profit and loss. Items
+that satisfy the recognition criteria should be recognised in the balance sheet or
+statement of profit and loss. The failure to recognise such items is not rectified by
+disclosure of the accounting policies used nor by notes or explanatory material.
+
+82.   An item that meets the definition of an element should be recognised if:
+
+      (a)      it is probable that any future economic benefit associated with the
+               item will flow to or from the enterprise; and
+
+      (b)      the item has a cost or value that can be measured with reliability.
+
+83.   In assessing whether an item meets these criteria and therefore qualifies
+for recognition  in  the  financial  statements,  regard  needs  to  be  given  to  the
+materiality  considerations  discussed  in  paragraph  30.  The  interrelationship
+between  the  elements  means  that  an  item  that  meets  the  definition  and
+recognition criteria for a particular element, for example, an asset, automatically
+requires the recognition of another element, for example, income or a liability.
+
+The Probability of Future Economic Benefits
+
+84.   The concept of probability is used in the recognition criteria to refer to the
+degree of uncertainty that the future economic benefits associated with the item
+will flow to or from the enterprise. The concept is in keeping with the uncertainty
+that   characterises   the   environment   in   which   an   enterprise   operates.
+Assessments  of  the  degree  of  uncertainty  attaching  to  the  flow  of  future
+economic benefits are made on the basis of the evidence available when the
+financial  statements  are  prepared.  For  example,              when  it  is  probable  that  a
+receivable will be realised, it is then justifiable, in the absence of any evidence to
+the contrary, to recognise the receivable as an asset. For a large population of
+receivables,  however,  some  degree  of  non-payment  is  normally  considered
+probable; hence, an expense representing the expected reduction in economic
+benefits is recognised.
+
+Reliability of Measurement
+
+85.   The second criterion for the recognition of an item is that it possesses a
+cost or value that can be measured with reliability as discussed in paragraphs 31
+to 38 of this Framework. In many cases, cost or value must be estimated; the
+use of reasonable estimates is an essential part of the preparation of financial
+     Framework for the Preparation and Presentation of Financial Statements
+
+statements  and  does  not  undermine  their  reliability.  When,  however,  a
+reasonable estimate cannot be made, the item is not recognised in the balance
+sheet or statement of profit and loss. For example, the damages payable in a
+lawsuit may meet the definitions of both a liability and an expense as well as the
+probability criterion for recognition; however, if it is not possible to measure the
+claim reliably, it should not be recognised as a liability or as an expense.
+
+86.   An item that, at a particular point in time, fails to meet the recognition
+criteria in paragraph 82 may qualify for recognition at a later date as a result of
+subsequent circumstances or events.
+
+87.   An item that possesses the essential characteristics of an element but fails
+to meet the criteria for recognition may nonetheless warrant disclosure in the
+notes,  explanatory  material  or  supplementary  schedules.  This  is  appropriate
+when knowledge of the item is considered to be relevant to the evaluation of the
+financial position, performance and cash flows of an enterprise by the users of
+financial statements. Thus, in the example given in paragraph 85, the existence
+of the claim would need to be disclosed in the notes, explanatory material or
+supplementary schedules.
+
+Recognition of Assets
+
+88.   An asset is recognised in the balance sheet when it is probable that the
+future economic benefits associated with it will flow to the enterprise and the
+asset has a cost or value that can be measured reliably.
+
+89.   An asset is not recognised in the balance sheet when expenditure has been
+incurred for which it is considered improbable that economic benefits will flow to
+the enterprise beyond the current accounting period. Instead, such a transaction
+results in the recognition of an expense in the statement of profit and loss. This
+treatment does not imply either that the intention of management in incurring
+expenditure  was  other  than  to  generate  future  economic  benefits  for  the
+enterprise or that management was misguided. The only implication is that the
+degree of certainty that economic benefits will flow to the enterprise beyond the
+current accounting period is insufficient to warrant the recognition of an asset.
+
+Recognition of Liabilities
+
+90.   A liability is recognised in the balance sheet when it is probable that an
+outflow of resources embodying economic benefits will result from the settlement
+of a present obligation and the amount at which the settlement will take place
+can  be  measured  reliably.  In  practice,  obligations  under  contracts  that  are
+     Framework for the Preparation and Presentation of Financial Statements
+
+equally proportionately unperformed (for example, liabilities for inventory ordered
+but not yet received) are generally not recognised as liabilities in the financial
+statements. However, such obligations may meet the definition of liabilities and,
+provided the recognition criteria are met in the particular circumstances, may
+qualify for recognition. In such circumstances, recognition of liabilities entails
+recognition of related assets or expenses.
+
+Recognition of Income
+
+91.   Income is recognised in the statement of profit and loss when an increase
+in future economic benefits related to an increase in an asset or a decrease of a
+liability has arisen that can be measured reliably. This means, in effect, that
+recognition of income occurs simultaneously with the recognition of increases in
+assets or decreases in liabilities (for example, the net increase in assets arising
+on a sale of goods or services or the decrease in liabilities arising from the
+waiver of a debt payable).
+
+92.   The procedures normally adopted in practice for recognising income, for
+example, the requirement that revenue should be earned, are applications of the
+recognition criteria in this Framework. Such procedures are generally directed at
+restricting the recognition as income to those items that can be measured reliably
+and have a sufficient degree of certainty.
+
+Recognition of Expenses
+
+93.   Expenses  are  recognised  in  the  statement  of  profit  and  loss  when  a
+decrease in future economic benefits related to a decrease in an asset or an
+increase of a liability has arisen that can be measured reliably. This means, in
+effect, that recognition of expenses occurs simultaneously with the recognition of
+an increase of liabilities or a decrease in assets (for example, the accrual of
+employees’ salaries or the depreciation of plant and machinery).
+
+94.   Many expenses are recognised in the statement of profit and loss on the
+basis of   a direct association between the costs incurred and the earning of
+specific items of income. This process, commonly referred to as the matching of
+costs  with  revenues,  involves  the  simultaneous  or  combined  recognition  of
+revenues and expenses that result directly and jointly from the same transactions
+or other events; for example, the various components of expense making up the
+cost of goods sold are recognised at the same time as the income derived from
+the sale of the goods. However, the application of the matching concept under
+this Framework does not allow the recognition of items in the balance sheet
+which do not meet the definition of assets or liabilities.
+     Framework for the Preparation and Presentation of Financial Statements
+
+
+95.   When economic benefits are expected to arise over several accounting
+periods  and  the  association  with  income  can  only  be  broadly  or  indirectly
+determined, expenses are recognised in the statement of profit and loss on the
+basis of systematic and rational allocation procedures. This is often necessary in
+recognising the expenses associated with the using up of assets such as plant
+and machinery, goodwill, patents and trademarks; in such cases, the expense is
+referred to as  depreciation or amortisation.  These  allocation  procedures  are
+intended to recognise expenses in the accounting periods in which the economic
+benefits associated with these items are consumed or expire.
+
+96.   An expense is recognised immediately in the statement of profit and loss
+when an expenditure produces no future economic benefits. An expense is also
+recognised to the extent that future economic benefits from an                   expenditure do
+not qualify, or cease to qualify, for recognition in the balance sheet as an asset.
+
+97.   An expense is recognised in the statement of profit and loss in those cases
+also where a liability is incurred without the recognition of an asset, for example,
+in the case of a liability under a product warranty.
+
+Measurement of the Elements of Financial Statements
+
+98.   Measurement is the process of determining the monetary amounts at which
+the elements of financial statements are to be recognised and carried in the
+balance sheet and statement of profit and loss. This involves the selection of the
+particular basis of measurement.
+
+99.   A  number  of  different  measurement  bases  are  employed  to  different
+degrees and in varying combinations in financial statements. They include the
+following:
+
+      (a)      Historical cost. Assets are recorded at the amount of cash or cash
+               equivalents paid or the fair value of the other consideration given to
+               acquire them at the time of their acquisition. Liabilities are recorded
+               at the amount of proceeds received in exchange for the obligation, or
+               in some circumstances (for example, income taxes), at the amounts
+               of cash or cash equivalents expected to be paid to satisfy the liability
+               in the normal course of business.
+
+      (b)      Current cost.     Assets  are carried  at  the  amount  of  cash or cash
+               equivalents that would have to be paid if the same or an equivalent
+               asset   were   acquired   currently.   Liabilities   are   carried   at   the
+     Framework for the Preparation and Presentation of Financial Statements
+
+               undiscounted amount of cash or cash equivalents that would be
+               required to settle the obligation currently.
+
+      (c)      Realisable (settlement) value. Assets are carried at the amount of
+               cash or cash equivalents that could currently be obtained by selling
+               the  asset  in  an  orderly  disposal.  Liabilities  are  carried  at  their
+               settlement values, that is, the undiscounted amounts of cash or cash
+               equivalents expected to be required to settle the liabilities in the
+               normal course of business.
+
+      (d)      Present value. Assets are carried at the present value of the future
+               net cash inflows that the item is expected to generate in the normal
+               course of business. Liabilities are carried at the present value of the
+               future net cash outflows that are expected to be required to settle the
+               liabilities in the normal course of business.
+
+100. The  measurement  basis  most  commonly  adopted                       by  enterprises  in
+preparing their financial statements is historical cost. This is usually combined
+with other measurement bases. For example, inventories are usually carried at
+the lower of cost and net realisable value and pension liabilities are carried at
+their present  value.  Furthermore,  the  current cost  basis  may  be  used  as a
+response to the inability of the historical cost accounting model to deal with the
+effects of changing prices of non-monetary assets.
+
+Concepts of Capital and Capital Maintenance
+
+Concepts of Capital
+
+101. Under a financial concept of capital, such as invested money or invested
+purchasing power, capital is synonymous with the net assets or equity of the
+enterprise. Under a physical concept of capital, such as operating capability,
+capital is regarded as the productive capacity of the enterprise based on, for
+example, units of output per day.
+
+102. The selection of the appropriate concept of capital by an enterprise should
+be based on the needs of the users of its financial statements. Thus, a financial
+concept of capital should be adopted if the users of financial statements are
+primarily concerned with the maintenance of nominal invested capital or the
+purchasing power of invested capital. If, however, the main concern of users is
+with  the  operating  capability  of  the enterprise,  a  physical  concept  of capital
+should  be  used.  The  concept  chosen  indicates  the  goal  to  be  attained  in
+determining profit, even though there may be some measurement difficulties in
+     Framework for the Preparation and Presentation of Financial Statements
+
+making the concept operational.
+
+Concepts of Capital Maintenance and the Determination of Profit
+
+103. The  concepts  of  capital  described  in  paragraph  101  give  rise  to  the
+following concepts of capital maintenance:
+
+      (a)      Financial capital maintenance. Under this concept, a profit is earned
+               only if the financial (or money) amount of the net assets at the end of
+               the period exceeds the financial (or money) amount of net assets at
+               the beginning of the period, after excluding any distributions to, and
+               contributions  from,  owners  during  the  period.  Financial  capital
+               maintenance can be measured in either nominal monetary units or
+               units of constant purchasing power.
+
+      (b)      Physical capital maintenance. Under this concept, a profit is earned
+               only if the physical productive capacity (or operating capability) of the
+               enterprise at the end of the period exceeds the physical productive
+               capacity  at  the  beginning  of  the  period,  after  excluding  any
+               distributions to, and contributions from, owners during the period.
+
+104. The concept of capital maintenance is concerned with how an enterprise
+defines the capital that it seeks to maintain. It provides the linkage between the
+concepts of capital and the concepts of profit because it provides the point of
+reference  by  which  profit  is measured;  it  is  a  prerequisite  for distinguishing
+between an enterprise's return on capital and its return of capital; only inflows of
+assets in excess of amounts needed to maintain capital can be regarded as profit
+and therefore as a return on          capital. Hence, profit is the residual amount that
+remains  after  expenses  (including  capital  maintenance  adjustments,  where
+appropriate) have been deducted from income. If expenses exceed income, the
+residual amount is a net loss.
+105. The  physical  capital maintenance  concept  requires  the  adoption  of  the
+current cost basis of measurement. The financial capital maintenance concept,
+however,  does  not  require  the  use  of  a  particular  basis  of  measurement.
+Selection of the basis under this concept is dependent on the type of financial
+capital that the enterprise is seeking to maintain.
+
+106. The principal difference between the two concepts of capital maintenance is
+the treatment of the effects of changes in the prices of assets and liabilities of the
+enterprise. In general terms, an enterprise has maintained its capital if it has as
+much capital at the end of the period as it had at the beginning of the period. Any
+amount over and above that required to maintain the capital at the beginning of
+     Framework for the Preparation and Presentation of Financial Statements
+
+the period is profit.
+
+107. Under the concept of financial capital maintenance where capital is defined
+in terms of nominal monetary units, profit represents the increase in nominal
+money capital over the period. Thus, increases in the prices of assets held over
+the period, conventionally referred to as holding gains, are, conceptually, profits.
+They may not be recognised as such, however, until the assets are disposed of
+in an exchange transaction. When the concept of financial capital maintenance is
+defined  in  terms  of  constant  purchasing  power  units,  profit  represents  the
+increase in invested purchasing power over the period. Thus, only that part of the
+increase in the prices of assets that exceeds the increase in the general level of
+prices is regarded as profit. The rest of the increase is treated as a capital
+maintenance adjustment and, hence, as part of equity.
+
+108. Under the concept of physical capital maintenance when capital is defined
+in terms of the physical productive capacity, profit represents the increase in that
+capital over the period. All price changes affecting the assets and liabilities of the
+enterprise are viewed as changes in the measurement of the physical productive
+capacity  of  the  enterprise;  hence,  they  are  treated  as  capital  maintenance
+adjustments that are part of equity and not as profit.
+
+109. The   selection   of   the   measurement   bases   and   concept   of   capital
+maintenance will determine the accounting model used in the preparation of the
+financial statements. Different accounting models exhibit different degrees of
+relevance  and  reliability  and,  as  in  other  areas,  management  must  seek  a
+balance between relevance and reliability. This Framework is applicable to a
+range of accounting models and provides guidance on preparing and presenting
+the financial statements under the chosen model.

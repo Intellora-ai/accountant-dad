@@ -1,0 +1,17 @@
+{
+  "id": "GST-ITC-17-3",
+  "status": "VERIFIED",
+  "if": [
+    "the value of exempt supply is being computed for the apportionment under s.17(2)"
+  ],
+  "then": "that value is such as may be PRESCRIBED, and SHALL INCLUDE supplies on which the recipient is liable to pay tax on reverse charge basis, transactions in securities, sale of land, and \u2014 subject to clause (b) of paragraph 5 of Schedule II \u2014 sale of building",
+  "source_section": "CGST Act s.17(3)",
+  "note": "Note the direction of the reverse-charge inclusion: it is the recipient's own inward reverse-charge supplies that enter the exempt-supply value, which enlarges the denominator and reduces admissible credit. Omitting them overstates the credit. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(3)",
+      "quote": "The value of exempt supply under sub-section (2) shall be such as may be prescribed, and shall include supplies on which the recipient is liable to pay tax on reverse charge basis, transactions in securities, sale of land and, subject to clause (b) of paragraph 5 of Schedule II, sale of building."
+    }
+  ]
+}

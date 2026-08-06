@@ -23,6 +23,7 @@ import dataclasses
 import uuid
 from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
@@ -97,6 +98,40 @@ VALIDATION_ID = ArtifactId(uuid.UUID("33333333-3333-4333-8333-333333333333"))
 
 FIRST_VERSION = 1
 SECOND_VERSION = 2
+
+
+def messages(raised: pytest.ExceptionInfo[ValidationError]) -> list[str]:
+    """Every message pydantic reported, EXACTLY as the validator worded it.
+
+    Equality, not substring. Every refusal in `execution.py` is written to tell
+    an operator what a destination sent back that could not be recorded, and
+    `match="must be a string"` passes against a message whose remaining half
+    has been deleted — measured, not supposed: twenty mutations of these
+    refusals survived CI run 30946373087 with every test in this file green.
+    """
+    return [str(error["msg"]) for error in raised.value.errors()]
+
+
+class LyingText(str):
+    """A `str` whose inequality test always answers "equal".
+
+    Not a curiosity. `_opaque_value` asks `value != value.strip()` and then,
+    separately, `not value.strip()`. For an ordinary string the second question
+    can never be reached, because anything that strips to nothing is unequal to
+    its own strip and is refused as padded first. It is reachable for a value
+    that ANSWERS the first question falsely — and this artifact validates
+    untrusted input (§C.23), where the object handed in is whatever the caller
+    constructed, not necessarily a plain `str`.
+
+    So the blank check is the second line, and this is the input that proves it
+    is a line rather than dead code.
+    """
+
+    def __ne__(self, other: object) -> bool:
+        return False
+
+    def __hash__(self) -> int:
+        return super().__hash__()
 
 
 def _identity(transaction_id: TransactionId | None = None) -> IdentityEnvelope:
@@ -467,8 +502,13 @@ def test_a_retry_count_that_is_not_an_integer_is_refused(hostile: object) -> Non
 
 
 def test_a_naive_timestamp_is_refused() -> None:
-    with pytest.raises(ValidationError, match="timezone-aware"):
+    with pytest.raises(ValidationError) as raised:
         _result(execution_timestamp=datetime(2026, 8, 3, 12, 0))
+
+    assert messages(raised) == [
+        "Value error, must be timezone-aware; a naive datetime in a permanent record "
+        "cannot be ordered against anything else"
+    ]
 
 
 def test_a_non_utc_timezone_is_accepted() -> None:
@@ -480,12 +520,47 @@ def test_a_non_utc_timezone_is_accepted() -> None:
     assert _result(execution_timestamp=stamped).execution_timestamp == stamped
 
 
-@pytest.mark.parametrize("hostile", ["2026-08-03T12:00:00Z", 1785000000, None])
-def test_a_timestamp_that_is_not_a_datetime_is_refused(hostile: object) -> None:
+def test_a_timestamp_in_a_named_zone_is_accepted() -> None:
+    """A `ZoneInfo` stamp is the ordinary case for an Indian deployment, and it
+    is the case that separates a real awareness check from a lookalike.
+
+    `tzinfo.utcoffset(dt)` takes the datetime because a named zone's offset
+    DEPENDS on the moment — Asia/Kolkata answers +05:30 for a real instant and
+    `None` for no instant at all, exactly as the tzinfo protocol permits. Ask
+    it without the datetime and every zoneinfo-stamped posting looks naive and
+    is refused. `timezone.utc` answers +00:00 either way, so the fixed-offset
+    test above cannot see the difference and passes on both.
+    """
+    stamped = datetime(2026, 8, 3, 17, 30, tzinfo=ZoneInfo("Asia/Kolkata"))
+
+    result = _result(execution_timestamp=stamped)
+
+    assert result.execution_timestamp == stamped
+    assert result.execution_timestamp.utcoffset() == timedelta(hours=5, minutes=30)
+
+
+@pytest.mark.parametrize(
+    ("hostile", "type_name"),
+    [
+        ("2026-08-03T12:00:00Z", "str"),
+        (1785000000, "int"),
+        (None, "NoneType"),
+        (1785000000.0, "float"),
+    ],
+)
+def test_a_timestamp_that_is_not_a_datetime_is_refused(hostile: object, type_name: str) -> None:
     """The integer case is the dangerous one: pydantic's lax mode would read it
-    as a unix timestamp, so a mistyped count would become a posting time."""
-    with pytest.raises(ValidationError, match="must be a datetime"):
+    as a unix timestamp, so a mistyped count would become a posting time.
+
+    The refusal names the type it got, because the whole point is that the
+    value LOOKS like a moment. `"2026-08-03T12:00:00Z"` refused as
+    "must be a datetime, got NoneType" would send the reader hunting a missing
+    field that is not missing.
+    """
+    with pytest.raises(ValidationError) as raised:
         _result(execution_timestamp=hostile)
+
+    assert messages(raised) == [f"Value error, must be a datetime, got {type_name}"]
 
 
 # ── 9. The six unenumerated fields ────────────────────────────────────────
@@ -529,12 +604,48 @@ def test_no_enumeration_was_invented(field: str) -> None:
         "execution_outcome",
     ],
 )
-@pytest.mark.parametrize("hostile", ["", "   ", " Tally", "Tally ", "post\ned", "post\ted", "\x00"])
+@pytest.mark.parametrize(
+    ("hostile", "reason"),
+    [
+        ("", "must not be empty"),
+        ("   ", "must not be padded: '   '"),
+        (" Tally", "must not be padded: ' Tally'"),
+        ("Tally ", "must not be padded: 'Tally '"),
+        ("post\ned", "must be printable: 'post\\ned'"),
+        ("post\ted", "must be printable: 'post\\ted'"),
+        ("\x00", "must be printable: '\\x00'"),
+    ],
+)
 def test_an_opaque_value_that_is_blank_padded_or_unprintable_is_refused(
-    field: str, hostile: str
+    field: str, hostile: str, reason: str
 ) -> None:
-    with pytest.raises(ValidationError):
+    """Which of the four refusals fired is the answer, not a detail.
+
+    `" Tally"` refused as "must not be empty" would send an operator looking
+    for a missing configuration value instead of a stray space, and every one
+    of these four messages was free to say anything at all while this test
+    only asserted that SOMETHING was raised. The offending value is quoted
+    with `!r` for the same reason: a padded or unprintable string prints
+    identically to a clean one, so an unquoted message describes a value the
+    reader cannot see.
+    """
+    with pytest.raises(ValidationError) as raised:
         _result(**{field: hostile})
+
+    assert messages(raised) == [f"Value error, {reason}"]
+
+
+def test_an_opaque_value_whose_equality_lies_is_still_refused_as_blank() -> None:
+    """The blank check is a second line, not dead code — see `LyingText`.
+
+    A value that answers "equal" to its own stripped form walks past the
+    padding check. Without this, three whole spellings of the refusal in that
+    branch were free to change, because nothing reached it.
+    """
+    with pytest.raises(ValidationError) as raised:
+        _result(destination_system=LyingText("   "))
+
+    assert messages(raised) == ["Value error, must not be blank"]
 
 
 @pytest.mark.parametrize(
@@ -547,10 +658,24 @@ def test_an_opaque_value_that_is_blank_padded_or_unprintable_is_refused(
         "execution_outcome",
     ],
 )
-@pytest.mark.parametrize("hostile", [None, 1, True, b"posted", ["posted"]])
-def test_an_opaque_value_that_is_not_a_string_is_refused(field: str, hostile: object) -> None:
-    with pytest.raises(ValidationError, match="must be a string"):
+@pytest.mark.parametrize(
+    ("hostile", "type_name"),
+    [(None, "NoneType"), (1, "int"), (True, "bool"), (b"posted", "bytes"), (["posted"], "list")],
+)
+def test_an_opaque_value_that_is_not_a_string_is_refused(
+    field: str, hostile: object, type_name: str
+) -> None:
+    """The refusal names the type it actually got.
+
+    `b"posted"` and `"posted"` are one character apart in a traceback, and
+    `True` reaching a status field is a bug that reads as harmless until the
+    message tells you a bool arrived. A message that reported one fixed type
+    for all five is wrong four times out of five and still raises.
+    """
+    with pytest.raises(ValidationError) as raised:
         _result(**{field: hostile})
+
+    assert messages(raised) == [f"Value error, must be a string, got {type_name}"]
 
 
 def test_an_opaque_value_may_contain_an_internal_space() -> None:
@@ -602,9 +727,26 @@ def test_retry_permissible_refuses_anything_that_is_not_a_bool(hostile: object) 
         )
 
 
-@pytest.mark.parametrize("hostile", ["", "   ", " padded", "padded "])
-def test_a_blank_or_padded_cause_is_refused(hostile: str) -> None:
-    with pytest.raises(ValidationError):
+@pytest.mark.parametrize(
+    ("hostile", "reason"),
+    [
+        ("", "must not be empty or blank"),
+        ("   ", "must not be empty or blank"),
+        (" padded", "must not be padded: ' padded'"),
+        ("padded ", "must not be padded: 'padded '"),
+    ],
+)
+def test_a_blank_or_padded_cause_is_refused(hostile: str, reason: str) -> None:
+    """A `cause` is the destination's own words about a posting that failed.
+
+    Refusing it is the right call and refusing it VAGUELY is not: the operator
+    holding a failed voucher needs to know whether the connector sent nothing
+    or sent something with a stray space, because those are different faults in
+    different code. `_captured_text` checks blankness BEFORE padding, the
+    reverse of `_opaque_value`, so `"   "` is answered differently by the two —
+    asserted here rather than assumed.
+    """
+    with pytest.raises(ValidationError) as raised:
         ClassifiedError(
             category="transport",
             cause=hostile,
@@ -612,6 +754,33 @@ def test_a_blank_or_padded_cause_is_refused(hostile: str) -> None:
             retry_permissible=True,
             responsible_stage="tally_connector",
         )
+
+    assert messages(raised) == [f"Value error, {reason}"]
+
+
+@pytest.mark.parametrize(
+    ("hostile", "type_name"),
+    [(None, "NoneType"), (500, "int"), (b"HTTP 500", "bytes"), (["HTTP 500"], "list")],
+)
+def test_a_cause_that_is_not_a_string_is_refused_and_the_type_is_named(
+    hostile: object, type_name: str
+) -> None:
+    """`b"HTTP 500"` is what a raw socket read hands you, and it is the case
+    most likely to arrive from a connector that forgot to decode. The message
+    has to say `bytes`, or the reader looks at `HTTP 500` in the traceback and
+    concludes the string was fine."""
+    with pytest.raises(ValidationError) as raised:
+        ClassifiedError.model_validate(
+            {
+                "category": "transport",
+                "cause": hostile,
+                "severity": "high",
+                "retry_permissible": True,
+                "responsible_stage": "tally_connector",
+            }
+        )
+
+    assert messages(raised) == [f"Value error, must be a string, got {type_name}"]
 
 
 def test_a_multi_line_cause_is_preserved() -> None:

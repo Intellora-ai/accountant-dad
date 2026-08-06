@@ -1,0 +1,38 @@
+{
+  "id": "GST-ITC-17-PM",
+  "status": "VERIFIED",
+  "if": [
+    "the expression 'plant and machinery' is used anywhere in Chapter V or Chapter VI of the CGST Act"
+  ],
+  "then": "it means apparatus, equipment and machinery FIXED TO EARTH by foundation or structural support, used for making outward supply, INCLUDING that foundation and those structural supports, but EXCLUDING (i) land, building or any other civil structures, (ii) telecommunication towers, and (iii) pipelines laid outside the factory premises",
+  "source_section": "CGST Act s.17, Explanation to Chapters V and VI",
+  "note": "Load-bearing for the construction blocks in s.17(5)(c) and (d): what falls outside this definition is blocked. Note the three express exclusions \u2014 a telecommunication tower and an outside-factory pipeline are NOT plant and machinery for this purpose, however they are capitalised in the books. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17, Explanation to Chapters V and VI",
+      "quote": "For the purposes of this Chapter and Chapter VI, the expression",
+      "extraction_note": "The defined term, rendered by the extractor with substituted quotation glyphs, is quoted around rather than reproduced."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17, Explanation to Chapters V and VI, continued",
+      "quote": "means apparatus, equipment, and machinery fixed to earth by foundation or structural support that are used for making outward supply of goods or services or both and includes such foundation and structural supports but excludes"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17, Explanation (i)",
+      "quote": "land, building or any other civil structures;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17, Explanation (ii)",
+      "quote": "telecommunication towers; and"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17, Explanation (iii)",
+      "quote": "pipelines laid outside the factory premises."
+    }
+  ]
+}

@@ -1,0 +1,162 @@
+{
+  "id": "GST-TIME-SERVICES",
+  "name": "Time of supply \u2014 services",
+  "status": "VERIFIED",
+  "definition": "The time of supply of services is the date fixed by s.13 at which the liability to pay tax on services arises. Under forward charge it is the earliest of three dates: where the invoice is issued within the period prescribed under s.31, the earlier of the invoice date and the date of receipt of payment; where it is not, the earlier of the date of provision of service and the date of receipt of payment; and, where neither applies, the date the recipient shows the receipt of services in his books. Under reverse charge it is the earlier of the date of payment in the recipient's records and the date immediately following sixty days from the date of issue of invoice.",
+  "why_it_exists": "It fixes WHEN the GST liability on a service arises, and therefore its return period. s.13(1) ties the liability itself to this date. The rule differs from goods in three ways that matter \u2014 earliest of THREE limbs rather than earlier of two, a timeliness test on the invoice, and a SIXTY-day reverse-charge clock. This is NOT the accounting revenue recognition date; the two determinations are separate and can fall in different periods.",
+  "inputs": [
+    "whether tax is payable on forward charge or reverse charge",
+    "the date of issue of invoice, and whether it was issued within the period prescribed under s.31",
+    "the date of provision of the service",
+    "the date of receipt of payment \u2014 the supplier's book entry date and bank credit date",
+    "the date the recipient showed receipt of the services in his books",
+    "for reverse charge: the recipient's book entry and bank debit dates, and the invoice date",
+    "whether supplier and recipient are associated enterprises, and whether the supplier is located outside India"
+  ],
+  "outputs": [
+    "a single date \u2014 the time of supply of the services",
+    "a separate date for any addition to value under s.13(6)",
+    "or an escalation, where a limb cannot be evaluated on the evidence held"
+  ],
+  "preconditions": [
+    "the transaction is a supply under s.7 (GST-SUPPLY-SCOPE)",
+    "it is classified as a supply of SERVICES \u2014 if it is a supply of goods, s.12 governs instead",
+    "there is NO change in the rate of tax \u2014 s.14 displaces s.13 if there is (GST-TIME-RATE-CHANGE-001)"
+  ],
+  "rules": [
+    "GST-TIME-SERVICES-001",
+    "GST-TIME-SERVICES-002",
+    "GST-TIME-SERVICES-003",
+    "GST-TIME-SERVICES-004",
+    "GST-TIME-SERVICES-005",
+    "GST-TIME-SERVICES-006",
+    "GST-TIME-SERVICES-007",
+    "GST-TIME-SERVICES-008",
+    "GST-TIME-SERVICES-009",
+    "GST-TIME-SERVICES-010",
+    "GST-TIME-SERVICES-011",
+    "GST-TIME-SERVICES-012",
+    "GST-TIME-RATE-CHANGE-001"
+  ],
+  "exceptions": [
+    "a change in the rate of tax \u2014 s.14 applies notwithstanding s.13 (GST-TIME-RATE-CHANGE-001)",
+    "excess received up to one thousand rupees \u2014 s.13(2) proviso, at the supplier's option (GST-TIME-SERVICES-005)",
+    "associated enterprises with the supplier located outside India \u2014 s.13(3) second proviso (GST-TIME-SERVICES-009)",
+    "vouchers \u2014 s.13(4) (GST-TIME-SERVICES-010)",
+    "additions to value by interest, late fee or penalty \u2014 s.13(6) (GST-TIME-SERVICES-012)",
+    "UNKNOWN \u2014 notifications and rules made under the Act are not held locally. Only the Act text as updated 31-08-2021 was consulted. A notification made under the Act can narrow or displace a limb without the section text changing.",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "common_mistakes": [
+    "applying the goods rule \u2014 s.12(2) is EARLIER of two limbs, s.13(2) is EARLIEST of three",
+    "assuming a late invoice pushes the tax point forward \u2014 s.13(2)(b) moves it BACK to the date the service was provided",
+    "using the THIRTY-day reverse-charge clock from s.12(3)(c) \u2014 s.13(3)(b) is SIXTY days",
+    "reading s.13(2)(c) as a free alternative \u2014 it applies only where (a) and (b) do not",
+    "using the recipient's book date for the s.13(2) receipt of payment \u2014 Explanation (ii) names the SUPPLIER's books",
+    "treating the time of supply as the accounting revenue recognition date \u2014 separate determinations, potentially different periods"
+  ],
+  "dependencies": [
+    "GST-SUPPLY-SCOPE",
+    "UNKNOWN \u2014 CGST s.31 (tax invoice) not extracted, so the 'period prescribed' test that switches s.13(2)(a) and s.13(2)(b) cannot be evaluated",
+    "UNKNOWN \u2014 the list of services liable to reverse charge is not extracted from this source",
+    "UNKNOWN \u2014 'associated enterprises' is not defined in the extracted portion of the Act",
+    "UNKNOWN \u2014 CGST Schedule II not extracted, so the goods-versus-services branch cannot be closed here"
+  ],
+  "related_concepts": [
+    "GST-TIME-GOODS",
+    "GST-VALUE-SUPPLY",
+    "GST-SUPPLY-SCOPE",
+    "ACC-REV-GOODS"
+  ],
+  "legal_references": [
+    "CGST Act, 2017 s.13 \u2014 Time of Supply of Services",
+    "CGST Act, 2017 s.14 \u2014 Change in rate of tax in respect of supply of goods or services",
+    "CGST Act, 2017 s.31 \u2014 referenced by s.13(2)(a) and s.13(2)(b); NOT extracted"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 GST time of supply is a SEPARATE determination from accounting revenue recognition under AS-9. The two can fall in different periods and must never be conflated. ACC-REV-GOODS records the same boundary from the accounting side."
+  ],
+  "gst_references": [
+    "CGST Act, 2017 s.13(1) to s.13(6), including the proviso and Explanation to s.13(2) and both provisos to s.13(3)"
+  ],
+  "evidence_required": [
+    "the tax invoice, with its date of issue",
+    "evidence of the date the service was provided",
+    "proof of the date payment was received \u2014 the supplier's book entry and the bank credit",
+    "for s.13(2)(c): the recipient's books showing receipt of the services",
+    "for reverse charge: the recipient's book entry and bank debit dates"
+  ],
+  "confidence_factors": [
+    "weak when the s.31 prescribed period is unknown, because the switch between s.13(2)(a) and s.13(2)(b) turns entirely on it",
+    "weak when the date of provision of service is not evidenced \u2014 for a late invoice, that date IS the tax point",
+    "weak when it is unclear whether the supply is on reverse charge",
+    "zero when a change in the rate of tax is in play \u2014 s.14 displaces this concept and its limbs are not extracted"
+  ],
+  "validation_checks": [
+    "the chosen date is the EARLIEST of the applicable limbs",
+    "the invoice-timeliness test under s.31 is applied before choosing between s.13(2)(a) and s.13(2)(b)",
+    "the reverse-charge clock used is SIXTY days, not thirty",
+    "the receipt-of-payment date under s.13(2) is taken from the SUPPLIER's records",
+    "the time of supply is recorded separately from any accounting revenue recognition date"
+  ],
+  "examples": [
+    "service provided on the 2nd, invoice issued late on the 40th, payment received on the 50th \u2014 s.13(2)(b) applies and the time of supply is the 2nd, the earlier of provision and payment",
+    "reverse charge, invoice issued on the 1st, payment entered in the recipient's books on the 90th \u2014 the sixty-day limb gives the 62nd, which is earlier and governs"
+  ],
+  "counterexamples": [
+    "an advance received for a service not yet performed \u2014 no revenue is recognised under AS-9, yet the receipt of payment is a limb of s.13(2), so a GST time of supply can arise while the accounting books show none"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(1)",
+      "quote": "The liability to pay tax on services shall arise at the time of supply, as determined in accordance with the provisions of this                       section."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2)",
+      "quote": "The time      of supply    of services    shall   be  the  earliest of the following        dates,"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2)(a)",
+      "quote": "the date of issue of invoice by the supplier, if the invoice is issued within the period prescribed under",
+      "extraction_note": "The extraction inserts an amendment marker '[******]36' between 'under' and 'section 31'. Quoted as two spans on either side of it."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2)(a)",
+      "quote": "section 31 or the date of receipt of payment, whichever is"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2)(b)",
+      "quote": "the date of provision of service, if the invoice is not issued within the period"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(2)(c)",
+      "quote": "the date on which the recipient shows the receipt of services in his books of account, in a case where the provisions of clause (a) or clause (b) do not apply"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(3)",
+      "quote": "In case of supplies in respect of which tax is paid or liable to be paid on reverse  charge     basis,   the   time   of   supply    shall  be   the   earlier  of   the  following     dates,"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(3)(b)",
+      "quote": "the date immediately following sixty days from the date of issue of invoice or any other document, by whatever name called, in lieu thereof by the supplier"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(6)",
+      "quote": "The time of supply to the            extent   it relates   to  an  addition     in  the  value   of supply by way of interest, late fee or penalty for delayed payment of any consideration shall be the date on which the supplier receives such addition in value."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.14",
+      "quote": "Notwithstanding anything contained in section 12 or section 13, the time of supply, where there is a change in the rate of tax in respect of goods or services or both, shall be determined in the following manner, namely:"
+    }
+  ]
+}

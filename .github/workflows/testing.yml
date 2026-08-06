@@ -11,7 +11,7 @@ jobs:
   unit-tests:
     name: unit tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -24,6 +24,18 @@ jobs:
           python-version: '3.12'
       - name: install tooling
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        # SHADOW DEFENCE. Two distributions can install the same top-level
+        # module. pip reports success, records both, and `import` resolves to
+        # whichever landed last. Measured on this repository, not imagined:
+        # `importlib.metadata.version("opencv-python")` returned 5.0.0.93 while
+        # `cv2.__version__` returned 4.10.0. A guard written against installed
+        # METADATA reports green straight through that. This one asks the
+        # interpreter which distribution provides each module and what the
+        # module reports as its own version.
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
       - name: prove this gate can still fail
         # HOLLOW-GATE DEFENCE. A failing test MUST make pytest exit non-zero.
         run: |
@@ -34,7 +46,26 @@ jobs:
             echo "BLOCKED - unit tests gate is HOLLOW: a failing test passed."
             exit 1
           fi
-          echo "canary rejected as expected - unit tests gate is live"
+          # ─────────────────────────────────────────────────────────────
+          # A CHECKER THAT REJECTS EVERYTHING PASSES THE TEST ABOVE TOO.
+          # `if tool args; then fail; fi` reads EVERY non-zero exit as "rejected
+          # as expected" — a missing binary (127), a segfault (139), an OOM kill
+          # (137), a network error or an internal tool fault all look identical
+          # to a genuine refusal. The half above proves only that the command
+          # did not exit 0.
+          #
+          # So the clean case must be ACCEPTED. Both halves together prove the
+          # tool RAN and DISCRIMINATED; either half alone proves nothing.
+          # `tools/ci/run_ocr_tests.sh:221-231` is where this shape already
+          # existed; it was the only canary in the repository that had it.
+          # ─────────────────────────────────────────────────────────────
+          printf 'def test_canary() -> None:\n    assert 1 == 1\n' > /tmp/canary-pytest/test_c.py
+          if ! pytest -p no:randomly -q /tmp/canary-pytest; then
+            echo "BLOCKED - unit tests gate rejects a PASSING test. It would never"
+            echo "pass, so a red from it says nothing about this repository."
+            exit 1
+          fi
+          echo "canary rejected the failing and accepted the passing - unit tests gate discriminates"
       - name: pytest, 100 percent passing
         # Seed derived from the commit, not chosen: random ORDER catches
         # order-dependent tests, a fixed seed keeps the run reproducible.
@@ -112,7 +143,7 @@ jobs:
   coverage:
     name: coverage
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -124,6 +155,18 @@ jobs:
           python-version: '3.12'
       - name: install tooling
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        # SHADOW DEFENCE. Two distributions can install the same top-level
+        # module. pip reports success, records both, and `import` resolves to
+        # whichever landed last. Measured on this repository, not imagined:
+        # `importlib.metadata.version("opencv-python")` returned 5.0.0.93 while
+        # `cv2.__version__` returned 4.10.0. A guard written against installed
+        # METADATA reports green straight through that. This one asks the
+        # interpreter which distribution provides each module and what the
+        # module reports as its own version.
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
       - name: prove this gate can still fail
         # HOLLOW-GATE DEFENCE. An impossible floor MUST be rejected.
         run: |
@@ -136,7 +179,34 @@ jobs:
             echo "BLOCKED - coverage gate is HOLLOW: partial coverage passed a 100% floor."
             exit 1
           fi
-          echo "canary rejected as expected - coverage gate is live"
+          # ─────────────────────────────────────────────────────────────
+          # A CHECKER THAT REJECTS EVERYTHING PASSES THE TEST ABOVE TOO.
+          # `if tool args; then fail; fi` reads EVERY non-zero exit as "rejected
+          # as expected" — a missing binary (127), a segfault (139), an OOM kill
+          # (137), a network error or an internal tool fault all look identical
+          # to a genuine refusal. The half above proves only that the command
+          # did not exit 0.
+          #
+          # So the clean case must be ACCEPTED. Both halves together prove the
+          # tool RAN and DISCRIMINATED; either half alone proves nothing.
+          # `tools/ci/run_ocr_tests.sh:221-231` is where this shape already
+          # existed; it was the only canary in the repository that had it.
+          # ─────────────────────────────────────────────────────────────
+          # This one has a second failure mode the others do not: line 158
+          # swallows the pytest run with `|| true`, so a run that produced NO
+          # DATA AT ALL makes `coverage report` error out, exit non-zero, and
+          # certify the gate live against an empty measurement. Assert data
+          # exists before believing either direction.
+          coverage report >/dev/null 2>&1 || {
+            echo "BLOCKED - the canary produced no coverage data, so neither"
+            echo "direction of this check measured anything."
+            exit 1; }
+          if ! coverage report --fail-under=50 >/dev/null 2>&1; then
+            echo "BLOCKED - coverage gate rejects a floor the fixture clears."
+            echo "It would never pass, so its red says nothing."
+            exit 1
+          fi
+          echo "canary rejected 100 and accepted a clearable floor - coverage gate discriminates"
       - name: coverage floor is the HIGHER of 93 and the base branch's actual
         # LOWERED-THRESHOLD DEFENCE. The literal 93 is only a MINIMUM. The real
         # floor is whatever coverage the base branch already achieves, so the
@@ -206,7 +276,7 @@ jobs:
   mutation:
     name: mutation
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 500
     permissions:
       contents: read
     steps:
@@ -218,42 +288,232 @@ jobs:
           python-version: '3.12'
       - name: install tooling
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        # SHADOW DEFENCE. Two distributions can install the same top-level
+        # module. pip reports success, records both, and `import` resolves to
+        # whichever landed last. Measured on this repository, not imagined:
+        # `importlib.metadata.version("opencv-python")` returned 5.0.0.93 while
+        # `cv2.__version__` returned 4.10.0. A guard written against installed
+        # METADATA reports green straight through that. This one asks the
+        # interpreter which distribution provides each module and what the
+        # module reports as its own version.
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
       - name: mutation score at or above 93 percent
         # Coverage says a line RAN. Mutation says a bug in that line would be
         # CAUGHT. Tests that execute code without asserting score high on
         # coverage and near zero here — this is the gate coverage cannot be.
-        env:
-          PYTHONPATH: tools/ci:src
+        #
+        # ─────────────────────────────────────────────────────────────────
+        # WHY THIS GATE REPORTED 0.0% FROM THE DAY IT WAS WRITTEN.
+        #
+        # It scored by counting the word "killed" in `mutmut results`. But
+        # `mutmut results` is a SURVIVOR report — mutmut/__main__.py:1148:
+        #
+        #     if status == 'killed' and not all:
+        #         continue
+        #
+        # Killed mutants are the one category it never prints. So the word
+        # could never appear, `killed` was structurally 0, and the score was
+        # structurally 0.0% — for ANY codebase, at ANY test quality. The
+        # `0 killed / 351 survived` this gate reported was a reporting
+        # artifact, never a measurement. `--all=1` is what prints kills.
+        #
+        # A FALSE CAUSE WAS COMMITTED HERE FIRST, in eaae515, and is
+        # recorded so nobody re-derives it: this step used to set
+        # `PYTHONPATH: tools/ci:src`, and that was blamed. It was innocent.
+        # mutmut manages sys.path itself (__main__.py:971-982) — it prepends
+        # `mutants/src` AND deletes the original `src`. The env var was
+        # redundant, not harmful. It stays removed because it was redundant.
+        #
+        # What IS load-bearing is `pyproject.toml` in `[tool.mutmut]
+        # also_copy`. pytest resolves `pythonpath` against the INI FILE's
+        # directory — not rootdir — so without that copy pytest walks up to
+        # the original pyproject, resolves against the ORIGINAL tree, and
+        # every mutant silently survives. Guarded by
+        # tests/unit/test_mutation_measures_the_real_tree.py.
+        # ─────────────────────────────────────────────────────────────────
         run: |
           set -euo pipefail
-          mutmut run --paths-to-mutate tools/ci,src || true
-          mutmut results
+          # Paths come from [tool.mutmut] in pyproject.toml. mutmut 3.3.1
+          # deleted the --paths-to-mutate flag; passing it aborted the run, so
+          # the gate scored zero mutants and blocked for a reason that was not
+          # real — a broken invocation reading exactly like an unbuilt gate.
+          mutmut run || true
+          mutmut results --all=1
           python3 - <<'PY'
-          import re
+          import collections
           import subprocess
           import sys
 
           out = subprocess.run(
               ["mutmut", "browse", "--help"], capture_output=True, text=True, check=False
           )
-          res = subprocess.run(["mutmut", "results"], capture_output=True, text=True, check=False)
+          # `--all=1`, NOT `--all`. mutmut declares it as
+          # `@click.option('--all', default=False)` with no `is_flag=True`, so
+          # the bare form consumes the next argument instead of enabling it.
+          res = subprocess.run(
+              ["mutmut", "results", "--all=1"], capture_output=True, text=True, check=False
+          )
           text = res.stdout + res.stderr
           print(text)
 
-          killed = len(re.findall(r"\bkilled\b", text, re.I))
-          survived = len(re.findall(r"\bsurvived\b", text, re.I))
+          # One mutant PER LINE, not one regex hit per word. mutmut prints
+          # `    <mutant name>: <status>` and a mutant name can itself contain
+          # a status word, so counting words counts the wrong things.
+          tally = collections.Counter()
+          for line in text.splitlines():
+              name, sep, status = line.rpartition(": ")
+              if sep and name.strip():
+                  tally[status.strip()] += 1
+
+          for status, count in sorted(tally.items()):
+              print(f"  {status:32} {count}")
+
+          # ── the two thresholds, each written EXACTLY ONCE ────────────────
+          # Owner decision, 2026-08-06. Previously `93` appeared twice — once
+          # in the message and once in the comparison — which is two places to
+          # change and one place to forget.
+          MUTATION_SCORE_FLOOR_PERCENT = 93
+          MAX_UNSCOREABLE_PERCENT = 2
+
+          killed = tally["killed"]
+          survived = tally["survived"]
           total = killed + survived
+          # Every status that is neither killed nor survived is named, never
+          # folded into the denominator. A timeout is not a passing test and a
+          # segfault is not a surviving mutant; counting either as one would
+          # manufacture a score out of a broken run.
+          unscoreable = sum(c for s, c in tally.items() if s not in ("killed", "survived"))
+          generated = total + unscoreable
+          if generated == 0:
+              print("BLOCKED - mutmut produced no mutants at all.")
+              sys.exit(1)
+          unscoreable_percent = 100.0 * unscoreable / generated
+          print(f"mutants generated: {generated}")
+          print(f"NOT SCOREABLE    : {unscoreable} ({unscoreable_percent:.2f}% of {generated})")
+          # ─────────────────────────────────────────────────────────────────
+          # A SCORE OVER PART OF THE TREE IS NOT A SCORE FOR THE TREE.
+          #
+          # Excluding unscoreable mutants from the denominator is correct — a
+          # timeout is not a surviving mutant. What was missing is any limit on
+          # how large that excluded bucket may grow. Push it toward 100% and the
+          # gate passes on an ever-smaller sample while the printed percentage
+          # goes UP.
+          #
+          # Measured, and this is why the rule exists: at `7e0efe2`, 919 of 3358
+          # mutants (27.4%) were unscoreable. The gate reported 95.3% and went
+          # green — having reached a verdict on 72.6% of the tree.
+          #
+          # The score is therefore INVALID above this line, not merely
+          # suspicious, and is deliberately NOT printed: a number that would be
+          # read as "95.3%" is worse than no number at all.
+          # ─────────────────────────────────────────────────────────────────
+          if unscoreable_percent > MAX_UNSCOREABLE_PERCENT:
+              print(
+                  f"BLOCKED - {unscoreable_percent:.2f}% of mutants are unscoreable, above "
+                  f"the {MAX_UNSCOREABLE_PERCENT}% maximum. THE MUTATION SCORE IS INVALID "
+                  "and is deliberately not reported. Every status below is a mutant on "
+                  "which this suite reached no verdict:"
+              )
+              for status, count in sorted(tally.items()):
+                  if status not in ("killed", "survived"):
+                      print(f"  no verdict: {status:30} {count}")
+              sys.exit(1)
           if total == 0:
               print("BLOCKED - mutmut produced no mutants to score.")
               sys.exit(1)
           score = 100.0 * killed / total
           print(f"mutants killed   : {killed}")
           print(f"mutants survived : {survived}")
-          print(f"mutation score   : {score:.1f}%  (floor 93%)")
-          if score < 93:
-              print("BLOCKED - mutation score below 93 percent.")
+          print(f"mutation score   : {score:.1f}%  (floor {MUTATION_SCORE_FLOOR_PERCENT}%)")
+          if score < MUTATION_SCORE_FLOOR_PERCENT:
+              print(f"BLOCKED - mutation score below {MUTATION_SCORE_FLOOR_PERCENT} percent.")
               sys.exit(1)
           PY
+
+  mutation-manifest:
+    name: mutation manifest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
+      - name: freeze and hash the manifest ONCE
+        run: python3 -m mutation_manifest --shards 16 --out manifest.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-manifest
+          path: manifest.json
+
+  mutation-shards:
+    name: mutation shard ${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    needs: mutation-manifest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: mutation-manifest
+      - name: run shard ${{ matrix.shard }} of 16
+        run: python3 -m mutation_shard_runner --manifest manifest.json --shard ${{ matrix.shard }} --shard-count 16 --out shard-${{ matrix.shard }}.jsonl
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: mutation-results-shard-${{ matrix.shard }}
+          path: shard-${{ matrix.shard }}.jsonl
+
+  mutation-aggregate:
+    name: mutation aggregate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [mutation-manifest, mutation-shards]
+    if: always()
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: reconcile every mutant id, then score
+        run: python3 -m mutation_aggregate --manifest mutation-manifest/manifest.json --shards 'mutation-results-shard-*/shard-*.jsonl' --expected-shards 16 --floor 93
 
   end-to-end:
     name: end-to-end
@@ -272,3 +532,48 @@ jobs:
           echo "'CLI, no UI'. Playwright drives a browser; there is nothing to"
           echo "drive and the blueprint says there will not be in this build."
           exit 1
+
+  ocr-tests:
+    name: ocr tests
+    runs-on: ubuntu-24.04
+    # 89 s measured locally on python3.12 (macOS arm64, warm pip cache) for the
+    # venv build plus the full suite; the resulting venv is 1.0 GB. What a COLD
+    # GitHub runner costs is UNKNOWN until this job reports it, so this number
+    # is a ceiling chosen to be generous, not a measurement (Law 24). Tighten it
+    # once a run has produced the real figure.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: prove this gate can still fail
+        # HOLLOW-GATE DEFENCE, the same shape every sibling job carries. Feeds
+        # the result check a skipped result, an empty collection and a failing
+        # result and requires all three to be REJECTED, then feeds it a clean
+        # result and requires it to be ACCEPTED - so the check is proved neither
+        # stuck-green nor stuck-red. Builds nothing, downloads nothing.
+        run: tools/ci/run_ocr_tests.sh --self-test
+      - name: the OCR path runs, in its own interpreter
+        # WHY A SEPARATE INTERPRETER RATHER THAN A RESOLVED CONFLICT.
+        # paddlex pins numpy<2.4 against this repo's numpy==2.5.1, so pip
+        # returns ResolutionImpossible; and paddleocr drags in
+        # opencv-contrib-python beside the pinned opencv-python, where both
+        # provide `cv2` and install order alone decides the winner.
+        #
+        # `reader.py` imports pymupdf, numpy, PIL and PaddleOCR. It imports NO
+        # cv2 - pinned by a test. The two dependency sets never needed to share
+        # a site-packages; only the runner did. So the fix is to stop making
+        # PaddleOCR coexist with numpy 2.5.1 and instead give the OCR tests an
+        # interpreter that never contains the pins they do not use (Law 53).
+        # No pin changes. No measurement invalidated.
+        #
+        # The script asserts ZERO SKIPS. This job exists only to be the
+        # environment those tests need, so a skip here means the environment it
+        # built is not the one it claimed to build - which is exactly what hid
+        # F-009.
+        run: tools/ci/run_ocr_tests.sh /tmp/ocr-venv /tmp/ocr-junit.xml

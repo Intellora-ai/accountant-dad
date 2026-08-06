@@ -8,10 +8,41 @@ version = "0.0.0"
 description = "CI scaffolding only. No engine, no accounting logic, no AI, no Tally."
 readme = "README.md"
 requires-python = ">=3.12"
+# DERIVED FROM THE CODE, not copied from a requirements file. `pip install
+# accountant-dad` installs exactly this list, so it must cover every third-party
+# module the package imports AT MODULE SCOPE - the imports that run when a module
+# is imported, not when a function is called. What CI happens to install is a
+# different question and is not evidence about the wheel.
+#
+# Measured on a stdlib-only interpreter with only this list installed:
+# `import accountant_dad` succeeded while `...input_engine.cleaner` raised
+# `No module named 'cv2'`, `...reader` raised `No module named 'numpy'` and
+# `...pipeline` raised `No module named 'pymupdf'`. Four of nine Engine 1
+# modules were unimportable from a correct install. `tests/unit/
+# test_declared_dependencies.py` now derives the same set structurally and
+# fails naming anything imported but undeclared, so this list cannot drift again.
+#
+# Pinned exactly, every one: an unpinned runtime dependency makes the same commit
+# validate differently on two runs. Each version is the one already pinned in
+# `requirements-engine1.txt`, copied character for character - none was chosen here.
+#
+# NOT listed, deliberately: `docling`, `pypdfium2`, `torch`, `transformers` and
+# `paddleocr`. Those are resolved through `parser.require_module()` and
+# `importlib.import_module()` INSIDE a function, so the package imports without
+# them and says which one is missing when the work that needs it is actually run
+# (`reader.py:396`). Making them install-time requirements would put ~2 GB of ML
+# wheels behind `import accountant_dad` to no purpose.
 dependencies = [
-    # Blueprint section 1 Stack names Pydantic. Pinned exactly: an unpinned
-    # runtime dependency makes the same commit validate differently on two runs.
+    # Blueprint section 1 Stack names Pydantic. Every artifact schema imports it.
     "pydantic==2.12.3",
+    # cleaner.py:96 `import cv2` - the distribution that provides `cv2`.
+    "opencv-python==5.0.0.93",
+    # cleaner.py:97, reader.py:101 `import numpy`.
+    "numpy==2.5.1",
+    # reader.py:104 `from PIL import Image` - the distribution that provides `PIL`.
+    "pillow==12.3.0",
+    # reader.py:103, pipeline.py:171 `import pymupdf`.
+    "pymupdf==1.28.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -64,6 +95,19 @@ warn_unreachable = true
 testpaths = ["tests"]
 xfail_strict = true
 addopts = "--strict-markers --strict-config"
+# Resolved by pytest RELATIVE TO ROOTDIR, which is why it is written here and
+# not passed as an environment variable. `tools/ci` holds flat modules that the
+# tests import by bare name, and CI already exports the same two paths, so in an
+# ordinary run this changes nothing and simply stops depending on the caller to
+# set PYTHONPATH correctly.
+#
+# It also decides whether mutation testing can work at all. mutmut copies the
+# tree into `mutants/` and runs the suite from there, so rootdir becomes
+# `mutants/` and these two entries resolve to the INSTRUMENTED copies. Without
+# it the tests import the pristine originals instead, every mutant is reported
+# as `no tests`, and the score is unmeasurable — 602 mutants, 0 killed,
+# 0 survived. Measured, not assumed.
+pythonpath = ["tools/ci", "src"]
 
 # ── coverage ──────────────────────────────────────────────────────────────
 [tool.coverage.run]
@@ -75,3 +119,70 @@ show_missing = true
 skip_covered = false
 # Every exclusion is a hole. There are none.
 exclude_lines = []
+
+# ── mutation ──────────────────────────────────────────────────────────────
+# mutmut 2.x took `--paths-to-mutate` on the command line. 3.3.1 deleted that
+# option, so `mutmut run --paths-to-mutate tools/ci,src` aborted with
+# "No such option" and the gate reported "no mutants to score" — a real failure
+# that read like an unimplemented placeholder.
+#
+# 3.3.1 reads `[tool.mutmut]` here FIRST and falls back to setup.cfg only if
+# this table is absent, so the config belongs in the file that already exists.
+# The value is the same value the deleted flag carried; nothing was chosen.
+#
+# It must be a LIST. A comma-joined string is taken as one literal path and
+# fails with FileNotFoundError: 'tools/ci,src' — measured, not assumed.
+[tool.mutmut]
+# Renamed from `paths_to_mutate` at mutmut 3.7.0, which warns on the old
+# name AND writes that warning into the results stream, where the gate
+# parsed it as a mutant status. Measured at `4fc7187`:
+#   no verdict: The config paths_to_mutate is deprecated...   1
+source_paths = ["src"]
+
+# mutmut runs the suite from a `mutants/` copy of the tree, and copies only what
+# it mutates. This repository's tests read files that are NOT code, so without
+# this they fail on a missing path rather than on a surviving mutant:
+#
+#   docs/                the conformance registry reads every cited document and
+#                        resolves each citation by CONTENT, so the clause it
+#                        names has to still be in the file (F-027)
+#   .github/workflows/   the gate and step ratchets read the REAL workflows
+#   pyproject.toml       the packaging and coverage-config assertions read it
+#   requirements-ci.txt  pinned-version assertions read it
+#
+# Copied, never mutated: mutating a specification would test nothing about the
+# code, and mutating a workflow would make the ratchets judge a fiction.
+do_not_mutate = [
+    "*/services/audit.py",
+    "*/services/store.py",
+    "*/services/pipeline.py",
+    "*/engines/*/stub.py",
+    "*/brain/stub.py",
+]
+also_copy = [
+    "tools/ci",
+    # The citation verifier. `tests/conftest.py` puts the repo root on sys.path
+    # so `tools.evidence` imports; under mutation the root IS `mutants/`, so
+    # without this copy the whole suite fails to collect with
+    # `ModuleNotFoundError: No module named 'tools.evidence'` — which mutmut
+    # scores as every mutant surviving. Found on CI, not locally: the local run
+    # resolves against the real tree and never notices.
+    "tools/evidence",
+    "docs",
+    ".github",
+    "pyproject.toml",
+    "requirements-ci.txt",
+    # The Engine 1 manifests, for the same reason one line up and a worse
+    # failure mode. `test_runtime_library_versions` reads every pin off disk so
+    # it carries no version literal of its own. Under mutation the root IS
+    # `mutants/`, which held only `requirements-ci.txt` — so `PINNED_IMPORTS`
+    # lost every Engine 1 pin and the test raised `KeyError: 'cv2'` for EVERY
+    # mutant.
+    #
+    # That direction is the dangerous one. A test that fails for every mutant
+    # reports every mutant as KILLED, so a missing file here does not redden the
+    # gate — it INFLATES the score. The suite was green locally throughout,
+    # because a local run resolves against the real tree and never notices.
+    "requirements-engine1.txt",
+    "requirements-engine1-ocr.txt",
+]

@@ -1,0 +1,29 @@
+{
+  "id": "CO-BOOKS-RETENTION-001",
+  "status": "VERIFIED",
+  "if": [
+    "books of account of a company exist for a financial year",
+    "the period for which they must be retained is being determined"
+  ],
+  "then": "the books of account relating to a period of not less than the eight financial years immediately preceding a financial year, together with the vouchers relevant to any entry in them, SHALL be kept in good order; and where an investigation has been ordered under Chapter XIV, the Central Government may direct that they be kept for such longer period as it may deem fit",
+  "source_section": "Companies Act, 2013, s.128(5)",
+  "note": "Eight years is a FLOOR, not a target — the section says 'not less than'. The limb covering a company in existence for less than eight years is not quoted: the extraction joins 'in existence' into 'inexistence', and a quote is never repaired to make it match. UNKNOWN — source is the Act as enacted 2013; amendments not held locally.",
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(5)",
+      "quote": "The books of account of every company relating to a period of not less than eight financial years immediately preceding a financial year",
+      "extraction_note": "Cut at 'preceding a financial year'. The next words in the source read 'or where the company had been inexistence' — the extraction joins 'in' and 'existence'. The artifact is in the extraction, not in the Act."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(5)",
+      "quote": "together with the vouchers relevant to any entry in such books of account shall be kept in good order"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(5), proviso",
+      "quote": "the Central Government may direct that the books of account may be kept for such longer period as it may deem fit"
+    }
+  ]
+}

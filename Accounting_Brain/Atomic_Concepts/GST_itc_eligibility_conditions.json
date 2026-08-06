@@ -1,0 +1,127 @@
+{
+  "id": "GST-ITC-CONDITIONS",
+  "name": "Eligibility and conditions for taking input tax credit \u2014 section 16",
+  "status": "VERIFIED",
+  "definition": "Section 16(2) opens 'Notwithstanding anything contained in this section' and then denies credit unless a set of conditions is met. In the source held locally those conditions are: possession of a tax invoice or debit note or other prescribed tax paying document; receipt of the goods or services; the tax charged having been actually paid to the Government; and the return under section 39 having been furnished. Three provisos qualify them: credit on the last lot where goods arrive in instalments; an add-back where the recipient does not pay the supplier within one hundred and eighty days; and re-availment once he pays.",
+  "why_it_exists": "Section 16(1) states an entitlement. Section 16(2) is a separate override that converts the entitlement into a set of testable facts, so that a credit is provable from documents rather than asserted. It is the provision that makes an ITC claim auditable.",
+  "inputs": [
+    "the tax invoice or debit note or other prescribed tax paying document",
+    "evidence of receipt of the goods or services",
+    "evidence that the tax charged was paid to the Government",
+    "the return furnished under section 39",
+    "the date of the invoice and the date the recipient paid the supplier"
+  ],
+  "outputs": [
+    "credit permitted, or credit denied naming the failed condition",
+    "an add-back to output tax liability where the one-hundred-and-eighty-day test fails"
+  ],
+  "preconditions": [
+    "entitlement under s.16(1) already established",
+    "the supply is not one on which credit is blocked by s.17(5)"
+  ],
+  "rules": [
+    "GST-ITC-16-2-A",
+    "GST-ITC-16-2-B",
+    "GST-ITC-16-2-B-EXPL",
+    "GST-ITC-16-2-C",
+    "GST-ITC-16-2-D",
+    "GST-ITC-16-2-P1",
+    "GST-ITC-16-2-P2",
+    "GST-ITC-16-2-P3",
+    "GST-ITC-16-3",
+    "GST-ITC-16-4"
+  ],
+  "exceptions": [
+    "GST-ITC-16-2-AA \u2014 CONFLICT: a further condition appears only in the later consolidation",
+    "GST-ITC-16-2-BA \u2014 CONFLICT: a further condition appears only in the later consolidation",
+    "GST-ITC-16-5 \u2014 CONFLICT: an extended window appears only in the later consolidation",
+    "GST-ITC-16-6 \u2014 CONFLICT: revocation-of-cancellation relief appears only in the later consolidation"
+  ],
+  "common_mistakes": [
+    "treating the conditions as alternatives \u2014 they are cumulative; failing one denies the whole credit",
+    "taking credit on an advance payment before the goods or services are received",
+    "taking full credit on the first instalment when goods arrive in lots",
+    "ignoring the one-hundred-and-eighty-day add-back because the invoice was already booked",
+    "applying the one-hundred-and-eighty-day rule to a reverse-charge supply, which the proviso excludes"
+  ],
+  "dependencies": [
+    "GST-ITC-CORE"
+  ],
+  "related_concepts": [
+    "GST-ITC-BLOCKED",
+    "GST-ITC-REVERSE-CHARGE"
+  ],
+  "legal_references": [
+    "CGST Act 2017, s.16(2), (3) and (4)",
+    "CGST Act 2017, s.39 \u2014 the return referred to in s.16(2)(d)",
+    "CGST Act 2017, s.41 \u2014 referred to in s.16(2)(c)"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 a statutory eligibility test, not an accounting standard question"
+  ],
+  "gst_references": [
+    "CGST Act 2017, s.16"
+  ],
+  "evidence_required": [
+    "the tax invoice or debit note, held by the recipient",
+    "proof of receipt \u2014 delivery evidence, or the s.16(2)(b) Explanation route where a third party took delivery",
+    "evidence that the supplier's tax reached the Government",
+    "the filed return under s.39",
+    "the payment date to the supplier, to test the one-hundred-and-eighty-day proviso"
+  ],
+  "confidence_factors": [
+    "weak when the document is a proforma invoice or a bare challan rather than a tax invoice or debit note",
+    "weak when receipt is inferred from the invoice date rather than evidenced",
+    "the s.16(2)(c) condition is not verifiable from the recipient's own records alone \u2014 it depends on the supplier's conduct",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally",
+    "CONFLICT \u2014 the second locally held source carries two further conditions, s.16(2)(aa) and s.16(2)(ba), that the primary source does not; see GST-ITC-16-2-AA and GST-ITC-16-2-BA"
+  ],
+  "validation_checks": [
+    "a document of a type named in s.16(2)(a) is on file",
+    "receipt is evidenced, or the deemed-receipt Explanation is satisfied",
+    "the return under s.39 for the period is filed",
+    "where goods arrived in lots, credit is taken only on receipt of the last lot",
+    "invoices unpaid beyond one hundred and eighty days are identified and added back"
+  ],
+  "examples": [
+    "goods delivered against a registered supplier's tax invoice, tax paid by the supplier, return filed \u2014 all four conditions met, credit permitted"
+  ],
+  "counterexamples": [
+    "a tax invoice held but the goods still in transit at period end \u2014 s.16(2)(b) fails, credit is not available yet",
+    "goods against one invoice received in three instalments; credit taken on the first \u2014 the first proviso denies it until the last instalment"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2), opening words",
+      "quote": "no registered person shall be entitled to the credit of any input tax in respect of any supply of goods or services or both to him unless,",
+      "extraction_note": "The clause closes with a double dash that the extractor renders as two en-dashes; the quote stops before it."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(a)",
+      "quote": "he is in possession of a tax invoice or debit note issued by a supplier registered under this Act, or such other tax paying documents as may be prescribed;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(b)",
+      "quote": "he has received the goods or services or both."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(c)",
+      "quote": "subject to the provisions of section 41, the tax charged in respect of such supply has been actually paid to the Government, either in cash or through utilisation of",
+      "extraction_note": "A footnote and a page break interrupt this clause in the extracted text, so the remainder is quoted separately."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(c), continued",
+      "quote": "input tax credit admissible in respect of the said supply; and"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(d)",
+      "quote": "he has furnished the return under section 39:"
+    }
+  ]
+}

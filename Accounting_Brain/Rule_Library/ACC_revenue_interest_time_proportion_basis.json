@@ -1,0 +1,23 @@
+{
+  "id": "ACC-REV-INTEREST-001",
+  "status": "VERIFIED",
+  "if": ["the revenue is interest, being charges for the use of cash resources or amounts due to the enterprise",
+         "no significant uncertainty as to measurability or collectability exists"],
+  "then": "interest is recognised ON A TIME PROPORTION BASIS, taking into account the amount outstanding and the rate applicable",
+  "source_section": "AS 9 paras 8.1(i), 8.2 and 13(i)",
+  "note": "Time, not receipt, is the trigger. Discount or premium on debt securities held is treated as though it were accruing over the period to maturity, so it is not a gain on redemption. If measurability or collectability is significantly uncertain, para 13 blocks recognition and ACC-REV-POSTPONE-001 governs instead.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 13(i)",
+     "quote": "on a time proportion basis taking into account the amount outstanding and the rate applicable"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 13",
+     "quote": "Revenue arising from the use by others of enterprise resources yielding interest, royalties and dividends should only be recognised when no significant uncertainty as to measurability or collectability exists."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.1(i)",
+     "quote": "interest—charges for the use of cash resources or amounts due to the enterprise"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.2",
+     "quote": "Interest accrues, in most circumstances, on the time basis determined",
+     "extraction_note": "The continuation reads 'bythe amount outstanding and the rateapplicable': the PDF extraction joins 'by the' and 'rate applicable', so the sentence cannot be quoted whole. Para 13(i), quoted above, states the same basis in unjoined text. The artifact is in the extraction, not in the standard."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 8.2",
+     "quote": "on debt securities held is treated as though it were accruing over the period",
+     "extraction_note": "The words before read 'Usually, discountorpremium' and the words after read 'tomaturity': the PDF extraction joins 'discount or premium' and 'to maturity'. Quoted around both joins."}
+  ]
+}

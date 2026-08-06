@@ -1,0 +1,17 @@
+{
+  "id": "GST-VALUE-005",
+  "status": "VERIFIED",
+  "if": [
+    "interest, late fee or penalty is charged for delayed payment of any consideration for any supply"
+  ],
+  "then": "it is INCLUDED in the value of supply",
+  "source_section": "CGST s.15(2)(d)",
+  "note": "Interest on a late-paying customer is part of the taxable value, not a financing item outside GST. Its TIME of supply is separate \u2014 s.12(6) / s.13(6) put it on the date the supplier receives it (GST-TIME-GOODS-009, GST-TIME-SERVICES-012).",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(2)(d)",
+      "quote": "interest or late fee or penalty for delayed payment of any consideration for any supply"
+    }
+  ]
+}

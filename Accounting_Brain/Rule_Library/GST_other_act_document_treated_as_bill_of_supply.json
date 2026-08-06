@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-BOS-002",
+  "status": "VERIFIED",
+  "if": [
+    "a tax invoice or similar document was issued under another Act for the time being in force",
+    "it is in respect of a non-taxable supply"
+  ],
+  "then": "that document SHALL be treated as a bill of supply for the purposes of the Act",
+  "source_section": "CGST Rules 2017, rule 49, second proviso",
+  "note": "A document that does not look like a GST bill of supply can still BE one. Rejecting it for missing rule 49 particulars would be wrong.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 49, second proviso",
+      "quote": "Provided further that any tax invoice or any other similar document issued under any other Act for the time being in force in respect of any non-taxable supply shall be treated as a bill of supply for the purposes of the Act."
+    }
+  ]
+}

@@ -1,0 +1,226 @@
+                                                                                                           Circular No. 232/26/2024-GST
+
+                                                    F. No. CBIC-20001/6/2024-GST
+                                                              Government of India
+                                                               Ministry of Finance
+                                                            Department of Revenue
+                                        Central Board of Indirect Taxes and Customs
+                                                                GST Policy Wing
+                                                                             ***
+
+                                                                                         New Delhi, dated the 10                 th September, 2024
+
+To,
+
+The Principal Chief Commissioners/ Chief Commissioners/
+Principal Commissioners/ Commissioners of Central Tax (All),
+The Principal Directors General/ Directors General (All).
+
+Madam/Sir,
+
+            Subject: Clarification on place of supply of data hosting services provided by service
+providers located in India to cloud computing service providers located outside India-reg.
+
+            Representations have been received from the trade and industry seeking clarification on
+the place of supply in case of data hosting services provided by service providers located in India
+to cloud computing service providers located outside India.
+
+2.          Issue
+
+2.1       It has been represented that some field formations are of the view that the place of supply
+of data hosting services provided by the service providers located in India to cloud computing
+service providers located outside India is the location of data hosting service provider in India
+and therefore, the benefit of export of services is not available on such supply of data hosting
+services.
+
+2.2       Thus, clarification has been sought in respect of the following issues-
+
+(i)  Whether  data  hosting  service  provider  qualifies  as  ‘Intermediary’  between  the  cloud
+computing service provider and their end customers/users/subscribers as per Section 2(13) of the
+Integrated Goods and Services Tax Act, 2017 (herein after referred to as the “IGST Act”) and
+whether the services provided  by data hosting service provider to cloud computing service
+
+
+
+                                                                        Page 1 of      5
+
+providers are covered as intermediary services and whether the place of supply of the same is to
+be determined as per section 13(8)(b) of IGST Act.
+(ii) Whether the data hosting services are provided in relation to goods “made available” by
+recipient of services to service provider for supply of such services and whether the place of
+supply of the same is to be determined as per section 13(3)(a) of the IGST Act.
+(iii) Whether the data hosting services are provided directly in relation to “immovable property”
+and whether the place of supply of the same is to be determined as per section 13(4) of the IGST
+Act.
+
+3.          Clarification
+
+3.1         Whether data hosting service provider qualifies as ‘Intermediary’ between the cloud
+computing service provider and their end customers/users/subscribers as per Section 2(13)
+of the IGST Act and whether the services provided by data hosting service provider to
+cloud computing service providers                             are covered as intermediary services and whether the
+place of supply of the same is to be determined as per section 13(8)(b) of IGST Act.
+
+3.1.1    As per section 2(13) of the IGST Act, read with Circular no. 159/15/2021-GST dated
+20.09.2021, a broker, agent or any other person who arranges or facilitates the main supply of
+goods or services or both or securities and has not involved himself in the main supply on his
+own account is considered as ‘intermediary’. Persons who supply goods or services, or both on
+their own account are not covered in the definition of “intermediary”.
+
+3.1.2    The cloud computing service providers generally enter into contract with data hosting
+service providers to use their data centres for hosting cloud computing services. Data hosting
+service provider either owns premises for data centre or operates data centre on leased premises,
+procures infrastructure and human resource, handles operations like infrastructure monitoring, IT
+management and equipment maintenance, etc. to provide the said supply of data hosting services
+to the cloud computing service providers.  The data hosting service provider generally handles
+all aspects of data centre like rent, software and hardware infrastructure, power, net connectivity,
+security, human resource, etc. Importantly, the data hosting service providers do not deal with
+end users/consumers of cloud computing services and may not even know about the end users.
+
+3.1.3    It is observed that data hosting service provider provides data hosting services to the
+cloud  computing  service  provider  on  a  web  platform  through  computing  and  networking
+equipment for the purpose of collecting, storing, processing, distributing, or allowing access to
+large amounts of data. The cloud computing service provider provides cloud-based applications
+and software services to various end users/customers/subscribers for data storage, analytics,
+artificial intelligence, machine learning, processing, database analysis and deployment services,
+etc.. The end users/customers/subscribers access cloud computing services seamlessly over the
+internet through technology hosted on data centers. There appears to be no contact between data
+
+                                                                      Page 2 of      5
+
+hosting service provider and                    the end users/ consumers/ subscribers of                       the overseas cloud computing
+service provider. Thus, it is observed that the data hosting service provider provides data hosting
+services to the cloud computing service provider on principal-to-principal basis on his own
+account and is not acting as a broker or agent for facilitating supply of service between cloud
+computing service providers and their end users/consumers.
+
+3.1.4    Accordingly, it is clarified that                        in such a scenario,            the services provided by data hosting
+service provider to its overseas                         cloud computing service providers                             cannot be considered as
+intermediary services and hence, the place of supply of the same cannot be determined as per
+section 13(8)(b) of IGST Act.
+
+3.2       Whether  the  data  hosting  services  are  provided  in  relation  to  goods  “made
+available” by recipient  of services to  service provider for supply of such services  and
+whether the place of supply of the same is to be determined as per section 13(3)(a) of the
+IGST Act, 2017.
+
+3.2.1    Section 13(3)(a) of the IGST Act provides that in cases where the services are supplied in
+respect of goods which are made physically available by the recipient of services to service
+provider, the place of supply will be location of service provider.
+
+3.2  .2    In the instant  scenario, it  is observed  that the data hosting  service provider,  as an
+independent entity, is providing seamless data hosting services to the overseas                                                      cloud computing
+service providers, through the premises, hardware and personnel at the data centre                                                              which not
+only comprises of hardware but also other essential infrastructure (without which the hardware
+infrastructure  cannot  be  utilized)  like  ventilation  and  cooling  system,  uninterrupted  power
+supply, software, network connectivity, secur                                 ity protocols, etc. which are owned by the data
+hosting service providers and are independently handled, operated, monitored and maintained by
+them. These           data hosting service providers are charging their clients (cloud computing service
+providers), the ch           arges for the services being provided by them to these clients as consideration
+depending on the specific terms and conditions as per agreements between them.  From the
+above, it is observed that throughout the provision of the said services, the data host                                                        ing service
+provider owns premises for data center or operates data center on leased premises, independently
+handles, monitors and maintains the premises, hardware and software infrastructure, personnel
+and in such scenario, the overseas cloud computing service providers                                                    cannot be considered to
+own the said infrastructure and make the same physically available to the data hosting service
+provider for supply of the said services
+
+3.2.3    In view of above, it is clarified that data hosting services provided by data hosting service
+provider to the saidcloud computing service providers cannot be considered in relation to the
+goods “made available” by the said cloud computing service providers to the data hosting service
+
+
+                                                                         Page 3 of      5
+
+provider in India and hence, the place of supply of the same cannot be determined under section
+13(3)(a) of the IGST Act.
+
+3.2.4    There may be some cases where some of the hardware required for data hosting service is
+provided by the recipient of the service, i.e., the cloud computing service provider to the data
+hosting service provider. Even in these cases, data hosting service provider handles all aspects of
+data centre, like arranging for the premises, making available software and other hardware
+infrastructure, power, net connectivity, security, human resource, maintenance etc., for providing
+data  hosting  services  to  the  cloud  computing  service provider.  Accordingly,  in  such  cases,
+though the data hosting services is being provided by the data hosting service provider                                                           inter-alia
+using the hardware made available by the cloud computing service provider, it cannot be said
+that data hosting service are being provided in relation to the said goods made available by the
+cloud computing service provider to them. Accordingly, even in these cases, place of supply
+cannot be determined under section 13(3)(a) of the IGST Act..
+
+3.3         Whether the data hosting services are provided directly in relation to “immovable
+property” and whether the place of supply of the same is to be determined as per section
+13(4) of the IGST Act.
+
+3.3.1    Section 13(4) of the IGST Act provides for the place of supply where services supplied
+are directly in relation to immovable property.
+
+3.3.2    In the present scenario, it is observed that the data hosting service providers either use
+owned  or  leased  premises  for  keeping  IT  infrastructure  and  other  hardware  required  for
+providing data hosting  services. They  also procure hardware, uninterrupted power supplies,
+backup generators, ventilation and cooling equipment, network connectivity, fire suppression
+systems,   security,   human   resource,   etc.;   handle   operations   like   server   monitoring,   IT
+management and equipment maintenance, including repairs and replacements of the same, for
+providing data hosting services to their clients.
+
+3.3.3    Thus, it is observed that data hosting services are not passive supply of a service directly
+in respect of immovable property but are regarding supply of a comprehensive service related to
+data hosting which involves the   supply   of   various services by the data hosting service
+provider like  operating data centre, ensuring uninterrupted power supplies, backup generators,
+network     connectivity, backup   facility,   firewall   services,   and monitoring  and  surveillance
+service for ensuring   continuous   operations   of   the servers  and  related  hardware,  etc. which
+are essential for cloud computing service provider to provide cloud computing services to the
+end users/customer/subscribers.
+
+3.3.4    Accordingly, it is clarified that in such a scenario, the data hosting services cannot be
+considered  as  the  services  provided  directly  in  relation  to  immovable  property  or  physical
+
+                                                                         Page 4 of      5
+
+premises and hence, the place of supply of such services cannot be determined under section
+13(4) of IGST Act.
+
+4.         Further, the place of supply for the data hosting services provided by data hosting service
+provider located in India to overseas cloud computing service providers does not appear to fit
+into  any  of  the  specific  provisions  outlined  in  sections  13(3)  to  13(13)  of  the  IGST  Act.
+Therefore, the place of supply in such cases needs to be determined according to the default
+provision under section 13(2) of the IGST Act, i.e. the location of the recipient of the services.
+Where the cloud computing service provider receiving the data hosting services are located
+outside India, the place of supply will be considered to be outside India according to section
+13(2) of the IGST Act.
+
+5.         Accordingly, supply of data hosting services being provided by a data hosting service
+provider located in India to an overseas cloud computing entity can be considered as export of
+services, subject to the fulfilment of the other conditions mentioned in section 2(6) of IGST Act.
+
+6.          It is requested that suitable trade notices may be issued to publicize the contents of this
+Circular.
+
+7.         Difficulty, if any, in the implementation of this Circular may be brought to the notice of
+the Board. Hindi version will follow.
+
+
+
+                                                                                                                                          (Sanjay Mangal)
+                                                                                                                 Principal Commissioner (GST)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                           Page 5 of       5

@@ -1,0 +1,39 @@
+{
+  "id": "GST-INV-MANNER-001",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of goods",
+    "an invoice is issued under rule 46",
+    "the invoice is not one prepared in the manner specified in rule 48(4)"
+  ],
+  "then": "the invoice MUST be prepared in triplicate, marked ORIGINAL FOR RECIPIENT, DUPLICATE FOR TRANSPORTER and TRIPLICATE FOR SUPPLIER",
+  "source_section": "CGST Rules 2017, rule 48(1)",
+  "note": "Rule 48(6) switches this off for an invoice prepared under rule 48(4).",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(1)",
+      "quote": "48. Manner of issuing invoice.-(1)The invoice shall be prepared in triplicate, in the case of supply of goods, in the following manner, namely,-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(1)(a)",
+      "quote": "the original copy being marked as ORIGINAL FOR RECIPIENT;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(1)(b)",
+      "quote": "the duplicate copy being marked as DUPLICATE FOR TRANSPORTER; and"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(1)(c)",
+      "quote": "the triplicate copy being marked as TRIPLICATE FOR SUPPLIER."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(6)",
+      "quote": "The provisions of sub-rules (1) and (2) shall not apply to an invoice prepared in the manner specified in sub-rule (4)."
+    }
+  ]
+}

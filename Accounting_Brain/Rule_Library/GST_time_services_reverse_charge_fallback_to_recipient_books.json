@@ -1,0 +1,18 @@
+{
+  "id": "GST-TIME-SERVICES-008",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of services on reverse charge basis",
+    "it is not possible to determine the time of supply under s.13(3)(a) or s.13(3)(b)"
+  ],
+  "then": "the time of supply is the date of entry in the books of account of the RECIPIENT of supply",
+  "source_section": "CGST s.13(3) first proviso",
+  "note": "Last resort, and only after both limbs of s.13(3) have genuinely failed.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(3) first proviso",
+      "quote": "where it is not possible to determine the time of supply under clause (a) or clause (b), the time of supply shall be the date of entry in the books of account of the recipient of supply"
+    }
+  ]
+}

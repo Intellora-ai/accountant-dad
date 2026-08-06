@@ -36,6 +36,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from authored_source import authored_path, authored_source
 from pydantic import ValidationError
 
 from accountant_dad.artifacts.decision import AccountingDecision, DecisionStatus, JournalLine
@@ -368,7 +369,7 @@ def test_repeated_calls_are_equal_so_there_is_no_clock_and_no_randomness() -> No
 
 def imported_modules() -> set[str]:
     """Every module named in an import statement in the stub's own source."""
-    tree = ast.parse(Path(str(stub.__file__)).read_text(encoding="utf-8"))
+    tree = ast.parse(authored_source(stub))
     names: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -415,7 +416,7 @@ def test_the_stub_lives_where_the_freeze_guard_permits_a_stub() -> None:
     Named explicitly so a rename shows up as a failure in the module that owns
     the file, not only in the freeze guard.
     """
-    path = Path(str(stub.__file__))
+    path = authored_path(stub)
     assert path.name == "stub.py"
     assert path.parent.name == "accounting_engine"
     assert path.parent.parent.name == "engines"

@@ -1,0 +1,24 @@
+{
+  "id": "GST-ITC-16-3",
+  "status": "VERIFIED",
+  "if": [
+    "capital goods or plant and machinery were acquired",
+    "the registered person has claimed depreciation on the TAX COMPONENT of their cost under the Income-tax Act, 1961"
+  ],
+  "then": "input tax credit on that tax component is NOT ALLOWED",
+  "source_section": "CGST Act s.16(3)",
+  "note": "You may capitalise the tax and depreciate it, or credit it. Not both. The bar attaches to the tax component only, not to the whole asset cost, and it is triggered by the income-tax treatment actually claimed, not by the accounting entry. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(3)",
+      "quote": "Where the registered person has claimed depreciation on the tax component of the cost of capital goods and plant and machinery under the provisions of the Income-",
+      "extraction_note": "The extractor breaks 'Income-tax Act' across a line, so the sentence is quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(3), continued",
+      "quote": "tax Act, 1961, the input tax credit on the said tax component shall not be allowed."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "ACC-REV-POSTPONED-PERIOD-001",
+  "status": "VERIFIED",
+  "if": ["recognition of revenue was postponed due to the effect of uncertainties"],
+  "then": "when the uncertainty resolves, the revenue is considered REVENUE OF THE PERIOD IN WHICH IT IS PROPERLY RECOGNISED — not of the earlier period in which it was postponed",
+  "source_section": "AS 9 para 9.5",
+  "note": "Postponement moves revenue forward; it does not park it for later back-dating. This closes the loop opened by ACC-REV-POSTPONE-001: without this rule, a resolved uncertainty could be argued into restating the earlier period. AS 9 places it in the later one.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 9.5",
+     "quote": "When recognition of revenue is postponed due to the effect of uncertainties,",
+     "extraction_note": "The continuation reads 'itisconsidered as revenue of the period in which itis properly recognised': the PDF extraction joins 'it is considered' into one token and 'it is' into another, so the sentence cannot be quoted whole. The two unjoined fragments are quoted separately below. The artifact is in the extraction, not in the standard."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 9.5",
+     "quote": "as revenue of the period in which"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 9.5",
+     "quote": "properly recognised"}
+  ]
+}

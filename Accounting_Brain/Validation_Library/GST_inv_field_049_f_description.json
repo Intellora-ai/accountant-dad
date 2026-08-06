@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-FIELD-049-F",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a bill of supply referred to in clause (c) of sub-section (3) of section 31",
+    "it is issued under rule 49 of the CGST Rules, 2017"
+  ],
+  "then": "the bill of supply MUST carry a description of the goods or services or both",
+  "source_section": "CGST Rules 2017, rule 49(f)",
+  "note": "One mandatory particular of rule 49(f), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 49(f)",
+      "quote": "description of goods or services or both;"
+    }
+  ]
+}

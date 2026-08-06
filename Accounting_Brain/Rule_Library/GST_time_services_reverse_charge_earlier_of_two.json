@@ -1,0 +1,28 @@
+{
+  "id": "GST-TIME-SERVICES-007",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of services",
+    "tax is paid or liable to be paid on reverse charge basis"
+  ],
+  "then": "the time of supply is the EARLIER of: the date of payment as entered in the recipient's books of account or the date it is debited to his bank account (whichever is earlier); and the date immediately following SIXTY days from the date of issue of invoice",
+  "source_section": "CGST s.13(3)",
+  "note": "SIXTY days, and EARLIER of TWO limbs \u2014 there is no receipt-of-goods limb, because there are no goods. Goods run thirty days and three limbs (GST-TIME-GOODS-005).",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(3)",
+      "quote": "In case of supplies in respect of which tax is paid or liable to be paid on reverse  charge     basis,   the   time   of   supply    shall  be   the   earlier  of   the  following     dates,"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(3)(a)",
+      "quote": "the date of payment as entered in the books of account of the recipient or the date on which the payment is debited in his bank account, whichever is earlier"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(3)(b)",
+      "quote": "the date immediately following sixty days from the date of issue of invoice or any other document, by whatever name called, in lieu thereof by the supplier"
+    }
+  ]
+}

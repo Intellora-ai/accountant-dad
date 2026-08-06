@@ -1,0 +1,19 @@
+{
+  "id": "GST-SUPPLY-003",
+  "status": "VERIFIED",
+  "if": [
+    "the activity is specified in Schedule I",
+    "it is made or agreed to be made without a consideration"
+  ],
+  "then": "the activity IS a supply notwithstanding the absence of consideration",
+  "source_section": "CGST s.7(1)(c)",
+  "note": "BLOCKED IN PRACTICE: Schedule I itself is not extracted, so this rule can be recognised but not evaluated. 'No money changed hands' is not by itself a reason to conclude there is no supply.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(1)(c)",
+      "quote": "the activities specified in Schedule I, made or agreed to be made without a consideration",
+      "extraction_note": "The clause ends ';[****]13' in the extraction \u2014 an amendment marker. The quote stops before it."
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "GST-VALUE-008",
+  "status": "VERIFIED",
+  "if": [
+    "the discount is given AFTER the supply has been effected",
+    "it is established in terms of an agreement entered into at or before the time of the supply",
+    "it is specifically linked to relevant invoices",
+    "the input tax credit attributable to the discount has been REVERSED by the recipient, on the basis of a document issued by the supplier"
+  ],
+  "then": "the discount is EXCLUDED from the value of supply",
+  "source_section": "CGST s.15(3)(b)",
+  "note": "All four conditions, and the last one is not in the supplier's control \u2014 the exclusion depends on an act by the RECIPIENT. A post-supply discount that fails any limb leaves the value unchanged, so the credit note does not reduce the GST. This is the clause where a wrong entry is most likely: the discount is visible, the recipient's ITC reversal is not.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(3)(b)",
+      "quote": "after the supply has been effected, if"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(3)(b)(i)",
+      "quote": "such   discount    is  established    in terms   of  an   agreement     entered   into   at or before the time of such supply and specifically linked to relevant invoices"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(3)(b)(ii)",
+      "quote": "input tax credit as is attributable to the discount on the basis of document issued by the supplier has been reversed by the recipient of the supply."
+    }
+  ]
+}

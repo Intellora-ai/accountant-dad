@@ -1,0 +1,17 @@
+{
+  "id": "GST-ITC-155",
+  "status": "VERIFIED",
+  "if": [
+    "a person claims that he is eligible for input tax credit under the CGST Act"
+  ],
+  "then": "the BURDEN OF PROVING that claim lies ON THAT PERSON, not on the department",
+  "source_section": "CGST Act s.155",
+  "note": "The rule that governs how every other ITC rule must be applied. An unevidenced claim is not a neutral position \u2014 it is a failed one. Where the evidence for a condition is missing, the correct output is a clarification request, never a posted credit. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.155",
+      "quote": "Where any person claims that he is eligible for input tax credit under this Act, the burden of proving such claim shall lie on such person."
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "GST-ITC-16-2-BA",
+  "status": "CONFLICT",
+  "if": [
+    "input tax credit is claimed on a supply",
+    "the details of input tax credit in respect of that supply, communicated to the registered person under section 38, HAVE been restricted"
+  ],
+  "then": "CONFLICT \u2014 one locally held source makes non-restriction a condition of the credit; the other does not contain the clause at all. Neither is adopted here",
+  "source_section": "CGST Act s.16(2)(ba)",
+  "note": "Absent from the primary source, the Act as updated 31-08-2021. The IndiaCode consolidated text as on 11-06-2026 carries it and footnotes it as inserted by Act 6 of 2022 with effect from 1-10-2022. Where it applies it makes the credit depend on a system-generated restriction communicated under s.38, which cannot be evaluated from a document at all. Recorded as CONFLICT; not adopted.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.16(2)(ba) (source B, IndiaCode consolidated text as on 11-06-2026)",
+      "quote": "the details of input tax credit in respect of the said supply communicated to such registered person under section 38 has not been restricted;"
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.16, footnote 3",
+      "quote": "Ins. by Act 6 of 2022, s. 100 (w.e.f. 1-10-2022)."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(2)(b) (source A, Act as updated 31-08-2021)",
+      "quote": "he has received the goods or services or both.",
+      "extraction_note": "Cited to show what source A places between clause (b) and clause (c): the Explanation on deemed receipt, and then clause (c). There is no clause (ba)."
+    }
+  ]
+}

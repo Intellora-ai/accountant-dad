@@ -1,0 +1,381 @@
+90
+Accounting   Standard    (AS ) 5
+(revised1997)
+
+Net   Profit   or  Loss    for  the  Period,
+Prior   Period     Items    and
+Changes      in  Accounting        Policies
+
+Contents
+
+
+OBJECTIVE
+SCOPE                                            Paragraphs 1-3
+DEFINITIONS                                                   4
+NET PROFIT   OR  LOSS  FOR  THE  PERIOD                    5-27
+Extraordinary Items                                        8-11
+ProfitorLoss from Ordinary  Activities                    12-14
+PriorPeriod Items                                         15-19
+Changes inAccounting  Estimates                           20-27
+CHANGES    IN ACCOUNTING     POLICIES                     28-33
+                                             Net  Profitor  Loss  forthe  Period   85
+Accounting           Standard          (AS    ) 5*
+(revised   1997)
+
+Net    Profit     or   Loss      for   the    Period,
+Prior     Period       Items      and
+Changes         in   Accounting           Policies
+
+
+(Thi s Accounting     Standard    includes    paragraphs      set in  bold  italic  type
+and  plain  type, which   have   equal  authority.   Paragraphs     in bold  italic type
+indicate  the  main   principles.  This  Accounting     Standard   should   be  read  in
+the context  of its objective  and   the Preface   to the Statements    of Accounting
+Standards1.)
+
+The  following   is the  text of the  revised  Accounting     Standard    (AS ) 5, ‘Net
+Profit or Loss  for the  Period,  Prior Period   Items  and  Changes    in Accounting
+Policies’, issued  by  the Council   of the  Institute of Chartered    Accountants    of
+India.
+
+This  revised   standard   comes    into effect  in  respect  of  accounting    periods
+commencing      on or after  1.4.1996   and  ismandatory     in nature.2  Itis clarified
+thatinrespect   of accountingperiods      commencingonadateprior           to1.4.1996,
+Accounting      Standard    5  as  originally   issued    in November,       1982   (and
+subsequently    made   mandatory)     will  apply.
+
+Objective
+Theobjective    of this Statementis   to prescribethe    classification and  disclosure
+of certain  items   in the  statement   of  profit  and  loss  so  that all enterprises
+
+*A  limitedrevision was  made  in 2001, pursuant to which  paragraph  33 has been added
+inthis standard  (see footnote 3).  The  Standard  was  originally issued  in November
+1982 and  was titled‘Prior Period  and Extraordinary  Items and  Changes  in Accounting
+Policies’.
+
+1Attention is specificallydrawn  to paragraph  4.3  ofthe Preface,  according  towhich
+Accounting  Standards  are intended  toapply  only to items which  are material.
+
+2Reference  may  be made  tothe section titled‘Announcements    ofthe Council  regarding
+statusof various documents   issued by  theInstitute ofChartered  Accountants   of India’
+appearing  at the beginning   of this Compendium      for a detailed discussion   on the
+implications of the mandatory  status of an accounting  standard.
+92   AS  5 (revised  1997)
+
+prepare  and  present  such   a statement   on a  uniform   basis. This  enhances    the
+comparability   of the financial  statements   of an  enterprise  over time  and  with
+the financial   statements   of  other  enterprises.  Accordingly,    this  Statement
+requires  the classification  and   disclosure  of  extraordinary   and  prior  period
+items, and  the disclosure   of certain  items within   profit or loss from  ordinary
+activities.Italso specifies  theaccountingtreatmentfor        changesinaccounting
+estimates  andthe   disclosures  to bemadein     thefinancialstatementsregarding
+changes   in accounting    policies.
+
+Scope
+1.   This  Statement     should   be  applied    by  an  enterprise    in presenting
+profit  or  loss from    ordinary    activities, extraordinary      items  and   prior
+period  items  in the statement   of profit  and  loss, in accounting    for changes
+in accounting     estimates,   and   in  disclosure    of changes     in accounting
+policies.
+
+2.   This Statement   deals  with,amongother      matters,the   disclosure  of certain
+items  of  net profit  or loss  for  the period.   These   disclosures   are  made   in
+addition  to any  other  disclosures   required   by other  Accounting     Standards.
+
+3.   This Statement does not deal with the tax implications of extraordinary
+items, prior  period  items,  changes   in  accounting   estimates,   and  changes   in
+accounting   policies  for which   appropriate   adjustments   will have   to be made
+depending    on  the circumstances.
+
+Definitions
+4.   The  following    terms   are  used  in  this Statement    with   the meanings
+specified:
+
+Ordinary     activities  are   any   activities  which    are   undertaken      by  an
+enterprise  as  part  of its business   and  such   related  activities in which    the
+enterprise  engages    in furtherance    of, incidental   to,or  arising  from,  these
+activities.
+
+Extraordinary     items  are   income    or expenses    that  arise  from   events   or
+transactions   that  are  clearly  distinct  from   the  ordinary    activities of  the
+enterprise and, therefore, are not     expected    to recur frequently or regularly.
+
+Prior period   items  are income   or  expenses   which   arise in the current   period
+                                            Net  Profitor Loss  for the Period     93
+
+as  a  result  of errors   or omissions     in the  preparation    of  the  financial
+statements    of one  or  more   prior periods.
+
+Accounting     policies arethe   specific accounting    principles  and  the methods
+of  applying   those  principles   adopted   by  an  enterprise  in  the preparation
+and   presentation   of  financial  statements.
+
+Net    Profit      or  Loss     for    the   Period
+5.   All  items  of income    and   expense   which   are  recognised    in a  period
+should   be included   in the determination     of net profit or loss for  the period
+unless   an  Accounting    Standard    requires   or permits   otherwise.
+
+6.   Normally,    allitems  of  income   and  expense   which   are  recognised   in a
+period   are included    in the determination    of  the  net profit  or loss  for the
+period.   This  includes   extraordinary    items  and   the effects  of  changes   in
+accounting    estimates.
+
+7.    The   net  profit  or  loss   for  the  period    comprises     the  following
+components,     each  of which   should  bedisclosed    on thefaceof    the statement
+of  profit and  loss:
+
+       (a)   profit or loss  from   ordinary   activities; and
+
+       (b)   extraordinary    items.
+
+Extraordinary           Items
+8.   Extraordinary     items   should   be  disclosed   in the  statement   of  profit
+and   loss as a  part of net  profit or  loss for the  period.  The  nature   and  the
+amount    of each   extraordinary    item  should   be separately   disclosed   in the
+statement   of  profit and  loss in  a manner    that its impact   on current   profit
+or  loss can  be  perceived.
+
+9.   Virtually  all items of  income   and  expense   included  in the determination
+ofnet  profit or loss for the period  arise inthe  course  of the ordinary  activities
+of the  enterprise.   Therefore,    only   on  rare  occasions    does  an  event   or
+transaction   give  rise to an extraordinary    item.
+
+10.    Whether   an  event  or  transaction  is clearly  distinct from   the ordinary
+activitiesoftheenterpriseis    determined   bythenature   oftheeventortransaction
+94   AS  5 (revised  1997)
+
+in relation to the  business  ordinarily   carried on  by  the enterprise  rather  than
+by the  frequency   with  which   such  events  are  expected   to occur.  Therefore,
+an event  or transaction  may  be  extraordinaryforone      enterprise  but not so  for
+anotherenterprisebecauseofthedifferences          betweentheirrespectiveordinary
+activities. For  example,   losses  sustained   as a  result of an  earthquake    may
+qualify as an  extraordinary   itemformanyenterprises.       However,claims      from
+policyholders arising from an earthquake do not qualify as an extraordinary
+item for  an insurance    enterprise  that insures  against   such  risks.
+
+11.   Examples      of events    or  transactions    that  generally    give  rise  to
+extraordinary   items  for  most  enterprises   are:
+
+      –     attachment    of property   of the  enterprise;  or
+
+      –     an  earthquake.
+
+Profit    or  Loss    from     Ordinary        Activities
+12.   When     items  of  income     and  expense     within   profit  or  loss  from
+ordinary    activities   are  of  such   size,  nature   or  incidence     that  their
+disclosure   is relevant   to explain   the  performance      of  the enterprise   for
+the period,   the  nature   and   amount     of such   items   should   be  disclosed
+separately.
+
+13.   Although    the items  of income   and  expense    described   in paragraph   12
+are not  extraordinary    items, the  nature  and   amount   of  such  items  may   be
+relevant  to  users  of  financial  statements    in  understanding     the financial
+position  and  performance    of  an enterprise  and  in making    projections  about
+financial  position   and   performance.     Disclosure    of  such  information     is
+sometimes    made   in the  notes  to the financial  statements.
+
+14.   Circumstances     which   may  give  rise to the separate  disclosure   of items
+of income   and  expense    in accordance    with  paragraph   12  include:
+
+      (a)   the write-down     of inventories   to  net realisable  value   as well  as
+            the  reversal  of such  write-downs;
+
+      (b)   a restructuring   of the  activities of  an enterprise   and  the reversal
+            of  any  provisions   for the costs  of  restructuring;
+
+      (c)   disposals   of items  of fixed  assets;
+                                             Net Profit or Loss  for the Period      95
+
+      (d)   disposals   of long-term    investments;
+
+      (e)   legislative  changes    having   retrospective   application;
+
+      (f)   litigation  settlements;   and
+
+      (g)   other  reversals   of provisions.
+
+Prior    Period      Items
+15.   The   nature   and  amount     of prior  period   items  should   be  separately
+disclosed  in the  statement   of profit  and  loss  in a manner    that  their impact
+on the  current   profit  or loss  can  be  perceived.
+
+16.   The  term  ‘prior  period  items’,  as defined   in this Statement,   refers  only
+to income   or expenses    which   arise in the  current  period  as  a result of errors
+or omissions    in the preparation    of the  financial  statements   of  one  or more
+prior periods.  The   term  does  not  include  other  adjustments    necessitated   by
+circumstances,    which   though   related  to prior periods,  are  determined    in the
+current  period,  e.g.,  arrears  payable   to workers    as  a result  of revision   of
+wages   with  retrospective   effect  during   the current  period.
+
+17.   Errors  in  the  preparation   of  the  financial  statements    of one   or more
+prior periods   may   be discovered    in the  current  period.  Errors   may   occur  as
+aresult  of mathematical    mistakes,   mistakes   in applying   accounting    policies,
+misinterpretation    of facts, or  oversight.
+
+18.   Prior   period   items   are generally    infrequent    in  nature  and   can  be
+distinguished   from   changes   in accounting    estimates.   Accounting    estimates
+by  their nature   are  approximations      that may   need   revision   as additional
+information   becomes     known.   For  example,    income    or expense   recognised
+on the  outcome    of a contingency     which   previously   could   not be  estimated
+reliably does   not constitute   a prior  period  item.
+
+19.   Prior  period  items   are normally    included   in the  determination    of  net
+profit or loss for the current   period.  An  alternative  approach   is to show   such
+items  in the statement    of profit  and  loss after  determination    of current   net
+profit or loss.  In either  case,  the objective   is to indicate  the  effect of  such
+items  on  the current  profit  or loss.
+96   AS  5 (revised  1997)
+Changes       in  Accounting         Estimates
+20.   As  a result  of the  uncertainties   inherent  in  business   activities, many
+financial  statement   items  cannot   be measured     with  precision  but  can  only
+be estimated.  The   estimation  process   involves  judgments    based  on  the latest
+information   available.  Estimates  maybe    required,for   example,   of bad  debts,
+inventory  obsolescence     or the useful  lives of depreciable    assets. The  use  of
+reasonable    estimates   is an  essential  part  of the  preparation    of  financial
+statements   and  does  not  undermine    their  reliability.
+
+21.   An   estimate  may   have   to be  revised  if changes    occur  regarding    the
+circumstances     on  which   the  estimate   was   based,   or  as a  result  of new
+information,   more  experience    or subsequent    developments.    The   revision  of
+the estimate, by  itsnature, does  not bringthe   adjustmentwithin     the definitions
+of an extraordinary    item  or a prior  period  item.
+
+22.   Sometimes,it   is difficultto distinguish  between  achange    inanaccounting
+policy  and  a change   in an accounting    estimate.  In such  cases,  the change   is
+treated as  a change   in an accounting    estimate,  with  appropriate   disclosure.
+
+23.   The  effect  of a change   in an  accounting    estimate   should   be included
+in the determination     of net  profit or  loss in:
+
+      (a)   the  period   of  the  change,    if the  change     affects  the  period
+            only;  or
+
+      (b)   the  period   of  the change     and  future   periods,   if the  change
+            affects  both.
+
+24.   A  change   in an accounting    estimate  may   affect the current  period   only
+or both  the current  period  and  future  periods.  For  example,    a change   in the
+estimate  of the amount   of bad  debts  isrecognised    immediately    and  therefore
+affects only  the  current  period.  However,    a change   in  the estimated   useful
+lifeof a depreciable    asset affects  the depreciation   in the current   period  and
+in each  period   during  the  remaining   useful   lifeof  the asset.  In both  cases,
+the effect of the change   relating to the current  period   isrecognised   as income
+or expense    in the  current  period.  The   effect,  ifany,  on  future  periods,   is
+recognised   in future  periods.
+
+25.   The  effect of a changein     an accounting    estimate   should   be classified
+using  the  same   classification   in the  statement    of profit  and  loss  as  was
+used  previously   for  the estimate.
+                                            Net Profit or Loss  forthe  Period     97
+
+26.   To ensure   the comparability   of financial  statements   ofdifferent  periods,
+the effect  of  a change    in an  accounting    estimate   which   was   previously
+included   in the  profit or  loss  from  ordinary   activities  is included   in that
+component     of net  profit or loss.  The  effect  of a change    in an  accounting
+estimate  that was   previously   included   as an  extraordinary   item  is reported
+as an extraordinary    item.
+
+27.   The  nature   and  amount    of a change   in an  accounting    estimate  which
+has a  material   effect in the current   period,  or  which   isexpected   to have   a
+material    effect  in  subsequent     periods,    should    be  disclosed.   If  it is
+impracticable    to quantify   the amount,    this  fact should   be  disclosed.
+
+Changes         in  Accounting           Policies
+28.   Users   need   to be  able   to compare     the financial   statements    of  an
+enterprise  over  a period   of time  in order  to  identify trends   in itsfinancial
+position,  performance     and   cash  flows.   Therefore,    the same   accounting
+policies are normally   adopted  for similar events  or transactionsin   each  period.
+
+29.   A change    inanaccounting      policy  shouldbe   made    only ifthe  adoption
+of a different  accounting     policy  isrequired   by  statute  or for  compliance
+with an  accounting     standard   or if itis considered    that the  change   would
+result in  a more   appropriate    presentation    of the  financial   statements   of
+the enterprise.
+
+30.   A  more    appropriate    presentation    of events   or  transactions   in  the
+financial statements occurs when the new accounting policy results in more
+relevant  or reliable  information    about  the  financial  position,  performance
+or cash  flows  of  the enterprise.
+
+31.   The  following   are  not changes    in accounting   policies  :
+
+      (a)   the adoption    of an  accounting   policy   for events  or  transactions
+            that  differ  in substance    from   previously    occurring   events   or
+            transactions,   e.g., introduction   of  a  formal  retirement    gratuity
+            scheme    by an  employer   in place  of ad  hoc  ex-gratia payments    to
+            employees    on  retirement;   and
+
+      (b)   theadoption    of a new  accounting   policy  for events  or transactions
+            which   did  not occur   previously   or that were   immaterial.
+98   AS  5 (revised  1997)
+
+32.   Any   change    in an  accounting     policy  which    has  a  material   effect
+should   be disclosed.   The  impact   of, and   the adjustments     resulting  from,
+such  change,   if material,   should  be  shown    in the financial   statements   of
+the period   in  which   such   change    is made,   to  reflect the  effect  of such
+change.   Where    the effect  of such   change   is not  ascertainable,    wholly  or
+inpart,  the fact should   be indicated.   Ifa change    ismade   in the accounting
+policies which    has  no  material   effect on  the  financial  statements    for the
+current  period   but which   is reasonably    expected   to have  a material   effect
+in later periods,  the fact  of such  change    should   be appropriately    disclosed
+in the period   in which   the  change   is adopted.
+
+33.   A  change   in accounting     policy consequent     upon   the adoption    of an
+Accounting     Standard    should   be  accounted     for in  accordance     with  the
+specific  transitional    provisions,   if any,   contained    in  that  Accounting
+Standard.   However,disclosuresrequiredby          paragraph32of      thisStatement
+should  be  made   unless  the transitional  provisions   of any  other  Accounting
+Standard    require  alternative   disclosures   in this  regard.3
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3As a limitedrevision toAS  5, theCouncil  ofthe Institutedecided toadd  thisparagraph
+inAS   5 in 2001.  This revision  comes  into effect in respect of accounting  periods
+commencing   on  or after1.4.2001  (see‘The  Chartered  Accountant’,  September  2001,
+pp.342).

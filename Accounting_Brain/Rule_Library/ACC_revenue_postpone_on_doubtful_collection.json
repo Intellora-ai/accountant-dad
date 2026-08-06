@@ -1,0 +1,13 @@
+{
+  "id": "ACC-REV-POSTPONE-001",
+  "status": "VERIFIED",
+  "if": ["revenue would otherwise be recognised under AS 9 para 11 or 12",
+         "at the time of raising the claim it is unreasonable to expect ultimate collection"],
+  "then": "recognition is POSTPONED",
+  "source_section": "AS 9 para 10",
+  "note": "The test is applied at the time of raising the claim, not at period end. A later doubt is a different question and is not covered by this rule.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 10",
+     "quote": "If at the time of raising of any claim itis unreasonable to expect ultimate collection, revenue recognition should be postponed"}
+  ]
+}

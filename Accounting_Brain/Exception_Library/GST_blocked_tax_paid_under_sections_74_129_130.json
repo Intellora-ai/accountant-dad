@@ -1,0 +1,45 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-I",
+  "status": "CONFLICT",
+  "if": [
+    "tax has been paid in accordance with the demand, detention or confiscation provisions of the Act"
+  ],
+  "then": "CONFLICT \u2014 both locally held sources block credit on such tax, but name different provisions and this file resolves neither. Source A: tax paid under SECTIONS 74, 129 AND 130. Source B: tax paid under SECTION 74 IN RESPECT OF ANY PERIOD UP TO FINANCIAL YEAR 2023-24",
+  "source_section": "CGST Act s.17(5)(i)",
+  "note": "The scope difference is material: under source A, tax paid on detention under s.129 or confiscation under s.130 is blocked; under source B those two sections are not named at all and s.74 itself is capped at periods up to financial year 2023-24. Source B footnotes the substitution to Act 15 of 2024 with effect from 1-11-2024. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(i) (source A, Act as updated 31-08-2021)",
+      "quote": "any tax paid in accordance with the provisions of sections 74, 129 and 130."
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17(5)(i) (source B, IndiaCode consolidated text as on 11-06-2026)",
+      "quote": "any tax paid in accordance with the provisions of"
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17(5)(i) (source B), continued",
+      "quote": "section 74 in respect of any period up to Financial Year 2023-24].",
+      "extraction_note": "The closing bracket is the consolidation's own amendment marker and is quoted as it appears."
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17, footnote 1 to clause (i)",
+      "quote": "or \u201csections 74, 129 and 130\u201d (w.e.f. 1 -11-2024).",
+      "extraction_note": "The footnote is broken mid-citation by the extractor; the fragment quoted is the part that survives intact."
+    }
+  ]
+}

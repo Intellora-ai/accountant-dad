@@ -1,0 +1,40 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-FA",
+  "status": "CONFLICT",
+  "if": [
+    "goods or services or both are received by a taxable person",
+    "and are used or intended to be used for activities relating to his obligations under CORPORATE SOCIAL RESPONSIBILITY referred to in section 135 of the Companies Act, 2013"
+  ],
+  "then": "CONFLICT \u2014 one locally held source blocks input tax credit on CSR spending; the other does not contain the clause at all. Neither is adopted here",
+  "source_section": "CGST Act s.17(5)(fa)",
+  "note": "Absent from the primary source, the Act as updated 31-08-2021. The IndiaCode consolidated text as on 11-06-2026 carries it and footnotes it as inserted by Act 8 of 2023 with effect from 1-10-2023. This matters for every company inside s.135 of the Companies Act, 2013: where the clause applies, CSR procurement carries no credit even though it is a statutory obligation of the business. Recorded as CONFLICT; not adopted.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17(5)(fa) (source B, IndiaCode consolidated text as on 11-06-2026)",
+      "quote": "goods or services or both received by a taxable person, which are used or intended to be used for activities relating to his obligations under corporate social responsibility referred to in section 135 of the Companies Act, 2013 (18 of 2013);"
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17, footnote 4",
+      "quote": "Ins. by Act 8 of 2023, s. 139 (w.e.f. 1-10-2023)."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(f) and (g) (source A, Act as updated 31-08-2021)",
+      "quote": "goods or services or both received by a non-resident taxable person except on goods imported by him;",
+      "extraction_note": "Cited to show what source A places between clause (f) and clause (g): nothing. Clause (g) follows clause (f) directly, with no clause (fa) between them."
+    }
+  ]
+}

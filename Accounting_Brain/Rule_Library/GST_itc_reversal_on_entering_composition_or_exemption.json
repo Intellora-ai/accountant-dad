@@ -1,0 +1,23 @@
+{
+  "id": "GST-ITC-18-4",
+  "status": "VERIFIED",
+  "if": [
+    "a registered person who has availed input tax credit OPTS to pay tax under section 10",
+    "OR the goods or services or both supplied by him become WHOLLY EXEMPT"
+  ],
+  "then": "he SHALL PAY an amount, by debit in the electronic credit ledger or electronic cash ledger, equivalent to the credit of input tax on inputs held in stock, inputs contained in semi-finished or finished goods held in stock, and on capital goods reduced by such percentage points as may be prescribed, computed on the day immediately preceding the date of exercising the option or of the exemption; and after that payment ANY BALANCE of input tax credit in his electronic credit ledger LAPSES",
+  "source_section": "CGST Act s.18(4)",
+  "note": "The mirror image of s.18(1). Two separate consequences: an amount payable, and then a lapse of whatever remains. The lapse is absolute \u2014 the balance is not refunded and not carried forward. 'Wholly exempt' is the trigger; a partial exemption is dealt with by apportionment under s.17(2) instead. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(4)",
+      "quote": "Where any registered person who has availed of input tax credit opts to pay tax under section 10 or, where the goods or services or both supplied by him become wholly exempt, he shall pay an amount, by way of debit in the electronic credit ledger or electronic cash ledger, equivalent to the credit of input tax in respect of inputs held in stock and inputs contained in semi-finished or finished goods held in stock and on capital goods, reduced by such percentage points as may be prescribed, on the day immediately preceding the date of exercising of such option or, as the case may be, the date of such exemption:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(4), proviso",
+      "quote": "Provided that after payment of such amount, the balance of input tax credit, if any, lying in his electronic credit ledger shall lapse."
+    }
+  ]
+}

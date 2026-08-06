@@ -1,0 +1,24 @@
+{
+  "id": "GST-INV-FIELD-049-H",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a bill of supply referred to in clause (c) of sub-section (3) of section 31",
+    "it is issued under rule 49 of the CGST Rules, 2017",
+    "the bill of supply is not an electronic bill of supply issued under the Information Technology Act, 2000"
+  ],
+  "then": "the bill of supply MUST carry the signature or digital signature of the supplier or his authorised representative",
+  "source_section": "CGST Rules 2017, rule 49(h)",
+  "note": "One mandatory particular of rule 49(h), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 49(h)",
+      "quote": "signature or digital signature of the supplier or his authorised representative:"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 49, third proviso",
+      "quote": "Provided also that the signature or digital signature of the supplier or his authorised representative shall not be required in the case of issuance of an electronic bill of supply in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000)."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-FIELD-052-J",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a payment voucher referred to in clause (g) of sub-section (3) of section 31",
+    "it is issued under rule 52 of the CGST Rules, 2017"
+  ],
+  "then": "the payment voucher MUST carry the signature or digital signature of the supplier or his authorised representative",
+  "source_section": "CGST Rules 2017, rule 52(j)",
+  "note": "One mandatory particular of rule 52(j), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 52(j)",
+      "quote": "signature or digital signature of the supplier or his authorised representative."
+    }
+  ]
+}

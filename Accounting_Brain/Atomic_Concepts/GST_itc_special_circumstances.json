@@ -1,0 +1,105 @@
+{
+  "id": "GST-ITC-SPECIAL",
+  "name": "Availability of input tax credit in special circumstances \u2014 section 18",
+  "status": "VERIFIED",
+  "definition": "Section 18 handles the moments when a person crosses into or out of the taxable net. It grants credit on stock held on the day immediately preceding the change for four entry events: registration applied for within thirty days of becoming liable; voluntary registration under s.25(3); ceasing to pay tax under the composition levy; and an exempt supply becoming taxable. Credit under s.18(1) cannot be taken more than one year after the date of the tax invoice. On a change of constitution the unutilised credit may be transferred to the successor business. On the reverse events \u2014 opting into composition, or supplies becoming wholly exempt \u2014 an amount must be paid and any balance credit lapses. On a supply of capital goods on which credit was taken, an amount is payable equal to the higher of the reduced credit and the tax on transaction value.",
+  "why_it_exists": "Credit tracks a person's position inside the tax net. When that position changes, stock already carrying tax would otherwise either lose its credit unfairly or keep a credit it no longer earns. Section 18 settles both directions at the boundary.",
+  "inputs": [
+    "the event and its exact date",
+    "inputs held in stock, inputs contained in semi-finished and finished goods, and capital goods on the day immediately preceding that date",
+    "the date of the tax invoice for each such input",
+    "for capital goods, the credit originally taken and the transaction value on supply"
+  ],
+  "outputs": [
+    "an amount of credit available on the transition, or an amount payable on the transition",
+    "a transfer of unutilised credit to a successor business",
+    "a lapse of any balance credit after a s.18(4) payment"
+  ],
+  "preconditions": [
+    "one of the events named in s.18 has occurred",
+    "the underlying credit is not blocked by s.17(5) \u2014 s.17(5) overrides s.18(1)"
+  ],
+  "rules": [
+    "GST-ITC-18-1-A",
+    "GST-ITC-18-1-B",
+    "GST-ITC-18-1-C",
+    "GST-ITC-18-1-D",
+    "GST-ITC-18-2",
+    "GST-ITC-18-3",
+    "GST-ITC-18-4",
+    "GST-ITC-18-5",
+    "GST-ITC-18-6",
+    "GST-ITC-18-6-P"
+  ],
+  "exceptions": [
+    "s.17(5) blocks credit notwithstanding s.18(1) \u2014 see GST-ITC-BLOCKED",
+    "UNKNOWN \u2014 the percentage points by which credit on capital goods is reduced are left to be prescribed and are not stated in the Act"
+  ],
+  "common_mistakes": [
+    "taking s.18(1) credit on capital goods for the s.18(1)(a) and (b) events \u2014 those two clauses cover inputs and inputs contained in semi-finished or finished goods only, not capital goods",
+    "measuring stock on the date of the event rather than the day immediately preceding it",
+    "ignoring the one-year cut-off in s.18(2), which runs from the invoice date and not from the event",
+    "forgetting that any credit left after a s.18(4) payment lapses rather than carrying forward",
+    "paying only the reduced credit on a supply of capital goods when the tax on transaction value is higher"
+  ],
+  "dependencies": [
+    "GST-ITC-CORE",
+    "GST-ITC-CONDITIONS"
+  ],
+  "related_concepts": [
+    "GST-ITC-BLOCKED",
+    "GST-ITC-APPORTIONMENT"
+  ],
+  "legal_references": [
+    "CGST Act 2017, s.18(1) to (6)",
+    "CGST Act 2017, s.25(3) \u2014 voluntary registration",
+    "CGST Act 2017, s.10 \u2014 composition levy",
+    "CGST Act 2017, s.15 \u2014 transaction value"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE \u2014 a statutory transition mechanic, not an accounting standard question"
+  ],
+  "gst_references": [
+    "CGST Act 2017, s.18"
+  ],
+  "evidence_required": [
+    "a dated stock statement as at the day immediately preceding the event",
+    "tax invoices for the stock, to apply the one-year limit in s.18(2)",
+    "the registration or option document fixing the event date",
+    "for capital goods supplied, the original credit taken and the transaction value"
+  ],
+  "confidence_factors": [
+    "weak when stock cannot be traced back to a specific tax invoice, because s.18(2) is invoice-dated",
+    "the reduction percentage for capital goods is prescribed rather than stated in the Act, so the Act alone does not close the computation",
+    "UNKNOWN \u2014 source is the Act as updated 31-08-2021; later amendments not held locally"
+  ],
+  "validation_checks": [
+    "the stock date is the day immediately preceding the event, not the event date",
+    "no s.18(1) credit rests on a tax invoice older than one year",
+    "capital goods are included only for the s.18(1)(c) and (d) events",
+    "after a s.18(4) payment, the residual credit balance is written to zero, not carried"
+  ],
+  "examples": [
+    "a person becomes liable to register, applies within thirty days and is granted registration; he takes credit on inputs in stock as at the day before he became liable to pay tax"
+  ],
+  "counterexamples": [
+    "the same person also holds machinery bought before registration \u2014 s.18(1)(a) does not extend to capital goods, so no credit arises on it under that clause"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(1), opening words",
+      "quote": "Subject to such conditions and restrictions as may be prescribed"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(2)",
+      "quote": "A registered person shall not be entitled to take input tax credit under sub-section (1) in respect of any supply of goods or services or both to him after the expiry of one year from the date of issue of tax invoice relating to such supply."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(5)",
+      "quote": "The amount of credit under sub-section (1) and the amount payable under sub-section (4) shall be calculated in such manner as may be prescribed."
+    }
+  ]
+}

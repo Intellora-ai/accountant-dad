@@ -1,0 +1,62 @@
+{
+  "id": "GST-ITC-BLOCKED-17-5-D",
+  "status": "CONFLICT",
+  "if": [
+    "goods or services or both are received by a taxable person FOR CONSTRUCTION OF AN IMMOVABLE PROPERTY ON HIS OWN ACCOUNT",
+    "the property is not of the excluded description in the parenthesis",
+    "and this applies EVEN WHERE the goods or services are used in the course or furtherance of business"
+  ],
+  "then": "CONFLICT \u2014 both locally held sources block the credit, but describe the exclusion differently and this file resolves neither. Source A excludes 'plant OR machinery'. Source B excludes 'plant AND machinery' and adds an Explanation 2 deeming every reference to 'plant or machinery' to have always been a reference to 'plant and machinery'",
+  "source_section": "CGST Act s.17(5)(d)",
+  "note": "The one-word difference is decisive. 'Plant and machinery' is a DEFINED expression in the Explanation to s.17 and excludes land, buildings, civil structures, telecommunication towers and outside-factory pipelines; 'plant or machinery' is undefined and, being wider on its face, has been the subject of litigation. Source B's Explanation 2 is expressed to override any judgment, decree or order to the contrary, and source B footnotes the substitution to Act 7 of 2025 with retrospective effect from 01-07-2017 and the new Explanation with effect from 01-10-2025. Which text governs a given period is a legal determination and is deliberately left open. What both sources agree on is the sting in the tail: business use does NOT save the credit. Section 17(5) opens 'Notwithstanding anything contained in sub-section (1) of section 16 and sub-section (1) of section 18', so this block defeats both the s.16(1) entitlement and the s.18(1) special-circumstances credit. Business use does not cure it.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words",
+      "quote": "Notwithstanding anything contained in sub-section (1) of section 16 and",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the opening words are quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5), opening words, continued",
+      "quote": "section (1) of section 18, input tax credit shall not be available in respect of the following, namely:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(5)(d) (source A, Act as updated 31-08-2021)",
+      "quote": "goods or services or both received by a taxable person for construction of an immovable property (other than plant or machinery) on his own account including when such goods or services or both are used in the course or furtherance of business."
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17(5)(d) (source B, IndiaCode consolidated text as on 11-06-2026)",
+      "quote": "goods or services or both received by a taxable person for construction of an immovable property"
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17(5)(d) (source B), continued",
+      "quote": "plant and machinery]) on his own account including when such goods or services or both are used in the course or furtherance of business.",
+      "extraction_note": "The bracket is the consolidation's own amendment marker and is quoted as it appears rather than cleaned."
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17(5), Explanation 2 (source B)",
+      "quote": "For the purposes of clause (d), it is hereby clarified that notwithstanding anything to the contrary contained in any judgment, decree or order of any court, tribunal, or other authority, any reference to"
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17(5), Explanation 2 (source B), continued",
+      "quote": "shall be construed and shall always be deemed to have been construed as a reference to",
+      "extraction_note": "The two quoted expressions between these fragments carry substituted quotation glyphs in the extraction and are quoted around rather than reproduced."
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17, footnote 1",
+      "quote": "Subs. by Act 7 of 2025, s. 124 (i), for"
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.17, footnote 2",
+      "quote": "Explanation numbered as Explanation 1 by s. 124(ii), ibid. (w.e.f. 01-10-2025)."
+    }
+  ]
+}

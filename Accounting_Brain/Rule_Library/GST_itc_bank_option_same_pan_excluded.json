@@ -1,0 +1,24 @@
+{
+  "id": "GST-ITC-17-4-P2",
+  "status": "VERIFIED",
+  "if": [
+    "the fifty per cent. restriction under s.17(4) would otherwise apply",
+    "the supply was made by one registered person to another registered person having the SAME Permanent Account Number"
+  ],
+  "then": "the fifty per cent. restriction does NOT apply to the tax paid on that supply",
+  "source_section": "CGST Act s.17(4), second proviso",
+  "note": "Same-PAN intra-entity supplies \u2014 typically between branches registered in different States \u2014 escape the fifty per cent. haircut entirely. The test is identity of PAN, not of GSTIN. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(4), second proviso",
+      "quote": "Provided further that the restriction of fifty per cent. shall not apply to the tax paid",
+      "extraction_note": "A footnote and a page break interrupt the proviso in the extracted text, so it is quoted in two parts."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(4), second proviso, continued",
+      "quote": "on supplies made by one registered person to another registered person having the same Permanent Account Number."
+    }
+  ]
+}

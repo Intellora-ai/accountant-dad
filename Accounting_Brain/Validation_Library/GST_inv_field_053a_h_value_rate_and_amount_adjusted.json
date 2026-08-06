@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-FIELD-053A-H",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a credit note or a debit note referred to in section 34",
+    "it is issued under rule 53(1A) of the CGST Rules, 2017"
+  ],
+  "then": "the credit or debit note MUST carry the taxable value, the rate of tax, and the amount of tax credited or debited to the recipient",
+  "source_section": "CGST Rules 2017, rule 53(1A)(h)",
+  "note": "One mandatory particular of rule 53(1A)(h), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1A)(h)",
+      "quote": "value of taxable supply of goods or services, rate of tax and the amount of the tax credited or, as the case may be, debited to the recipient; and"
+    }
+  ]
+}

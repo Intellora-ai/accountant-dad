@@ -19,13 +19,23 @@ from accountant_dad.conformance import (
     Prohibition,
     Registry,
     attribute,
+    cite,
 )
 
-SOURCE = "docs/ENGINE_5_VALIDATION_ENGINE_RULES.md:467"
+#: A real citation, built the only way one may be built. The clause and heading
+#: are the live text of `ENGINE_5_VALIDATION_ENGINE_RULES.md`, so this fixture
+#: stays an example of the real thing rather than a plausible-looking string.
+SOURCE = cite(
+    "docs/ENGINE_5_VALIDATION_ENGINE_RULES.md",
+    "10. Sub-Engine Specifications > 10.6 `validation_decision` > Failure Behaviour",
+    "**Every blocking issue must appear inside the Validation Decision.** No approval "
+    "exists while a Critical finding remains. Every rejection names the **responsible "
+    "engine** and the recommended next step.",
+)
 
 
 def rule(
-    identifier: str = "ENGINE_5:467/no-approval-while-critical-stands",
+    identifier: str = "ENGINE_5/no-approval-while-critical-stands",
     *,
     enforcement: Enforcement = Enforcement.PREDICATE,
     expiry: str | None = None,
@@ -52,7 +62,7 @@ def fine() -> object:
 # ── a prohibition must be re-checkable ────────────────────────────────────
 
 
-def test_a_prohibition_records_the_line_it_came_from() -> None:
+def test_a_prohibition_records_the_clause_it_came_from() -> None:
     assert rule().source == SOURCE
 
 
@@ -75,15 +85,50 @@ def test_a_prohibition_with_a_blank_field_is_refused(field: str) -> None:
     ["docs/SYSTEM_INVARIANTS.md", "SYSTEM_BOUNDARIES", "a whole document"],
 )
 def test_a_prohibition_attributed_to_a_whole_document_is_refused(source: str) -> None:
-    """A rule with no line cannot be re-checked when the document changes, and
+    """A rule with no clause cannot be re-checked when the document changes, and
     an inventory that cannot be re-checked stops describing the system the
     moment anyone edits a spec."""
-    with pytest.raises(ValueError, match="must name a line"):
+    with pytest.raises(ValueError, match="names no clause"):
         rule(source=source)
 
 
-def test_a_line_number_is_enough_to_be_re_checkable() -> None:
-    assert rule(source="docs/DATA_FLOW.md:693").source.endswith(":693")
+@pytest.mark.parametrize(
+    "source",
+    [
+        "docs/DATA_FLOW.md:693",
+        "docs/DATA_FLOW.md#a-clause@0123456789ab:12",
+        "docs/DATA_FLOW.md:693#a-clause@0123456789ab",
+    ],
+)
+def test_a_prohibition_pinned_to_a_line_number_is_refused(source: str) -> None:
+    """F-027, closed at the type. A line is a coordinate the cited sentence does
+    not own, so a rule built from one moves whenever anything above it moves —
+    which made every locked document append-only after its last cited line.
+
+    The old guard here demanded the OPPOSITE and this test asserted it:
+    `rule(source="docs/DATA_FLOW.md:693")` was the proof a citation was
+    re-checkable. It is now the proof it is not. All three shapes are refused,
+    including the two that bury the coordinate beside a valid anchor — a
+    citation is not half content-addressed.
+    """
+    with pytest.raises(ValueError, match="identifies a clause by its LINE NUMBER"):
+        rule(source=source)
+
+
+def test_a_prohibition_named_after_a_line_number_is_refused() -> None:
+    """The other half of the same defect. The identifier used to be
+    `DOC:LINE/slug`, and that line number was quoted in prose across `src/` and
+    four test files — so moving a cited sentence meant renaming a rule
+    everywhere, or not editing the document. It meant not editing the document.
+    """
+    with pytest.raises(ValueError, match="carries a line number"):
+        rule(identifier="ENGINE_5:467/no-approval-while-critical-stands")
+
+
+def test_a_content_anchor_is_what_makes_a_prohibition_re_checkable() -> None:
+    """The positive case, so the guard above is not merely 'refuse everything'."""
+    source = cite("docs/DATA_FLOW.md", "A section", "A clause that states a rule.")
+    assert rule(source=source).source == source
 
 
 # ── an exemption must have an end date ────────────────────────────────────
@@ -148,6 +193,43 @@ def test_an_invalid_control_says_the_clean_payload_was_the_problem() -> None:
     assert "clean payload was refused too" in finding.detail
 
 
+# ── the detail a human acts on, pinned word for word ──────────────────────
+#
+# A `Finding` carries THREE things and only two of them are types. `detail` is
+# the one a person reads to decide what to do next, and a substring match
+# ("clean payload was refused too" in ...) leaves the rest of the sentence
+# unexamined — including the part that names WHICH exception refused, which is
+# the only diagnostic the finding carries. Equality is the assertion; anything
+# looser lets the name of the refusing exception be replaced wholesale without
+# a single test going red.
+
+
+def test_an_invalid_control_names_the_exception_that_refused_the_clean_payload() -> None:
+    """`type(refused).__name__`, not a fixed word. Replace the lookup with a
+    constant and the finding still reads like a diagnosis while naming a class
+    that never ran."""
+    finding = attribute(NegativeControl("r", violating=boom, clean=boom))
+    assert finding.detail == (
+        "the clean payload was refused too, so a rejection cannot be "
+        "attributed to this rule: ValueError: refused"
+    )
+
+
+def test_an_enforced_finding_names_the_exception_that_did_the_refusing() -> None:
+    """The only evidence a passing control leaves behind. If this string stops
+    naming the real exception, every ENFORCED finding in the suite becomes
+    unattributable while staying green."""
+    finding = attribute(NegativeControl("r", violating=boom, clean=fine))
+    assert finding.detail == "refused by ValueError"
+
+
+def test_a_finding_that_nothing_enforces_says_the_payload_was_accepted() -> None:
+    finding = attribute(NegativeControl("r", violating=fine, clean=fine))
+    assert finding.detail == (
+        "the violating payload was accepted; nothing enforces this prohibition"
+    )
+
+
 def test_the_clean_payload_is_tried_before_the_violating_one() -> None:
     """Order is load-bearing. Running `violating` first would let a broken
     control report a rejection it did not cause."""
@@ -186,7 +268,12 @@ def test_any_refusal_counts_as_enforcement_not_only_a_validation_error(
     def violating() -> object:
         raise blast("refused")
 
-    assert attribute(NegativeControl("r", violating=violating, clean=fine)).is_pass
+    finding = attribute(NegativeControl("r", violating=violating, clean=fine))
+    assert finding.is_pass
+    # The name is read off the exception that actually ran, per type. A detail
+    # that named one fixed class would pass a single-exception test and lie
+    # about the other three.
+    assert finding.detail == f"refused by {blast.__name__}"
 
 
 @pytest.mark.parametrize("blast", [TypeError, KeyError, RuntimeError])
@@ -198,6 +285,12 @@ def test_any_refusal_of_the_clean_payload_invalidates_the_control(
 
     finding = attribute(NegativeControl("r", violating=boom, clean=clean))
     assert finding.attribution is Attribution.CONTROL_INVALID
+    # `KeyError` renders its argument with quotes; that is the exception's own
+    # repr and is asserted as-is rather than normalised away.
+    assert finding.detail == (
+        "the clean payload was refused too, so a rejection cannot be "
+        f"attributed to this rule: {blast.__name__}: {blast('refused')}"
+    )
 
 
 def test_only_enforced_counts_as_a_pass() -> None:
@@ -227,6 +320,48 @@ def test_a_control_against_a_review_only_rule_is_refused() -> None:
     listed = rule("r", enforcement=Enforcement.REVIEW_ONLY, expiry="P4")
     with pytest.raises(ValueError, match="review-only"):
         Registry([listed], [NegativeControl("r", violating=boom, clean=fine)])
+
+
+# ── what the registry SAYS when it refuses ────────────────────────────────
+#
+# `pytest.raises(match=...)` above proves only that a substring survived. Each
+# of these three refusals is the sole notice a maintainer gets that the
+# inventory is malformed, and each names the offending rule — so the assertion
+# is the whole sentence, including the identifier, by equality. Everything a
+# `match=` leaves unread is a sentence anyone can rewrite into nonsense with
+# the suite still green.
+
+
+def test_the_duplicate_refusal_names_the_shared_identifier_and_why_it_matters() -> None:
+    with pytest.raises(ValueError) as raised:
+        Registry([rule("same"), rule("same")], [])
+    assert str(raised.value) == (
+        "two prohibitions share the identifier 'same'; "
+        "attribution would name a rule that is not unique"
+    )
+
+
+def test_the_unlisted_control_refusal_names_the_rule_nobody_wrote_down() -> None:
+    with pytest.raises(ValueError) as raised:
+        Registry([rule("listed")], [NegativeControl("unlisted", violating=boom, clean=fine)])
+    assert str(raised.value) == (
+        "a control names 'unlisted', which is not in the inventory; a control "
+        "for an unlisted rule proves nothing about the specification"
+    )
+
+
+def test_the_review_only_refusal_names_the_rule_and_both_ways_it_could_be_wrong() -> None:
+    """Both halves of the diagnosis are load-bearing: a maintainer has to be
+    told that EITHER the label or the control is wrong, or the obvious repair
+    is to delete whichever one is easier to delete."""
+    listed = rule("r", enforcement=Enforcement.REVIEW_ONLY, expiry="P4")
+    with pytest.raises(ValueError) as raised:
+        Registry([listed], [NegativeControl("r", violating=boom, clean=fine)])
+    assert str(raised.value) == (
+        "'r' is listed review-only but has a negative control. One of the two "
+        "is wrong — either it is testable and should be a predicate, or the "
+        "control does not test it."
+    )
 
 
 def test_a_predicate_with_no_control_is_reported_as_untested() -> None:

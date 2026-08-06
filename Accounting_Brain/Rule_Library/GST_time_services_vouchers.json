@@ -1,0 +1,27 @@
+{
+  "id": "GST-TIME-SERVICES-010",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of vouchers by a supplier"
+  ],
+  "then": "the time of supply is the date of ISSUE of the voucher if the supply is identifiable at that point, and otherwise the date of REDEMPTION of the voucher",
+  "source_section": "CGST s.13(4)",
+  "note": "s.13(4) is worded identically to s.12(4). Recorded separately because Engine 3 must cite the sub-section that actually governs the supply it is looking at, not the one that happens to read the same.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(4)",
+      "quote": "In case of supply of vouchers by a supplier, the time of supply shall be"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(4)(a)",
+      "quote": "the date of issue of voucher, if the supply is identifiable at that point"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.13(4)(b)",
+      "quote": "the date of redemption of voucher, in all other cases."
+    }
+  ]
+}

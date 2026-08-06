@@ -1,0 +1,172 @@
+{
+  "_comment": [
+    "MACHINE-READABLE SPINE OF THE ENGINEERING OPERATING SYSTEM.",
+    "",
+    "This file exists because prose cannot be checked. Before it, SYSTEM_LAWS.md said",
+    "'55 numbered engineering laws' while the constitution had 57, and nothing in the",
+    "repository could notice. A count that drifts teaches the reader the document is",
+    "unreliable, and an unreliable document stops being consulted.",
+    "",
+    "Read by .claude/hooks/engineering_method.py at runtime and by",
+    "tests/unit/test_engineering_os.py, which fails when this file and the prose",
+    "disagree. JSON, not YAML, so it parses from the standard library with no",
+    "dependency to install and no version to pin.",
+    "",
+    "ADDING A GATE OR A LAW MEANS EDITING THIS FILE. The test enforces it."
+  ],
+
+  "version": 1,
+  "measured_at_commit": "00c6b8d",
+
+  "root": "engineering",
+  "bootloader": "CLAUDE.md",
+
+  "laws": {
+    "count": 57,
+    "home": "engineering/LAWS.md",
+    "most_broken": [4, 24, 44, 51, 52, 54, 55, 56]
+  },
+
+  "always_loaded": [
+    "engineering/METHOD.md"
+  ],
+
+  "core_documents": [
+    { "id": "laws",          "path": "engineering/LAWS.md",          "answers": "what may never be done" },
+    { "id": "method",        "path": "engineering/METHOD.md",        "answers": "how to think about any problem" },
+    { "id": "anti_patterns", "path": "engineering/ANTI_PATTERNS.md", "answers": "the failure each rule was born from" },
+    { "id": "definitions",   "path": "engineering/DEFINITIONS.md",   "answers": "what a load-bearing word means, measurably" }
+  ],
+
+  "gates": [
+    {
+      "id": "architecture",
+      "path": "engineering/gates/ARCHITECTURE.md",
+      "fires_on": "designing a component, a boundary, an artifact or a contract",
+      "path_globs": ["docs/*.md", "*ARCHITECTURE*", "*_RULES.md", "*_SPEC.md", "*BLUEPRINT*"],
+      "keywords": ["architect", "architecture", "design", "boundary", "contract", "component", "interface", "schema", "engine"],
+      "headline": [
+        "WHY (need) -> WHAT (requirement) -> HOW (design). Never HOW -> WHY.",
+        "One owner per concept. One named artifact per arrow.",
+        "G5 boundaries: what may this component NEVER do?",
+        "G9 non-goals, written down. G10 every prior promise honoured or revised.",
+        "Inversion: how would I design this to fail forever?",
+        "Systems: what must flow across this boundary - and what must NEVER."
+      ]
+    },
+    {
+      "id": "requirements",
+      "path": "engineering/gates/REQUIREMENTS.md",
+      "fires_on": "a vague target, or before any build starts",
+      "path_globs": ["*ROADMAP*", "*TODO*", "*BLUEPRINT*"],
+      "keywords": ["requirement", "faster", "better", "improve", "optimi", "accurate", "reliable", "scalable", "efficient", "should be", "make it"],
+      "headline": [
+        "A vague target is a REQUEST FOR A NUMBER, not a requirement (Law 52).",
+        "Ask for the number. Never infer it. Never pick one yourself.",
+        "Every SHALL: necessary, atomic, measurable, unambiguous, verifiable,",
+        "traceable, solution-independent, achievable.",
+        "Name the verification method: Inspection | Analysis | Demonstration | Test.",
+        "Undefined term? STOP and ask (Law 54). Never invent the definition."
+      ]
+    },
+    {
+      "id": "investigation",
+      "path": "engineering/gates/INVESTIGATION.md",
+      "fires_on": "a bug, a failure, a red check, 'why is this slow'",
+      "path_globs": ["KNOWN_FAILURES.md", "LESSONS.md"],
+      "keywords": ["bug", "fail", "failing", "broken", "error", "crash", "debug", "investigate", "root cause", "why is", "regression", "flake", "slow"],
+      "headline": [
+        "Do not fix the first thing you find. It is a symptom.",
+        "List EVERY candidate cause. Measure each. Reject only with evidence.",
+        "A REJECTED hypothesis stays rejected unless NEW evidence appears.",
+        "WHY upward to the highest layer you can change. If the root is a CLASS, fix the class.",
+        "A document is a HYPOTHESIS, never evidence. Read the source.",
+        "Permanent regression test, watched RED first, BEFORE the fix is complete (Law 3).",
+        "Stop only when the cause is ELIMINATED - never at an explanation."
+      ]
+    },
+    {
+      "id": "measurement",
+      "path": "engineering/gates/MEASUREMENT.md",
+      "fires_on": "producing a number, quoting a number, claiming an improvement",
+      "path_globs": ["PROGRESS.md", "STATE.md", "ROADMAP.md", "DECISION_LOG.md", "BLOCKERS.md", "KNOWN_FAILURES.md"],
+      "keywords": ["measure", "metric", "coverage", "mutation", "benchmark", "percent", "%", "score", "latency", "throughput", "faster", "slower"],
+      "headline": [
+        "value . commit . source . status - or it is not a measurement.",
+        "A number without its commit is an opinion (Law 56).",
+        "Source moved after the measurement? EXPIRED. Re-measure or write UNMEASURED.",
+        "Only GitHub Actions is authoritative (Law 44). Local = LOCAL ONLY, NOT AUTHORITATIVE.",
+        "No score without a complete denominator. Name what was excluded.",
+        "UNKNOWN beats a stale number. Never invent continuity between commits."
+      ]
+    },
+    {
+      "id": "verification",
+      "path": "engineering/gates/VERIFICATION.md",
+      "fires_on": "writing a test, and before EVERY commit",
+      "path_globs": ["tests/**", "test_*.py", "*_test.py", "conftest.py"],
+      "keywords": ["test", "verify", "commit", "done", "merge", "pass", "green", "gate", "coverage", "assert"],
+      "headline": [
+        "build -> verify -> red-team -> DONE GATE -> THEN commit (Law 51).",
+        "Watch it FAIL for the right reason first. Passed first try = wrong test.",
+        "Assert the RESULT, not that a function ran. 'Didn't throw' proves nothing.",
+        "NEVER ease a test. Only stricter (Law 4). Code fails a correct test -> fix the CODE.",
+        "A mock proves the mock. Fake only at the narrowest I/O edge.",
+        "A test can only fail on what it looks at. Check you asserted the right quantity.",
+        "Green is not done. Survived-an-attack is done."
+      ]
+    },
+    {
+      "id": "decision",
+      "path": "engineering/gates/DECISION.md",
+      "fires_on": "choosing between options, trade-offs, irreversible calls",
+      "path_globs": ["DECISION_LOG.md", "OWNER_DECISION_QUEUE.md", "*AMENDMENT*"],
+      "keywords": ["decide", "decision", "choose", "trade-off", "tradeoff", "option", "alternative", "instead of", "versus", "should we"],
+      "headline": [
+        "Recoverable from repo/docs/practice -> DECIDE. Do not ask.",
+        "Unrecoverable AND costly-or-irreversible -> ASK once, with a recommended default.",
+        "Always ask for: an undefined term (Law 54), a measurable target (Law 52).",
+        "No recommendation without a named failure mode.",
+        "Record: context, alternatives + why each was rejected, trade-off, impact."
+      ]
+    },
+    {
+      "id": "delivery",
+      "path": "engineering/gates/DELIVERY.md",
+      "fires_on": "shipping, deploying, releasing, amending a frozen document",
+      "path_globs": [".github/**", "*AMENDMENT*"],
+      "keywords": ["ship", "deploy", "release", "rollout", "canary", "flag", "monitor", "amend", "amendment", "freeze"],
+      "headline": [
+        "The DONE GATE precedes the ship, never follows it (Law 51).",
+        "Off by default -> on gradually. An undo button always exists (Law 8).",
+        "Nothing posts to a real ledger on a canary.",
+        "Monitor: traffic . errors . latency . saturation - plus posted-entry correctness.",
+        "A frozen document changes ONLY by written amendment (Section M)."
+      ]
+    }
+  ],
+
+  "truth_documents": [
+    "KNOWN_FAILURES.md",
+    "PROGRESS.md",
+    "STATE.md",
+    "BLOCKERS.md"
+  ],
+
+  "banned_phrases_in_truth_documents": [
+    "probably ",
+    "i think ",
+    "should work",
+    "should be fine",
+    "likely because",
+    "presumably ",
+    "i assume "
+  ],
+
+  "enforcement": {
+    "SessionStart": { "binding": false, "measured": true,  "emits": "the OS map and the eight most-broken laws" },
+    "UserPromptSubmit": { "binding": false, "measured": true,  "emits": "the 12-stage method, plus any gate whose keywords match the prompt" },
+    "PreToolUse": { "binding": true, "measured": true, "refuses": "a banned phrase written into a truth document" },
+    "PreToolUse_advisory": { "binding": false, "measured": false, "note": "path-triggered gate headlines are printed on exit 0; whether that text reaches the model is UNMEASURED and is not claimed" }
+  }
+}

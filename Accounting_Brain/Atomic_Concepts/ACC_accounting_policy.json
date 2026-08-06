@@ -1,0 +1,133 @@
+{
+  "id": "ACC-POLICY-NATURE-AND-SELECTION",
+  "name": "Accounting policy — what it is and how one is selected",
+  "status": "VERIFIED",
+  "definition": "An accounting policy is the specific accounting principle, and the method of applying that principle, adopted by an enterprise in preparing and presenting financial statements. No single list applies to all circumstances; the choice calls for judgement by management, and is governed by Prudence, Substance over Form and Materiality, with a true and fair view as the primary consideration.",
+  "why_it_exists": "Two enterprises can record the same transaction differently and both be correct, because more than one principle is acceptable. That is only tolerable if the choice is disciplined and disclosed. This concept fixes what the choosable thing is, so that a later change to it can be identified as a change in policy rather than something else.",
+  "inputs": [
+    "the class of transaction or event to be accounted for",
+    "the acceptable alternative principles and methods of applying them",
+    "the circumstances of the specific enterprise"
+  ],
+  "outputs": [
+    "a selected accounting principle and the method of applying it, for that class"
+  ],
+  "preconditions": [
+    "financial statements are being prepared and presented by an enterprise",
+    "more than one acceptable principle or method exists for the class of transaction"
+  ],
+  "rules": [
+    "ACC-POLICY-CHANGE-002"
+  ],
+  "exceptions": [
+    "UNKNOWN — AS 1 does not state when a selection is foreclosed by another standard; not extracted from this source"
+  ],
+  "common_mistakes": [
+    "treating a chosen method as universal when AS 1 states there is no single list applicable to all circumstances",
+    "selecting a treatment on its legal form when substance and form differ",
+    "anticipating a profit before it is realised, which Prudence forbids, while omitting provision for a known liability whose amount is only estimable"
+  ],
+  "dependencies": [
+    "ACC-POLICY-FUNDAMENTAL-ASSUMPTIONS"
+  ],
+  "related_concepts": [
+    "ACC-POLICY-DISCLOSURE",
+    "ACC-POLICY-CHANGE",
+    "ACC-PRIORPERIOD-ESTIMATE-CHANGE"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted; only ICAI AS-1 and AS-5 were read for this claim, so no statute is cited"
+  ],
+  "icai_references": [
+    "AS 1, paragraphs 11 and 12",
+    "AS 1, paragraphs 14 and 15",
+    "AS 1, paragraphs 16 and 17"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — AS-1 and AS-5 govern financial-statement policy and period attribution; GST is a separate determination and must not be conflated with it"
+  ],
+  "evidence_required": [
+    "the principle and the method of applying it, stated for the class of transaction",
+    "the facts of the transaction as distinct from its legal form, where the two differ"
+  ],
+  "confidence_factors": [
+    "weak when the document shows the legal form only and nothing about the substance of the arrangement",
+    "AS 1 gives no numeric threshold for 'material' — it is defined by influence on a user's decision, which is not measurable from a document alone",
+    "the standard assigns the choice to management judgement, so a selection cannot be derived from the transaction alone"
+  ],
+  "validation_checks": [
+    "the treatment applied is the enterprise's stated policy for that class, not an ad hoc choice",
+    "no profit is recognised that has not been realised",
+    "a known liability or loss carries a provision even where the amount is only a best estimate"
+  ],
+  "examples": [
+    "depreciation, inventory valuation and treatment of goodwill are areas AS 1 names as ones where different enterprises adopt different policies"
+  ],
+  "counterexamples": [
+    "UNKNOWN — AS 1 paragraph 14 gives examples of policy areas but no worked example of an invalid selection"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 11",
+      "quote": "The accounting policies refer to the specific accounting principles and the methods of applying those principles adopted by the enterprise in the preparation and presentation of financial statements."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 12",
+      "quote": "There is no single list of accounting policies which are applicable to all circumstances."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 12",
+      "quote": "The choice of the appropriate accounting principles and the methods of applying those principles in the specific circumstances of each enterprise calls for considerable judgement by the management of the enterprise."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 14",
+      "quote": "The following are examples of the areas in which different accounting policies may be adopted by different enterprises."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 14(a)",
+      "quote": "Methods of depreciation, depletion and amortisation"
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 15",
+      "quote": "The above list of examples is not intended to be exhaustive."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 16",
+      "quote": "The primary consideration in the selection of accounting policies by an enterprise is that the financial statements prepared and presented on the basis of such accounting policies should represent a true and fair view of the state of affairs of the enterprise as at the balance sheet date and of the profit or loss for the period ended on that date."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 17",
+      "quote": "For this purpose, the major considerations governing the selection and application of accounting policies are"
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 17(a) Prudence",
+      "quote": "In view of the uncertainty attached to future events, profits are not anticipated but recognised only when realised though not necessarily in cash. Provision is made for all known liabilities and losses even though the amount cannot be determined with certainty and represents only a best estimate in the light of available information."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 17(b) Substance over Form",
+      "quote": "The accounting treatment and presentation in financial statements of transactions and events should be governed by their substance and not merely by the legal form."
+    },
+    {
+      "file": "ICAI-AS-1-Disclosure-of-Accounting-Policies.pdf",
+      "section": "AS 1 para 17(c) Materiality",
+      "quote": "items the knowledge of which might influence the decisions of the user of the financial statements.",
+      "extraction_note": "The preceding words 'Financial statements should disclose all “material” items, i.e.' contain typographic quotation marks around 'material'; the quote begins after them so the comparison does not turn on a character the extractor may render differently."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 4, definition of accounting policies",
+      "quote": "specific accounting principles and the methods of applying those principles adopted by an enterprise in the preparation and presentation of financial statements.",
+      "extraction_note": "AS 5 defines the term identically to AS 1 para 11. The quote begins after 'Accounting policies arethe', where the extraction joins 'are' and 'the'. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    }
+  ]
+}

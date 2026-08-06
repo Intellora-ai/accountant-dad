@@ -1,0 +1,34 @@
+{
+  "id": "GST-INV-MANNER-002",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of services",
+    "an invoice is issued under rule 46",
+    "the invoice is not one prepared in the manner specified in rule 48(4)"
+  ],
+  "then": "the invoice MUST be prepared in duplicate, marked ORIGINAL FOR RECIPIENT and DUPLICATE FOR SUPPLIER",
+  "source_section": "CGST Rules 2017, rule 48(2)",
+  "note": "There is no transporter copy for services. Rule 48(6) switches this off for an invoice prepared under rule 48(4).",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(2)",
+      "quote": "The invoice shall be prepared in duplicate, in the case of the supply of services, in the following manner, namely,-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(2)(a)",
+      "quote": "the original copy being marked as ORIGINAL FOR RECIPIENT; and"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(2)(b)",
+      "quote": "the duplicate copy being marked as DUPLICATE FOR SUPPLIER."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(6)",
+      "quote": "The provisions of sub-rules (1) and (2) shall not apply to an invoice prepared in the manner specified in sub-rule (4)."
+    }
+  ]
+}

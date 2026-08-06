@@ -42,7 +42,7 @@ jobs:
           # brings pydantic_core, annotated-types, typing-extensions and
           # typing-inspection with it - all wheels, no sdists, so nothing is
           # compiled at install time.
-          /tmp/fresh/bin/pip download --quiet --dest dist pydantic==2.12.3
+          /tmp/fresh/bin/pip download --quiet --dest dist dist/accountant_dad-*.whl
           /tmp/fresh/bin/pip install --quiet --no-index --find-links dist accountant-dad
           /tmp/fresh/bin/python -c "import accountant_dad; print(accountant_dad.__version__)"
 
@@ -61,6 +61,18 @@ jobs:
           python-version: '3.12'
       - name: install tooling
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        # SHADOW DEFENCE. Two distributions can install the same top-level
+        # module. pip reports success, records both, and `import` resolves to
+        # whichever landed last. Measured on this repository, not imagined:
+        # `importlib.metadata.version("opencv-python")` returned 5.0.0.93 while
+        # `cv2.__version__` returned 4.10.0. A guard written against installed
+        # METADATA reports green straight through that. This one asks the
+        # interpreter which distribution provides each module and what the
+        # module reports as its own version.
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
       - name: prove this gate can still fail
         # HOLLOW-GATE DEFENCE. Feed mypy a real type error; it MUST reject it.
         run: |
@@ -71,7 +83,26 @@ jobs:
             echo "BLOCKED - typecheck gate is HOLLOW: it passed str-returned-as-int."
             exit 1
           fi
-          echo "canary rejected as expected - typecheck gate is live"
+          # ─────────────────────────────────────────────────────────────
+          # A CHECKER THAT REJECTS EVERYTHING PASSES THE TEST ABOVE TOO.
+          # `if tool args; then fail; fi` reads EVERY non-zero exit as "rejected
+          # as expected" — a missing binary (127), a segfault (139), an OOM kill
+          # (137), a network error or an internal tool fault all look identical
+          # to a genuine refusal. The half above proves only that the command
+          # did not exit 0.
+          #
+          # So the clean case must be ACCEPTED. Both halves together prove the
+          # tool RAN and DISCRIMINATED; either half alone proves nothing.
+          # `tools/ci/run_ocr_tests.sh:221-231` is where this shape already
+          # existed; it was the only canary in the repository that had it.
+          # ─────────────────────────────────────────────────────────────
+          printf 'def f() -> int:\n    return 1\n' > /tmp/canary-mypy/bad.py
+          if ! mypy --strict --no-incremental --cache-dir=/dev/null /tmp/canary-mypy; then
+            echo "BLOCKED - typecheck gate rejects CLEAN code. It would never pass,"
+            echo "so a red from it says nothing about this repository."
+            exit 1
+          fi
+          echo "canary rejected the bad and accepted the good - typecheck gate discriminates"
       - name: mypy strict, zero errors
         # --no-incremental --cache-dir=/dev/null: a cached mypy run is not
         # reproducible. Determinism costs a few seconds here.
@@ -137,7 +168,26 @@ jobs:
             echo "BLOCKED - lint gate is HOLLOW: it passed an unused import."
             exit 1
           fi
-          echo "canary rejected as expected - lint gate is live"
+          # ─────────────────────────────────────────────────────────────
+          # A CHECKER THAT REJECTS EVERYTHING PASSES THE TEST ABOVE TOO.
+          # `if tool args; then fail; fi` reads EVERY non-zero exit as "rejected
+          # as expected" — a missing binary (127), a segfault (139), an OOM kill
+          # (137), a network error or an internal tool fault all look identical
+          # to a genuine refusal. The half above proves only that the command
+          # did not exit 0.
+          #
+          # So the clean case must be ACCEPTED. Both halves together prove the
+          # tool RAN and DISCRIMINATED; either half alone proves nothing.
+          # `tools/ci/run_ocr_tests.sh:221-231` is where this shape already
+          # existed; it was the only canary in the repository that had it.
+          # ─────────────────────────────────────────────────────────────
+          printf 'import os\n\nprint(os.getcwd())\n' > /tmp/canary-lint/bad.py
+          if ! ruff check --no-fix --isolated --select F /tmp/canary-lint; then
+            echo "BLOCKED - lint gate rejects CLEAN code. It would never pass,"
+            echo "so a red from it says nothing about this repository."
+            exit 1
+          fi
+          echo "canary rejected the bad and accepted the good - lint gate discriminates"
       - name: ruff, zero violations
         # --no-fix so the gate reports rather than silently rewriting code.
         run: ruff check --no-fix --output-format=concise .

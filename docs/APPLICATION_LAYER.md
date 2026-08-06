@@ -285,7 +285,7 @@ Transaction state is **workflow** and belongs here. Clarification Status is **an
 | **Engine crash** | Application Layer | **Yes** | Process died; no artifact produced |
 | **Schema violation** | Application Layer | **No** | An engine returned an artifact failing its contract. A defect, not a transient fault |
 | **Rule conflict** | Engine 5 | No | Two validators disagree. Produces a Validation Decision |
-| **Confidence below threshold** | Engine 3/4 | No | A business conclusion. Produces a Clarification Request |
+| **Unresolved doubt or unestablished fact** | Engine 3/4 | No | A business conclusion. Produces a Clarification Request |
 | **Transport failure to external system** | **Engine 6** | Engine 6's own retry | Tally unreachable. `posting_manager` reposts; the Application Layer does not |
 | **Unexpected exception** | Application Layer | **Yes**, then `Failed` | Anything unclassified. **Never swallowed** |
 

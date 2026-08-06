@@ -1,0 +1,24 @@
+{
+  "id": "GST-ITC-RCM-SELF-INVOICE",
+  "status": "VERIFIED",
+  "if": [
+    "a registered person is liable to pay tax under s.9(3) or s.9(4)",
+    "the supplier was NOT REGISTERED on the date of receipt of the goods or services or both"
+  ],
+  "then": "that registered person SHALL ISSUE AN INVOICE in respect of the goods or services or both received from that supplier",
+  "source_section": "CGST Act s.31(3)(f)",
+  "note": "The self-invoice. It matters for ITC because s.16(2)(a) requires possession of a tax invoice or debit note; where the supplier is unregistered there is none, and this is the document that fills the gap. The obligation is triggered by the supplier being unregistered on the DATE OF RECEIPT, not on the invoice date. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.31(3)(f)",
+      "quote": "a registered person who is liable to pay tax under sub-section (3) or sub-",
+      "extraction_note": "The extractor breaks 'sub-section' across a line here, so the clause is quoted in two parts rather than repaired."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.31(3)(f), continued",
+      "quote": "section (4) of section 9 shall issue an invoice in respect of goods or services or both received by him from the supplier who is not registered on the date of receipt of goods or services or both;"
+    }
+  ]
+}

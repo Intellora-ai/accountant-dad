@@ -1,0 +1,35 @@
+{
+  "id": "ACC-PRIORPERIOD-ITEM-001",
+  "status": "VERIFIED",
+  "if": [
+    "income or expense arises in the CURRENT period",
+    "it arises as a result of an ERROR OR OMISSION in the preparation of the financial statements of one or more PRIOR periods"
+  ],
+  "then": "it IS a prior period item, and its nature and amount MUST be separately disclosed in the statement of profit and loss so that its impact on the current profit or loss can be perceived",
+  "source_section": "AS 5 paras 4, 15, 16 and 17",
+  "note": "AS 5 para 17 names what counts as an error: mathematical mistakes, mistakes in applying accounting policies, misinterpretation of facts, or oversight. The test is the CAUSE, not the age of the item — relating to a prior period is not sufficient.",
+  "evidence": [
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 4, definition of prior period items",
+      "quote": "Prior period items are income or expenses which arise in the current period",
+      "extraction_note": "The running page header falls between this line and the rest of the definition, so it is quoted as two spans. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 4, definition of prior period items",
+      "quote": "as a result of errors or omissions in the preparation of the financial statements of one or more prior periods."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 15",
+      "quote": "The nature and amount of prior period items should be separately disclosed in the statement of profit and loss in a manner that their impact on the current profit or loss can be perceived."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 17",
+      "quote": "of mathematical mistakes, mistakes in applying accounting policies, misinterpretation of facts, or oversight.",
+      "extraction_note": "The sentence reads 'Errors may occur as aresult of mathematical mistakes', joined by the extraction at 'a'+'result'. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "CO-BOOKS-LOCATION-001",
+  "status": "VERIFIED",
+  "if": [
+    "a company keeps its books of account or other relevant papers somewhere other than its registered office"
+  ],
+  "then": "the other place SHALL be in India and SHALL be decided by the Board of Directors, and the company SHALL within seven days of that decision file with the Registrar a notice in writing giving the full address of that other place; separately, the company may keep such books or papers in electronic mode in such manner as may be prescribed",
+  "source_section": "Companies Act, 2013, s.128(1), first and second provisos",
+  "note": "Two separate permissions, commonly conflated. The first proviso moves the PLACE and costs a Board decision plus a seven-day Registrar filing. The second permits electronic MODE and, in the text quoted here, imposes no filing — only the prescribed manner. UNKNOWN — source is the Act as enacted 2013; amendments not held locally.",
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(1), first proviso",
+      "quote": "Provided that all or any of the books of account aforesaid and other relevant papers may be kept at such other place in India as the Board of Directors may decide"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(1), first proviso",
+      "quote": "the company shall, within seven days thereof, file with the Registrar a notice in writing giving the full address of that other place"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(1), second proviso",
+      "quote": "the company may keep such books of account or other relevant papers in electronic mode in such manner as may be prescribed"
+    }
+  ]
+}

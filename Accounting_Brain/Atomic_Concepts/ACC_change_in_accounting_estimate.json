@@ -1,0 +1,162 @@
+{
+  "id": "ACC-PRIORPERIOD-ESTIMATE-CHANGE",
+  "name": "Change in an accounting estimate, and how it differs from a change in accounting policy",
+  "status": "VERIFIED",
+  "definition": "An accounting estimate is an approximation used where an item cannot be measured with precision. Revising it because circumstances changed, or because of new information, more experience or subsequent developments, is a change in accounting ESTIMATE — not an extraordinary item and not a prior period item. Its effect is recognised in the period of the change, and also in future periods if the change affects them, using the same classification previously used for the estimate. Where it is difficult to distinguish a change in policy from a change in estimate, AS 5 requires it to be treated as a change in ESTIMATE, with appropriate disclosure.",
+  "why_it_exists": "This is the load-bearing fork for any system that posts corrections. A policy change and an estimate change look alike on the face of a document but carry different treatment: policy change means restating the presentation and disclosing the quantified impact; estimate change means recognise it now and going forward, with no prior period item and no restatement. AS 5 paragraph 22 removes the tie by naming the default.",
+  "inputs": [
+    "the previous estimate and the basis on which it was made",
+    "what changed: circumstances, new information, more experience, or subsequent developments",
+    "whether the change affects the current period only, or the current and future periods",
+    "the classification previously used for the estimate in the statement of profit and loss"
+  ],
+  "outputs": [
+    "the effect recognised in the period of the change, and in future periods if affected",
+    "classification identical to the one previously used for the estimate",
+    "disclosure of the nature and amount where the effect is material now or expected to be material later, or the fact that quantification is impracticable"
+  ],
+  "preconditions": [
+    "the item could not be measured with precision and was estimated",
+    "a reason to revise the estimate has arisen"
+  ],
+  "rules": [
+    "ACC-PRIORPERIOD-ESTIMATE-001",
+    "ACC-PRIORPERIOD-ESTIMATE-002",
+    "ACC-PRIORPERIOD-ESTIMATE-003"
+  ],
+  "exceptions": [
+    "UNKNOWN — AS 5 states no exception to recognising an estimate change in the period of the change and future periods affected"
+  ],
+  "common_mistakes": [
+    "restating prior periods for a revised estimate — AS 5 paragraph 21 states the revision does not bring the adjustment within the definition of a prior period item",
+    "treating an ambiguous case as a change in policy — AS 5 paragraph 22 requires the opposite default",
+    "reclassifying the effect into a different line from the one previously used for the estimate, which AS 5 paragraph 25 forbids",
+    "spreading a bad-debt estimate change over future periods when it affects only the current period"
+  ],
+  "dependencies": [
+    "ACC-PRIORPERIOD-ITEMS",
+    "ACC-PRIORPERIOD-EXTRAORDINARY-ITEMS"
+  ],
+  "related_concepts": [
+    "ACC-POLICY-CHANGE",
+    "ACC-POLICY-NATURE-AND-SELECTION"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted; only ICAI AS-1 and AS-5 were read for this claim, so no statute is cited"
+  ],
+  "icai_references": [
+    "AS 5, paragraphs 20, 21 and 22",
+    "AS 5, paragraphs 23, 24, 25, 26 and 27",
+    "AS 5, paragraph 18"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — AS-1 and AS-5 govern financial-statement policy and period attribution; GST is a separate determination and must not be conflated with it"
+  ],
+  "evidence_required": [
+    "the basis of the original estimate, to show the revision follows changed circumstances or new information rather than an error",
+    "the classification previously used for the estimate",
+    "whether future periods are affected, and the amount, or evidence that quantification is impracticable"
+  ],
+  "confidence_factors": [
+    "AS 5 paragraph 22 acknowledges the policy-versus-estimate distinction is sometimes difficult, so a confident automatic classification is not always available — the standard supplies a default rather than a test",
+    "weak when the document does not show whether the previous estimate was wrong at the time (an error, hence prior period item) or merely superseded (an estimate change)",
+    "AS 5 gives no threshold for 'material effect' in paragraph 27"
+  ],
+  "validation_checks": [
+    "the revision is not being recorded as a prior period item or an extraordinary item",
+    "the effect is recognised in the period of the change, and in future periods only where the change affects them",
+    "the classification used matches the one previously used for the estimate",
+    "an effect previously included in profit or loss from ordinary activities stays in that component; one previously reported as an extraordinary item is reported as an extraordinary item",
+    "where policy versus estimate is genuinely unclear, it was treated as an estimate change, with disclosure",
+    "where the effect is material now or expected to be material in subsequent periods, its nature and amount are disclosed, or the impracticability of quantifying it is stated"
+  ],
+  "examples": [
+    "a change in the estimate of the amount of bad debts affects only the current period, so its whole effect is recognised now"
+  ],
+  "counterexamples": [
+    "income or expense recognised on the outcome of a contingency that previously could not be estimated reliably — AS 5 paragraph 18 states this does NOT constitute a prior period item, so it is not corrected as one"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 20",
+      "quote": "As a result of the uncertainties inherent in business activities, many financial statement items cannot be measured with precision but can only be estimated. The estimation process involves judgments based on the latest information available. Estimates",
+      "extraction_note": "The sentence continues 'maybe required,for example, of bad debts', where the extraction joins 'may'+'be' and 'required,'+'for'. The remainder is quoted separately. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 20",
+      "quote": "of bad debts, inventory obsolescence or the useful lives of depreciable assets. The use of reasonable estimates is an essential part of the preparation of financial statements and does not undermine their reliability."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 21",
+      "quote": "An estimate may have to be revised if changes occur regarding the circumstances on which the estimate was based, or as a result of new information, more experience or subsequent developments."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 21",
+      "quote": "the definitions of an extraordinary item or a prior period item.",
+      "extraction_note": "The sentence reads 'The revision of the estimate, by itsnature, does not bringthe adjustmentwithin the definitions of an extraordinary item or a prior period item.' The extraction joins 'its'+'nature', 'bring'+'the' and 'adjustment'+'within', so only the unjoined tail is quoted. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 22",
+      "quote": "policy and a change in an accounting estimate. In such cases, the change is treated as a change in an accounting estimate, with appropriate disclosure.",
+      "extraction_note": "The paragraph opens 'Sometimes,it is difficultto distinguish between achange inanaccounting policy', joined at four points by the extraction. The quote begins at the first unjoined word. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 23",
+      "quote": "The effect of a change in an accounting estimate should be included in the determination of net profit or loss in:"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 23(a)",
+      "quote": "the period of the change, if the change affects the period only; or"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 23(b)",
+      "quote": "the period of the change and future periods, if the change affects both."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 24",
+      "quote": "A change in an accounting estimate may affect the current period only or both the current period and future periods."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 24",
+      "quote": "immediately and therefore affects only the current period.",
+      "extraction_note": "The sentence reads 'a change in the estimate of the amount of bad debts isrecognised immediately', where the extraction joins 'is' and 'recognised'. The quote begins after the join. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 25",
+      "quote": "an accounting estimate should be classified using the same classification in the statement of profit and loss as was used previously for the estimate.",
+      "extraction_note": "The sentence opens 'The effect of a changein an accounting estimate', where the extraction joins 'change' and 'in'. The quote begins after the join. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 26",
+      "quote": "The effect of a change in an accounting estimate that was previously included as an extraordinary item is reported as an extraordinary item."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 27",
+      "quote": "The nature and amount of a change in an accounting estimate which has a material effect in the current period, or which",
+      "extraction_note": "The sentence continues 'isexpected to have a material effect', where the extraction joins 'is' and 'expected'. The remainder is quoted separately. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 27",
+      "quote": "to have a material effect in subsequent periods, should be disclosed. If it is impracticable to quantify the amount, this fact should be disclosed."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 18",
+      "quote": "Prior period items are generally infrequent in nature and can be distinguished from changes in accounting estimates. Accounting estimates by their nature are approximations that may need revision as additional information becomes known. For example, income or expense recognised on the outcome of a contingency which previously could not be estimated reliably does not constitute a prior period item."
+    }
+  ]
+}

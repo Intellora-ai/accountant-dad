@@ -1,0 +1,27 @@
+{
+  "id": "GST-TIME-GOODS-007",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of vouchers by a supplier"
+  ],
+  "then": "the time of supply is the date of ISSUE of the voucher if the supply is identifiable at that point, and otherwise the date of REDEMPTION of the voucher",
+  "source_section": "CGST s.12(4)",
+  "note": "The switch is whether the underlying supply is identifiable when the voucher is issued. Identifiable then means tax at issue; not identifiable means tax at redemption.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(4)",
+      "quote": "In case of supply of vouchers by a supplier, the time of supply shall be"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(4)(a)",
+      "quote": "the date of issue of voucher, if the supply is identifiable at that point"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(4)(b)",
+      "quote": "the date of redemption of voucher, in all other cases."
+    }
+  ]
+}

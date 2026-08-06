@@ -1,0 +1,107 @@
+{
+  "id": "GST-INV-CREDIT-OR-DEBIT-NOTE",
+  "name": "Credit note and debit note",
+  "status": "VERIFIED",
+  "definition": "A credit note or debit note under section 34 adjusts a supply already invoiced. Rule 53(1A) fixes nine particulars, (a) to (i). Clause (b) requires the nature of the document, and clause (g) requires the serial number(s) and date(s) of every invoice or bill of supply it adjusts \u2014 plural, because one note may cover several.",
+  "why_it_exists": "It is the only lawful way to change the taxable value or the tax on a supply after the invoice. An adjustment posted without one is an adjustment with no document behind it.",
+  "inputs": [
+    "the document",
+    "the invoices or bills of supply being adjusted",
+    "whether the note is a credit note or a debit note"
+  ],
+  "outputs": [
+    "the set of rule 53(1A) particulars found",
+    "the set of mandatory particulars absent",
+    "the direction of the adjustment"
+  ],
+  "preconditions": [
+    "a tax invoice or bill of supply has already been issued for the supply"
+  ],
+  "rules": [
+    "GST-INV-FIELD-053A-A",
+    "GST-INV-FIELD-053A-B",
+    "GST-INV-FIELD-053A-C",
+    "GST-INV-FIELD-053A-D",
+    "GST-INV-FIELD-053A-E",
+    "GST-INV-FIELD-053A-F",
+    "GST-INV-FIELD-053A-G",
+    "GST-INV-FIELD-053A-H",
+    "GST-INV-FIELD-053A-I",
+    "GST-INV-ITC-001",
+    "GST-INV-SPECIAL-001"
+  ],
+  "exceptions": [
+    "rule 54(5) extends the rule 54(2) and 54(4) relaxations to documents issued under rule 53"
+  ],
+  "common_mistakes": [
+    "inferring the direction from the amount sign instead of reading clause (b), the nature of the document",
+    "linking a note to one invoice when clause (g) is plural and the note may adjust several",
+    "confusing it with a refund voucher, which reverses an advance where no supply was made",
+    "confusing it with a revised tax invoice, which re-documents supplies made before the registration certificate was issued"
+  ],
+  "dependencies": [
+    "GST-INV-TAX-INVOICE",
+    "GST-INV-REVISED-TAX-INVOICE"
+  ],
+  "related_concepts": [
+    "GST-INV-REVISED-TAX-INVOICE",
+    "GST-INV-REFUND-VOUCHER"
+  ],
+  "legal_references": [
+    "CGST Rules 2017, rule 53(1A)",
+    "UNKNOWN \u2014 section 34 of the CGST Act, which fixes WHEN a credit or debit note may be issued and its time limits, is a different document and was not read for this record"
+  ],
+  "icai_references": [
+    "UNKNOWN \u2014 the accounting period in which a credit note is recognised is a separate question from its GST particulars"
+  ],
+  "gst_references": [
+    "CGST Rules 2017, rule 53(1A)",
+    "CGST Rules 2017, rule 53(3)",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the document",
+    "the referenced invoices",
+    "the adjusted taxable value and tax"
+  ],
+  "confidence_factors": [
+    "weak when the nature of the document is not stated, because credit and debit run in opposite directions",
+    "weak when a referenced invoice cannot be located"
+  ],
+  "validation_checks": [
+    "all nine particulars (a) to (i) are present",
+    "clause (b) states whether the document is a credit note or a debit note",
+    "clause (g) names at least one corresponding tax invoice or bill of supply",
+    "a debit note issued in pursuance of tax under section 74, 129 or 130 prominently carries INPUT TAX CREDIT NOT ADMISSIBLE"
+  ],
+  "examples": [
+    "a credit note naming invoices 21 and 22, stating the reduced taxable value, the rate and the tax credited to the recipient"
+  ],
+  "counterexamples": [
+    "a document that states an adjusted amount but not whether it is a credit or a debit \u2014 clause (b) fails",
+    "a debit note issued under section 74 without the INPUT TAX CREDIT NOT ADMISSIBLE marking \u2014 rule 53(3) fails"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1A)",
+      "quote": "A credit or debit note referred to in section 34 shall contain the following particulars"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1A)(b)",
+      "quote": "nature of the document;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1A)(g)",
+      "quote": "serial number(s) and date(s) of the corresponding tax invoice(s) or, as the case may be, bill(s) of supply;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(3)",
+      "quote": "INPUT TAX CREDIT NOT ADMISSIBLE",
+      "extraction_note": "Quoted without the extraction's surrounding U+2015 and U+2016 quotation marks."
+    }
+  ]
+}

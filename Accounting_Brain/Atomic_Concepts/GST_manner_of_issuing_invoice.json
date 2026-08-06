@@ -1,0 +1,94 @@
+{
+  "id": "GST-INV-MANNER",
+  "name": "Manner of issuing an invoice \u2014 copies, and electronic preparation",
+  "status": "VERIFIED",
+  "definition": "Rule 48 fixes how an invoice is issued: three copies for goods, two for services, serial numbers reported in FORM GSTR-1, and, for notified classes of person, preparation through the common portal with an Invoice Reference Number. An invoice issued outside that last manner is not an invoice.",
+  "why_it_exists": "It separates 'the invoice says the right things' from 'the invoice was issued the right way'. A document can satisfy every rule 46 particular and still not be an invoice, because of rule 48(5).",
+  "inputs": [
+    "whether the supply is of goods or of services",
+    "whether the supplier belongs to a class notified under rule 48(4)",
+    "the copy markings on the document"
+  ],
+  "outputs": [
+    "the number and marking of copies required",
+    "whether rule 48(4) preparation was required and met"
+  ],
+  "preconditions": [
+    "an invoice is being issued under rule 46"
+  ],
+  "rules": [
+    "GST-INV-MANNER-001",
+    "GST-INV-MANNER-002",
+    "GST-INV-MANNER-003",
+    "GST-INV-MANNER-004"
+  ],
+  "exceptions": [
+    "rule 48(6) switches off the triplicate and duplicate requirements for an invoice prepared under rule 48(4)",
+    "the Commissioner may exempt a person or class of registered persons from rule 48(4) by notification"
+  ],
+  "common_mistakes": [
+    "expecting a DUPLICATE FOR TRANSPORTER copy on a services invoice \u2014 services take two copies, not three",
+    "treating a rule 48(4) failure as a missing field \u2014 rule 48(5) says the document is not an invoice at all",
+    "assuming every registered person must obtain an Invoice Reference Number \u2014 it binds only notified classes"
+  ],
+  "dependencies": [
+    "GST-INV-TAX-INVOICE"
+  ],
+  "related_concepts": [
+    "GST-INV-DELIVERY-CHALLAN",
+    "GST-INV-TIME-LIMIT"
+  ],
+  "legal_references": [
+    "CGST Rules 2017, rule 48"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE"
+  ],
+  "gst_references": [
+    "CGST Rules 2017, rule 48",
+    "CGST Rules 2017, rule 46(r)",
+    "UNKNOWN \u2014 source is the Rules as at 01-01-2022; later amendments not held locally"
+  ],
+  "evidence_required": [
+    "the document",
+    "the copy marking on the document",
+    "whether the supplier is in a class notified under rule 48(4)"
+  ],
+  "confidence_factors": [
+    "weak when only one copy of a multi-copy document was photographed, which says nothing about whether the others exist",
+    "weak when the notified classes under rule 48(4) are unknown, because they are fixed by notification and no notification is held locally"
+  ],
+  "validation_checks": [
+    "a goods invoice bears one of ORIGINAL FOR RECIPIENT, DUPLICATE FOR TRANSPORTER or TRIPLICATE FOR SUPPLIER",
+    "a services invoice bears one of ORIGINAL FOR RECIPIENT or DUPLICATE FOR SUPPLIER",
+    "where rule 48(4) applies, the invoice carries the rule 46(r) Quick Response code with the Invoice Reference Number embedded"
+  ],
+  "examples": [
+    "a goods invoice marked ORIGINAL FOR RECIPIENT \u2014 consistent with rule 48(1)"
+  ],
+  "counterexamples": [
+    "a services invoice marked TRIPLICATE FOR SUPPLIER \u2014 rule 48(2) provides only two copies for services"
+  ],
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(1)",
+      "quote": "48. Manner of issuing invoice.-(1)The invoice shall be prepared in triplicate, in the case of supply of goods, in the following manner, namely,-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(2)",
+      "quote": "The invoice shall be prepared in duplicate, in the case of the supply of services, in the following manner, namely,-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(5)",
+      "quote": "Every invoice issued by a person to whom sub-rule (4) applies in any manner other than the manner specified in the said sub-rule shall not be treated as an invoice."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 48(4), proviso",
+      "quote": "Provided that the Commissioner may, on the recommendations of the Council, by notification, exempt a person or a class of registered persons from issuance of invoice under this sub-rule for a specified period, subject to such conditions and restrictions as may be specified in the said notification."
+    }
+  ]
+}

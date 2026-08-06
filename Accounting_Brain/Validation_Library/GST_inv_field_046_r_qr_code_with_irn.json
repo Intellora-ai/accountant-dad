@@ -1,0 +1,20 @@
+{
+  "id": "GST-INV-FIELD-046-R",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a tax invoice required by section 31 and issued under rule 46 of the CGST Rules, 2017",
+    "no provision of rule 54 (tax invoice in special cases) displaces the particular",
+    "the invoice was prepared in the manner prescribed under rule 48(4)"
+  ],
+  "then": "where the invoice was prepared under rule 48(4), the tax invoice MUST carry a Quick Response code with the Invoice Reference Number embedded in it",
+  "source_section": "CGST Rules 2017, rule 46(r)",
+  "note": "One mandatory particular of rule 46(r), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(r)",
+      "quote": "Quick Response code, having embedded Invoice Reference Number (IRN) in it, in case invoice has been issued in the manner prescribed under sub-rule (4) of rule 48",
+      "extraction_note": "Clause (r) appears in the source inside square brackets with the footnote marker '107' attached ('...of rule 48]107.'); footnote 107 reads 'Inserted vide Notf no. 72/2020-CT dt. 30.09.2020.' The quote stops before the bracket and the marker."
+    }
+  ]
+}

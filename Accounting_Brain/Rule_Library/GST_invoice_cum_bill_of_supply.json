@@ -1,0 +1,24 @@
+{
+  "id": "GST-INV-CUM-001",
+  "status": "VERIFIED",
+  "if": [
+    "a registered person supplies taxable as well as exempted goods or services or both",
+    "the recipient is an unregistered person"
+  ],
+  "then": "a single invoice-cum-bill of supply MAY be issued for all such supplies",
+  "source_section": "CGST Rules 2017, rule 46A",
+  "note": "It overrides rule 46, rule 49 and rule 54. UNKNOWN \u2014 rule 46A does not enumerate its own particulars, and this source does not say which of the rule 46 and rule 49 particulars an invoice-cum-bill of supply must carry.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46A",
+      "quote": "46A. Invoice-cum-bill of supply.- Notwithstanding anything contained in rule 46 or rule 49 or rule 54, where a registered person is supplying taxable as well as exempted goods or services or both to an unregistered person, a single",
+      "extraction_note": "The sentence continues with '\u2015invoice-cum-bill of supply\u2016 may be issued for all such supplies.'; the quote stops before the extraction's U+2015 quotation mark and the tail is quoted separately."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46A",
+      "quote": "may be issued for all such supplies."
+    }
+  ]
+}

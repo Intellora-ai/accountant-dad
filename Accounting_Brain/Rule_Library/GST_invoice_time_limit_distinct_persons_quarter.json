@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-TIME-003",
+  "status": "VERIFIED",
+  "if": [
+    "the supplier is an insurer, a banking company, a financial institution including a non-banking financial company, a telecom operator, or another class of supplier of services notified by the Government on the recommendations of the Council",
+    "the taxable supply of services is made between distinct persons as specified in section 25"
+  ],
+  "then": "the invoice MAY be issued before or at the time the supplier records the supply in his books of account, or before the expiry of the quarter in which the supply was made",
+  "source_section": "CGST Rules 2017, rule 47, second proviso",
+  "note": "This is a permission, not an obligation \u2014 the rule says 'may issue'. It applies only to supplies between distinct persons under section 25.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 47, second proviso",
+      "quote": "Provided further that an insurer or a banking company or a financial institution, including a non-banking financial company, or a telecom operator, or any other class of supplier of services as may be notified by the Government on the recommendations of the Council, making taxable supplies of services between distinct persons as specified in section 25, may issue the invoice before or at the time such supplier records the same in his books of account or before the expiry of the quarter during which the supply was made."
+    }
+  ]
+}

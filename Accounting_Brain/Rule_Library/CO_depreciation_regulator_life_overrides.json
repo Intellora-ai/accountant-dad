@@ -1,0 +1,28 @@
+{
+  "id": "CO-DEP-REGULATOR-OVERRIDE-001",
+  "status": "VERIFIED",
+  "if": [
+    "a useful life or residual value for a specific asset has been notified for accounting purposes by a Regulatory Authority constituted under an Act of Parliament, or by the Central Government"
+  ],
+  "then": "that useful life or residual value SHALL be applied in calculating the depreciation to be provided for that asset, irrespective of the requirements of Schedule II",
+  "source_section": "Companies Act, 2013, Schedule II, Part B, paragraph 4",
+  "note": "A precedence rule, not an option: Part B displaces Part C for the named asset. Part C states the same ordering from the other side, opening 'Subject to Parts A and B above'. The printed paragraph 4 is NOT the 2013 enactment — the Schedule's own footnote records substitution by Notification G.S.R. 627(E) dated 29 August 2014. UNKNOWN — source is the Act as enacted 2013; amendments not held locally.",
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part B, paragraph 4",
+      "quote": "The useful life or residual value of any specific asset, as notified for accounting purposes by a Regulatory Authority constituted under an Act of Parliament or by the Central Government shall be applied in calculating the depreciation to be provided for such asset irrespective of the requirements of this Schedule"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, Part C, paragraph 5",
+      "quote": "Subject to Parts A and B above, the following are the useful lives of various tangible assets"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "Schedule II, footnote 1 to paragraph 4",
+      "quote": "Subs. by Notification No. G.S.R. 627(E) dated 29th August 2014, for paragraph 4 (w.e.f. 29-8-2014)",
+      "extraction_note": "The Schedule's own footnote, quoted as direct evidence that paragraph 4 as printed is substituted 2014 text."
+    }
+  ]
+}

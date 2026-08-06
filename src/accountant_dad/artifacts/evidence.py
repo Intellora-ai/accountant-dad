@@ -36,6 +36,39 @@ CONFIDENCE HAS A SINGLE AUTHORITY (INV-2, `ENGINE_1:109`). Only the
 included — may raise or lower one. The type comes from `confidence.py` and is
 never redeclared here: `Decimal`, 0.0000-1.0000, float refused.
 
+  A MEASUREMENT AND THE ABSENCE OF ONE ARE TWO FACTS (Amendment 5), AND AN
+  ABSENCE HAS THREE SHAPES (Amendment 7).
+      `Provenance.confidence` and `FieldConfidence.confidence` are
+      `ConfidenceOrUnmeasured`: a `Confidence`, or a stated absence of one.
+      Nothing else in this file changed, and `Confidence` itself did not
+      change — it still admits only a `Decimal` on the agreed scale.
+
+      Four states, each distinct, none collapsible to a number
+      (`accountant_dad.confidence.MeasurementState`):
+
+          measured          an instrument produced a score
+          not measured      the value was read; nothing scored it
+          not applicable    there is no reading here for a score to be about
+          failed            an instrument was asked and could not produce one
+
+      A PDF text layer is transcribed rather than recognised, so
+      `reader.read_pdf_text_layer` scores nothing, and a PDF text layer is the
+      MVP's primary input. Under the pre-Amendment-5 schema those readings
+      could not be emitted at all, and the artifact carried ZERO `Provenance`
+      objects on the one input the MVP exists to read. No honest number was
+      available to fill the slot — `1.0000` is the default
+      `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids by name, `0.0000` asserts a
+      worthlessness nobody measured — so the absence is named instead of
+      filled in (Law 54).
+
+      THIS DOES NOT WEAKEN INV-11. Six attributes, none optional, `extra`
+      still forbidden. A stated absence makes the VALUE absent, never the
+      ATTRIBUTE — the artifact still states, for every fact, what is known
+      about its reliability, and now also WHY when the answer is "nothing":
+      every non-measured state carries a non-blank `basis`. "Not measured" is
+      one of the things that can be known, and saying so is not the same as
+      saying nothing.
+
 A GAP REPORTED RATHER THAN FILLED (Law 54). `SYSTEM_INVARIANTS.md:252`
 describes `Corroborated` as *"whether another source supports it"* — which
 reads as a boolean. `ENGINE_1_INPUT_ENGINE_RULES.md:295` and
@@ -63,7 +96,11 @@ from pydantic import (
     model_validator,
 )
 
-from accountant_dad.confidence import Confidence
+from accountant_dad.confidence import (
+    ConfidenceOrUnmeasured,
+    describe_measurement,
+    records_the_same_measurement,
+)
 from accountant_dad.identity import IdentityEnvelope
 
 
@@ -126,7 +163,12 @@ class Provenance(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel
     #: Timezone-aware only. A naive timestamp in an audit trail is a defect:
     #: it cannot be ordered against anything recorded elsewhere.
     timestamp: datetime
-    confidence: Confidence
+    #: A measured score, or a stated absence of one — not measured, not
+    #: applicable, or failed (Amendments 5 and 7). Still MANDATORY: the
+    #: attribute is never optional, and `None` is refused here exactly as it
+    #: always was. See the module docstring for why no number would have been
+    #: honest.
+    confidence: ConfidenceOrUnmeasured
     corroborated: Corroborated
 
     @field_validator("timestamp")
@@ -209,12 +251,20 @@ class StructuredDocument(BaseModel):  # type: ignore[explicit-any]  # pydantic B
 
 
 class FieldConfidence(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel's own signature carries Any; the gate stays on
-    """One score, for one named thing. The name need not be a detected field."""
+    """What is known about one named thing's reliability. The name need not be
+    a detected field.
+
+    Since Amendment 5 that is *either* a score *or* a stated absence of one,
+    and since Amendment 7 the absence says which of three it is and why. The
+    widening is what lets a value nobody scored still be REPORTED rather than
+    omitted. Omitting it would have been concealed uncertainty about precisely
+    the fields whose reliability is least established.
+    """
 
     model_config = _FROZEN
 
     field_name: NonEmptyText
-    confidence: Confidence
+    confidence: ConfidenceOrUnmeasured
 
 
 class UncertaintyMarker(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel's own signature carries Any; the gate stays on
@@ -336,19 +386,34 @@ class DocumentEvidenceObject(BaseModel):  # type: ignore[explicit-any]  # pydant
         }
         for field in self.structured_document.detected_fields:
             if field.name not in scores:
-                # ENGINE_1:239-245. A value with no score is a value whose
-                # reliability the artifact does not state.
+                # ENGINE_1:239-245. A value with no ENTRY is a value whose
+                # reliability the artifact does not state. Note that an entry
+                # in any of the three non-measured states satisfies this and an
+                # absent entry does not: "nobody measured this", "there was
+                # nothing to measure" and "measuring it failed" are all
+                # statements about reliability, and silence is not
+                # (Amendments 5 and 7).
                 raise ValueError(
                     f"detected field {field.name!r} carries no confidence score. "
                     "A value whose reliability the artifact does not state must not be emitted."
                 )
-            # Compared as numbers, not strings: confidence.py keeps 0.98 as
-            # 0.98 rather than padding it, and 0.98 and 0.9800 are one number.
-            if scores[field.name] != field.provenance.confidence:
+            # `records_the_same_measurement` decides what agreement MEANS, in
+            # one place (confidence.py). It is not loosened for an unmeasured
+            # field, it is stricter: every state added is a new way for two
+            # slots to differ. Measured-against-non-measured is refused because
+            # one side asserts a number the other says was never taken;
+            # NOT_MEASURED against NOT_APPLICABLE is refused because one side
+            # says a real value is carried and the other says there is none.
+            # Numbers are still compared as numbers, so 0.98 and 0.9800 remain
+            # one value.
+            if not records_the_same_measurement(scores[field.name], field.provenance.confidence):
                 raise ValueError(
                     f"the Confidence Report and the provenance of {field.name!r} disagree: "
-                    f"{scores[field.name]} against {field.provenance.confidence}. "
+                    f"{describe_measurement(scores[field.name])} against "
+                    f"{describe_measurement(field.provenance.confidence)}. "
                     "Refused rather than reconciled silently — only the confidence "
-                    "sub-engine may set a score (INV-2)."
+                    "sub-engine may set a score (INV-2). Two different measurement "
+                    "states are a disagreement, not a special case: one of them "
+                    "asserts something about this reading that the other denies."
                 )
         return self

@@ -1,0 +1,503 @@
+128
+Accounting      Standard     (AS  )  9
+(issued1985)
+
+Revenue        Recognition
+
+
+Contents
+
+
+INTRODUCTION                                             Paragraphs    1-4
+Definitions                                                              4
+EXPLANATION                                                            5-9
+Sale of Goods                                                            6
+Rendering   of  Services                                                 7
+The  Use  by Others   of Enterprise   Resources   Yielding  Interest,
+  Royalties  and  Dividends                                              8
+Effect of Uncertainties   on  Revenue   Recognition                      9
+ACCOUNTING        STANDARD                                          10-14
+Disclosure                                                              14
+APPENDIX
+
+ The following  Accounting  Standards Interpretation(A SI) relatestoAS  9:
+
+        Revised ASI  14 - Disclosure of Revenue  from  Sales Transactions
+
+  The  above Interpretation ispublished elsewhere  in thisCompendium.
+122    AS  9 (issued  1985)                              Revenue    Recognition     129
+Accounting           Standard          (AS    ) 9
+(issue d  1985)
+
+Revenue         Recognition
+
+(Thi s Accounting     Standard    includes    paragraphs     10-14    set in  bold  italic
+type  and   paragraphs      1-9  set  in plain   type,  which    have   equal   authority.
+Paragraphs       in  bold   italic   type   indicate    the   main    principles.     This
+Accounting     Standard    should   be  read   in the  context   of  the  Preface   to  the
+Statements    of  Accounting      Standards1.)
+
+      The   following   is the text  of the Accounting     Standard    (AS  ) 9 issued  by
+the Institute  of Chartered    Accountants     of India   on ‘Revenue     Recognition’.2
+
+      In the initial years,this   accounting    standard  will  be recommendatoryin
+character.   During    this period,   this  standard    is recommended        for use   by
+companies    listedonarecognisedstockexchangeand              other  large  commercial,
+industrial  and  business   enterprises   in the  public  and   private  sectors.3
+
+Introduction
+1.   This  Statement    deals  with   the bases   for  recognition   of  revenue    in the
+statement   of  profit  and  loss  of an  enterprise.   The   Statement    is concerned
+with the  recognitionof    revenue   arising  in the courseof    the ordinaryactivities
+of the  enterprise   from
+      —     the  sale  of goods,4
+
+
+
+1Attention  isspecifically drawn  to paragraph   4.3 of the Preface, according   towhich
+Accounting   Standards  are  intended  to apply  only to items  which  are  material.
+
+2It isreiterated  that this Accounting    Standard  (a s isthe  case of  other accounting
+standards)  assumes   that the three  fundamental   accounting   assumptions   i.e.,going
+concern,   consistency   and  accrual   have  been   followed   in the  preparation   and
+presentation  of financial  statements.
+
+3It may  be noted  that this Accounting   Standard   is now  mandatory.   Reference   may
+be made   to the  section titled ‘Announcements     of the  Council  regarding   status of
+various  documents     issued  by  the Institute  of Chartered   Accountants    of  India’
+appearing   at the beginning   of this Compendium      for a  detailed discussion   on the
+implications  of the  mandatory   status of  an accounting   standard.
+
+4See  also revised  Accounting   Standards  Interpretation (ASI)  14, which   ispublished
+elsewhere  in this Compendium.
+130    AS  9 (issued  1985)
+
+      —      the rendering    of services,   and
+
+      —      the use by  others  of enterprise  resources   yielding   interest, royalties
+             and  dividends.
+
+2.   This  Statement     does   not  deal  with   the  following    aspects   of  revenue
+recognition   to which   special  considerations     apply:
+        (i)  Revenue     arising  from   construction    contracts;5
+
+       (ii)  Revenue     arising  from   hire-purchase,     lease  agreements;
+
+      (iii)  Revenue     arising   from    government      grants   and   other   similar
+             subsidies;
+
+      (iv)   Revenueof     insurance   companies     arising from   insurance   contracts.
+
+3.   Examples     of items   not  included   within   the  definition   of “revenue”     for
+the purpose    of this  Statement    are:
+
+        (i)  Realisedgains    resulting   from  the disposal   of, and  unrealisedgains
+             resulting  from   theholding    of, non-current    assets e.g. appreciation
+             in the  value  of  fixed  assets;
+
+       (ii)  Unrealised    holding   gains   resulting   from  the  change    in value   of
+             current  assets,  and  the natural   increases   in herds  and  agricultural
+             and  forest  products;
+
+      (iii)  Realised   or  unrealised    gains  resulting   from   changes    in foreign
+             exchange    ratesand   adjustmentsarisingonthetranslation          of foreign
+             currency    financial  statements;
+
+      (iv)   Realised   gains   resulting   from   the  discharge   of  an  obligation    at
+             less than  its carrying   amount;
+
+       (v )  Unrealised    gains   resulting  from   the  restatement    of  the  carrying
+             amount    of an obligation.
+
+
+
+
+
+
+5Refer  to AS  7 on  ‘Accounting   for Construction  Contracts’.  AS  7 (issued  1983)  has
+been  revised  in 2002  and  titled as ‘Construction   Contracts’.   The  revised  AS  7  is
+published  elsewhere   in this Compendium.
+                                                        Revenue    Recognition     131
+Definitions
+4.   The   following    terms   are  used   in this  Statement    with   the  meanings
+specified:
+
+4.1   Revenue    is the gross  inflow   of cash,  receivables   or other  consideration
+arising in the  course  of  the ordinary   activities of  an enterprise6   from  the  sale
+of  goods,   from   the  rendering    of  services,   and   from   the  use   by  others
+of  enterprise     resources     yielding    interest,   royalties    and    dividends.
+Revenue    is  measured     by  the  charges    made    to customers     or  clients  for
+goods   supplied and      services   rendered    to them    and  by   the  charges   and
+rewards    arising   from  the    use   of   resources    by   them.    In  an   agency
+relationship,   the  revenue   is  the amount    of  commission     and   not  the gross
+inflow  of cash,  receivables   or other consideration.
+
+4.2   Completed     service  contract   method     is a method    of accounting    which
+recognisesrevenue     in the statement   of profit andloss   only  whenthe    rendering
+of services  under   a contract   is completed    or  substantially   completed.
+
+4.3   Proportionate     completion     method    isa  method     of accounting    which
+recognises   revenue   in  the statement   of  profit and  loss  proportionately    with
+the degree   of  completion    of  services  under   a contract.
+
+Explanation
+5.   Revenue    recognition   is mainly   concerned    with  the timing  of  recognition
+of revenue   in  the statement   of  profit and   loss of  an enterprise.   The  amount
+of revenue    arising   on  a transaction    is usually   determined     by  agreement
+between    the parties  involved    in  the transaction.   When     uncertainties   exist
+regarding    the   determination     of   the   amount,    or   its  associated    costs,
+these uncertainties    may  influence   the  timing  of  revenue   recognition.
+
+
+
+
+
+
+
+6The  Institute  has issued  an  Announcement      in 2005  titled ‘Treatment   of  Inter-
+divisional Transfers’ (published  in ‘The Chartered  Accountant’   May  2005,  pp. 1531).
+As per  the Announcement,     the recognition   of inter-divisional transfers  as sales is
+an inappropriate  accounting   treatment  and  is inconsistent  with Accounting    Stand-
+ard 9. [For full textof the Announcement    reference  may  be made  to the section titled
+‘Announcements     of the Council   regarding  status  of various  documents   issued  by
+the Instituteof  Chartered  Accountants   of  India’ appearing  at the beginning   of this
+Compendium.]
+132    AS 9 (issued  1985)
+6.    Sale    of  Goods
+6.1   A  key  criterion  for  determining    when    to recognise   revenue    from   a
+transaction  involving   the  sale of goods   is that the seller has  transferred  the
+property  in the goods  tothe  buyer  for aconsideration.   Thetransferof    property
+ingoods,   in most  cases, results  inor coincides   with  the transfer  of significant
+risksand  rewards   of ownership   to the buyer.  However,   there  may  besituations
+where   transfer of  property   in goods   does  not  coincide  with  the  transfer  of
+significant  risks and  rewards    of ownership.    Revenue    in  such  situations  is
+recognised    at the  time   of  transfer  of  significant   risks  and   rewards    of
+ownership    to  the buyer.   Such   cases   may   arise  where   delivery   has  been
+delayed  through   the  fault of either  the buyer   or the seller and  the  goods   are
+at the risk  of the  party  at fault as regards   any  loss  which   might   not have
+occurred   but for  such  fault. Further,  sometimes     the parties  may  agree   that
+the risk will pass  at a time  different  from  the  time  when   ownership    passes.
+
+6.2   At certain  stages  inspecific  industries,  such  as when   agriculturalcrops
+have  been  harvested   or mineral   ores have  been  extracted,   performance    may
+be substantially  complete   prior  totheexecution    ofthe  transactiongenerating
+revenue.  In  such  cases  when   sale  is assured  under   a forward   contract  or  a
+government    guarantee   or  where   market  exists  and  there  isa negligible   risk
+of failure to sell,the goods   involved   are often  valued  at net realisable  value.
+Such  amounts,   while  not revenue   asdefined   inthis  Statement,   are sometimes
+recognised   in the statement   of  profit and  loss and   appropriately   described.
+
+7.    Rendering         of  Services
+7.1   Revenue    from  service  transactions   isusually   recognised   as the service
+is performed,    either  by  the  proportionate    completion     method    or  by  the
+completed    service  contract  method.
+
+       (i)  Proportionate     completion     method—Performance           consists   of
+            the  execution    of  more   than   one  act.  Revenue     is recognised
+            proportionately by reference to the performance of each act. The
+            revenue   recognised    under   this method   would   be  determined    on
+            the  basis  of contract  value,  associated   costs,  number    of acts  or
+            other  suitable  basis.  For  practical  purposes,    when   services   are
+            provided   byan   indeterminatenumber      of acts over  aspecificperiod
+            of  time, revenue    is recognised   on  a  straight line  basis over   the
+            specific  period   unless  there is evidence   that some   other  method
+            better  represents   the  pattern  of performance.
+                                                      Revenue    Recognition    133
+
+    (ii)    Completed     service  contract   method—Performance          consists  of
+           the execution   of asingle  act.Alternatively,   services  are performed
+            in more   than  a single  act, and  the  services  yet to be  performed
+           are  so significant  in  relation to  the transaction   taken  as a whole
+           that performance     cannot  be deemed    to have  been  completed    until
+           the  execution    of  those  acts.  The   completed     service  contract
+            method    is  relevant   to  these   patterns   of  performance       and
+            accordingly   revenue   isrecognised   when   the sole  or finalact takes
+            place  and  the  service  becomes    chargeable.
+
+8.    The    Use   by   Others      of Enterprise        Resources       Yielding
+Interest,     Royalties      and     Dividends
+8.1   The  use  by  others  of such  enterprise   resources   gives  rise to:
+
+       (i)  interest—charges     for  the use  of  cash  resources   or amounts    due
+            to the  enterprise;
+
+       (ii) royalties—charges       for  the  use  of such   assets   as know-how,
+            patents,  trade  marks   and  copyrights;
+
+      (iii) dividends—rewards       from   the holding   of investments   in shares.
+
+8.2   Interest accrues,  in most   circumstances,    on the  time  basis determined
+bythe  amount  outstanding   and the rateapplicable.  Usually,  discountorpremium
+on debt  securities held  is treated as  though  it were  accruing   over the  period
+tomaturity.
+
+8.3   Royalties  accrue  in accordance    withthe  terms  of the relevant  agreement
+and are usually  recognised   on thatbasis  unless, having   regard to the substance
+of the  transactions,  it is more   appropriate    to recognise   revenue    on  some
+other systematic   and  rational  basis.
+
+8.4   Dividends   from  investments   in shares arenotrecognised     in the statement
+of profit and  loss until a right to receive  payment    is established.
+
+8.5   When   interest, royalties  and  dividends   from  foreign   countries  require
+exchange   permission    and  uncertainty   in remittance   is anticipated,  revenue
+recognition  may   need  to be  postponed.
+134   AS  9 (issued  1985)
+9.    Effect     of  Uncertainties         on    Revenue       Recognition
+9.1   Recognition    of revenue   requires  that revenue   ismeasurable    and  that at
+the time of sale or the rendering of the service it would not be unreasonable
+toexpect   ultimate  collection.
+
+9.2   Where    the ability  to assess   the ultimate   collection   with  reasonable
+certainty  islacking   at the time  of  raising any  claim,  e.g., for escalation   of
+price, exportincentives,   interest etc., revenue  recognition   is postponed   to the
+extent  of uncertainty    involved.   In  such   cases,  itmay   be  appropriate    to
+recognise   revenue    only  when    it is reasonably    certain  that  the  ultimate
+collectionwillbe   made.Wherethereis       no uncertainty  as toultimate   collection,
+revenue  is recognised   at the time  of sale or rendering  of service  even  though
+payments   are  made   by  instalments.
+
+9.3   When   the  uncertainty  relating  tocollectability  arises subsequent    to the
+time of sale  or the rendering   of the service,  itis more  appropriate   to make   a
+separate  provision  to reflect the uncertainty   rather than  to adjust the  amount
+of revenue   originally recorded.
+
+9.4   An   essential   criterion  for  the  recognition    of  revenue    is that  the
+consideration   receivable   for the sale  of goods,  the  rendering   of services  or
+from  the use  by  others  of enterprise  resources   is reasonably    determinable.
+When   such  consideration    is not determinable    within   reasonable   limits, the
+recognition  of  revenue   ispostponed.
+
+9.5   When     recognition    of  revenue   is  postponed     due  to  the  effect  of
+uncertainties,  itisconsidered    as revenue  of the period  in which   itis properly
+recognised.
+
+                         Accounting          Standard
+10.   Revenue    from   sales  or  service  transactions    should   be  recognised
+when   the  requirements    as  to performance      set out  in paragraphs     11  and
+12  are  satisfied,   provided    that  at  the  time   of performance       it is not
+unreasonable     to expect   ultimate   collection.  If  at the  time  of  raising  of
+any  claim    itis  unreasonable      to  expect   ultimate    collection,   revenue
+recognition   should   be  postponed.
+
+11.   In  a transaction    involving   the  sale  of goods,   performance      should
+be regarded    as being   achieved   when    the following    conditions   have  been
+                                                     Revenue   Recognition     135
+
+fulfilled:
+
+      (i)   the seller  of goods   has  transferred   to  the buyer   the  property
+            in the goods   for a  price or  allsignificant   risks and  rewards   of
+            ownership    have   been  transferred    to the buyer   and   the seller
+            retains  no effective  control  of the goods  transferred   to a degree
+            usually  associated    with  ownership;    and
+
+      (ii)  no  significant  uncertainty   exists  regarding   the  amount    of the
+            consideration    that will  be derived   from   the sale  of the  goods.
+
+12.   In a  transaction   involving   the  rendering   of  services,  performance
+should  be  measured    either  under  the  completed    service contract   method
+or under   the  proportionate     completion    method,    whichever    relates  the
+revenue    to  the  work   accomplished.       Such    performance      should    be
+regarded     as   being    achieved     when     no    significant    uncertainty
+exists  regarding     the   amount     of   the   consideration      that   will  be
+derived  from rendering      the  service.
+
+13.   Revenue    arising   from   the  use  by  others  of  enterprise   resources
+yielding  interest, royalties and  dividends   should   only  be recognised   when
+no  significant   uncertainty    as to  measurability    or  collectability  exists.
+These  revenues    are  recognised    on  the following   bases:
+
+ (i)  Interest                  :  on  a  time  proportion     basis   taking   into
+                                   account   the  amount    outstanding     and  the
+                                   rate  applicable.
+
+(ii)  Royalties                 :  on  an  accrual    basis  in accordance     with
+                                   the  terms  of  the relevant   agreement.
+
+(iii) Dividends    from         :  when   the owner’s   right  to receive payment
+      investments    in            is established.
+      shares
+
+Disclosure
+14.   In addition   to the  disclosures   required   by  Accounting     Standard   1
+on ‘Disclosure    of Accounting    Policies’  (A S 1) ,an  enterprise   should   also
+disclose   the  circumstances      in which    revenue    recognition     has  been
+postponed    pending   the  resolution   of significant   uncertainties.
+136    AS  9(issued  1985)
+APPENDIX
+
+This  appendix   is illustrative only  and  does   not form   part of the  accounting
+standard  set forth inthis Statement.   Thepurpose     of theappendix    isto illustrate
+the application   of the  Standard   to a number    of commercial     situations  in an
+endeavour to assist in clarifying application of the Standard.
+
+A.     Sale    of  Goods
+1.   Delivery    is delayed    at  buyer’s   request    and   buyer   takes   title and
+accepts   billing
+
+Revenue   shouldbe    recognisednotwithstandingthatphysicaldeliveryhasnot
+been  completed    so  long  as there  is every  expectation    that delivery   will be
+made.  However,    the  item  must  be on  hand,  identified  and  ready  for delivery
+to the buyer  at the time  the  sale is recognised   rather  than  there being   simply
+an intention  to acquire   or manufacture     the goods   in time  for delivery.
+
+2.   Delivered    subject   to conditions
+
+(a)  installation   and  inspection   i.e. goods   are  sold  subject  to  installation,
+      inspection   etc.
+
+Revenue   should  normallynotbe     recogniseduntilthecustomeracceptsdelivery
+and  installation  and  inspection   are  complete.   In some    cases, however,    the
+installation process   may   be so simple   in nature  that itmay   be appropriate    to
+recognise  the  sale notwithstandingthat     installation  isnot  yet completed    (e.g.
+installation  of a  factory-tested   television   receiver  normally    only  requires
+unpacking    and  connecting    of power   and  antennae).
+
+(b)   on approval
+
+Revenue   should  not  be recognised   untilthe goods   havebeenformally      accepted
+by the  buyer   or the  buyer  has  done   an  act adopting   the  transaction   or the
+time  period  for  rejection  has  elapsed   or  where   no  time  has  been   fixed,  a
+reasonable   time  has  elapsed.
+
+(c)   guaranteed    sales i.e. delivery   is made   giving   the buyer   an  unlimited
+      right of return
+
+Recognition of revenue in such circumstances will depend on the substance
+                                                       Revenue   Recognition     137
+
+of the agreement.    In the case  of retail sales offering  a guarantee   of  “money
+back  ifnot  completely   satisfied”  itmay   be appropriate   to recognise   the sale
+but to make  a suitable  provision  for returns  based  on  previous  experience.   In
+other  cases,  the  substance    of  the  agreement    may    amount    to a  sale  on
+consignment,    in which   case  itshould   be treated  as indicated   below.
+
+(d)   consignment     sales  i.e. a  delivery   is made    whereby     the recipient
+      undertakes   to sell the goods   on  behalf  of the consignor
+
+Revenue   should   not  be recognised   until  the goods   are sold  to a third party.
+
+(e)  cash  on  delivery   sales
+
+Revenue   should   not  be recognised    until cash  isreceived   by  the seller or his
+agent.
+
+3.   Sales  where    the purchaser     makes    a series   of instalment    payments
+to the seller, and  the  seller delivers  the goods   only  when   the  final payment
+is received
+
+Revenue   from   such  sales should  not  be recognised   until goods   are delivered.
+However,     when   experience     indicates   that  most   such   sales  have   been
+consummated,      revenue   may   be  recognised    when   a  significant  deposit   is
+received.
+
+4.   Special  order   and  shipments    i.e.where   payment    (o r partial  payment)
+is received  for  goods   not  presently   held  in stock  e.g. the  stock  is stillto
+be manufactured      or  is to  be  delivered   directly  to  the customer     from  a
+third party
+
+Revenue     from   such   sales  should    not  be  recognised     until  goods    are
+manufactured,    identified   and  ready  for  delivery  to  the buyer   by  the third
+party.
+
+5.   Sale/repurchase      agreements     i.e. where   seller  concurrently     agrees
+to repurchase    the  same   goods   at  a later  date
+
+Forsuch   transactions  thatare  insubstance   afinancing   agreement,   theresulting
+cash inflow  is not revenue  as defined  and  shouldnotbe     recognised   as revenue.
+
+6.   Sales  to intermediate   parties  i.e. where   goods   are sold  to distributors,
+dealers  or  others   for resale
+138   AS  9 (issued  1985)
+
+Revenue   from   such  sales  can  generally  be  recognised   ifsignificant  risks of
+ownership   have  passed; however    insome   situations the buyer  may  insubstance
+be an agent  and  insuch  cases  the sale should  be treated  as aconsignment    sale.
+
+7.   Subscriptions    for  publications
+
+Revenue    received  or  billed should   be  deferred  and  recognised    either on  a
+straight line basis over  time  or,where   the items  delivered  vary  in value  from
+period  to period,   revenue   should   be based   on  the  sales value   of the item
+delivered   in relation  to the  total  sales value   of all items   covered   by  the
+subscription.
+
+8.   Instalment    sales
+
+When   the consideration    isreceivable   in instalments,   revenue  attributable  to
+the sales price  exclusive  of interest  should  be recognised    at the date of sale.
+The  interest element  should   be recognised   as revenue,   proportionately   to the
+unpaid  balance   due  to the seller.
+
+9.   Trade   discounts    and  volume    rebates
+
+Trade  discounts   and  volume    rebates  received   are not  encompassed     within
+the definition  of  revenue,   since  they  represent   a reduction   of  cost. Trade
+discounts  andvolume    rebates given  shouldbe   deductedin   determiningrevenue.
+
+B.    Rendering         of   Services
+1.   Installation   Fees
+
+In cases  where   installation  fees  are  other  than  incidental  to  the sale  of a
+product,  they  should  be  recognised   as revenue   only  when   the  equipment    is
+installed and  accepted   by  the  customer.
+
+2.   Advertising    and   insurance    agency    commissions
+
+Revenue     should   be   recognised    when     the  service   is  completed.     For
+advertising  agencies,    media    commissions      will  normally    be  recognised
+when   the related advertisement     or  commercial     appears   before   the public
+and  the  necessary intimation      is received    by  the  agency,   as opposed    to
+production    commission, which       will  be  recognised    when    the  project   is
+completed.    Insurance    agency    commissions     should   be recognised    on  the
+effective commencement      or renewal   dates  of the  related policies.
+                                                       Revenue    Recognition    139
+
+3.   Financial    service  commissions
+
+A financial  service  may   be rendered    as a single act or  may  be  provided   over
+a period   of time.  Similarly,   charges   for such   services  may   be  made    as a
+single amount    or  in stages  over  the period   of the  service  or the  life of the
+transaction   to which   it relates. Such   charges   may   be  settled  in full when
+made  or added   toa loanor   other account   andsettled   instages.The    recognition
+of such  revenue   should   therefore   have  regard   to:
+
+      (a)   whether    the service  has  been  provided   “once   and  for all” or is on
+            a “continuing”    basis;
+
+      (b)   the  incidence   of the  costs relating  to the  service;
+
+      (c)   when   the  payment    for  the service   will be  received.   In general,
+            commissions      charged    for arranging    or  granting   loan  or other
+            facilities shouldberecognisedwhenabinding            obligationhas    been
+            entered  into. Commitment,     facility or loanmanagementfeeswhich
+            relate  to continuing    obligations   or services  should   normally    be
+            recognised    over the  lifeof the loan  or facility havingregard    to the
+            amount    of the  obligation   outstanding,   the nature  of  the services
+            provided    and  the timing  of  the costs  relating thereto.
+
+4.   Admission     fees
+
+Revenue   from  artistic performances,banquets      and  other  special eventsshould
+be recognised    when   the event  takes  place. When    a subscription   to a number
+of events  is sold,  the fee  should  be  allocated   to each  event  on  a systematic
+and  rational basis.
+
+5.   Tuition   fees
+
+Revenue    should  be  recognised   over   the period  of  instruction.
+
+6.   Entrance    and   membership      fees
+
+Revenue    recognition   from   these  sources   will depend    on  the nature   of the
+services  being  provided.    Entrance   fee  received   is generally  capitalised.   If
+the membership      fee  permits   only   membership     and   all other   services  or
+products   are   paid   for   separately,   or   if  there   is  a  separate    annual
+subscription,   the  fee  should     be   recognised      when    received.     If  the
+membership     fee  entitles  the
+140    AS  9(issued  1985)
+
+member    to services  or publications   to be  provided   during  the  year, itshould
+be recognised   on  a systematic   and  rational  basis having   regard  to the timing
+and  nature  of all services  provided.

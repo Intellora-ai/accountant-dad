@@ -1,0 +1,17 @@
+{
+  "id": "GST-TIME-RATE-CHANGE-001",
+  "status": "VERIFIED",
+  "if": [
+    "there is a change in the rate of tax in respect of the goods or services or both supplied"
+  ],
+  "then": "s.12 and s.13 are DISPLACED and the time of supply is determined under s.14 instead",
+  "source_section": "CGST s.14",
+  "note": "Recorded as a GUARD, not as a decision rule. s.14 opens 'Notwithstanding anything contained in section 12 or section 13', so applying s.12 or s.13 across a rate change gives the wrong answer. The six limbs inside s.14 are NOT extracted here \u2014 Engine 3 must stop and escalate rather than guess them.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.14",
+      "quote": "Notwithstanding anything contained in section 12 or section 13, the time of supply, where there is a change in the rate of tax in respect of goods or services or both, shall be determined in the following manner, namely:"
+    }
+  ]
+}

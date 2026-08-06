@@ -1,0 +1,23 @@
+{
+  "id": "GST-INV-ITC-001",
+  "status": "VERIFIED",
+  "if": [
+    "an invoice or debit note is issued in pursuance of tax payable under section 74, section 129 or section 130"
+  ],
+  "then": "the document MUST prominently contain the words INPUT TAX CREDIT NOT ADMISSIBLE",
+  "source_section": "CGST Rules 2017, rule 53(3)",
+  "note": "An extraction system that reads such a document and posts input tax credit from it would be posting a credit the document itself denies on its face.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(3)",
+      "quote": "Any invoice or debit note issued in pursuance of any tax payable in accordance with the provisions of section 74 or section 129 or section 130 shall prominently contain the words"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(3)",
+      "quote": "INPUT TAX CREDIT NOT ADMISSIBLE",
+      "extraction_note": "The words stand between the extraction's U+2015 and U+2016 quotation marks and are quoted without them."
+    }
+  ]
+}

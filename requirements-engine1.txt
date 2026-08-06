@@ -1,0 +1,105 @@
+# Engine 1 — Input Engine. Pinned exactly.
+#
+# SEPARATE FROM requirements-ci.txt ON PURPOSE. `docs/TECHNOLOGY_STACK.md`, the
+# locked stack decision, states it plainly: adding heavyweight engine
+# dependencies to the file every CI job installs "would slow every gate and risk
+# the job timeouts, for tools no code imports yet", so engine dependencies land
+# "per engine, at its phase, in a separate manifest".
+#
+# Amendment 3 (CLAUDE.md §P, 2026-08-05) reached Engine 1's phase.
+#
+# Every version below was read from installed metadata, never from memory.
+# Every licence below was read from the installed package, never recalled.
+#
+#   opencv-python  5.0.0.93   Apache 2.0
+#                             License :: OSI Approved :: Apache Software License
+#   numpy          2.5.1      BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0
+#                             (License-Expression field)
+#   pymupdf        1.28.0     ⚠️  Dual Licensed - GNU AFFERO GPL 3.0
+#                             or Artifex Commercial License
+#   pillow         12.3.0     MIT-CMU (License-Expression field)
+#
+# EXPLICITLY NOT APPROVED by `docs/TECHNOLOGY_STACK.md` and deliberately absent:
+# Tesseract · EasyOCR · Camelot · Tabula · ImageMagick · Unstructured.
+# A test in `tests/unit/test_input_engine_cleaner.py` asserts their absence from
+# the source rather than trusting this comment.
+#
+# ⚠️  PYMUPDF'S LICENCE IS A DECISION THE OWNER HAS NOT YET MADE, recorded here
+# rather than resolved. AGPL-3.0 §13 obliges anyone who lets users interact with
+# the software OVER A NETWORK to offer those users the complete corresponding
+# source, and a hosted accounting platform is exactly that shape.
+# `docs/TECHNOLOGY_STACK.md:28` LOCKS PyMuPDF, and a locked component is not
+# swapped on an engineer's judgement. Two lawful routes exist and both are the
+# owner's to choose: buy the Artifex commercial licence, or amend the locked
+# stack (§M) to a permissively-licensed PDF reader. See KNOWN_FAILURES.md F-001.
+#
+# ── WHY PADDLEOCR IS NOT IN THIS FILE ─────────────────────────────────────
+#
+# It cannot be. Its dependency tree is incompatible with two pins above, and CI
+# proved it — `pip` returned ResolutionImpossible, measured, not predicted:
+#
+#     paddlex requires   numpy<2.4,>=1.24
+#     this file pins     numpy==2.5.1
+#
+# and installing it also drags in `opencv-contrib-python 4.10.0.84` beside
+# `opencv-python 5.0.0.93`. Both provide `cv2`, and install order decides which
+# wins. Locally it was 4.10 that won, silently — `import cv2` reported 4.10.0
+# while this file said 5.0.0.93.
+#
+# THAT MATTERS BECAUSE THE PINS CARRY MEASUREMENTS. `cleaner`'s deskew residual
+# of 0.0017 at 32° was measured against opencv-python 5.0.0.93. Letting a
+# transitive dependency of an OCR package silently replace the library the
+# number was measured on would leave the assertion guarding a different library
+# than the one it was derived from — the test would still pass and would no
+# longer mean what it says.
+#
+# So the OCR stack moved to `requirements-engine1-ocr.txt`, which is exactly
+# what TECHNOLOGY_STACK.md prescribes for engine dependencies. The cost is
+# recorded honestly rather than hidden: reader's OCR tests do not run on CI
+# until that manifest is installed there. See KNOWN_FAILURES.md F-002 and F-009.
+
+# ── THE PARSING STACK ─────────────────────────────────────────────────────
+#
+# `docs/TECHNOLOGY_STACK.md:27` names Docling for "document parsing and
+# structure", and `parser.py` uses Microsoft's Table Transformer through
+# `transformers` for table structure. Both are locked choices, not preferences.
+#
+# Versions and licences read from installed metadata on 2026-08-05, never from
+# memory. Every one of these is permissive — unlike pymupdf above, none of them
+# raises a licensing question:
+#
+#   docling       2.118.0   MIT
+#   transformers  5.8.1     Apache 2.0
+#   torch         2.13.0    Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD
+#   torchvision   0.28.0    BSD
+#   timm          1.0.28    Apache-2.0
+#   pypdfium2     5.12.1    BSD-3-Clause, Apache-2.0
+#
+# `timm` is not optional and its absence is not obvious. Without it the Table
+# Transformer raises `ImportError: TimmBackbone requires the timm library`
+# from deep inside `transformers`, and only one test catches it. Measured, not
+# assumed: with timm absent, 50 of parser's 51 tests pass and the suite looks
+# healthy.
+#
+# VERIFIED COMPATIBLE WITH THE PINS ABOVE. `pip install --dry-run` resolved
+# clean, and after installing, `numpy.__version__` is still 2.5.1 and
+# `cv2.__version__` still 5.0.0 — checked by importing them, not by reading
+# this file. That check matters: PaddleOCR passed a dry-run too and then
+# silently replaced both (see below).
+#
+# THE COST IS REAL AND IS NOT YET MEASURED ON CI. torch is a large download and
+# every second of install comes out of the `mutation` job's clock, which was
+# already the binding constraint at 24m14s. What that install actually costs on
+# a cold GitHub runner is unknown until a run reports it — so it is stated as
+# unknown here rather than estimated (Law 24).
+
+opencv-python==5.0.0.93
+numpy==2.5.1
+pymupdf==1.28.0
+pillow==12.3.0
+docling==2.118.0
+transformers==5.8.1
+torch==2.13.0
+torchvision==0.28.0
+timm==1.0.28
+pypdfium2==5.12.1

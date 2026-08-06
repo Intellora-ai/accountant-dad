@@ -1,0 +1,29 @@
+{
+  "id": "GST-ITC-16-6",
+  "status": "CONFLICT",
+  "if": [
+    "a registered person's registration was cancelled under section 29 and the cancellation was subsequently revoked",
+    "availment of credit on the invoice or debit note was not restricted under s.16(4) on the date of the cancellation order"
+  ],
+  "then": "CONFLICT \u2014 one locally held source restores the entitlement to take that credit within a stated window; the other does not contain the sub-section at all. Neither is adopted here",
+  "source_section": "CGST Act s.16(6)",
+  "note": "Absent from the primary source. Present in the IndiaCode consolidated text as on 11-06-2026. The window it grants is the later of two dates, and reproducing only part of it would misstate it, so the operative sentence is quoted and no window is computed here.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.16(6) (source B, IndiaCode consolidated text as on 11-06-2026)",
+      "quote": "Where registration of a registered person is cancelled under section 29 and subsequently the cancellation of registration is revoked by any order"
+    },
+    {
+      "file": "CGST-Act-2017-as-on-11062026-IndiaCode.pdf",
+      "section": "CGST Act s.16, footnote 5",
+      "quote": "Ins. by Act 15 of 2024, s. 118 (w.e.f. 1-07-2017)."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.16(4), closing words (source A, Act as updated 31-08-2021)",
+      "quote": "debit note pertains or furnishing of the relevant annual return, whichever is earlier.",
+      "extraction_note": "Cited to show where source A ends section 16: at sub-section (4)."
+    }
+  ]
+}

@@ -1,0 +1,241 @@
+Accounting Standard (AS) 1
+(issued 1979)
+
+Disclosure of Accounting Policies
+
+
+Contents
+
+
+INTRODUCTION                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Paragraphs 1-8
+EXPLANATION                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        9-23
+Fundamental Accounting Assumptions                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      9-10
+Nature of Accounting Policies                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             11-13
+Areas in Which Different Accounting Policies are
+Encountered                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               14-15
+Considerations in the Selection of Accounting Policies                                                                                                                                                                                                   16-17
+Disclosures of Accounting Policies                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          18-23
+MAIN PRINCIPLES                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         24-27
+36                                AS 1 (issued 1979)
+Accounting Standard (AS) 1
+(issued 1979)
+
+Disclosure of Accounting Policies
+
+[This Accounting Standard includes paragraphs set in bold italic type and
+plain type, which have equal authority. Paragraphs in bold italic type indicate
+the main principles. This Accounting Standard should be read in the context
+of the Preface to the Statements of Accounting Standards                                                                                        1 and the
+‘Applicability of Accounting Standards to Various Entities’ (See Appendix 1
+to this Compendium).]
+
+Introduction
+1.                                                           This Standard deals with the disclosure of significant accounting policies
+followed in preparing and presenting financial statements.
+
+2.                              The view presented in the financial statements of an enterprise of its
+state of affairs and of the profit or loss can be significantly affected by the
+accounting policies followed in the preparation and presentation of the
+financial statements. The accounting policies followed vary from enterprise
+to enterprise. Disclosure of significant accounting policies followed is
+necessary if the view presented is to be properly appreciated.
+
+3.                           The disclosure of some of the accounting policies followed in the
+preparation and presentation of the financial statements is required by law
+in some cases.
+
+4.                                                 The Institute of Chartered Accountants of India has, in Standards issued
+by it, recommended the disclosure of certain accounting policies, e.g.,
+translation policies in respect of foreign currency items.
+
+5.                                      In recent years, a few enterprises in India have adopted the practice of
+including in their annual reports to shareholders a separate statement of
+accounting policies followed in preparing and presenting the financial
+statements.
+
+
+
+
+1      Attention is specifically drawn to paragraph 4.3 of the Preface, according to which
+Accounting Standards are intended to apply only to items which are material.
+                                                  Disclosure of Accounting Policies                                   41
+
+6.                             In general, however, accounting policies are not at present regularly
+and fully disclosed in all financial statements. Many enterprises include in
+the Notes on the Accounts, descriptions of some of the significant accounting
+policies. But the nature and degree of disclosure vary considerably between
+the corporate and the non-corporate sectors and between units in the same
+sector.
+
+7.                                  Even among the few enterprises that presently include in their annual
+reports a separate statement of accounting policies, considerable variation
+exists. The statement of accounting policies forms part of accounts in some
+cases while in others it is given as supplementary information.
+
+8.                            The purpose of this Standard is to promote better understanding of
+financial statements by establishing through an accounting standard the
+disclosure of significant accounting policies and the manner in which
+accounting policies are disclosed in the financial statements. Such disclosure
+would also facilitate a more meaningful comparison between financial
+statements of different enterprises.
+
+Explanation
+Fundamental Accounting Assumptions
+9.                               Certain fundamental accounting assumptions underlie the preparation
+and presentation of financial statements. They are usually not specifically
+stated because their acceptance and use are assumed. Disclosure is necessary
+if they are not followed.
+
+10.                                                           The following have been generally accepted as fundamental accounting
+assumptions:—
+
+a.                               Going Concern
+
+The enterprise is normally viewed as a going concern, that is, as continuing
+in operation for the foreseeable future. It is assumed that the enterprise has
+neither the intention nor the necessity of liquidation or of curtailing materially
+the scale of the operations.
+
+b.                                           Consistency
+
+It is assumed that accounting policies are consistent from one period to
+another.
+42                               AS 1 (issued 1979)
+
+c.                                         Accrual
+
+Revenues and costs are accrued, that is, recognised as they are earned or
+incurred (and not as money is received or paid) and recorded in the financial
+statements of the periods to which they relate. (The considerations affecting
+the process of matching costs with revenues under the accrual assumption
+are not dealt with in this standard.)
+
+Nature of Accounting Policies
+11.                                             The accounting policies refer to the specific accounting principles and
+the methods of applying those principles adopted by the enterprise in the
+preparation and presentation of financial statements.
+
+12.                                  There is no single list of accounting policies which are applicable to
+all circumstances. The differing circumstances in which enterprises operate
+in a situation of diverse and complex economic activity make alternative
+accounting principles and methods of applying those principles acceptable.
+The choice of the appropriate accounting principles and the methods of
+applying those principles in the specific circumstances of each enterprise
+calls for considerable judgement by the management of the enterprise.
+
+13.                             The various standards of the Institute of Chartered Accountants of
+India combined with the efforts of government and other regulatory agencies
+and progressive managements have reduced in recent years the number of
+acceptable alternatives particularly in the case of corporate enterprises. While
+continuing efforts in this regard in future are likely to reduce the number
+still further, the availability of alternative accounting principles and methods
+of applying those principles is not likely to be eliminated altogether in view
+of the differing circumstances faced by the enterprises.
+
+Areas in Which Differing Accounting Policies are Encountered
+14.                                             The following are examples of the areas in which different accounting
+policies may be adopted by different enterprises.
+
+       (a)                                    Methods of depreciation, depletion and amortisation
+
+       (b)                                  Treatment of expenditure during construction
+
+       (c)                                       Conversion or translation of foreign currency items
+                                                           Disclosure of Accounting Policies                                   43
+
+        (d)                                 Valuation of inventories
+
+        (e)                                     Treatment of goodwill
+
+        (f)                                       Valuation of investments
+
+        (g)                                 Treatment of retirement benefits
+
+        (h)                                     Recognition of profit on long-term contracts
+
+        (i)                                           Valuation of fixed assets
+
+        (j)                                       Treatment of contingent liabilities.
+
+15.                                      The above list of examples is not intended to be exhaustive.
+
+Considerations in the Selection of Accounting Policies
+16.                                 The primary consideration in the selection of accounting policies by
+an enterprise is that the financial statements prepared and presented on the
+basis of such accounting policies should represent a true and fair view of
+the state of affairs of the enterprise as at the balance sheet date and of the
+profit or loss for the period ended on that date.
+
+17.                                               For this purpose, the major considerations governing the selection and
+application of accounting policies are:—
+
+a.                                           Prudence
+
+In view of the uncertainty attached to future events, profits are not anticipated
+but recognised only when realised though not necessarily in cash. Provision
+is made for all known liabilities and losses even though the amount cannot
+be determined with certainty and represents only a best estimate in the light
+of available information.
+
+b.                                  Substance over Form
+
+The accounting treatment and presentation in financial statements of
+transactions and events should be governed by their substance and not merely
+by the legal form.
+44                               AS 1 (issued 1979)
+
+c.                                         Materiality
+
+Financial statements should disclose all “material” items, i.e. items the
+knowledge of which might influence the decisions of the user of the financial
+statements.
+
+Disclosure of Accounting Policies
+18.                                              To ensure proper understanding of financial statements, it is necessary
+that all significant accounting policies adopted in the preparation and
+presentation of financial statements should be disclosed.
+
+19.                                   Such disclosure should form part of the financial statements.
+
+20                                     It would be helpful to the reader of financial statements if they are all
+disclosed as such in one place instead of being scattered over several
+statements, schedules and notes.
+
+21.                            Examples of matters in respect of which disclosure of accounting
+policies adopted will be required are contained in paragraph 14. This list of
+examples is not, however, intended to be exhaustive.
+
+22.                                                  Any change in an accounting policy which has a material effect should
+be disclosed. The amount by which any item in the financial statements is
+affected by such change should also be disclosed to the extent ascertainable.
+Where such amount is not ascertainable, wholly or in part, the fact should
+be indicated. If a change is made in the accounting policies which has no
+material effect on the financial statements for the current period but which
+is reasonably expected to have a material effect in later periods, the fact of
+such change should be appropriately disclosed in the period in which the
+change is adopted.
+
+23.                                                Disclosure of accounting policies or of changes therein cannot remedy
+a wrong or inappropriate treatment of the item in the accounts.
+
+                                    Main Principles
+24.                              All significant accounting policies adopted in the preparation and
+presentation of financial statements should be disclosed.
+                                                 Disclosure of Accounting Policies                                   45
+
+25.                                          The disclosure of the significant accounting policies as such should
+form part of the financial statements and the significant accounting
+policies should normally be disclosed in one place.
+
+26.                                 Any change in the accounting policies which has a material effect
+in the current period or which is reasonably expected to have a material
+effect in later periods should be disclosed. In the case of a change in
+accounting policies which has a material effect in the current period, the
+amount by which any item in the financial statements is affected by such
+change should also be disclosed to the extent ascertainable. Where such
+amount is not ascertainable, wholly or in part, the fact should be indicated.
+
+27.                             If the fundamental accounting assumptions, viz. Going Concern,
+Consistency and Accrual are followed in financial statements, specific
+disclosure is not required. If a fundamental accounting assumption is not
+followed, the fact should be disclosed.

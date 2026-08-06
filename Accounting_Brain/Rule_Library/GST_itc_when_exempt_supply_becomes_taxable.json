@@ -1,0 +1,22 @@
+{
+  "id": "GST-ITC-18-1-D",
+  "status": "VERIFIED",
+  "if": [
+    "an exempt supply of goods or services or both by a registered person BECOMES a taxable supply"
+  ],
+  "then": "he is ENTITLED to credit of input tax on inputs held in stock and inputs contained in semi-finished or finished goods held in stock RELATABLE TO THAT EXEMPT SUPPLY, and on capital goods EXCLUSIVELY USED for that exempt supply, on the day immediately preceding the date from which the supply becomes taxable \u2014 the credit on capital goods being reduced by such percentage points as may be prescribed",
+  "source_section": "CGST Act s.18(1)(d)",
+  "note": "Two narrowing words do the work. Stock must be 'relatable to' the formerly exempt supply, and capital goods must have been 'exclusively used' for it. Shared capital goods do not qualify under this clause. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(1)(d)",
+      "quote": "where an exempt supply of goods or services or both by a registered person becomes a taxable supply, such person shall be entitled to take credit of input tax in respect of inputs held in stock and inputs contained in semi-finished or finished goods held in stock relatable to such exempt supply and on capital goods exclusively used for such exempt supply on the day immediately preceding the date from which such supply becomes taxable:"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(1)(d), proviso",
+      "quote": "Provided that the credit on capital goods shall be reduced by such percentage points as may be prescribed."
+    }
+  ]
+}

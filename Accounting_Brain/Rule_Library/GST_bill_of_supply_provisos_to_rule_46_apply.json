@@ -1,0 +1,17 @@
+{
+  "id": "GST-INV-BOS-001",
+  "status": "VERIFIED",
+  "if": [
+    "a bill of supply is issued under rule 49"
+  ],
+  "then": "the provisos to rule 46 apply to it, mutatis mutandis",
+  "source_section": "CGST Rules 2017, rule 49, first proviso",
+  "note": "So the export endorsement, the consolidated-invoice permissions and the QR code proviso all reach a bill of supply, adapted as necessary.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 49, first proviso",
+      "quote": "Provided that the provisos to rule 46 shall, mutatis mutandis, apply to the bill of supply issued under this rule:"
+    }
+  ]
+}

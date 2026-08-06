@@ -1,0 +1,43 @@
+{
+  "id": "GST-INV-CHALLAN-001",
+  "status": "VERIFIED",
+  "if": [
+    "goods are removed from the supplier's place of business for transportation",
+    "the case is one of: supply of liquid gas where the quantity at removal is not known; transportation for job work; transportation for reasons other than by way of supply; or another supply notified by the Board"
+  ],
+  "then": "the consigner MAY issue a delivery challan in lieu of an invoice at the time of removal",
+  "source_section": "CGST Rules 2017, rule 55(1)",
+  "note": "A delivery challan is NOT an invoice and does not evidence a supply by itself. Three of the four cases are movements that are not supplies at all.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)",
+      "quote": "55. Transportation of goods without issue of invoice.-(1)For the purposes of-"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)(a)",
+      "quote": "supply of liquid gas where the quantity at the time of removal from the place of business of the supplier is not known,"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)(b)",
+      "quote": "transportation of goods for job work,"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)(c)",
+      "quote": "transportation of goods for reasons other than by way of supply, or"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)(d)",
+      "quote": "such other supplies as may be notified by the Board,"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(1)",
+      "quote": "the consigner may issue a delivery challan, serially numbered not exceeding sixteen characters, in one or multiple series, in lieu of invoice at the time of removal of goods for transportation, containing the following details, namely:-"
+    }
+  ]
+}

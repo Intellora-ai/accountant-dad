@@ -1,0 +1,24 @@
+{
+  "id": "GST-INV-FIELD-046-Q",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a tax invoice required by section 31 and issued under rule 46 of the CGST Rules, 2017",
+    "no provision of rule 54 (tax invoice in special cases) displaces the particular",
+    "the invoice is not an electronic invoice issued under the Information Technology Act, 2000"
+  ],
+  "then": "the tax invoice MUST carry the signature or digital signature of the supplier or his authorised representative",
+  "source_section": "CGST Rules 2017, rule 46(q)",
+  "note": "One mandatory particular of rule 46(q), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46(q)",
+      "quote": "signature or digital signature of the supplier or his authorised representative:"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, fifth proviso",
+      "quote": "Provided also that the signature or digital signature of the supplier or his authorised representative shall not be required in the case of issuance of an electronic invoice in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000)."
+    }
+  ]
+}

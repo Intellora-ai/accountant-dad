@@ -1,0 +1,24 @@
+{
+  "id": "ACC-REV-SERVICES-002",
+  "status": "VERIFIED",
+  "if": ["the transaction is the rendering of services",
+         "performance consists of the execution of a single act, OR the services yet to be performed are so significant in relation to the transaction taken as a whole that performance cannot be deemed complete until those acts are executed",
+         "no significant uncertainty exists regarding the amount of the consideration"],
+  "then": "revenue is recognised WHEN THE SOLE OR FINAL ACT TAKES PLACE and the service becomes chargeable",
+  "source_section": "AS 9 paras 7.1(ii) and 12",
+  "note": "The method is selected by the pattern of performance, not by preference. AS 9 para 12 requires performance to be measured under whichever of the two methods relates the revenue to the work accomplished. Choosing this method where many acts of comparable significance remain defers revenue that has already been earned.",
+  "evidence": [
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 7.1(ii)",
+     "quote": "Performance consists of the execution of",
+     "extraction_note": "The continuation reads 'asingle act.Alternatively,': the PDF extraction joins 'a single' and runs 'act.' into 'Alternatively,'. The next quote resumes after them. The artifact is in the extraction, not in the standard."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 7.1(ii)",
+     "quote": "services are performed in more than a single act, and the services yet to be performed are so significant in relation to the transaction taken as a whole that performance cannot be deemed to have been completed until the execution of those acts."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 7.1(ii)",
+     "quote": "The completed service contract method is relevant to these patterns of performance and accordingly revenue",
+     "extraction_note": "The continuation reads 'isrecognised when the sole or finalact takes place': the PDF extraction joins 'is recognised' and 'final act'. The next quote resumes after them."},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 7.1(ii)",
+     "quote": "takes place and the service becomes chargeable"},
+    {"file": "ICAI-AS-9-Revenue-Recognition.pdf", "section": "AS 9 para 12",
+     "quote": "In a transaction involving the rendering of services, performance should be measured either under the completed service contract method or under the proportionate completion method, whichever relates the revenue to the work accomplished."}
+  ]
+}

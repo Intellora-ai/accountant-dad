@@ -1,0 +1,24 @@
+{
+  "id": "GST-INV-TRANSPORT-001",
+  "status": "VERIFIED",
+  "if": [
+    "goods are being transported",
+    "the person in charge of the conveyance is not required to carry an e-way bill under these rules"
+  ],
+  "then": "that person MUST carry a copy of the tax invoice or the bill of supply issued under rule 46, rule 46A or rule 49",
+  "source_section": "CGST Rules 2017, rule 55A",
+  "note": "This is why a photographed invoice sometimes arrives from a truck rather than from an office.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55A",
+      "quote": "55A. Tax Invoice or bill of supply to accompany transport of goods.-",
+      "extraction_note": "The next words extract as 'The person-in-' at the end of one line and 'charge' at the start of the next, so the compound 'person-in-charge' cannot be quoted across the break."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55A",
+      "quote": "charge of the conveyance shall carry a copy of the tax invoice or the bill of supply issued in accordance with the provisions of rules 46, 46A or 49 in a case where such person is not required to carry an e-way bill under these rules."
+    }
+  ]
+}

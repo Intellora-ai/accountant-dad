@@ -23,6 +23,19 @@ jobs:
       - name: install tooling
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
 
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        # SHADOW DEFENCE. Two distributions can install the same top-level
+        # module. pip reports success, records both, and `import` resolves to
+        # whichever landed last. Measured on this repository, not imagined:
+        # `importlib.metadata.version("opencv-python")` returned 5.0.0.93 while
+        # `cv2.__version__` returned 4.10.0. A guard written against installed
+        # METADATA reports green straight through that. This one asks the
+        # interpreter which distribution provides each module and what the
+        # module reports as its own version.
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
+
       # ─────────────────────────────────────────────────────────────────────
       # LEGACY COMBINED GATE — implemented, deliberately duplicating the four
       # split gates in quality.yml and testing.yml.
@@ -68,7 +81,25 @@ jobs:
           # install, never during it. The package now declares a real runtime
           # dependency, and `--no-index` below cannot fetch one. Downloading it
           # into `dist` first keeps the install itself completely offline.
-          /tmp/fresh-legacy/bin/pip download --quiet --dest dist pydantic==2.12.3
+          #
+          # DERIVED FROM THE WHEEL, never restated. This line used to name
+          # `pydantic==2.12.3` — correct on the day it was written, when that
+          # was the package's only runtime dependency. `748bfb5` added four more
+          # (`opencv-python`, `numpy`, `pillow`, `pymupdf`) and this line was not
+          # updated, because nothing forces a hand-written list to follow the
+          # thing it describes. The step then failed on every commit for a
+          # reason that had nothing to do with the code:
+          #
+          #   ERROR: Could not find a version that satisfies the requirement
+          #          numpy==2.5.1 (from accountant-dad)
+          #
+          # Steps 1-12 passed; step 13 died. `quality.yml:45` was green on the
+          # same commit because it reads `Requires-Dist` off the built wheel
+          # instead of repeating it. Pointing pip at the wheel makes the
+          # dependency set follow `pyproject.toml` automatically, so a sixth
+          # dependency is covered the day it is declared. Two sources of truth
+          # became one (Law 19).
+          /tmp/fresh-legacy/bin/pip download --quiet --dest dist dist/accountant_dad-*.whl
           /tmp/fresh-legacy/bin/pip install --quiet --no-index --find-links dist accountant-dad
           /tmp/fresh-legacy/bin/python -c "import accountant_dad; print(accountant_dad.__version__)"
 

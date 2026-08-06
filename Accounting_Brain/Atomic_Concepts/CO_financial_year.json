@@ -1,0 +1,103 @@
+{
+  "id": "CO-FINANCIAL-YEAR",
+  "name": "Financial year — as the Companies Act, 2013 defines it (s.2(41))",
+  "status": "VERIFIED",
+  "definition": "The financial year of a company or body corporate is the period ending on the 31st day of March every year; and where it has been incorporated on or after the 1st day of January of a year, the period ending on the 31st day of March of the following year — that is, the period in respect of which the financial statement is made up.",
+  "why_it_exists": "Every other obligation is measured in financial years: books are kept for every financial year (s.128(1)), retained for eight of them (s.128(5)), and a financial statement is made up for one (s.2(40)). If the period is not fixed, none of those is countable. The 1 January rule stops a newly incorporated company from having to close a stub period of under three months.",
+  "inputs": [
+    "the date of incorporation of the company or body corporate"
+  ],
+  "outputs": [
+    "the start and end dates of the financial year in respect of which the financial statement is made up"
+  ],
+  "preconditions": [
+    "the entity is a company or body corporate to which the Companies Act, 2013 applies"
+  ],
+  "rules": [
+    "UNKNOWN — no separate rule file is derived from s.2(41); it is a definition consumed by CO-BOOKS-RETENTION-001 and CO-FS-TRUE-AND-FAIR-001"
+  ],
+  "exceptions": [
+    "first proviso to s.2(41) — a holding, subsidiary or associate company of a company incorporated outside India that is required to follow a different financial year for consolidation of its accounts abroad may be allowed any period as its financial year by the Central Government, whether or not that period is a year",
+    "third proviso to s.2(41) — a company or body corporate existing at the commencement of the Act had two years from that commencement to align its financial year to this clause",
+    "UNKNOWN — source is the Act as enacted 2013; amendments not held locally"
+  ],
+  "common_mistakes": [
+    "using a calendar year, or a foreign parent's year end, without the Central Government allowance under the first proviso",
+    "closing a stub period for a company incorporated on or after 1 January — its first financial year runs to 31 March of the FOLLOWING year",
+    "assuming the Tribunal decides these applications — the printed first proviso is substituted text and names the Central Government, leaving the Tribunal only pending applications"
+  ],
+  "dependencies": [],
+  "related_concepts": [
+    "CO-BOOKS-OF-ACCOUNT",
+    "CO-FINANCIAL-STATEMENT"
+  ],
+  "legal_references": [
+    "Companies Act, 2013, section 2(41)"
+  ],
+  "icai_references": [
+    "NOT APPLICABLE — the financial year is fixed by statute, not by an accounting standard"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — the GST tax period is a separate determination under the CGST Act and must not be conflated with s.2(41)"
+  ],
+  "evidence_required": [
+    "the date of incorporation, to decide whether the 1 January rule applies",
+    "where a non-standard year is claimed: the Central Government allowance under the first proviso"
+  ],
+  "confidence_factors": [
+    "weak when the date of incorporation is unknown — it decides the length of the first financial year",
+    "weak for a subsidiary or associate of a foreign parent — a Central Government allowance may displace the 31 March end",
+    "the whole first proviso carries a footnote recording substitution by Act 22 of 2019, so it is not the 2013 text"
+  ],
+  "validation_checks": [
+    "the period ends on 31 March, unless a Central Government allowance under the first proviso is on record",
+    "for a company incorporated on or after 1 January, the first financial year ends on 31 March of the following year",
+    "the financial statement is made up in respect of exactly this period"
+  ],
+  "examples": [
+    "a company incorporated on 15 February 2020 — its first financial year ends 31 March 2021, because it was incorporated on or after the 1st day of January of that year"
+  ],
+  "counterexamples": [
+    "a subsidiary of a foreign parent adopting a 31 December year end on its own initiative — the first proviso requires the Central Government to allow it"
+  ],
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(41)",
+      "quote": "“financial year”, in relation to any company or body corporate, means the period ending on the 31st day of March every year, and where it has been incorporated on or after the 1st day of January of a year, the period ending on the 31st day of March of the following year, in respect whereof financial statement of the company or body corporate is made up",
+      "extraction_note": "The printed line spaces the closing words apart ('is made                 up:'); whitespace is normalised before comparison, so the quote ends at 'made up'."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(41), first proviso",
+      "quote": "where a company or body corporate, which is a holding company or a subsidiary or associate company of a company incorporated outside India and is required to follow a different financial year for consolidation of its accounts outside",
+      "extraction_note": "Cut at 'accounts outside'. The next word in the source is 'I                ndia' — the extraction splits 'India'. The remainder is quoted separately. The split is in the extraction, not in the Act."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(41), first proviso",
+      "quote": "the Central Government may, on an application made by that company or body corporate in such form and manner as may be prescribed, allow any period as its financial year, whether or not that period is a year"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(41), third proviso",
+      "quote": "a company or body corporate, existing on the commencement of this Act, shall, within a period of two years from such commencement, align its financial year as per the provisions of this clause"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(41), footnote 1",
+      "quote": "The proviso subs. by Act 22 of 2019, s. 2 (w.e.f. 2-11-2018)",
+      "extraction_note": "The Act's own footnote, quoted as direct evidence that the proviso as printed is substituted text and not the 2013 enactment."
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(1)",
+      "quote": "financial statement for every financial year which give a true and fair view"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.2(40)(i)",
+      "quote": "a balance sheet as at the end of the financial year"
+    }
+  ]
+}

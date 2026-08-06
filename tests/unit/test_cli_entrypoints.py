@@ -22,6 +22,7 @@ import declared_exceptions
 import expected_checks
 import poll_checks
 import pytest
+from authored_source import running_path
 from test_poll_checks_main import FakeResponse
 
 BLOCKED = 1
@@ -143,7 +144,7 @@ def test_declared_exceptions_module_entrypoint_exits_with_the_ratchet_verdict(
     head = write(tmp_path, "head.txt", GOOD + EXTRA)
     monkeypatch.setattr(sys, "argv", ["declared_exceptions.py", base, head])
     with pytest.raises(SystemExit) as excinfo:
-        runpy.run_path(str(declared_exceptions.__file__), run_name="__main__")
+        runpy.run_path(str(running_path(declared_exceptions)), run_name="__main__")
     # Non-zero, so the block cannot be a hardcoded `sys.exit(0)`.
     assert exit_code(excinfo) == BLOCKED
 
@@ -152,7 +153,7 @@ def test_expected_checks_module_entrypoint_prints_every_name(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(sys, "argv", ["expected_checks.py", workflows(tmp_path)])
-    runpy.run_path(str(expected_checks.__file__), run_name="__main__")
+    runpy.run_path(str(running_path(expected_checks)), run_name="__main__")
     assert capsys.readouterr().out.splitlines() == ["perf"]
 
 
@@ -161,7 +162,7 @@ def test_expected_checks_module_entrypoint_refuses_a_missing_directory_argument(
 ) -> None:
     monkeypatch.setattr(sys, "argv", ["expected_checks.py"])
     with pytest.raises(SystemExit):
-        runpy.run_path(str(expected_checks.__file__), run_name="__main__")
+        runpy.run_path(str(running_path(expected_checks)), run_name="__main__")
 
 
 def poll_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, declared: str) -> None:
@@ -189,7 +190,7 @@ def test_poll_checks_module_entrypoint_exits_non_zero_on_an_undeclared_failure(
     serve(monkeypatch, "failure")
     poll_environment(monkeypatch, tmp_path, declared="")
     with pytest.raises(SystemExit) as excinfo:
-        runpy.run_path(str(poll_checks.__file__), run_name="__main__")
+        runpy.run_path(str(running_path(poll_checks)), run_name="__main__")
     assert exit_code(excinfo) == BLOCKED
     assert "NOT declared a placeholder" in capsys.readouterr().out
 
@@ -201,5 +202,5 @@ def test_poll_checks_module_entrypoint_exits_zero_when_every_gate_passed(
     serve(monkeypatch, "success")
     poll_environment(monkeypatch, tmp_path, declared="")
     with pytest.raises(SystemExit) as excinfo:
-        runpy.run_path(str(poll_checks.__file__), run_name="__main__")
+        runpy.run_path(str(running_path(poll_checks)), run_name="__main__")
     assert exit_code(excinfo) == PASSED

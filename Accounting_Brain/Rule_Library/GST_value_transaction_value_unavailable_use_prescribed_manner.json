@@ -1,0 +1,17 @@
+{
+  "id": "GST-VALUE-009",
+  "status": "VERIFIED",
+  "if": [
+    "the value of the supply cannot be determined under s.15(1)"
+  ],
+  "then": "the value is determined in such manner as may be PRESCRIBED \u2014 that is, by the CGST Rules, not by s.15 itself",
+  "source_section": "CGST s.15(4)",
+  "note": "This is where a related-party supply, or a supply where price is not the sole consideration, goes. BLOCKED IN PRACTICE: the prescribed valuation rules are in the CGST Rules, which are not extracted here. Engine 3 must escalate rather than substitute a number.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(4)",
+      "quote": "Where the value of the supply of goods or services or both cannot be determined under sub-section (1), the same shall be determined in such manner as may be prescribed."
+    }
+  ]
+}

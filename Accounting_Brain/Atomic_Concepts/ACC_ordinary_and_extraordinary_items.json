@@ -1,0 +1,145 @@
+{
+  "id": "ACC-PRIORPERIOD-EXTRAORDINARY-ITEMS",
+  "name": "Ordinary activities and extraordinary items",
+  "status": "VERIFIED",
+  "definition": "Ordinary activities are activities undertaken as part of the enterprise's business and related activities incidental to or arising from them. Extraordinary items are income or expenses arising from events or transactions clearly distinct from those ordinary activities and therefore not expected to recur frequently or regularly. Net profit or loss for the period comprises profit or loss from ordinary activities and extraordinary items, each disclosed on the face of the statement of profit and loss.",
+  "why_it_exists": "The split tells a reader which part of the result is repeatable. Because the test is relative to the business each enterprise ordinarily carries on, the same event can be extraordinary for one enterprise and ordinary for another — so the classification cannot be read off the event type alone.",
+  "inputs": [
+    "the nature of the event or transaction",
+    "the business ordinarily carried on by this enterprise",
+    "the amount of the income or expense"
+  ],
+  "outputs": [
+    "classification as profit or loss from ordinary activities, or as an extraordinary item",
+    "separate disclosure of the nature and amount of each extraordinary item"
+  ],
+  "preconditions": [
+    "an item of income or expense has been recognised in the period"
+  ],
+  "rules": [],
+  "exceptions": [
+    "an item within ordinary activities that is of such size, nature or incidence that its disclosure is relevant to explain the performance of the enterprise is disclosed separately, without becoming an extraordinary item"
+  ],
+  "common_mistakes": [
+    "classifying by event type instead of by the enterprise's own ordinary activities — AS 5 paragraph 10 makes the test relative to the business ordinarily carried on",
+    "using frequency of occurrence as the test, when AS 5 paragraph 10 states the test is the nature of the event in relation to the business, not the frequency",
+    "treating a large or unusual ordinary item as extraordinary, when AS 5 paragraph 12 provides separate disclosure within ordinary activities for exactly that case"
+  ],
+  "dependencies": [],
+  "related_concepts": [
+    "ACC-PRIORPERIOD-ITEMS",
+    "ACC-PRIORPERIOD-ESTIMATE-CHANGE"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted; only ICAI AS-1 and AS-5 were read for this claim, so no statute is cited"
+  ],
+  "icai_references": [
+    "AS 5, paragraph 4, definitions of ordinary activities and extraordinary items",
+    "AS 5, paragraphs 7, 8, 9, 10 and 11",
+    "AS 5, paragraphs 12, 13 and 14"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — AS-1 and AS-5 govern financial-statement policy and period attribution; GST is a separate determination and must not be conflated with it"
+  ],
+  "evidence_required": [
+    "a description of the event or transaction sufficient to judge its nature",
+    "a description of the business the enterprise ordinarily carries on",
+    "the amount of the item"
+  ],
+  "confidence_factors": [
+    "weak when the enterprise's ordinary activities are not known, because the test is relative to them and cannot be applied without them",
+    "AS 5 states extraordinary items arise only on rare occasions, so a classification producing them routinely is itself a signal of error",
+    "AS 5 gives no threshold for the 'size, nature or incidence' that triggers separate disclosure under paragraph 12"
+  ],
+  "validation_checks": [
+    "the classification was decided by the nature of the event in relation to this enterprise's business, not by how often such events occur",
+    "each extraordinary item's nature and amount is separately disclosed in the statement of profit and loss",
+    "both components — profit or loss from ordinary activities, and extraordinary items — are disclosed on the face of the statement"
+  ],
+  "examples": [
+    "AS 5 paragraph 11 names attachment of property of the enterprise, and an earthquake, as events generally giving rise to extraordinary items for most enterprises"
+  ],
+  "counterexamples": [
+    "claims from policyholders arising from an earthquake are NOT extraordinary for an insurance enterprise that insures against such risks — the same event, the opposite classification, because the ordinary activities differ"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 1",
+      "quote": "This Statement should be applied by an enterprise in presenting profit or loss from ordinary activities, extraordinary items and prior period items in the statement of profit and loss, in accounting for changes in accounting estimates, and in disclosure of changes in accounting policies."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 4, definition of ordinary activities",
+      "quote": "Ordinary activities are any activities which are undertaken by an enterprise as part of its business and such related activities in which the enterprise engages in furtherance of, incidental",
+      "extraction_note": "The definition continues 'to,or arising from, these activities', where the extraction joins 'to,' and 'or'. The remainder is quoted separately. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 4, definition of ordinary activities",
+      "quote": "arising from, these activities."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 4, definition of extraordinary items",
+      "quote": "Extraordinary items are income or expenses that arise from events or transactions that are clearly distinct from the ordinary activities of the enterprise and, therefore, are not expected to recur frequently or regularly."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 5",
+      "quote": "All items of income and expense which are recognised in a period should be included in the determination of net profit or loss for the period unless an Accounting Standard requires or permits otherwise."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 7",
+      "quote": "The net profit or loss for the period comprises the following",
+      "extraction_note": "The sentence continues 'components, each of which should bedisclosed on thefaceof the statement of profit and loss', where the extraction joins 'be'+'disclosed' and 'the'+'face'+'of'. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 7(a)",
+      "quote": "profit or loss from ordinary activities; and"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 8",
+      "quote": "Extraordinary items should be disclosed in the statement of profit and loss as a part of net profit or loss for the period. The nature and the amount of each extraordinary item should be separately disclosed in the statement of profit and loss in a manner that its impact on current profit or loss can be perceived."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 9",
+      "quote": "Therefore, only on rare occasions does an event or transaction give rise to an extraordinary item."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 10",
+      "quote": "in relation to the business ordinarily carried on by the enterprise rather than by the frequency with which such events are expected to occur.",
+      "extraction_note": "The preceding clause reads 'activitiesoftheenterpriseis determined bythenature oftheeventortransaction', which the extraction joins throughout. The quote begins after it. The PDF extraction joins adjacent words, so the quote is split around the join rather than repaired. The artifact is in the extraction, not in the standard."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 10",
+      "quote": "policyholders arising from an earthquake do not qualify as an extraordinary item for an insurance enterprise that insures against such risks."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 11",
+      "quote": "Examples of events or transactions that generally give rise to extraordinary items for most enterprises are:"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 11",
+      "quote": "attachment of property of the enterprise"
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 12",
+      "quote": "When items of income and expense within profit or loss from ordinary activities are of such size, nature or incidence that their disclosure is relevant to explain the performance of the enterprise for the period, the nature and amount of such items should be disclosed separately."
+    },
+    {
+      "file": "ICAI-AS-5-Net-Profit-or-Loss-Prior-Period-Items.pdf",
+      "section": "AS 5 para 14(a)",
+      "quote": "the write-down of inventories to net realisable value as well as the reversal of such write-downs;"
+    }
+  ]
+}

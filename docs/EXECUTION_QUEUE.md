@@ -130,6 +130,22 @@ being wrong costs someone's books.**
 **An incorrect entry must NEVER be silently accepted.** Insufficient confidence produces
 `I don't know` or a Clarification Request — never a guess.
 
+> **Superseded by Amendment 8, and the words above could not be edited in place.**
+> *"Insufficient confidence"* is a comparison against a threshold, and Decision **A7**
+> with `MEASUREMENT_FRAMEWORK.md` §10 holds that confidence gates nothing until the
+> separation test passes. **Read the sentence above as:** *a fact the system could not
+> establish — a region `reader` could not read, a field the document does not contain, an
+> unresolved doubt — produces `I don't know` or a Clarification Request.* Same outcome,
+> from a categorical fact the pipeline already reports, with no number anywhere.
+>
+> **Why the line itself still stands.** `conformance_registry.py:2119` cites it by a
+> CONTENT digest, `#an-incorrect-entry-must@b50bd021b31e`. Editing the words breaks the
+> citation, and `conformance_registry.py` belongs to another workstream. The two changes
+> must land together; the exact pair is recorded in `KNOWN_FAILURES.md` F-004. **This is
+> the one document of the five where Amendment 8 is applied by supersession rather than
+> by revision, and it is also the only one that declares itself to have no authority
+> (line 3).**
+
 ### The five structural safety gates
 
 Machine-checkable. No accountant, no ground truth, no money. Every one runs on every commit.

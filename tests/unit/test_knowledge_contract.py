@@ -286,6 +286,28 @@ def test_a_slotted_payload_is_judged_by_its_slots() -> None:
     )
 
 
+def test_a_payload_whose_slots_are_one_bare_name_is_judged_by_that_name() -> None:
+    # `__slots__` may be a single STRING rather than a sequence, and Python
+    # treats the whole string as ONE slot name. `_DecisionShapedAnswer` above
+    # goes through `@dataclass(slots=True)`, which always emits a tuple — so
+    # nothing else in this file reaches the string branch at all, and a scan
+    # that mishandled it would carry a decision straight through.
+    #
+    # Iterating the bare string instead of taking it whole is the specific
+    # mistake to catch: that yields "d", "e", "c", ... and no token matches.
+    #
+    # Built with `type()` rather than a `class` statement because ruff's
+    # PLC0205 rejects a string `__slots__` on sight, and the string form is
+    # exactly what has to be exercised here. A `noqa` would buy this test at
+    # the cost of the suppression-count gate.
+    slotted = type("_OneSlotAnswer", (), {"__slots__": "decision"})()
+
+    assert violates_advisory_contract(slotted) == (
+        AdvisoryViolation.NOT_A_KNOWLEDGE_ANSWER,
+        AdvisoryViolation.RETURNS_A_DECISION,
+    )
+
+
 @pytest.mark.parametrize("returned", [None, "Treat as Office Equipment.", 42, (), object()])
 def test_anything_that_is_not_a_knowledge_answer_is_rejected(returned: object) -> None:
     # The complete half of the predicate, and the only half that cannot be

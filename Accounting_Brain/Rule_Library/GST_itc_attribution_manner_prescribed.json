@@ -1,0 +1,17 @@
+{
+  "id": "GST-ITC-17-6",
+  "status": "VERIFIED",
+  "if": [
+    "credit has to be attributed under s.17(1) or s.17(2)"
+  ],
+  "then": "the MANNER of attribution is such as the Government MAY PRESCRIBE \u2014 the Act itself supplies no formula",
+  "source_section": "CGST Act s.17(6)",
+  "note": "This is why no apportionment number can be produced from the Act alone. Any computed attribution must cite the prescribing Rule, which is not extracted here; from this source the formula is UNKNOWN. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.17(6)",
+      "quote": "The Government may prescribe the manner in which the credit referred to in sub-sections (1) and (2) may be attributed."
+    }
+  ]
+}

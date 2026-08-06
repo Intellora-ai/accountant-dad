@@ -1,0 +1,17 @@
+{
+  "id": "GST-ITC-18-6-P",
+  "status": "VERIFIED",
+  "if": [
+    "refractory bricks, moulds and dies, jigs and fixtures are supplied AS SCRAP"
+  ],
+  "then": "the taxable person MAY pay tax on the TRANSACTION VALUE of those goods determined under section 15, instead of applying the higher-of test in s.18(6)",
+  "source_section": "CGST Act s.18(6), proviso",
+  "note": "An exhaustive list of four item classes and one condition \u2014 supplied as scrap. It does not extend to other capital goods sold as scrap. The proviso is permissive ('may'), so it is an option available to the taxable person, not an automatic override. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(6), proviso",
+      "quote": "Provided that where refractory bricks, moulds and dies, jigs and fixtures are supplied as scrap, the taxable person may pay tax on the transaction value of such goods determined under section 15."
+    }
+  ]
+}

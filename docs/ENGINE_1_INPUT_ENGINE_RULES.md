@@ -648,11 +648,50 @@ Note the asymmetry: a low-confidence extraction that is honestly marked is a **s
 
 ---
 
+# 9A. What is and is not a sub-engine — the membership test
+
+> **This section governs the *"exactly four"* count in §7.** Read the two together.
+>
+> **Why it is printed here instead of inside §7.** `conformance_registry.py` pins conformance predicates to **line numbers** in this document, and a drift test fails when a quotation moves off the line it cites. Two predicates cite lines 569 and 626 — both inside §8 — so **any insertion above line 626 renumbers them.** Renumbering would strand four further citations in files this change may not edit. So this document is, in practice, **append-only after line 626**, and the rule lands in the first place that does not move a cited line. That constraint is a property of the tooling, not of the architecture, and it is recorded in `KNOWN_FAILURES.md` **F-027**.
+
+> **A component is a sub-engine if, and only if, it produces one of the four parts the parent engine combines into the Document Evidence Object.**
+
+**Added 2026-08-06. The §7 count is unchanged and was never wrong.** What was missing was the predicate that decides membership, and its absence let a *file* count be read as a *sub-engine* count. They are not the same measurement. This section states the test; it removes no rule and adds no sub-engine. Recorded as Amendment 5 in [`ARCHITECTURE_AMENDMENTS.md`](ARCHITECTURE_AMENDMENTS.md), resolving `KNOWN_FAILURES.md` **F-010**.
+
+**A sub-engine is not a file.** This document forbids implementation outright — the header, *"Specification only — no implementation. No code, no libraries … no pipelines"* — so a count written here cannot have been counting source files, because when it was written none were permitted to exist. It counts **owned problems**, the unit [`SUB_ENGINE_RESPONSIBILITIES.md`](SUB_ENGINE_RESPONSIBILITIES.md) uses when it says *"Each sub-engine owns exactly one problem."*
+
+The architecture already proves the two differ. It describes work Engine 1 must perform — assembly — and states in the same breath that **no sub-engine performs it** (§7, *"No new assembler sub-engine is created"*). So engine-level work that is not sub-engine work already existed in the architecture before any code did. §3A shows the same thing structurally: **Input Engine (parent)** is a fifth *row* in the Decision Authority table with its own `Owns` column, and it is not a sub-engine.
+
+## The three categories, and every component belongs to exactly one
+
+| Category | Test | Members |
+|---|---|---|
+| **Sub-engine** | Produces one of the four parts named in §7's output-contract table | `cleaner` · `reader` · `parser` · `confidence` — **exactly four, permanently** |
+| **The parent engine's own machinery** | Calls the four sub-engines, combines their four parts, assigns the Document ID. It is the box labelled *Input Engine* in §7's assembly diagram, not a component inside it | The engine's runner and its combining step |
+| **Engine-level facility** | Produces no part of the Document Evidence Object, and answers no question about the contents of any document | Configuration loading · the calibration measurement record · document-type cue detection |
+
+**The test is checkable, not a matter of judgement.** The Document Evidence Object's components are fixed by §5. A component whose output is not one of them did not produce one of the four parts, and is therefore not a sub-engine — whatever it is named, and however many files it occupies.
+
+**Splitting one job across two files creates no second component.** The parent's runner and its combining step are one engine-level responsibility written in two places. File layout is not architecture; a second *owner* would be.
+
+**The system-wide count already works this way, which is the check on all of the above.** [`MVP_ARCHITECTURE.md`](MVP_ARCHITECTURE.md) §3: *"45 components: 6 engines, 39 sub-engines."* Assembly is **not** among the 45 — yet the architecture requires it to happen and names the Input Engine itself as the thing that does it. So the semantic tree already excludes engine-level machinery that must exist, exactly as *"exactly four"* excludes it. **A third category was not invented here; it was already in use and unnamed.** Facilities sit outside the 45 for the same reason, and the 45 is unchanged by this section.
+
+## What each category may and may not do
+
+- **A fifth sub-engine may never be created.** §7's rules stand unchanged: do not add, do not remove, do not merge. Anything that would produce a fifth part of the Document Evidence Object **is** a fifth sub-engine, whatever it is called, and is forbidden.
+- **The parent's machinery may never reason.** It assembles what the four produced. §3A binds it in full: it does not override a sub-engine output, and it never raises or lowers a confidence value.
+- **A facility may never reach the artifact.** The moment a facility's output enters the Document Evidence Object it has produced a fifth part and has stopped being a facility. **This is the line to watch** — a facility is cheap to add and a sub-engine may not be added at all, so "facility" is where an unwanted fifth sub-engine would hide.
+
+**Document-type cue detection is a facility, and that boundary is load-bearing.** [`CLAUDE.md`](../CLAUDE.md) §P Amendment 3 authorises *"document classification"* by name. It is a facility because the Document Evidence Object has no document-type component and gains none: what cue detection produces is evidence for the calibration record, never a part of the artifact. If a document type is ever to travel to the Understanding Engine it travels as **observed cues carrying their locations**, never as a bare type — Rule 1 of [`COMMUNICATION_RULES_INPUT_ENGINE.md`](COMMUNICATION_RULES_INPUT_ENGINE.md), *"The Input Engine sends **observations**. It does not send **interpretations**."*
+
+---
+
 # 10. Final Validation Checklist
 
 Before this specification is considered complete, confirm:
 
 - [x] Input Engine has exactly four sub-engines.
+- [x] §9A states the membership test that decides what counts as one — a component is a sub-engine only if it produces one of the four parts the parent combines. Every Engine 1 component is a sub-engine, the parent's own machinery, or a facility, and exactly one of the three.
 - [x] No sub-engine responsibilities overlap.
 - [x] No accounting intelligence exists inside the Input Engine.
 - [x] No implementation exists.

@@ -1,0 +1,24 @@
+{
+  "id": "GST-INV-FIELD-053-A",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a revised tax invoice referred to in section 31",
+    "it is issued under rule 53(1) of the CGST Rules, 2017"
+  ],
+  "then": "the revised tax invoice MUST show the words 'Revised Invoice' prominently, wherever applicable",
+  "source_section": "CGST Rules 2017, rule 53(1)(a)",
+  "note": "One mandatory particular of rule 53(1)(a), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1)(a)",
+      "quote": "Revised Invoice",
+      "extraction_note": "The words appear in the source between the extraction's U+2015 and U+2016 quotation marks; the quote takes the words alone."
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 53(1)(a)",
+      "quote": "wherever applicable, indicated prominently;"
+    }
+  ]
+}

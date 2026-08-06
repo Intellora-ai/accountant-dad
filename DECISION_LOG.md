@@ -1,0 +1,1192 @@
+# DECISION_LOG.md
+
+Every architectural decision, with what it cost. **Append only. History is never
+overwritten** — a decision that turns out wrong gets a new entry that supersedes it,
+and the original stays.
+
+A decision belongs here when it is hard to reverse, when it closes off options, or
+when a future engineer would otherwise have to re-derive the reasoning.
+
+---
+
+## D-001 · The mutation gate's cap is a measurement value, not a permanent one
+
+| | |
+|---|---|
+| **Date** | 2026-08-05 |
+| **Files** | `.github/workflows/testing.yml:213` |
+
+**Context.** The `mutation` job had never finished. It read 65.7%, then 99.0% — both from
+runs cancelled before `d85861c`, both **EXPIRED** — and both numbers were beside the point:
+it was cancelled by `timeout-minutes: 10` at 997 of 1593 mutants.
+
+**Alternatives.**
+1. Cut the 77 timeout-mutants. **Falsified by measurement**: a timeout costs 2.234s
+   and a non-timeout 2.326s in the same band. Free timeouts still leave 10.6 min.
+2. Cache between runs. **Impossible in mutmut 3.3.1** — `__main__.py:268` overwrites
+   `exit_code_by_key` with all-`None` before anything reads it. A restored cache saves
+   23.3s of 593s.
+3. Parallelise. `--max-children` already defaults to `cpu_count`.
+4. Speed the slow tests. The per-mutant timeout has a hard **15.00s floor** from a `+1`
+   term, so total achievable movement across all 1593 mutants is **0.5 seconds**.
+5. Raise the clock.
+
+**Decision.** Raise the clock to **100 minutes**. The number came from the owner
+against a measured bracket: 10.8 min provable floor, 24.1 mid, 32.7 upper.
+
+**Reasoning.** The cost is asymmetric. A cancelled run yields **zero information** and
+must be re-run; an over-generous cap costs only the difference in minutes, and only
+when something actually hangs. Three CI runs had already been burned learning nothing.
+
+**Trade-off.** *Gained:* the gate can finish, so the real runtime becomes knowable.
+*Lost:* a PR can now wait up to an hour on this gate.
+
+**Impact.** The run finished in **24m14s** at **99.3%**. Every projection above is now
+replaceable by a fact, and the cap can be set from evidence rather than arithmetic.
+That is the point — Law 6, never optimize before measuring.
+
+---
+
+## D-002 · Confidence has no document-level scalar
+
+| | |
+|---|---|
+| **Date** | 2026-08-05 (owner's decision A5; recorded here) |
+| **Files** | `docs/CONFIDENCE_SPECIFICATION.md` §4 |
+
+**Context.** Six aggregation methods were on the table for combining per-field
+confidence into one document number.
+
+**Alternatives, and how four were eliminated *without any labelled data*.** Marichal &
+Mesiar, *Meaningful aggregation functions mapping ordinal scales into an ordinal scale*,
+Aequationes Math. 77(3) 2009, **Corollary 5.7** (first proved by Orlov, 1981): a
+symmetric, continuous, idempotent function on an ordinal scale is comparison-meaningful
+**iff it is an order statistic function.**
+
+```
+ELIMINATED  mean · product · Bayesian pooling · Dempster-Shafer
+            Not order statistics. On an ordinal scale their ORDERING FLIPS under a
+            transformation the data permits. Product fails even at interval level:
+            φ(x) = x + 1 reverses which of two documents ranks higher.
+SURVIVING   min · worst_k
+```
+
+**Corollary 6.2** goes further: across **independent** ordinal scales the only
+comparison-meaningful function is a **projection**. OCR, table-structure and
+document-type are three different instruments, so `min` across them asserts
+**commensurability** — that an OCR 0.70 is the same quantity of doubt as a
+table-structure 0.70. That claim is strictly stronger than ordinality and needs data.
+
+**Decision.** **No document-level scalar at all.**
+
+**Reasoning.** `min ≥ t` is *identically* `∀i : cᵢ ≥ t`. The scalar adds nothing the
+per-field floors do not already carry, and it creates a false affordance — inviting
+someone downstream to average it, compare it across documents, or threshold it, all of
+which are meaningless on this scale.
+
+**Trade-off.** *Gained:* no meaningless number can be built on. *Lost:* there is no
+single number to show on a dashboard, and anyone expecting one will have to be told why.
+
+**Impact.** `confidence_report` is a **recorder, not a gate**. Six of the sixteen
+confidence parameters are dead on arrival because there is no document scalar to
+threshold. Recorded as F-005: the frozen `FieldConfidence` has no slot for instrument
+or region, so the raw signal lives in the measurement log instead.
+
+---
+
+## D-003 · The raw confidence signal lives in the measurement log, not the artifact
+
+| | |
+|---|---|
+| **Date** | 2026-08-05 |
+| **Files** | `src/accountant_dad/engines/input_engine/measurement.py`, `artifacts/evidence.py` |
+
+**Context.** Decision A8 requires the raw signal preserved per field, per region, **per
+instrument**, with its origin. `FieldConfidence` is `(field_name, confidence)` — no slot
+for either.
+
+**Alternatives.** (1) Amend the frozen artifact schema to add the fields. (2) Put the
+raw signal in the append-only measurement log.
+
+**Decision.** The measurement log.
+
+**Reasoning.** **A8 says preserve the raw signal. It does not say preserve it inside the
+artifact.** The log is append-only, line-delimited, and is what a calibration run reads.
+Amending a frozen contract to solve a problem a new file already solves is the worse fix
+— it spends a §M amendment and widens a schema every downstream engine depends on.
+
+**Trade-off.** *Gained:* artifacts stay immutable and frozen; no amendment spent.
+*Lost:* the raw signal is no longer co-located with the artifact it describes, so
+anything wanting both must join them by document id.
+
+**Impact.** `measurement.py` must carry `instrument` and `region` per signal or the
+raw signal has **no home anywhere**. That makes it load-bearing, not optional.
+
+---
+
+## D-004 · PaddleOCR is resolved at first use, not at import
+
+| | |
+|---|---|
+| **Date** | 2026-08-05 |
+| **Files** | `src/accountant_dad/engines/input_engine/reader.py` |
+
+**Context.** `reader.py` reaches PaddleOCR through `importlib` because PaddleOCR ships
+no `py.typed`, so a plain `import paddleocr` is itself a `mypy --strict` error under a
+zero-new-suppressions gate. The lookup was written at **module scope**.
+
+**Decision.** Move the `importlib.import_module("paddleocr")` call inside the
+already-`@cache`d `_recogniser()` builder.
+
+**Reasoning.** At module scope, importing the Input Engine **at all** required a ~500 MB
+ML package to be present — so every gate that merely imports the package died at
+collection. The `importlib` route was chosen precisely to avoid a hard dependency, and
+resolving at import time defeated it. Inside the cached builder it costs nothing (it
+already ran exactly once) and restores the intended property: the dependency is needed
+to **run OCR**, never to **import the module that offers it**.
+
+**Trade-off.** *Gained:* the package imports without the ML stack; every non-OCR gate
+survives. *Lost:* a missing PaddleOCR now surfaces at first OCR call rather than at
+startup — later, and therefore in a worse place. Accepted because the alternative made
+six gates unrunnable.
+
+**Impact.** The literal string stays in the file, so the AST test pinning this module's
+dynamic imports still sees it — moving the call does not hide a technology swap from
+the stack check.
+
+---
+
+## D-005 · PyMuPDF's licence is recorded, not resolved
+
+| | |
+|---|---|
+| **Date** | 2026-08-05 |
+| **Files** | `requirements-engine1.txt`, `KNOWN_FAILURES.md` F-001 |
+
+**Context.** `pymupdf==1.28.0` reports *"Dual Licensed - GNU AFFERO GPL 3.0 or Artifex
+Commercial License"* — read from installed metadata, not recalled. AGPL §13 obliges
+anyone letting users interact over a network to offer them the complete source. A hosted
+accounting platform is exactly that shape.
+
+**Alternatives.** (1) Swap to a permissively licensed PDF reader. (2) Buy the Artifex
+commercial licence. (3) Pin it, record the exposure, and escalate.
+
+**Decision.** (3).
+
+**Reasoning.** `docs/TECHNOLOGY_STACK.md:28` **locks** PyMuPDF. A locked component is
+not swapped on an engineer's judgement, and `CLAUDE.md` §E.8 forbids removing what the
+owner specified. A licence is also not the kind of evidence the stack's replacement
+clause contemplates — that clause wants a measured superiority on accuracy, latency,
+determinism, maintainability or reliability. This is a legal constraint, not a
+measurement, so it goes to the owner intact.
+
+**Trade-off.** *Gained:* the lock holds and the exposure is visible in three places
+(the requirements file, `KNOWN_FAILURES.md`, and the commit message).
+*Lost:* the exposure is live in the meantime.
+
+**Impact.** Blocks nothing technically. Blocks shipping to a paying customer until
+route (1) or (2) is chosen.
+
+---
+
+## D-006 · Killed agents' work is recovered and finished, never restarted
+
+| | |
+|---|---|
+| **Date** | 2026-08-05 |
+| **Files** | process, not code |
+
+**Context.** A session limit killed roughly 30 concurrent agents mid-run. Each had been
+given an isolated git worktree.
+
+**Alternatives.** (1) Re-dispatch every task from scratch. (2) Recover each worktree,
+audit what survived, and finish from that checkpoint.
+
+**Decision.** (2), always.
+
+**Reasoning.** The worktrees persisted. 3,721 lines of source and 1,906 of tests
+survived — restarting would have discarded all of it and re-derived the same three
+defects. **State on disk is state**, and a summary is not a substitute for it.
+
+**Trade-off.** *Gained:* nothing was lost, and inherited code got an audit pass it
+would not otherwise have had — which is how the `DocumentId` import error and the
+module-scope PaddleOCR import were caught. *Lost:* recovery is slower per task than
+a clean restart would appear to be, and inherited code must be treated as untrusted.
+
+**Impact.** Made permanent: `isolation: "worktree"` for every code-writing agent, and
+recovery-before-restart as the standing response to any interruption.
+
+**Superseded in part by D-015**, which adds the missing half: a recovered file is untrusted
+until it has been *run* against the current contract, not merely committed.
+
+---
+
+## D-007 · A measurement belongs to the commit that produced it — Law 56
+
+| | |
+|---|---|
+| **Date** | 2026-08-06 · **approved by the user** |
+| **Files** | `CLAUDE.md` §C.56 · `ENGINEERING_RULES.md` "Commit-Bound Measurements" · `~/.claude/hooks/accountant-dad-commit-bound-metrics.py` · `LESSONS.md` L-011 · commits `6a5dbb3`, `c1eb9be` |
+
+**Context.** A mutation score of **95.3% @ commit `7e0efe2`** — real, CI-produced, correct
+— stayed quotable in reports while roughly 3,000 lines of source changed under it across
+six modules. **Nothing was wrong with the number.** Everything was wrong with quoting it.
+
+**Alternatives.**
+1. Rely on care — re-check numbers before quoting them. Rejected: this *is* what was being
+   done, and it failed silently. A judgement rule with no forcing function drifts (`§N`).
+2. Timestamp measurements instead of binding them to commits. Rejected: a timestamp does
+   not say which code produced the number, and two commits land in the same minute.
+3. Bind every measurement to its commit, and make an uncited metric **unwritable**.
+
+**Decision.** (3), enforced in **seven layers** so it cannot quietly lapse: the law ·
+the rulebook section · a `PreToolUse` hook that rejects an uncited metric *before the write
+lands* · the status-report format · the five progress documents · session memory · the
+end-of-task self-audit.
+
+**Reasoning.** The dangerous artifact is not a red metric — a red metric stops people. It is
+a **green metric attached to source that has since moved**, read by someone deciding to
+merge. Law 55 makes a below-threshold gate unmergeable; Law 56 is what stops an *expired*
+green from impersonating a current one. Without it, Law 55 can be satisfied by arithmetic
+performed on a fossil.
+
+**The hook is deliberately narrow, and that is a design decision, not laziness.** It fires
+only on a line carrying **both** a number with a unit **and** a measurement word, and never
+on a line containing a threshold word — so `floor 93%` is silent and prose about coverage is
+untouched. A hook that cries wolf gets switched off, and a switched-off layer enforces
+nothing.
+
+**Trade-off.** *Gained:* a stale number cannot be written into a progress document at all,
+by anyone, including a future session that never read this entry. *Lost:* every metric now
+costs the work of finding its commit, and a genuinely unknown value must be written as
+**UNMEASURED** — which reads as less progress than a stale number would have implied. That
+is the correct trade and it will feel like a regression.
+
+**Impact.** Immediate and large. On the day it landed, **every** quotable number in this
+repository expired: `src/` had moved `+2591 / −300` lines after `7e0efe2`. The five progress
+documents now open with an explicit expiry block rather than a figure.
+
+---
+
+## D-008 · A third named state, never a widened boolean
+
+| | |
+|---|---|
+| **Date** | 2026-08-06 |
+| **Files** | `src/accountant_dad/engines/input_engine/confidence_report.py` · commit `502e166` |
+
+**Context.** `RegionReading` refused `text` present with `extraction_confidence=None` — the
+exact shape `reader.read_pdf_text_layer` emits for **every** region, because a text layer is
+transcribed rather than recognised and no recogniser ran to produce a score. Three states
+existed in reality; the invariant admitted two.
+
+**Alternatives.**
+1. Relax the invariant to allow `None` and let callers work out what it means.
+2. Use a sentinel confidence value for "not measured".
+3. Name the third state: `ReadingState.{UNREAD, READ_AND_SCORED, READ_BUT_UNSCORED}`.
+
+**Decision.** (3).
+
+**Reasoning.** (1) makes `is None` ambiguous at every call site, so each caller re-derives
+the distinction and some get it wrong. (2) invents a number, which
+`ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids and Law 24 forbids generally. (3) follows the
+`measurement.AbsentType` precedent that resolved F-005 — **absent, zero and unread are three
+different claims and each gets a name.**
+
+**Trade-off.** *Gained:* no caller re-derives the state from falsiness. *Lost:* a third
+enum member every consumer must handle, and two existing tests had to be corrected —
+stricter, not eased.
+
+**Impact.** `state` tests `is None`, never falsiness, and that is **load-bearing**: the
+minimum confidence is `Decimal("0")` and empty text is `""`, both falsy. Two tests pin those
+collapses so a future refactor to `if not x` fails.
+
+---
+
+## D-009 · An unreadable document CROSSES the boundary as an artifact, never as an exception
+
+| | |
+|---|---|
+| **Date** | 2026-08-06 |
+| **Files** | `src/accountant_dad/engines/input_engine/pipeline.py` · commit `1e65b91` |
+
+**Context.** Engine 1 raised where its contract says emit. A business outcome (*this scan is
+unreadable*) was indistinguishable from a crash (*the code is broken*), so the Application
+Layer could not route them differently. An unreadable receipt that should have become a
+clarification question looked like an outage.
+
+**The rule was already written, in three locked places** — read, not recalled:
+
+```
+APPLICATION_LAYER_CONTRACTS.md:30   business failure -> an object recording it
+                                    runtime failure  -> nothing produced
+APPLICATION_LAYER_CONTRACTS.md:27   never a fabricated one
+COMMUNICATION_RULES_INPUT_ENGINE.md:159
+                                    "The Input Engine does not halt the pipeline"
+```
+
+`parser.DocumentUnreadableError`'s own docstring had already assigned the job: *"The Input
+Engine PARENT is what must not halt the pipeline."* `pipeline.run` is that parent and had
+never implemented its half.
+
+**Alternatives.** (1) Keep raising and let the Application Layer classify the exception
+type. (2) Emit an artifact for every failure. (3) Emit for **business** failures only, and
+keep raising for runtime ones.
+
+**Decision.** (3), with the business/runtime line **read off the sub-engines' own declared
+verdicts** rather than invented. `BUSINESS_FAILURE` holds four types:
+`cleaner.UnusableArtifactError`, `reader.UnreadableDocumentError`,
+`parser.DocumentUnreadableError`, `pymupdf.FileDataError` (measured: what a corrupt PDF
+actually raises).
+
+**Deliberately excluded, and this is the whole decision in one line.**
+`VisionFallbackUnavailableError` and `ParserDependencyMissingError` keep raising. **A missing
+TOOL is not a bad document.** Emitting *"unreadable"* for those would assert something false
+about the user's file, which is worse than crashing.
+
+**Trade-off.** *Gained:* the Application Layer can finally route a bad scan differently from
+an outage. *Lost:* two error paths now exist where there was one, and the classification
+must be maintained as new error types appear.
+
+**Impact.** Nothing is fabricated in the failure artifact: `confidence_scores=()`,
+`detected_fields=()`, `detected_tables=()`. One `UncertaintyMarker` carries the stage and the
+sub-engine's own message verbatim. It is **deliberately not routed through
+`assembly.assemble`** — that function requires all four sub-engine outputs precisely to prove
+all four ran, and feeding it a manufactured `CleanerOutput` would be the fabricated object
+line 27 forbids. The trade-off is stated in the module docstring rather than hidden.
+
+---
+
+## D-010 · The dependency closure is derived from module-scope imports, and only those
+
+| | |
+|---|---|
+| **Date** | 2026-08-06 · the one `.github` line **approved by the owner** |
+| **Files** | `pyproject.toml` · `tests/unit/test_declared_dependencies.py` · `.github/workflows/quality.yml:42` · commit `839645a` |
+
+**Context.** `pyproject.toml` declared only `pydantic` while Engine 1 imports cv2, numpy,
+PIL and pymupdf at module scope. Measured on a stdlib-only interpreter: `import
+accountant_dad` succeeded; `...input_engine.cleaner` raised `No module named 'cv2'`. Four of
+nine Engine 1 modules were unimportable from a correct install, and `quality.yml:47` imports
+the **top-level package only**, which has no heavy imports — so the gate was green while the
+installable artifact was broken.
+
+**Alternatives.** (1) Copy `requirements-engine1.txt` wholesale. (2) Declare everything
+Engine 1 can ever reach, including the ML stack. (3) Declare exactly what is imported **at
+module scope**, and nothing resolved inside a function.
+
+**Decision.** (3). Every version copied character for character from
+`requirements-engine1.txt`; **none was chosen here.**
+
+**Reasoning.** What CI happens to install is a different question from what the wheel
+promises, and only the wheel's promise binds a user. (2) would put ~2 GB of ML wheels behind
+`import accountant_dad` to no purpose — `docling`, `pypdfium2`, `torch`, `transformers` and
+`paddleocr` are all reached through `require_module()` inside a function, so the package
+imports without them and names the missing one when the work that needs it actually runs.
+
+**Trade-off.** *Gained:* `pip install accountant-dad` produces an importable Engine 1.
+*Lost:* the module-scope/function-scope distinction is now load-bearing, so moving an import
+to the top of a file silently changes the package's contract.
+
+**Impact.** That last risk is why the guard **derives** the set structurally from the AST
+rather than restating it: a hand-maintained list drifts, a derived one cannot. The one
+approved `.github` line resolves the install closure from the wheel's own metadata instead of
+a hardcoded pin, so it never goes stale when a dependency changes.
+
+---
+
+## D-011 · A guard states its own limit rather than claiming to prove absence
+
+| | |
+|---|---|
+| **Date** | 2026-08-06 |
+| **Files** | `tests/unit/test_package.py` · `tests/unit/test_runtime_library_versions.py` · `tools/ci/assert_imports_match_pins.sh` |
+
+**Context.** Two guards were checking the label instead of the thing.
+
+```
+the build freeze     matched module FILENAMES against FROZEN_MARKERS, opened no
+                     file. engines/input_engine/gst_rates.py, full of tax logic,
+                     PASSED
+the version pin      asserted importlib.metadata.version("opencv-python") ->
+                     '5.0.0.93' while cv2.__version__ reported '4.10.0'
+```
+
+Amendment 3 rests on the first, and its own wording gave the game away: *"a test proves no
+module **named** for accounting, tax, LLM, brain or Tally enters it."* **Named** was doing
+all the work.
+
+**Alternatives.** (1) Extend the filename marker list. (2) Read the code. (3) Read the code
+**and** write down what the check still cannot see.
+
+**Decision.** (3). The freeze guard now parses each Engine 1 module with `ast` and inspects
+imports, calls, function and class definitions, names, attributes, arguments and aliases —
+including `importlib.import_module("x")`. The version guard asserts what the **imported
+library reports about itself**, never what packaging metadata claims.
+
+**Reasoning.** The general claim — *no accounting reasoning lives inside Engine 1* — is not
+statically decidable, and **a guard claiming to prove it would be a worse lie than the
+filename check.** So three narrow, checkable claims are proved instead (no cross-boundary
+import, no AI vendor package, no accounting or tax identifier declared) and the residue is
+written down. On the version side, metadata describes what was *installed*; only the module
+knows what was *loaded*, and the gap between them is exactly where F-002 hid for a day.
+
+**Trade-off.** *Gained:* both guards now measure the thing rather than its label. *Lost:*
+the freeze guard is no longer a one-line claim anyone can hold in their head, and the
+residual risk is now explicit and permanently visible.
+
+**Impact.** Amendment 3's gate count rose as promised, and the honest limit is on the record
+so nobody later mistakes these three tests for a proof of the general claim.
+
+---
+
+## D-012 · A crash is not an enforcement, and an omission must become a sentence
+
+| | |
+|---|---|
+| **Date** | 2026-08-06 |
+| **Files** | `src/accountant_dad/conformance.py` · `conformance_registry.py` · commit `e921c3c` |
+
+**Context.** Two silent failures in the conformance harness.
+
+1. A negative control that **crashed** — a validator reaching into a missing key, a builder
+   calling a name that moved — scored as `ENFORCED`. The rule was never reached, so nothing
+   was established either way, and the suite was green about it.
+2. **45 hand-listed rules against 143 prohibition clauses in `docs/`**, with nothing anywhere
+   comparing the two. A rule absent from the registry was indistinguishable from a rule
+   nobody ever wrote.
+
+**Alternatives.** For (2): leave the gap and trust review · auto-generate rules from the
+clauses · require every uncovered clause to be **listed with a reason**.
+
+**Decision.** `Attribution.CONTROL_CRASHED` as a fourth outcome, and an exclusion inventory
+in which **every one of the 143 clauses is either cited as a rule or listed with one of four
+reasons.**
+
+**Reasoning.** *"The omission is silent and the suite is green"* is the most dangerous shape
+a registry can have. Auto-generating rules would manufacture predicates for clauses that
+have none, which is the fake-coverage failure in a new costume. A written reason is something
+a human can argue with; an empty space is not.
+
+**Backward compatibility was chosen over correctness, deliberately (Law 33).** Narrowing the
+default by fiat would silently reclassify every control anyone ever wrote against this
+harness, **including ones outside this repository.** The default stays the **old** behaviour,
+stated out loud; the real inventory opts into the narrow one, and a test asserts that every
+control in it did — so forgetting is red, not quiet.
+
+**Trade-off.** *Gained:* a coverage gap is now a written sentence with an owner. *Lost:* 143
+clauses must each be justified, and eight `REVIEW_ONLY` prohibitions must name the phase at
+which the exemption expires.
+
+**Impact.** The module also states what it still does **not** measure: *"whether any ENGINE
+emits a conformant artifact… not one of them runs Engine 1."* **This decision shipped
+incomplete** — the `Exclusion` dataclass it describes was never written, and the suite
+cannot collect. Recorded as F-024.
+
+---
+
+## D-013 · A measurement is never computed from the rule that caused the damage
+
+| | |
+|---|---|
+| **Date** | 2026-08-06 |
+| **Files** | `src/accountant_dad/engines/input_engine/cleaner.py` · `tests/unit/test_input_engine_cleaner_redteam.py` · commits `1e0df65`, `590c6bb` |
+
+**Context.** Four separate `cleaner` defects — a crop discarding a readable GSTIN, a net ink
+count that went negative while ink was destroyed, a multi-page scan reporting page one only,
+and an alpha channel discarded so two different documents cleaned to identical bytes. Each
+destroyed document content **and reported that it had not.**
+
+**Decision.** Treat them as **one class and fix the class** (§I.12): *a destructive step, or
+the audit that reports on it, consulted the rule that caused the damage.* The crop's
+retention was counted with the same Otsu mask that drew the box; the ink loss was a
+difference of two counts under the same split; the page measurement used page one's rule for
+every page; the greyscale conversion applied a luma that defines alpha out of existence.
+
+**Reasoning.** Fixing four instances leaves the fifth. The invariant is that **the auditor
+must not share a criterion with the actor** — the box is now drawn from the line profiles and
+the retention counted at Otsu's split, two independent rules, so the figure can move.
+
+**Trade-off.** *Gained:* the reporting figures can now report. *Lost:* two independent
+criteria must stay independent, which is a property nothing enforces automatically.
+
+**Impact.** Twenty-two red-team tests, all green. Each attack was kept **pointed at the
+defect rather than retired with it**: where a fix made the original attack unconstructible,
+the test was rewritten to hold both halves — the damage must not recur **and** the figure
+that would report it must remain able to. One mutation **survived** all four break-attempts
+and is recorded in the docstring rather than papered over; **no page is known that kills it
+and none was invented to.**
+
+---
+
+## D-014 · Position decides a heading, not a score
+
+| | |
+|---|---|
+| **Date** | 2026-08-06 |
+| **Files** | `src/accountant_dad/engines/input_engine/classification.py` |
+
+**Context.** A goods receipt note whose body prose read *"Received against your purchase
+order…"* was classified from the catalogued phrase alone, as though the document had printed
+PURCHASE ORDER as its own heading. A catalogued phrase appearing **anywhere** counted as
+evidence of type.
+
+**Alternatives.** (1) Score cues by position and threshold the score. (2) Hard-code which
+document regions count as headings. (3) Ask whether the cue **opens or closes its own
+region**.
+
+**Decision.** (3). `_opens_or_closes_its_region` is the whole test: a heading either **is**
+its region or **opens** it — `"TAX INVOICE"`, or `"TAX INVOICE - ORIGINAL FOR RECIPIENT"`.
+
+**Reasoning.** (1) invents a number, and `classification` was built specifically to have
+none — parameter #9 `classification_accept` stays UNSET and there is no cutoff to look up.
+(2) would put knowledge of the layout vocabulary inside this module, where it does not
+belong.
+
+**Trade-off, stated rather than hidden.** *Gained:* body prose no longer names the document's
+type. *Lost, in both directions:* a sentence that opens a prose region — *"This is not a TAX
+INVOICE"* — still reads as evidence, because nothing structural separates it from a printed
+heading; and a heading welded to layout noise stops being read as a heading, which is the
+artefact-induced false negative already pinned elsewhere.
+
+**Impact.** `UNKNOWN` now distinguishes two different situations — nothing catalogued was on
+the page at all, versus something catalogued was on the page but not where a heading sits —
+and says which. Still **zero numeric comparisons** in the module, guarded by the AST test
+that walks its own source.
+
+---
+
+## D-015 · Recovered work is untrusted until it has RUN, not until it is committed
+
+| | |
+|---|---|
+| **Date** | 2026-08-06 |
+| **Files** | process, not code. Evidence: commits `211c6b0`, `6b32425`, `b3c1b51` |
+
+**Context.** D-006 made recovery-before-restart permanent and it is still correct — no work
+was lost again. But `211c6b0` recovered ten files from a session that **predated a signature
+change**, and `b3c1b51` fixed the Application Layer's side of that same call while two test
+files were never told. Measured at `e921c3c`: **39 of 40 failures are one line**,
+`run() missing 1 required keyword-only argument: 'recorded_at'`.
+
+**Alternatives.** (1) Do not commit unverified recovered work. (2) Commit it, and treat the
+commit as the checkpoint. (3) Commit it immediately **and** record, in the commit itself,
+that it is unverified and against which contract it was written.
+
+**Decision.** (3). `211c6b0` and `6b32425` both did this correctly — *"Known-red on arrival,
+by my own measurement, not a claim inherited from the previous agent"* — and it is now the
+standing rule.
+
+**Reasoning.** (1) loses work to the next interruption, which is exactly what D-006 exists to
+prevent. (2) is what produced F-025: a green-looking commit whose tests cannot run. A
+recovered file carries the contract it was written against, and **committing does not
+re-derive that contract.**
+
+**Trade-off.** *Gained:* nothing is lost, and nothing is silently trusted. *Lost:* the branch
+now carries commits that are deliberately red, and from outside they are indistinguishable
+from commits that are accidentally red — which is F-026.
+
+**Impact.** Two rules follow. A recovery commit **must** state what it measured, not what the
+previous agent claimed. And a branch carrying deliberate reds **must not be pushed as if it
+were finished** — which is why 24 commits sit unpushed, and why that is itself now tracked.
+
+---
+
+## D-016 · CI job timeouts raised from 10 to 20 and 30 minutes
+
+**Context.** `unit tests` and `coverage` both carried `timeout-minutes: 10`. The
+suite grew from ~2,400 to **3,264 tests** as Engine 1 was completed, and the
+`coverage` job runs the suite **twice** — once for the head, once for the base
+branch to compute the ratchet.
+
+**Measured, from real GitHub runs** (not local; runner speed is what decides this):
+
+```
+unit tests    max 6.87 min    successes 4.83 – 6.15 min
+coverage      max 9.67 min    successes 5.73 – 6.80 min
+```
+
+Those ran at ~2,400 tests. At 3,264 the projection is `unit tests ≈ 9.3 min` and
+`coverage ≈ 13.2 min`. **`coverage` cannot fit in 10 minutes and `unit tests`
+would be a coin flip.**
+
+**Alternatives considered.**
+
+| Option | Rejected because |
+|---|---|
+| Make the suite faster | The top 25 tests are 38% of the time; the rest is spread across ~2,800 tests doing real Engine 1 work on real documents. Trimming the two outliers buys ~60s against a multi-minute gap. |
+| Drop or skip slow tests | Making a gate pass by measuring less. Law 4, §J.4. |
+| A very large ceiling (e.g. 360) | A timeout is a kill switch, not a target. At 360 a deadlock burns six hours of runner time before surfacing. Fails the stated criterion *"does not waste CI time."* |
+
+**Decision.** `unit tests` **10 → 20**, `coverage` **10 → 30**.
+
+**Reasoning.** Roughly **2.2×** the projected runtime for each. GitHub runner
+speed varies about 2× on a bad day, so 2.2× absorbs that without hiding a hang:
+a genuine deadlock now surfaces in 20–30 minutes rather than 6 hours.
+
+**Trade-off.** Gained: two required gates that can actually complete. Lost: a
+hung job now costs up to 30 runner-minutes instead of 10. Accepted, because a
+gate that cannot finish provides no signal at all.
+
+**Impact.** `.github/workflows/testing.yml`, two lines. No gate added, removed
+or renamed; the count stays 23. No other value touched.
+
+**Revisit.** These are measurements, not preferences. If later runs show the
+suite is faster, lower them; if it grows, raise them. The rule is the smallest
+value that completes stably.
+
+**Authority.** Delegated by the owner, 2026-08-06, with the explicit instruction
+to measure real runs and justify the value here.
+
+---
+
+## D-017 · A citation names what a clause SAYS, never where it sits
+
+| | |
+|---|---|
+| **Date** | 2026-08-06 |
+| **Files** | `src/accountant_dad/conformance.py` · `src/accountant_dad/conformance_registry.py` · `tests/unit/test_conformance.py` · `tests/unit/test_conformance_registry.py` · `pyproject.toml` (one comment) |
+| **Closes** | F-027 |
+
+**Context.** Every conformance citation was `path:line`, and `conformance.py` did not
+merely permit that shape — `_must_name_a_line()` **raised unless a source carried one**.
+The checker read the ordinal line off disk and compared the stored quote against it, so
+citation and checker shared one coordinate system and neither could see the other's
+mistake. No test had ever edited a document, so nothing exercised the failure.
+
+**What it cost, measured.** Inserting one three-line paragraph at
+`docs/SYSTEM_INVARIANTS.md:100` turned **12 tests red**, six of them citations to
+sentences nobody had touched. The line number was also inside each rule's *identifier*
+(`DOC:LINE/slug`), and those identifiers are quoted in prose across `src/` and four test
+files — so moving a cited sentence meant renaming a rule everywhere, or not editing the
+document. In practice it meant **every locked document was append-only after its last
+cited line, and nothing in the repository said so.**
+
+**Alternatives considered.**
+
+| Option | Rejected because |
+|---|---|
+| Renumber citations when a document changes | Treats the symptom. The identity still changes on every edit, the renumbering is manual, silent when skipped, and it strands every prose reference. |
+| Write the append-only rule down | Documents a defect instead of removing it, and constrains 23 locked documents forever to protect one registry. |
+| Fuzzy or nearest-line matching | Buys stability with tolerance. An edited clause would still resolve — precisely the edit that MUST force a human to look again. |
+| Anchor on the clause text alone | **Measured and refused: 4 of 185 cited clauses are not unique by their words.** `SYSTEM_BOUNDARIES.md` states `1. Create journal entries.` twice under an identical introducer, binding two different engines. |
+| Anchor on the full heading path including the `H1` | Too broad — editing a document's title would invalidate every citation in it. The chain to the nearest enclosing heading is used instead, so a rename invalidates only that section. |
+| Reuse `tools/evidence/model.normalise` | It folds curly quotes, dashes and NFKC forms — right for PDF-extracted text, wrong for markdown a human typed. It also lives in `tools/`, and a `src/ → tools/` import would ship an unimportable wheel (F-020's defect). |
+
+**Decision.** A citation is `document#words@digest`, where the digest is SHA-256 over
+*(heading path, normalised clause)* and the readable half is derived from the clause's own
+words. Resolution searches the document for the line whose content hashes to that digest.
+**The line number is demoted, not deleted** — recomputed on every run, printed in every
+failure message, asserted by nothing. Identifiers become `DOCUMENT/slug`.
+
+**Reasoning (Law 53 — transform the problem).** A line number cannot be made to survive an
+edit, because it describes its neighbours rather than itself. The equivalent, easier
+problem is: *do not store the position — store the content and derive the position.* The
+repository had already solved this once, in `tools/evidence/verify.py`, which addresses a
+passage by (document, section, quote) with a containment proof and no line numbers at all.
+Law 15 — reuse before building — is the rule that would have prevented F-027.
+
+**Trade-off.** Gained: locked documents are freely editable everywhere except the exact
+sentences that are cited, and a citation now proves WHICH sentence it names rather than
+which position. Lost: a citation is no longer readable as a file offset — you cannot jump
+to a line from it — and anchors must be generated by `cite()` rather than typed. Accepted
+deliberately: renaming a section invalidates the citations inside it. That is a real
+coupling and the correct one, because the heading decides what the rules under it govern.
+
+**Impact.** 232 identities migrated mechanically — each resolved against the document at
+the line it named, then replaced by that line's anchor. Counts unchanged: **45
+prohibitions (37 predicate, 8 review-only) · 47 controls · 140 exclusions.** No
+prohibition added, removed or reclassified. No schema, no engine, no workflow touched.
+Gate count rises: the two conformance modules go from **703 to 915** passing tests.
+
+**Verification.** `LOCAL ONLY — NOT AUTHORITATIVE` (Law 44) — GitHub has not run this.
+
+```
+3 lines inserted at SYSTEM_INVARIANTS.md:100    before 12 failed    after 0 failed
+140 lines inserted at line 2 of 7 locked docs                       after 0 failed
+one cited sentence reworded                                         after 5 failed
+6 deliberate breaks of the fix                                      6 of 6 caught
+```
+
+**Rollback.** One commit, no data migration, no schema change: `git revert` restores the
+line-based citations exactly. The 232 anchors are derived, so the migration is re-runnable
+from any state of `docs/`.
+
+**Authority.** Delegated by the owner, 2026-08-06, with the instruction *"Remove
+line-number dependency entirely. Bind to semantic content. Permanent architectural fix
+only."*
+## D-018 · The merge gate's poll timeout was six times shorter than the gate it polls
+
+**Approved by the owner, 2026-08-06. Option A.**
+
+### Context
+
+`merge gate` is the only job that polls every other check and demands all of them
+succeed. It is therefore the single entry that would make all 23 gates binding —
+and `CLAUDE.md` §P says it *"goes required LAST, when it can actually pass."*
+
+It could never pass. Measured, GitHub Actions:
+
+| commit | `mutation` duration |
+|---|---|
+| `f31e3cd` | 185.2 min |
+| `7e0efe2` | 197.0 min |
+| `7e0efe2` | 201.0 min |
+| `f31e3cd` | 223.8 min |
+
+Against `MERGE_GATE_POLL_TIMEOUT_MINUTES: "30"`.
+
+`poll_checks.py:227-235` waits for every expected gate to reach `completed`.
+Placeholder status affects the *verdict*, never the *wait*. So on any commit
+where mutation runs to a real score, the poll hits its deadline and returns 1:
+
+```
+BLOCKED - timed out after 30.0 minutes
+  WAITING mutation (in_progress)
+```
+
+**Every `merge gate` run that has ever completed did so because `mutation`
+CRASHED.** Runs `31072240996` (11m29s) and `31071501908` (11m38s) — in both,
+mutation had already failed in under five minutes. On the two commits where
+mutation genuinely succeeded, the merge gate could not have observed it. Its red
+meant *"I stopped watching"*, never *"a gate failed"*.
+
+### Decision
+
+`.github/workflows/merge.yml:20` — `"30"` → `"240"`.
+`.github/workflows/merge.yml:27` — `timeout-minutes: 35` → `245`.
+
+240 is the owner's number. **245 is derived, not chosen:** `merge.yml:17-18`
+requires the job timeout to exceed the poll timeout, and the existing margin was
+exactly +5. The relationship is preserved rather than a new number invented.
+
+### Trade-off
+
+**Gained:** the merge gate can observe a completed mutation run, so the gate
+lifecycle in `CLAUDE.md` §P becomes reachable at all. Until now it was blocked on
+arithmetic, not on work — clearing every placeholder would not have helped.
+
+**Lost:** a genuinely hung pipeline is now declared in four hours instead of
+thirty minutes. That is the correct direction: a poll that gives up before its
+slowest subject finishes reports a timing artifact, and a timing artifact that
+looks like a gate failure is worse than a slow answer.
+
+### Guarded by
+
+`tools/ci/assert_poll_timeout_covers_gates.py` exists (inert until wired) and
+asserts the poll timeout covers the longest declared gate timeout — so the
+relationship is checked rather than remembered. `mutation`'s own
+`timeout-minutes: 500` is unchanged and remains the outer bound.
+
+---
+
+## D-019 · A mutation score computed over 72.6% of the tree was reported as a score for the tree
+
+**Approved by the owner, 2026-08-06. Option A. Maximum unscoreable = 2%.**
+
+### Context
+
+The gate scores `killed / (killed + survived)`. Everything else — timeout,
+suspicious, errored — is excluded from the denominator. That exclusion is
+**correct**: a timeout is not a surviving mutant, and folding it in either
+direction manufactures a number.
+
+What was missing was any limit on how large the excluded bucket may grow.
+Measured at `7e0efe2`: **919 of 3358 mutants (27.4%) were unscoreable.** The gate
+printed that count and blocked on nothing. It reported **95.3%** and went green,
+having reached a verdict on **72.6%** of the tree.
+
+The failure direction is the dangerous one. Push the unscoreable fraction toward
+100% and the printed percentage goes **UP**, because the survivors leave the
+denominator with everything else.
+
+### Root cause of the 27.4%, measured
+
+mutmut 3.3.1 stores `duration_by_test[nodeid] = call.duration` inside
+`pytest_runtest_makereport` — a hook pytest fires once per *phase*, so the stored
+value is the **teardown** duration. Over the same 2372 tests mutmut records
+**1.143 s** where setup+call+teardown is **80.103 s**: **70× too small**. Every
+per-mutant timeout budget therefore collapses to the `(0+1)*15 = 15 s` floor.
+
+Any function whose tests genuinely cost more times out on *every* mutant
+regardless of the mutation. `parser.x__bands_for` runs one test taking 19.6–26.0 s
+unmutated, and **148 of its 148 mutants timed out** — the cost being an 18.84 s
+session fixture (Table Transformer load) that each mutant child pays in full.
+
+### Decision
+
+Two changes, and the second is what makes the first satisfiable.
+
+**1. Enforcement.** `.github/workflows/testing.yml` — a new blocking check:
+unscoreable > 2% of all generated mutants fails the build, and the score is
+**not printed at all**. A number that would be read as "95.3%" is worse than no
+number. Every no-verdict status is listed by name instead. Both thresholds are
+now named constants written exactly once; `93` previously appeared twice.
+
+**2. `requirements-ci.txt:11` — `mutmut==3.3.1` → `mutmut==3.7.0`**, which fixes
+the duration hook (`+=` rather than `=`), makes the timeout budget configurable
+and adds result caching. Without it the 2% cap is red by construction on a
+perfectly healthy tree.
+
+**Falsified before trusting it.** The claim "3.7.0 generates the same mutants"
+came from an agent that measured at an older commit and reported 3358. Re-measured
+under control — same tree at `f83598c`, both versions, mutant names extracted from
+the generated trees:
+
+```
+3.3.1 : 3923 mutants
+3.7.0 : 3923 mutants
+DELTA : 0
+```
+
+Identical names, zero additions, zero removals. The 93% floor therefore carries
+across the upgrade unchanged.
+
+### Trade-off
+
+**Gained:** the score describes the tree it claims to describe. The gate can no
+longer go green by measuring less.
+
+**Lost, and expected:** those 919 mutants have **never been evaluated**. When they
+start running, some will survive and the score will fall — worst case 69.2%. That
+is not a regression. **A gate that goes red because it started measuring the other
+27.4% was never really green.** Law 55 applies: below the floor is FIX MODE, never
+a discussion.
+
+### Guarded by
+
+The check is in the gate itself, not in a document. It blocks before the score is
+computed, so no invalid number can reach a reader.
+
+### Approved
+
+The owner, 2026-08-06.
+
+---
+
+## D-020 · Confidence models what happened when we tried to measure, not just the score
+
+**Approved by the owner, 2026-08-06. F-019 and F-004, both verbatim.**
+Amendments 7 and 8 in `docs/ARCHITECTURE_AMENDMENTS.md`.
+
+### Context
+
+`confidence.py` defined a score: a `Decimal` in `[0.0000, 1.0000]`. Everything
+else a measurement attempt can produce — no instrument ran, nothing to measure,
+the instrument failed — had no representation at all, and travelled as `None`.
+
+`None` was already spoken for four ways in the same pipeline:
+`reader.TextRegion.extraction_confidence`, `confidence_report.RegionReading.text`,
+`parser.Cell.text`, and an absent `HumanBusinessContext`.
+
+### Alternatives
+
+1. **`Confidence | None`.** Rejected: a fifth meaning on a fourth slot. That is how
+   the existing four became indistinguishable in the first place.
+2. **One sentinel.** That was Amendment 5/6, and it worked for exactly one of the
+   three absences. Its own falsifier said a third state would need a **successor,
+   not a patch**.
+3. **One class with a `state` attribute.** Rejected: `isinstance` stops answering
+   the question every existing call site asks, and a value can be built in no state.
+4. **Three sibling classes, no shared base.** Rejected on Law 11. Every existing
+   `isinstance(x, UnmeasuredType)` would start reporting a non-measured value as
+   **measured** — silently, in the reassuring direction.
+
+### Decision
+
+**Model the ACT of measurement, not its result.** Four states —
+`MEASURED · NOT_MEASURED · NOT_APPLICABLE · FAILED` — with the three absences as
+concrete subclasses of one abstract base, each carrying a required non-blank
+`basis` saying why. `measurement_state()` is the one inspector and refuses
+anything that is neither a `Decimal` nor a stated absence.
+
+And, separately: **Decision A7 is authoritative.** Confidence gates nothing until
+the separation test passes, and five documents that said otherwise now say what
+they mean without a number.
+
+### Reasoning
+
+This is Law 53 applied to a type. The hard problem — *what number goes here when
+there is no number?* — has no honest answer, and three fixes had each answered it
+with one more special case. The easier equivalent problem is *what happened when
+we tried to measure?*, which always has an answer, and "measured" becomes one of
+four rather than the only representable one.
+
+The same transform settles F-004. *"Low confidence → Clarification"* asks for a
+threshold nobody can supply. *"Unread regions → missing information →
+Clarification"* is the same outcome from a categorical fact the pipeline already
+reports, and it works today.
+
+### Trade-offs
+
+**Gained:** three different facts stop wearing one shape; every absence states why;
+the agreement check gains two new ways to fail; table cell values reach the
+artifact with a name, a location and a state; no locked document instructs anyone
+to build a confidence gate.
+
+**Lost:** four states is more to hold in mind than two, and every reader of a
+confidence slot now asks `measurement_state(x)` rather than one `isinstance`.
+`basis` is free text — nothing checks it is a GOOD reason, only that it exists.
+JSON carries two shapes in one slot. Five documents are no longer byte-identical
+to their lock, and `Uncertainty` is narrower than the owner first wrote it,
+though its own next sentence already said so.
+
+### Impact
+
+`confidence.py` · `artifacts/evidence.py` · `engines/input_engine/confidence_report.py` ·
+`engines/input_engine/parser.py` · `engines/input_engine/assembly.py` ·
+`docs/ADVERSARIAL_TESTING.md` · `docs/EXECUTION_QUEUE.md` · `docs/TECHNOLOGY_STACK.md` ·
+`docs/ACCOUNTING_DEFINITIONS.md` · `docs/APPLICATION_LAYER.md` ·
+`docs/CONFIDENCE_SPECIFICATION.md` · `docs/ARCHITECTURE_AMENDMENTS.md` ·
+`KNOWN_FAILURES.md`.
+
+**Not touched, deliberately:** `SYSTEM_INVARIANTS.md` INV-11 (not weakened — six
+attributes, none optional), the `Confidence` type itself, `MEASUREMENT_FRAMEWORK.md`
+§10 (it is the rule the five documents now obey), and
+`engines/input_engine/pipeline.py` (owned by another workstream; O11 and O12 record
+exactly what it needs).
+
+### Guarded by
+
+All sixteen state pairings in a **generated** matrix, plus a test that goes red if a
+fifth state is added to the enum without being added to the matrix. An AST invariant
+refusing a literal in any `Provenance` or `FieldConfidence` confidence slot —
+red-teamed by putting `confidence=1.0` into real source, which named the exact line.
+A runtime walk over a real artifact asserting every confidence yields a state and
+every absence carries a reason.
+
+### Approved
+
+The owner, 2026-08-06.
+## D-0xx · The PDF Engine is an interface of FUNCTIONS, not a passthrough of objects
+
+**Date:** 2026-08-06 · **Context:** F-001, the owner's ruling to abstract PyMuPDF.
+
+### Context
+
+`pymupdf==1.28.0` is AGPL-3.0-or-commercial and `docs/TECHNOLOGY_STACK.md` locks it.
+The owner ruled: keep it, buy no licence, and *"immediately abstract it behind a PDF
+Engine interface so Engine 1 never depends directly on PyMuPDF. The implementation must
+allow replacing the backend PDF library without changing Engine 1 architecture."*
+
+### Alternatives
+
+1. **Hand callers a live `Document` behind a Protocol.** The obvious shape, and it
+   abstracts nothing: every caller still speaks PyMuPDF's method names, its
+   `get_text("dict")` dictionary and its `get_pixmap(dpi=...)` keyword. Replacing the
+   library would still be a rewrite of every caller — the import would have moved and
+   the dependency would not.
+2. **Put the adapter under `engines/input_engine/`.** Rejected twice over. Amendment 3
+   released Engine 1's own modules and a library adapter is not one — it produces no
+   part of the Document Evidence Object, which is the same test `ENGINE_1_FACILITIES`
+   applies. And *"Engine 1 never depends directly on PyMuPDF"* is only true if the file
+   that does sits outside Engine 1.
+3. **Functions over an opaque handle.** Chosen.
+
+### Decision
+
+`accountant_dad/pdf_backend.py`. `PdfDocument` is a Protocol declaring `close()` and
+nothing else; every operation on a PDF — `page_count`, `plain_text`, `structured_text`,
+`render_page_png`, `pdf_of_page_images` — is a module-level function. One vendor
+exception is renamed: `pymupdf.FileDataError` becomes `BrokenPdfError`, carrying the
+backend's message verbatim and the original as `__cause__`, because it was the single
+PyMuPDF name Engine 1 depended on for BEHAVIOUR (`pipeline.BUSINESS_FAILURE`).
+
+### Reasoning
+
+The test of the design is stated so it can be checked rather than believed: **a
+different backend is a rewrite of this file and of nothing else.** That is only true
+while no caller names a backend type, method, keyword or exception — which is why the
+interface is operations rather than objects, and why the option strings `"pdf"`,
+`"dict"`, `"text"` and `"png"` live in this file and nowhere else.
+
+### Trade-offs
+
+**Gained:** the swap is one file. Engine 1's business/runtime taxonomy names its own
+error type. `cleaner.py`'s three-step open/convert/reopen dance is one call.
+`ENGINE_1_MAY_IMPORT` is strictly narrower in effect — three modules imported PyMuPDF,
+now one first-party module does.
+
+**Lost:** `ENGINE_1_MAY_IMPORT` gains a fifth entry, and a caller wanting a PDF
+operation the adapter does not expose must add it there rather than reaching for the
+library. That friction is the point.
+
+**Not fixed:** the licence. The dependency is still AGPL and still pinned.
+
+### Guarded by
+
+`tests/unit/test_pdf_backend.py::test_no_engine_1_module_imports_the_pdf_library_
+directly` — an AST sweep of every file under `engines/input_engine/`, covering
+statement imports, `importlib.import_module`, `require_module` and `__import__`, and
+matching `pymupdf` and `fitz` on the first dotted segment. It reads the DIRECTORY, not
+an allowlist. Proven to fail on the defect: injecting `import pymupdf` into `cleaner.py`
+turns it red naming the file.
+
+### Files
+
+`src/accountant_dad/pdf_backend.py` · `engines/input_engine/{cleaner,reader,pipeline}.py`
+· `tests/unit/test_pdf_backend.py` · `tests/unit/test_package.py`
+
+---
+
+## D-0xx · Engine 1's pipeline carries `ConfidenceParameters`, not a loose threshold
+
+**Date:** 2026-08-06 · **Context:** F-018 — `config` had no consumer.
+
+### Context
+
+`config.py` parsed and validated the sixteen parameters of
+`ENGINE_1_CONFIDENCE_PARAMETERS.md` and **nothing imported it.** Meanwhile
+`PipelineSettings.vision_fallback_threshold: Decimal` carried
+`ocr_vision_fallback` — the same parameter — unvalidated.
+
+### Alternatives
+
+1. **Import `config` somewhere and call nothing.** Satisfies the reachability detector
+   and is F-018 again, one level up. Rejected: gaming a detector.
+2. **A `settings_from_environment` factory nobody calls.** The same defect wearing a
+   function name.
+3. **Replace the loose field with the validated object.** Chosen.
+
+### Decision
+
+`PipelineSettings.vision_fallback_threshold` is deleted. `PipelineSettings.
+confidence_parameters: ConfidenceParameters` is required, and `run` hands
+`settings.confidence_parameters.ocr_vision_fallback` to `reader.read`.
+
+### Reasoning
+
+Two representations of one number is the drift Law 19 forbids, and the one in use had
+no range check at all. One representation, validated by the module written to validate
+it, is both the fix for F-018 and the correct architecture independently of it.
+
+### Trade-offs
+
+**Gained:** `config` is consumed on the real path. The number reaching `reader` is
+inside the range `config` enforces, by construction.
+
+**Lost:** every caller must now supply all sixteen parameters, because
+`ENGINE_1_CONFIDENCE_PARAMETERS.md` marks every one `UNSET` and §P forbids a default.
+Seven construction sites gained a sixteen-field factory. That cost is the amendment's
+own intent — *"Missing required confidence configuration fails fast at startup, never
+falls back"* — arriving where it was always going to.
+
+**Stated rather than implied:** fifteen of the sixteen are carried and unread.
+`MEASUREMENT_FRAMEWORK.md:258` — *"confidence gates nothing"* — and inventing a gate for
+the other fifteen would be building outside the mission (Law 16).
+
+### Guarded by
+
+`test_the_vision_fallback_threshold_reader_receives_is_the_configured_parameter` (an
+unmistakable `0.4242` reaches `reader.read`) ·
+`test_the_configured_parameters_went_through_config_and_not_around_it` (a value outside
+the scale cannot become a `ConfidenceParameters` at all) ·
+`test_pipeline_settings_required_fields_have_no_default`, which now also asserts the
+loose field has NOT come back.
+
+### Files
+
+`engines/input_engine/pipeline.py` · the seven `PipelineSettings` construction sites
+
+---
+
+## D-021 · Six confidences become one by the weakest link, and the rule was missing entirely
+
+**Date:** 2026-08-06 · **Approved by:** the owner · **Status:** normative, provisional
+
+### Context
+
+`ENGINE_2:757` states one rule about Understanding Confidence:
+
+```text
+Understanding Confidence  <=  Evidence Reliability
+```
+
+That is a **ceiling**. It bounds a value; it does not produce one. Engine 2 has six
+sub-engines, each reporting its own confidence, and Story Builder must emit a single
+number onto the Business Understanding Object. **No document anywhere said how six
+become one.**
+
+Found while scoping Story Builder — the one Engine 2 sub-engine that needs no language
+model, and therefore the first buildable one. On a worked example the written rule
+admits at least four legal answers:
+
+```text
+transaction 0.90  party 0.40  item 0.85
+payment 0.70      timeline 0.95  business_context 0.60
+evidence reliability 0.80
+
+0.40  weakest link          0.73  mean
+0.80  the ceiling itself    ????  weighted, if some dimensions matter more
+```
+
+All four obey the ceiling. All four are different. The number decides whether a
+transaction auto-posts or goes to a human, so the gap sat directly on the
+never-post-a-wrong-entry non-goal.
+
+### Alternatives
+
+| Option | Why not |
+|---|---|
+| **Mean of the six** | Averages a weak dimension away. A transaction with an unidentifiable party and five strong dimensions scores well, and party identity is not optional |
+| **Weighted by dimension** | Requires weights nobody has measured. Inventing seven numbers to avoid inventing one (Law 10) |
+| **Learned aggregation** | Requires labelled accounting data that does not exist. Cannot be built today, and could not be validated if it were |
+| **Leave it undefined** | What was already happening. An undefined term in a specification is a false statement waiting to be discovered (Law 54) |
+
+### Decision
+
+```text
+Understanding Confidence = min(
+    transaction, party, item, payment, timeline,
+    business_context, evidence_reliability)
+```
+
+`evidence_reliability` sits **inside** the `min` rather than being applied after it, so
+the pre-existing ceiling holds **by construction** rather than by a second check that
+could be forgotten or reordered.
+
+`UNMEASURED` propagates: a `min` over a set containing `UNMEASURED` is `UNMEASURED`,
+never the smallest number present. A missing measurement and a measured weak one are
+different facts, and collapsing them would make the first read as the second.
+
+**Posting policy is separated from confidence calculation.** Five conditions, all
+required; confidence alone never authorises posting. Both thresholds it names are owner
+values and are UNSET, so nothing auto-posts today — the correct failure direction, and
+deliberate.
+
+### Reasoning
+
+It is the only candidate that cannot manufacture confidence. It matches the spec's own
+direction — *"the uncertainty must move forward"*, *"low confidence never becomes
+certainty"* — and it needs no number nobody has measured.
+
+### Trade-off
+
+**Gained:** an incorrect entry becomes less likely; uncertainty is preserved; no
+confidence is asserted that the evidence does not support.
+
+**Lost:** automation rate. The rule is deliberately pessimistic — one weak sub-engine
+drags an otherwise strong transaction into human review. Measured cost is unknown until
+labelled data exists, and that is stated rather than estimated.
+
+The costs are asymmetric: a wrong entry is a financial misstatement somebody answers
+for, an unnecessary review costs minutes. The rule is asymmetric to match.
+
+### What would prove it wrong
+
+On labelled data, a competing aggregation producing a **strictly lower false auto-post
+rate at an equal or higher automation rate**. Also: if the minimum is routinely supplied
+by a dimension that never changes the entry — measurable as the distribution of which
+sub-engine supplied the minimum, per transaction class.
+
+### Impact
+
+`docs/ACCOUNTING_DEFINITIONS.md` (the §M amendment, single source of truth) ·
+Story Builder specification · confidence contracts · `DATA_FLOW.md` · regression tests ·
+adversarial tests. The rule lives behind exactly one named function so a replacement is
+a one-function change, shipped shadowed before it is promoted.
+
+### Status
+
+**Provisional engineering assumption, not doctrine.** Normative until replaced under the
+Future Evolution conditions in the amendment.

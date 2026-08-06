@@ -1,0 +1,90 @@
+{
+  "id": "ACC-REV-DISCLOSURE",
+  "name": "Revenue disclosure — circumstances of postponement",
+  "status": "VERIFIED",
+  "definition": "In addition to the disclosures required by AS 1 on Disclosure of Accounting Policies, an enterprise should disclose the circumstances in which revenue recognition has been postponed pending the resolution of significant uncertainties.",
+  "why_it_exists": "Postponement is invisible in the numbers. A period where revenue was postponed and a period where none was earned look identical on the face of the statement of profit and loss. The disclosure is the only place the reader learns that revenue exists but is being withheld, and why.",
+  "inputs": [
+    "the set of transactions where recognition was postponed in the period",
+    "the significant uncertainty that caused each postponement",
+    "the accounting policy disclosures already required by AS 1"
+  ],
+  "outputs": [
+    "a disclosure of the circumstances of postponement",
+    "or a positive finding that no revenue recognition was postponed in the period"
+  ],
+  "preconditions": [
+    "financial statements are being prepared for a period",
+    "recognition of some revenue was postponed pending resolution of significant uncertainties"
+  ],
+  "rules": [
+    "ACC-REV-DISCLOSE-001"
+  ],
+  "exceptions": [
+    "UNKNOWN — AS 9 paragraph 14 states no exception to this disclosure. Whether materiality qualifies it is not decided in the operative text; the Preface reference in the standard's footnote 1 was not extracted or verified in this pass."
+  ],
+  "common_mistakes": [
+    "postponing recognition correctly and then disclosing nothing, which hides the postponement entirely",
+    "treating the AS-1 accounting policy disclosure as sufficient — AS 9 para 14 requires this disclosure IN ADDITION to it",
+    "disclosing the amount alone without the circumstances; the standard requires the circumstances"
+  ],
+  "dependencies": [
+    "ACC-REV-POSTPONE-001",
+    "ACC-REV-SERVICES",
+    "ACC-REV-INTEREST-ROYALTY-DIVIDEND"
+  ],
+  "related_concepts": [
+    "ACC-REV-GOODS",
+    "ACC-REV-UNCERTAINTY-AFTER-RECOGNITION",
+    "ACC-REV-SCOPE-EXCLUSIONS"
+  ],
+  "legal_references": [
+    "UNKNOWN — statutory backing not extracted from any downloaded source in this pass"
+  ],
+  "icai_references": [
+    "AS 9, paragraph 14; and AS 1 on Disclosure of Accounting Policies, as cross-referenced by AS 9 para 14"
+  ],
+  "gst_references": [
+    "NOT APPLICABLE — this is a financial statement disclosure, unrelated to any GST return or filing"
+  ],
+  "evidence_required": [
+    "the list of postponed items with the uncertainty attached to each",
+    "the AS-1 accounting policy note, to confirm this disclosure is additional to it and not folded into it"
+  ],
+  "confidence_factors": [
+    "weak when postponement decisions were made per-transaction and never aggregated, so the population is not knowable at period end",
+    "weak when the reason for a postponement was not recorded at the time it was made"
+  ],
+  "validation_checks": [
+    "every postponement recorded in the period appears in the disclosure",
+    "the disclosure states the CIRCUMSTANCES, not only an amount",
+    "the disclosure is additional to, and does not replace, the AS-1 accounting policy disclosures"
+  ],
+  "examples": [
+    "a price escalation claim raised in the period whose collection could not be assessed with reasonable certainty — recognition postponed, and the circumstances disclosed",
+    "royalties from a foreign licensee awaiting exchange permission with remittance uncertainty anticipated — recognition postponed, and the circumstances disclosed"
+  ],
+  "counterexamples": [
+    "a doubt about collectability that arose AFTER the sale — that is handled by a separate provision under AS 9 para 9.3, not by postponement, so it is not what para 14 requires to be disclosed",
+    "a transaction outside the scope of AS 9 — para 14 attaches to postponement under this standard"
+  ],
+  "evidence": [
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 14, Disclosure",
+      "quote": "In addition to the disclosures required by Accounting Standard 1 on ‘Disclosure of Accounting Policies’",
+      "extraction_note": "The continuation reads '(A S 1) ,an enterprise': the PDF extraction splits 'AS' into 'A S' and joins ',an'. The next quote resumes after them."
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 para 14, Disclosure",
+      "quote": "enterprise should also disclose the circumstances in which revenue recognition has been postponed pending the resolution of significant uncertainties"
+    },
+    {
+      "file": "ICAI-AS-9-Revenue-Recognition.pdf",
+      "section": "AS 9 contents listing",
+      "quote": "Disclosure",
+      "extraction_note": "Paragraph 14 is the whole of the Disclosure section of AS 9; the contents listing places 'Disclosure' at paragraph 14."
+    }
+  ]
+}

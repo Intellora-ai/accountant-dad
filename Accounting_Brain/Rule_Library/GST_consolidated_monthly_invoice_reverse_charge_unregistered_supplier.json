@@ -1,0 +1,19 @@
+{
+  "id": "GST-INV-CONSOL-002",
+  "status": "VERIFIED",
+  "if": [
+    "an invoice is required to be issued under clause (f) of sub-section (3) of section 31",
+    "the supplies are covered under sub-section (4) of section 9"
+  ],
+  "then": "a registered person MAY issue a consolidated invoice at the end of a month for those supplies",
+  "source_section": "CGST Rules 2017, rule 46, second proviso",
+  "note": "The proviso as extracted reads '...under sub-section (4) of section 9, the aggregate value of such supplies exceeds rupees five thousand in a day...'. UNKNOWN \u2014 whether the five thousand rupee clause is a condition ('where the aggregate value... exceeds') or an exclusion cannot be settled from this text as extracted; a connecting word appears to be absent. Do not implement the five thousand rupee threshold from this record.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 46, second proviso",
+      "quote": "Provided further that where an invoice is required to be issued under clause (f) of sub-section (3) of section 31, a registered person may issue a consolidated invoice at the end of a month for supplies covered under sub-section (4) of section 9, the aggregate value of such supplies exceeds rupees five thousand in a day from any or all the suppliers:",
+      "extraction_note": "Quoted exactly as extracted, including the apparent gap before 'the aggregate value'. The text is NOT repaired here."
+    }
+  ]
+}

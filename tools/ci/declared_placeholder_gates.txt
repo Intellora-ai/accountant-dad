@@ -71,12 +71,16 @@
 # PH-01 removed: `typecheck · lint · tests · build` is implemented in this
 # change, so it is no longer a placeholder and no longer excused. Its own
 # removal condition said "PR #23 merges". The gate now binds for real.
-PH-02 | conformance suite | @Intellora-ai | P2 | the six artifact schemas exist and a predicate can evaluate one | no artifact schema exists, so every predicate would pass vacuously
+# PH-02 removed: `conformance suite` was implemented by 254c087 (#28).
+# Its removal condition read "the six artifact schemas exist and a
+# predicate can evaluate one". All six exist; the suite runs them.
 PH-03 | negative controls 9 of 9 | @Intellora-ai | P1 | the nine control documents are committed AND Engine 1 can refuse them | neither the nine documents nor an engine that could refuse them exists
 
 # ── compliance.yml ───────────────────────────────────────────────────────────
 PH-04 | license scan | @Intellora-ai | DECISION | the owner states which SPDX identifiers are acceptable | the licence allowlist is a policy value; tooling is not the blocker
-PH-05 | conformance | @Intellora-ai | P2 | the six artifact schemas and Transaction ID format exist | nothing to check conformance of
+# PH-05 removed: `conformance` was implemented by 254c087 (#28). Its
+# removal condition read "the six artifact schemas and Transaction ID
+# format exist". Both exist.
 PH-06 | negative controls | @Intellora-ai | P1 | the nine control documents are committed | the nine hard negative controls have not been collected
 PH-07 | golden dataset | @Intellora-ai | P1 | ceiling.json exists, is hashed, and 25 documents are frozen | no ground truth and no measured human ceiling
 PH-08 | adversarial tests | @Intellora-ai | P5 | the six engines run end to end on one document | the 19 attacks need a reasoning pipeline to attack
@@ -89,8 +93,12 @@ PH-10 | docker build | @Intellora-ai | DECISION | the owner states whether the M
 
 # ── testing.yml ──────────────────────────────────────────────────────────────
 PH-11 | integration tests | @Intellora-ai | P3 | the walking skeleton runs end to end in CI | requires the six engines and a reachable Tally; neither exists
-PH-12 | mutation | @Intellora-ai | DECISION | the owner names the mutation tool | tool not chosen; Stryker has no Python support, so mutmut or cosmic-ray
+# PH-12 removed: `mutation` was implemented by #16, which chose mutmut
+# and pinned it at 3.3.1 in requirements-ci.txt. Its removal condition
+# read "the owner names the mutation tool"; merging #16 named it.
 PH-13 | end-to-end | @Intellora-ai | NEVER-IN-MVP | the blueprint is amended to include a UI | blueprint line 41 declares CLI, no UI; Playwright has nothing to drive
 
 # ── security.yml ─────────────────────────────────────────────────────────────
-PH-14 | semgrep | @Intellora-ai | DECISION | the owner names a vendored rule set or a pinned registry version | live registry rules make the same commit score differently on two runs
+# PH-14 removed: `semgrep` was implemented by #16, whose step is titled
+# "fetch the rule set at a PINNED commit". Its removal condition read
+# "the owner names a vendored rule set or a pinned registry version".

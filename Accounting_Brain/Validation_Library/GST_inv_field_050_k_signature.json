@@ -1,0 +1,18 @@
+{
+  "id": "GST-INV-FIELD-050-K",
+  "status": "VERIFIED",
+  "if": [
+    "the document is a receipt voucher referred to in clause (d) of sub-section (3) of section 31",
+    "it is issued under rule 50 of the CGST Rules, 2017"
+  ],
+  "then": "the receipt voucher MUST carry the signature or digital signature of the supplier or his authorised representative",
+  "source_section": "CGST Rules 2017, rule 50(k)",
+  "note": "One mandatory particular of rule 50(k), addressable on its own so that a missing field names the clause it breaches.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 50(k)",
+      "quote": "signature or digital signature of the supplier or his authorised representative:"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "GST-ITC-18-3",
+  "status": "VERIFIED",
+  "if": [
+    "there is a change in the constitution of a registered person on account of sale, merger, demerger, amalgamation, lease or transfer of the business",
+    "the arrangement carries SPECIFIC PROVISIONS FOR TRANSFER OF LIABILITIES"
+  ],
+  "then": "he is ALLOWED to transfer the input tax credit remaining UNUTILISED in his electronic credit ledger to the sold, merged, demerged, amalgamated, leased or transferred business, in such manner as may be prescribed",
+  "source_section": "CGST Act s.18(3)",
+  "note": "The condition that is routinely missed is the transfer of LIABILITIES: an agreement that moves assets alone does not satisfy the sub-section. Only the unutilised balance moves; credit already used does not. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(3)",
+      "quote": "Where there is a change in the constitution of a registered person on account of sale, merger, demerger, amalgamation, lease or transfer of the business with the specific provisions for transfer of liabilities, the said registered person shall be allowed to transfer the input tax credit which remains unutilised in his electronic credit ledger to such sold, merged, demerged, amalgamated, leased or transferred business in such manner as may be prescribed."
+    }
+  ]
+}

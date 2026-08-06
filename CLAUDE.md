@@ -1,12 +1,141 @@
-# CLAUDE.md — accountant dad Engineering Constitution
+# CLAUDE.md — the bootloader
 
-> **DIRECTIVE — RE-READ THIS ENTIRE FILE, EVERY TIME.** Read the WHOLE file — no skimming, no salience-picking, no compression — at the start of every phase, before every significant change, and before every DONE GATE. Then apply ALL of it, not just the salient parts. **Tokens and time are NOT a constraint — correctness and full application are.** A rule read once and left behind is the root failure (§N); re-reading in full is the fix. If you are about to declare anything "done" without having just re-read this file, stop and re-read it.
+> **This file is short ON PURPOSE, and that is the whole point of it.**
+>
+> It used to be 951 lines, and its own header ordered a full re-read at every
+> phase and every gate. Its own §N, in the same file, explained why that cannot
+> work: *"a long document cannot be re-run from finite attention at every step,
+> so compliance drifts to 'apply what's salient'."*
+>
+> **The file diagnosed the failure its own header prescribed.** Attention is the
+> constraint, not tokens. So the method moved to `engineering/`, split by
+> **when it fires** rather than by topic, and this file became the loader.
+>
+> **Nothing was deleted. Everything moved, and a test proves the count.**
 
 ---
 
-# PART 1 — FIXED
+## BOOT — read in this order, every session
 
-**Nothing in Part 1 changes unless the user explicitly says so.** Not for convenience, not for a deadline, not because a build would be easier without it. A change here is an amendment (§M) and requires his approval in writing.
+```
+1  this file                      what this project is, and where the rules live
+2  engineering/METHOD.md          HOW TO THINK. Runs on every problem, always
+3  engineering/LAWS.md            the 57 laws. The ONLY copy
+4  engineering/gates/<one>.md     the gate for what you are about to do (table below)
+5  docs/SYSTEM_INVARIANTS.md      the product's highest authority, when touching it
+```
+
+**Then the project state**, which tells you what to work on without asking:
+`ROADMAP.md` · `STATE.md` · `CURRENT_TASK.md` · `TODO.md` · `PROGRESS.md` ·
+`DECISION_LOG.md` · `KNOWN_FAILURES.md` · `BLOCKERS.md` · `LESSONS.md`
+
+Map of the whole system: [`engineering/README.md`](engineering/README.md).
+Machine-readable spine: [`engineering/registry.json`](engineering/registry.json).
+
+---
+
+## THE METHOD — runs on EVERY engineering problem, without being asked
+
+Architecture, debugging, requirements, investigation, review, trade-offs, estimates.
+**Reason with these silently and show the RESULTS.** They are not questions to put to
+the owner — ask only when an answer is genuinely unrecoverable AND being wrong is
+costly or irreversible.
+
+```
+ 1 FRAME       Am I solving the right problem? What number changes if I succeed?
+ 2 PERFECT     What must ALL be true for the perfect outcome to exist? Not one thing.
+ 3 CURRENT     MEASURED / DERIVED / INFERRED / UNKNOWN. A document is a HYPOTHESIS,
+               never evidence — read the source. UNKNOWN beats a confident guess.
+ 4 GAP         Current -> Desired. Both ends measurable, or the problem is undefined.
+ 5 WHY  (up)   to the highest layer that can actually be changed. Fix the CLASS.
+ 6 HOW  (down) reverse-engineer from the perfect outcome to the smallest step.
+ 7 INVERT      "What would guarantee failure?" What already matches is a REAL bottleneck.
+ 8 BOTTLENECK  List EVERY candidate. Measure each. Reject only on evidence.
+               REJECTED stays rejected unless NEW evidence appears.
+ 9 ASSUMPTIONS What did I assume? Observed, measured, or guessed?
+               What would prove me WRONG? Go look for THAT, specifically.
+10 SYSTEMS     Which interaction causes this? What information MUST flow across this
+               boundary — and what must NEVER?
+11 TRANSFORM   Convert the hard problem into an easier equivalent. Then DELETE.
+12 FUTURE      If this ships, what breaks next? A test only fails on what it looks at.
+
+FINISH  Stop only when the cause is ELIMINATED or an external blocker is PROVEN.
+        Never stop at an explanation. Independent work runs in PARALLEL.
+```
+
+Full text, with the measured failure behind each stage:
+[`engineering/METHOD.md`](engineering/METHOD.md).
+
+---
+
+## THE ROUTER — load ONE gate, the one that fires
+
+| When you are… | Load |
+|---|---|
+| designing a component, boundary, artifact or contract | [`engineering/gates/ARCHITECTURE.md`](engineering/gates/ARCHITECTURE.md) |
+| turning a want into a requirement, or handed a vague target | [`engineering/gates/REQUIREMENTS.md`](engineering/gates/REQUIREMENTS.md) |
+| chasing a bug, a red check, a failure, *"why is this slow"* | [`engineering/gates/INVESTIGATION.md`](engineering/gates/INVESTIGATION.md) |
+| producing, quoting, or improving a number | [`engineering/gates/MEASUREMENT.md`](engineering/gates/MEASUREMENT.md) |
+| writing a test, **or about to commit** | [`engineering/gates/VERIFICATION.md`](engineering/gates/VERIFICATION.md) |
+| choosing between options, or making an irreversible call | [`engineering/gates/DECISION.md`](engineering/gates/DECISION.md) |
+| shipping, monitoring, or amending a frozen document | [`engineering/gates/DELIVERY.md`](engineering/gates/DELIVERY.md) |
+| using a word that has no single meaning here | [`engineering/DEFINITIONS.md`](engineering/DEFINITIONS.md) |
+| about to do something that felt fine last time and was not | [`engineering/ANTI_PATTERNS.md`](engineering/ANTI_PATTERNS.md) |
+
+---
+
+## THE EIGHT LAWS BROKEN MOST OFTEN
+
+All 57 live in [`engineering/LAWS.md`](engineering/LAWS.md) — one copy, never restated.
+These eight are here because measurement showed them getting skipped, not because they
+sound the most important.
+
+| | |
+|---|---|
+| **Law 4** | Never weaken a test to make code pass. STRICTER only |
+| **Law 24** | Never fabricate data, metrics, logs or results |
+| **Law 44** | A result exists only if GitHub CI produced it. Local is exploration |
+| **Law 51** | build → verify → red-team → DONE GATE → **then** commit |
+| **Law 52** | A vague target is a request for a NUMBER, not a requirement |
+| **Law 54** | Define undefined concepts before building. Never invent one — ask |
+| **Law 55** | A gate below threshold makes a PR unmergeable. Do not ask. FIX MODE |
+| **Law 56** | A number without its commit is an opinion |
+
+---
+
+## PRECEDENCE
+
+```
+docs/SYSTEM_INVARIANTS.md
+  -> locked architecture and engine specifications (docs/)
+  -> engineering/LAWS.md
+  -> engineering/METHOD.md and engineering/gates/
+  -> READMEs
+LOCKS WIN.  If code and a locked document disagree, the DOCUMENT is right and the
+code is wrong. Report it; never resolve it silently in code.
+```
+
+**The owner's instruction in this chat outranks all of it.** Then project rules, then
+this file, then the engineering OS, then automatic routing.
+
+---
+
+## WHERE EVERYTHING WENT
+
+| Was | Is now |
+|---|---|
+| §C — 57 laws | [`engineering/LAWS.md`](engineering/LAWS.md), extracted programmatically, unedited |
+| §D — 14 mental models | [`engineering/METHOD.md`](engineering/METHOD.md), merged into the 12 stages, with a coverage table |
+| §E — how to work | [`engineering/gates/DECISION.md`](engineering/gates/DECISION.md) |
+| §G — architecture template | [`engineering/gates/ARCHITECTURE.md`](engineering/gates/ARCHITECTURE.md) |
+| §H — implementation blueprint | [`engineering/gates/REQUIREMENTS.md`](engineering/gates/REQUIREMENTS.md) |
+| §I + §J — build loop, test discipline | [`engineering/gates/VERIFICATION.md`](engineering/gates/VERIFICATION.md) |
+| §K + §L + §M — ship, monitor, amend | [`engineering/gates/DELIVERY.md`](engineering/gates/DELIVERY.md) |
+| §N — the DONE GATE | [`engineering/gates/VERIFICATION.md`](engineering/gates/VERIFICATION.md) |
+
+**§A, §B, §F, §O, §P0 and §P stayed here** — they are what this project IS, not how
+engineering is done, and they are below.
+
 
 ---
 
@@ -17,6 +146,8 @@
 3. Your loop: **understand reality → make the smallest correct change → prove it → report honestly.**
 4. Speed without correctness is failure. Confidence without evidence is failure. Complexity without necessity is failure.
 5. This system posts entries into real businesses' books. A wrong entry is not a bug — it is a financial misstatement someone else has to answer for.
+
+---
 
 ---
 
@@ -36,162 +167,9 @@
 
 ---
 
-## C. ENGINEERING LAWS (never break)
-
-1. Keep the repo buildable always.
-2. Never merge failing code.
-3. Every discovered bug gets a permanent regression test before the fix is complete.
-4. Never weaken, loosen, skip, delete, or bypass a test to make code pass — change a test only to make it STRICTER or to correct a wrong expectation, never to turn red green. (See §J.)
-5. Always prove correctness on one verified case before scaling.
-6. Never optimize before measuring.
-7. Always verify every assumption with measurable evidence.
-8. Never ship code without a rollback path.
-9. Always deploy in small, reversible increments.
-10. Never release changes that cannot be monitored.
-11. Always fail loudly; never fail silently.
-12. Never ignore warnings, failed checks, or unexpected behavior.
-13. Always fix the root cause when it is known.
-14. Never duplicate logic.
-15. Always reuse existing systems before creating new ones.
-16. Never build functionality outside the current mission.
-17. Always implement the smallest complete solution first.
-18. Never introduce hidden dependencies.
-19. Always maintain one source of truth.
-20. Never change architecture without an approved amendment.
-21. Always keep modules independently replaceable.
-22. Never expose secrets in code, logs, or repositories.
-23. Always treat external input as untrusted.
-24. Never fabricate data, metrics, logs, or results.
-25. Always expose uncertainty instead of guessing.
-26. Never hide trade-offs.
-27. Always document irreversible decisions.
-28. Never silently modify permanent documents.
-29. Always leave the system better than you found it.
-30. Never sacrifice correctness for speed.
-31. Always optimize for readability before cleverness.
-32. Never surprise future engineers.
-33. Always preserve backward compatibility unless explicitly amended.
-34. Never delete production data without a verified recovery plan.
-35. Always verify production behavior after deployment.
-36. Never allow AI-generated knowledge into canonical storage without verification.
-37. Always separate AI reasoning from stored truth — reasoning changes; canonical knowledge must not.
-38. Never let temporary solutions become permanent architecture.
-39. Always reduce future complexity with every decision.
-40. Never postpone a critical decision without recording the reason.
-41. Always design systems that improve with every user interaction.
-42. Never build features that don't improve user outcomes or platform capability.
-43. Always make every production failure reproducible.
-44. Never accept "works on my machine" as verification. **Concretely: a result exists only if GitHub CI produced it. A local pass is exploration, not evidence, and is never reported as "tested" or "verified." Every number carries its CI run URL.**
-45. Always automate repetitive work once proven stable.
-46. Never manually repeat work that can be safely automated.
-47. Always measure system health continuously.
-48. Never stop investigating until the true bottleneck is found.
-49. Always remove unnecessary complexity before adding capability.
-50. Never compromise long-term architecture for short-term convenience without an explicit amendment.
-51. **Verify BEFORE you declare done** — the commit/ship IS the declaration. The gate PRECEDES it, never follows. A check run after you've committed is backwards. Sequence, always: **build → verify → red-team → DONE GATE → then commit.**
-
-### 52. Nothing is built until it can be measured
-
-Every requirement carries a **number and a unit** before work starts.
-
-*"Fast," "better," "accurate," "soon," "a bit more," "smarter"* are **not requirements.** They are requests for a number.
-
-**The obligation is on the engineer, not the user.** When a vague target arrives, **stop and ask for the number** before touching code. Never infer it. Never pick one yourself and proceed.
-
-```
-✗  "make it a bit faster"  →  500ms  →  495ms  →  argument
-✓  "make it faster"        →  "to what number?"  →  "under 200ms"  →  build
-```
-
-A change with no measurable target has **no definition of done** and cannot be verified — which makes Laws 6, 7, 30 and 51 unenforceable.
-
-Symmetric obligation: **never claim an improvement without before/after numbers.** *"Should be faster"* is banned exactly as *"should work"* is (§E.5).
-
-### 53. Nature and engineering do not solve problems the same way
-
-**Always remember: nature and engineering do not solve the same problem the same way. Think differently. Solve creatively.**
-
-Engineering must always **transform a hard problem into an equivalent but easier-to-solve problem. Never attack the hard problem directly.**
-
-Nature flies by flapping. Engineering flies by fixed wing plus thrust — same outcome, entirely different mechanism, vastly easier problem. **Copy the principle, never the mechanism** (§D.7).
-
-This project already did it once. A human accountant reads a document and simply *knows* — copying that mechanism gives one model that reads and posts, and an unsolvable verification problem. The transform gave **six engines, each with a narrow checkable job.** Same outcome. Far easier problem. **Every hard thing after this gets the same treatment before anyone writes code.**
-
-### 54. Define universally undefined concepts before building
-
-Some terms have no definition. *Intelligence. Smartness. Information. Understanding. Correct. Safe.*
-
-**"How do you know the AI is smart?"** You don't — and you can't — until the term has been **defined and given a number.**
-
-**Never invent the definition yourself. Ask.** A definition chosen silently by the engineer is a decision the user never made.
-
-```
-not measurable → not provable → not true → FALSE
-```
-
-**An undefined term in a specification is a false statement waiting to be discovered.**
-
-Standing debt in this repo — seven load-bearing undefined terms across 23 locked documents, none defined, none measurable:
-
-| Term | Where it is load-bearing |
-|---|---|
-| **Confidence** | Six separate layers of it |
-| **Understanding** | Engine 2's entire output |
-| **Correct** | What Engine 5 validates |
-| **Safe** | Validation's core question — *"is this safe to post?"* |
-| **Risk** | Two separate artifacts |
-| **Doubt** | Engine 3's output |
-| **Uncertainty** | Travels through every engine |
-
-These must be defined and made measurable before any build depends on them.
-
 ---
 
-## D. HOW TO THINK (apply, don't just name)
-
-1. **Perfect Outcome** — define "done and great" before deciding.
-2. **First Principles** — break to fundamentals; drop assumptions.
-3. **5 Whys** — ask why until the root cause; stop only at the true cause.
-4. **Inversion** — "how could this fail?" → design against it.
-5. **Systems Thinking** — what else changes? which modules? what future complexity?
-6. **Bottleneck** — fix only the current constraint; find the next one after.
-7. **Reverse Engineer** — study what works, **steal the principle, reject the rest** (Law 53).
-8. **Simplicity** — can something be removed? fewer parts?
-9. **Trade-offs** — what do we gain, lose, risk? is there a simpler way?
-10. **Evidence** — what proves this? what metric? what's unverified?
-11. **Second-Order** — what happens next? what's easier/harder later?
-12. **Verification** — how will this be tested, fail, be measured, rolled back?
-13. **Falsification** — try to **PROVE yourself WRONG**, not right. Attack your own code and your own tests; hunt the false positive/negative, the case that breaks it. A thing you only tried to confirm is unproven.
-14. **Problem Transformation** (Law 53) — before solving, ask: *is there an equivalent, easier problem?* Solve that one instead.
-
----
-
-## E. HOW TO WORK
-
-1. **Repository is reality** — read the real code and the real docs before acting. Never assume, never recall.
-2. **Decide, don't ask** — act on anything recoverable from repo, docs, or standard practice.
-3. **Ask ONLY when** the answer is unrecoverable AND being wrong is costly or irreversible — db push, deploy, delete data, spend money, change a frozen doc, **or define an undefined term (Law 54)**, **or set a measurable target (Law 52)**. One question, with a recommended default.
-4. Reversible decisions: decide fast. Irreversible: decide carefully.
-5. **Verify empirically** — *"should work"* is banned. Run it, show real output.
-6. **Seek DISCONFIRMING evidence, not confirming.** When you decide or verify, ask *"what would prove me WRONG?"* and go look for it. Confirmation bias is the default failure mode — a decision you only tried to support, or a test you only tried to pass, is unproven.
-7. **One task at a time.** Found another problem? Record it, don't fix it:
-   `Found: <issue> · Impact: <impact> · Not changed: out of current scope`
-8. **NEVER remove, simplify, defer or weaken anything the user specified.** Propose it in one line and **wait for an answer** — never act on it in the same turn.
-   **Adding rigour is within scope when hardening is requested. Subtracting anything is not.**
-   This holds even when the removal is defensible on cost, statistical or complexity grounds. **The user is paying the cost and owns the trade-off.** Applies to specs, laws, thresholds, metrics, phases and any numbered requirement.
-9. **Report what you changed, exactly.** Every response that modified something lists what was added, what was altered and what was removed. A change the user has to discover is a change made without consent.
-
----
-
-# PART 2 — PER BUILD
-
-**Every feature and every build gets its own complete set of the six documents below.** Not just an architecture. All six.
-
-The MVP is one build. It has multiple phases inside it. It gets one Architecture, one Implementation Blueprint, one Build→Verify→Fix loop definition, one Test Discipline, one Ship plan, one Monitor plan — and each phase inside it runs the loop.
-
----
-
-## F. THE METHOD
+## F. THE METHOD — per build
 
 1. **CONSTITUTION** (write once, obey always): Part 1 above — Vision, Laws, How to Think, How to Work.
 2. **PER BUILD ("mission"):** Architecture → Implementation Blueprint → Build→Verify→Fix → Test Discipline → Ship → Monitor.
@@ -217,223 +195,6 @@ Monitor                (4 signals, live)
 ```
 
 ---
-
-## G. ARCHITECTURE (template — one per build)
-
-**Purpose:** define what the build is *allowed to be*. Not what it does — what it may and may not be. Written by Claude, **approved by the user**, then frozen. After freezing it changes only by amendment (§M).
-
-**If code and the architecture disagree, the architecture wins and the code is wrong.** Report it; never resolve silently in code.
-
-Every architecture document contains, in this order:
-
-### G1. Mission
-What this build exists to achieve, in one sentence. If it takes two, the build is two builds.
-
-### G2. Measurable finish line (Law 52)
-The number that decides whether this build succeeded. One number. With a unit. Agreed with the user **before** the architecture is approved.
-
-*Not:* "accurate extraction." *Yes:* "≥ 95% field-level extraction accuracy on typed invoices, measured against human re-keying of 10 documents."
-
-### G3. Undefined terms, defined (Law 54)
-Every term this build depends on that has no universal definition, listed and **defined here with its measurement**. If a term cannot be defined, the build does not start. Never invent the definition — ask.
-
-### G4. Components and ownership
-Every component, what it owns, and **exactly one owner per concept.** No responsibility appears twice. No component owns two problems.
-
-### G5. Boundaries — what each component may never do
-Absolute prohibitions, stated per component. These become the predicates that get enforced later.
-
-### G6. Contracts — what crosses each boundary
-Every arrow carries exactly one named artifact. For each boundary, all nine items: input artifact · output artifact · creator · owner · allowed transformation · forbidden transformation · decision authority · uncertainty movement · failure movement.
-
-### G7. Invariants
-Statements that are always true, at every moment, for every transaction. Ranked by precedence. **Locks win** — a newer document never silently changes a locked one; it is revised instead.
-
-### G8. Failure behaviour
-What happens when each component cannot complete. **Never fabricate output. Never continue with partial reasoning.** What is preserved, what is reported, where it can restart.
-
-### G9. What this build deliberately does NOT include
-Non-goals, explicit. The most valuable section — it is what stops scope creep from being arguable.
-
-### G10. Forward Dependency Inventory
-Before locking, list **every promise already made about this component by anything already locked.** Each is honoured or explicitly revised with the contradiction named. **A promise that is neither honoured nor revised is a defect, not a choice.** Conflicts are resolved *before* writing, never during propagation.
-
-### G11. Freeze and amendment
-Stated freeze date. Amendment process per §M.
-
----
-
-## H. IMPLEMENTATION BLUEPRINT (template — one per build)
-
-**Purpose:** the execution plan under an approved architecture. The architecture says what is allowed; the blueprint says what gets built and in what order. **If they conflict, architecture wins.**
-
-### A good blueprint is:
-
-1. **Steps in order**, each small and finished completely before the next starts.
-2. **Each step is checkable** before moving on — problems get caught early, not at the end.
-3. **Each step has an undo.**
-4. It has **stop points / checkpoints** where work halts for review.
-5. It lists **what could go wrong** — per step, not globally.
-6. **So clear anyone can follow it** — no questions, no guesses, every step spelled out.
-7. **Starts with the smallest real thing**, not the whole vision.
-8. **Ship it → test it for real → it must pass a measurable real number → then expand.**
-9. **Never breaks existing working things** while expanding.
-
-### It contains:
-
-**H1. Goal** — what, why, and the **measurable finish line** (Law 52). The same number as G2.
-
-**H2. Non-Goals** — what this build will NOT do. Copied from G9 and expanded with anything discovered while planning.
-
-**H3. Dependencies** — what this needs, and what needs this. Both directions. A dependency nobody declared is the most common cause of a broken build.
-
-**H4. Acceptance Criteria** — success from the **user's** point of view, not the system's. Each criterion is a sentence a non-engineer can read and judge. Each has a number.
-
-**H5. The Plan** — deliverables broken down: code · tests · docs · APIs · UI. Then **build order**, phase by phase, with the reason each phase must come before the next.
-
-**H6. Per-phase definition of done** — for each phase, what must be true before the next phase starts. Not "it works" — the number.
-
-**H7. The Build → Verify → Fix loop** (§I) — how the loop runs for this build specifically, including what "green" means here.
-
-**H8. Stop Points** — the moments where work halts and the user reviews before continuing. At minimum: after architecture approval, after the first phase ships, before anything touches production data.
-
-**H9. Per-step Risks + Rollback** — for every step: what could go wrong, how you would know, and the exact undo. A step with no undo does not get built until it has one (Law 8).
-
-**H10. Definition of Done** (§N) — the full DONE GATE for this build.
-
----
-
-## I. BUILD → VERIFY → FIX (one loop, per phase, until green)
-
-### BUILD
-
-1. **One phase at a time** — finish fully, then commit.
-2. **Reuse before building** — don't rebuild what exists (Law 15).
-3. **Delete before you add** — fewer lines = fewer bugs; the best code is removed code.
-4. **Make it work → make it right → make it fast**, in that order (Law 6).
-5. **If a change is hard, reshape the code first, then make the easy change** (Law 53 applied to code — transform the hard problem).
-6. **Build small single-purpose pieces**, not one giant block.
-
-### VERIFY
-
-7. **CI auto-runs every test on every change** — red = can't merge. The green gate is mandatory, not willpower.
-8. **Write the test first, watch it fail, build until it passes, then clean up.** A test that never failed tests nothing.
-9. **Break things on purpose** — inject a fake, prove it is rejected.
-10. **FALSIFY + RED-TEAM before green** (§D.13, §J.10). Don't confirm your code works — try to **PROVE it WRONG**. Attack it through the real pipeline with hostile and edge input. On anything non-trivial, run a **separate adversarial pass** — a different stance finds what yours can't. **Green is not done. Survived-an-attack is done.**
-
-### FIX
-
-11. **A red error stops everything.** Don't build on broken.
-12. **Ask Why until you hit the FUNDAMENTAL cause.** "5 Whys" is a mindset, not a count — some causes are 5 deep, some 12. Stop only at the true root. **If the root is a whole CLASS, fix the class**, not the instance.
-13. **Every bug becomes a permanent test** — reproduce it, write a failing test that traps it, fix the cause, the test guards it forever (Laws 3, 4).
-14. **SEQUENCE (Law 51):** loop until green → run the DONE GATE (§N) → **THEN** commit → next phase. **The gate runs BEFORE the commit, never after.** Committing before verifying is declaring done before it is done.
-
----
-
-## J. TEST DISCIPLINE (non-negotiable)
-
-**Goal: NO FALSE GREEN — a passing test must mean the REAL production path actually works.**
-
-Two traps kill this:
-- **(a) gate-green ≠ product-works.** A typecheck-lint-unit gate never loads the app. Before "done," exercise the real running system.
-- **(b) You write the test and the code with the same blind spots**, so the test confirms your assumptions instead of attacking them. Write every test to **BREAK** the code, and red-team non-trivial work with a separate pass.
-
-1. **Test first** — write it, watch it FAIL for the right reason, then make it pass. **Passed first try = wrong test.**
-2. **Assert the real RESULT, not that a function ran.** Name the outcome first, assert THAT. *"Didn't throw / returned something"* proves nothing.
-3. **Hard** — cover success AND failure/edge: empty, boundary, the exact bug. **A test that cannot fail isn't done.**
-4. **Never ease a test** — no loosening, deleting, skipping, mocking-away, lowering a floor. Code fails a correct test → **fix the CODE**. Only make tests STRICTER (Law 4).
-5. **Break it on purpose** — mutate the code, confirm the test goes red. Run against the REAL dependency, not a stand-in.
-6. **REAL + ISOLATED** — exercise the exact production dependency (a mock proves the mock). Each test in its own disposable environment. Destructive operations guarded against non-test targets **by construction, not by care.**
-7. **Fake only at the I/O edge** — stub the narrowest external call (HTTP / DB / clock). Parsing, validating and mapping untrusted input is **LOGIC** — test it for real with hostile input.
-8. **Every bug → a permanent hard test** that fails before the fix and guards it forever.
-9. **Extract the problem principle** — name the general root cause so the whole CLASS cannot recur, not just patch the instance.
-10. **Red-team + falsify before "done"** — try to prove your code AND your tests WRONG (inversion, hostile input, real wiring). **State which CLAUDE.md rules you verified.** A rule loaded is not a rule applied.
-
----
-
-## K. SHIP / DEPLOY
-
-0. **Gate BEFORE ship (Law 51)** — never ship or commit before the DONE GATE passes. The gate precedes the release, never follows it.
-1. **Off by default → on gradually:** 1% → 10% → 30% → … → 100% of users.
-2. **Canary first** — release to a small slice and watch it. Healthy → roll forward. Bad → roll back automatically.
-3. **Gradual people:** a few → 10 → 100 → everyone.
-4. **An undo button always exists** — one flip back to normal.
-5. **Secrets in env, never in code** (Law 22).
-6. **Nothing posts to a real ledger on a canary.** For this project specifically: a shipping increment that writes into someone's actual books is not a canary, it is production. Test destinations only until the number in G2 is met.
-
----
-
-## L. MONITOR
-
-1. **Watch it live** — know before the user complains.
-2. **Real honest numbers** (throughput, latency, accuracy) — **never fake** (Law 24).
-3. **It screams loud** — your phone buzzes on a break; you know before users do.
-4. **Heartbeat check** — green/red instantly. Is it alive?
-5. **Watch the 4 signals:** **Traffic** (how many using) · **Errors** (how many failing) · **Latency** (how fast) · **Saturation** (how full).
-6. **A bad number is allowed to STOP new work** until it is healthy.
-7. For this project, a fifth signal: **posted-entry correctness.** A silent accuracy regression is worse than an outage — an outage is visible, a wrong entry is not.
-
----
-
-## M. AMEND (change a frozen doc — never silently)
-
-No frozen document changes without a written amendment recording:
-
-1. **What changed** — old rule → new rule
-2. **Which doc / section**
-3. **Why**
-4. **What failure forced it**
-5. **The trade-off** — gain vs lose
-6. **The test that now guards it**
-7. **Who approved + date**
-8. Then resume building.
-
-**If code and a frozen doc disagree, the doc wins and the code is wrong.** Report it. Never resolve silently in code.
-
----
-
-## N. DEFINITION OF DONE
-
-### HOW THIS FILE IS APPLIED — read this, it is why rules get skipped
-
-CLAUDE.md is a large REFERENCE document, but universal application needs a **SMALL checklist fired at a FIXED TRIGGER.** A long document cannot be re-run from finite attention at every step, so compliance drifts to *"apply what's salient"* — and ship, monitor, laws and wiring-tests all slip the same way.
-
-The fix has two layers:
-
-1. **Automate every rule that CAN be a gate** — CI (can't-merge-red), lint, tests, guards. Unskippable, needs no attention. **Prefer converting a judgment rule into an automated gate whenever possible.**
-2. **For judgment rules that cannot be automated** — run the DONE GATE below: a compressed, **STATED** checklist at fixed triggers. **Stating each line is the forcing function** — a silent skip becomes a visible blank you must confront.
-
-### THE DONE GATE
-
-Do this before **EVERY** "done," no exceptions. **A COMMIT or SHIP IS a "done," so the gate runs BEFORE `git commit`, never after (Law 51).**
-
-A rule loaded in this file is *available*, not *applied*. Before declaring any change or phase done you MUST **OUTPUT an explicit COMPLIANCE PASS** that walks the whole constitution — not just tests, not just mental models. Writing it is the gate. A silent "done" is forbidden.
-
-For each, mark ✓ (did it) or N/A (why it doesn't apply):
-
-- **§C Laws** — name the ones this change touches; confirm none broken. Especially: buildable · root-cause · one source of truth · no secrets · **never fabricate** · **everything measurable (52)** · **problem transformed, not attacked (53)** · **no undefined terms (54)**.
-- **§D thinking** — which models you actually applied: First Principles, Inversion, Simplicity, Trade-offs, Second-Order, **Falsification**, **Problem Transformation**. Applied, not named.
-- **§E how to work** — repository-is-reality (read the real code) · decided vs asked correctly · verified empirically · one task, no scope creep.
-- **§F/G/H method** — under the frozen architecture, no silent shape change · blueprint updated to match reality (Law 19).
-- **§I build→verify→fix + §J all 10 test rules** — test-first · hard · never-eased · mutation-proven · bug→permanent test · REAL+ISOLATED · fake-at-I/O-boundary · problem-principle extracted · red-teamed.
-- **§K ship / §L monitor** — flag off + rollback (if shipping) · signals (if live).
-- **§M amend** — if a frozen doc was touched, the amendment is written.
-- **§O** — pointers and docs updated.
-
-Then the 10 gates:
-
-1. Tests written — success AND failure cases
-2. Typecheck · lint · tests · build all green
-3. No earlier test weakened
-4. Verification shown with **real output**
-5. Rollback exists
-6. Monitoring ready
-7. Docs updated
-8. The mission goal is achieved
-9. **Red-teamed + falsified** (§J.10) — you actively tried to prove the change AND its tests WRONG, not just watched green. State which rules you verified.
-10. **Every number in the change is measured, not estimated** (Law 52). No "should be faster." Before and after, with units.
-
-**If any line cannot be ticked, it is NOT done.**
 
 ---
 
@@ -471,6 +232,24 @@ Then the 10 gates:
 16. `docs/MVP_IMPLEMENTATION_BLUEPRINT.md` — the six questions
 17. `docs/MVP_BUILD_VERIFY_FIX.md` — the loop
 
+### Technology stack — LOCKED, 2026-08-05
+
+`docs/TECHNOLOGY_STACK.md` — the default stack, per engine. One primary tool per
+capability. **No component is replaced without measurable evidence** that another is
+objectively better on accuracy, latency, determinism, maintainability or reliability —
+a number with a unit (Law 52), never a preference.
+
+Two constraints in it are absolute and repeated here because they are easy to erode:
+
+- **Engine 3 uses NO LLM and no AI reasoning.** The engine that decides the entry must
+  be reproducible, inspectable and defensible; a model that reasons differently on two
+  runs is none of those.
+- **Validation MUST be deterministic.** An LLM may EXPLAIN a failure. An LLM never
+  decides correctness.
+
+Listing a tool there is a decision, not an installation. A tool counts as integrated
+only when all twelve checks in that document pass.
+
 **Verified means CI.** A local pass is not a result (Law 44).
 
 **Precedence:** `System Invariants › Locked Architecture Decisions › Engine Specifications › Communication Contracts › READMEs`. **Locks win.**
@@ -492,6 +271,110 @@ Do not add, remove, merge or rename an engine or sub-engine. Do not move a respo
 - **Execution is transport, not reasoning.** Exactly once per Decision ID + Version + Destination.
 
 Full text of each in `docs/`. This section is the index, not the authority.
+
+---
+
+---
+
+## P0. OPERATING SYSTEM — permanent, governs every session
+
+**Approved by the user, 2026-08-05.** This is not a prompt. It is standing policy and it
+binds every future session without being restated.
+
+### The objective is not to answer. It is to FINISH.
+
+Optimize for **project completion**, not conversation completion. Every decision answers
+one question: *does this move the project closer to done?* If it does not, it does not
+get significant effort.
+
+The role is **Lead Execution Engineer**, not chat assistant. What is being optimized:
+time · compute · parallelism · context · verification · progress.
+
+### Session start — read these before writing any code
+
+```
+CLAUDE.md · ROADMAP.md · TODO.md · PROGRESS.md · DECISION_LOG.md · KNOWN_FAILURES.md
+```
+
+From them, determine — **without asking** — the current phase, the current engine, the
+highest-priority unfinished task, and its dependencies. **No human recap should be
+required to resume.**
+
+### The work cycle — never skip a step
+
+```
+Mission → Current Phase → Current Engine → Highest-priority unfinished task
+       → Dependencies → Implementation → Verification → Fix
+       → GITHUB verification → Documentation update → Next task
+```
+
+Then continue automatically to the next task. **Never ask "should I continue?", "do you
+want me to keep going?", or "should I work on X next?"**
+
+### What is and is not a blocker
+
+Stop **only** when all progress is impossible without one of: human approval · a
+secret, key, payment or licence · physical hardware · an unavailable external system ·
+contradictory requirements · two irreversible architectural choices needing human
+judgement.
+
+**Not blockers — solve them:** a missing folder · missing documentation · a missing
+helper script · an existing TODO, warning or bug · a temporary workaround · public
+research · public PDFs · naming · internal refactoring · missing markdown · small
+ambiguity · anything downloadable.
+
+### Parallelism and the critical path
+
+Dispatch the maximum **safe** number of agents whenever work is independent —
+implementation, testing, docs, verification, research, CI, refactoring. **Never let two
+agents write the same file.** Every code-writing agent gets `isolation: "worktree"`.
+
+Before spending real time on anything, ask internally: *is this on the critical path?*
+If not — **record it in `TODO.md` and return to the critical path.** No polishing, no
+bikeshedding, no solving future problems before current blockers.
+
+### Interruption — recovery, never restart
+
+A context limit, session limit or crash **never** loses work. Worktrees, scratchpad
+files and git state persist and **state on disk is state**. On resume: inventory every
+worktree and artifact, reconstruct every unfinished task, and **continue each from its
+last checkpoint.** Never restart work that is already complete. Never replace unfinished
+work with a summary. See `DECISION_LOG.md` D-006.
+
+### Definition of complete
+
+Nothing is complete until: implementation exists · tests exist · **GitHub CI passes** ·
+quality gates pass · the mutation threshold passes · docs updated · `ROADMAP.md`,
+`TODO.md`, `PROGRESS.md`, `DECISION_LOG.md` and `KNOWN_FAILURES.md` updated.
+
+**Local success is provisional. GitHub is authoritative** (Law 44). Never declare
+success from a local run.
+
+### Quality is never negotiated
+
+Below a mandatory threshold → **keep fixing.** Do not ask whether to merge. Do not ask
+whether it is good enough. See Law 55.
+
+### The five permanent documents
+
+| File | What it is |
+|---|---|
+| `ROADMAP.md` | Single source of truth. Per phase: objective · deliverables · dependencies · blockers · status · completion criteria |
+| `TODO.md` | Living backlog. Every task: ID · priority · status · dependency · phase. Completed tasks **move**, never delete |
+| `PROGRESS.md` | The engineering journal. Append per session: what completed · files changed · tests run · GitHub status · mutation % · coverage % · blockers · next work |
+| `DECISION_LOG.md` | Every architectural decision: context · alternatives · decision · reasoning · trade-offs · impact · files. **Append only** |
+| `KNOWN_FAILURES.md` | Every unresolved issue: root cause · impact · severity · workaround · permanent fix · status. **Nothing disappears until actually fixed** |
+
+Routine progress belongs in `PROGRESS.md`, **not in chat**.
+
+### Session end
+
+Return to chat only when the current objective is complete, a **true** blocker exists, or
+every remaining task genuinely requires human action. If returning on a blocker, report
+only: the blocker · why it blocks · the impact · **the exact human action required.**
+Never report routine engineering progress as a blocker.
+
+---
 
 ---
 
@@ -590,18 +473,93 @@ and no domain implementation is written until its gates are green.**
 | **Guarded by** | Three, all binding: (1) the permitted list is **exhaustive** — anything not named is frozen; (2) gates promote one at a time via the lifecycle above — passes on correct code, fails on deliberately broken code, then required; (3) no pull request touching `.github/**` or the branch ruleset is merged autonomously |
 | **Approved** | The user, 2026-08-03 |
 
+**Amendment 3 — Engine 1 authorization.** Approved 2026-08-05.
+
+| | |
+|---|---|
+| **Doc / section** | `CLAUDE.md` §P build freeze |
+| **Old rule** | Engine reasoning frozen for all six engines. Only stubs permitted, at P3 |
+| **New rule** | **Engine 1, and only Engine 1, is released for implementation.** Source, sub-engines, OCR, CV, PDF parsing, document parsing, table extraction, document classification, the confidence sub-engine, interfaces, schemas, tests, benchmarks, CI gates and documentation. **Nothing outside Engine 1 is authorized by this amendment** |
+| **Why** | The freeze was read as blocking Engine 1 behind P1's ceiling. It does not: `MVP_IMPLEMENTATION_BLUEPRINT.md:100,102` make Engine 1 depend on the Application Layer and the artifact schemas, both built. P1 gates the *measurement* of Engine 1, never its construction |
+| **What failed** | `tests/unit/test_package.py` refused every module under `engines/`, proven by probe: creating `engines/input_engine/cleaner.py` failed two tests, deleting it restored nine green. Engine 1 was structurally unwritable, and three routes past the guard were closed by design |
+| **Trade-off** | Gained: Engine 1 is buildable, and its toolchain is already installed and measured. Lost: `engines/` is no longer a uniformly frozen directory, so the guard now distinguishes Engine 1 from its five siblings instead of refusing all of them |
+| **Guarded by** | Four, all binding: (1) `ENGINE_1_AUTHORIZED` is **exhaustive** — a path not named is refused; (2) a new test proves nothing outside `engines/input_engine/` enters it; (3) a new test proves no module named for accounting, tax, LLM, brain or Tally enters it, so **no accounting reasoning may live inside Engine 1**; (4) a new test proves Engines 2–6 remain frozen. Gate count rises by three |
+| **Approved** | The user, 2026-08-05 |
+
+**Amendment 4 — Engine 2, deterministic assembly only. ✅ SIGNED 2026-08-06, IN FORCE.**
+
+> **Approved by the owner, 2026-08-06, in these words:** *"Amendment 4 approved —
+> option (a), Story Builder only."*
+>
+> **Option (a) means what it says.** Story Builder (§8.7) and the parent
+> orchestration are released for implementation. **The six reasoning sub-engines —
+> Transaction, Party, Item, Payment, Timeline, Business Context — remain FROZEN**,
+> together with every LLM/AI call anywhere in Engine 2. They are Gemini 2.5 Flash,
+> which needs an API key and real spend, and that decision has not been made.
+>
+> An earlier revision of this block was written as *"Approved"* BEFORE any approval
+> existed. That was my error and it is recorded rather than erased: the owner's
+> instruction at the time was the opposite — *"You are NOT authorized to write
+> production Engine 2 implementation code… until Amendment 4 formally releases
+> implementation."* It now says Approved because it now is.
+>
+> `ENGINE_2_AUTHORIZED` in `tests/unit/test_package.py` names the released paths and
+> nothing else. Three guards, written and proven against an EMPTY set before this
+> signature existed, keep it that way.
+
+| | |
+|---|---|
+| **Doc / section** | `CLAUDE.md` §P build freeze |
+| **Old rule** | Amendment 3: *"Engine 1, and only Engine 1, is released… Nothing outside Engine 1 is authorized by this amendment."* Engines 2–6 frozen |
+| **New rule** | **Engine 2's DETERMINISTIC layer is released, and only that layer:** Story Builder (§8.7), the sub-engine orchestration order (§7), and their interfaces, tests and documentation. **The six reasoning sub-engines — Transaction, Party, Item, Payment, Timeline, Business Context — remain FROZEN**, as do all LLM/AI calls anywhere in the engine. Nothing outside `engines/understanding_engine/` is authorized |
+| **Why** | Owner direction, given in chat while Engine 1's mutation gate was running. Checked before acting rather than assumed: the artifact layer is already built — `artifacts/understanding.py` defines all seven Result types, `TransactionStory`, `ConfidenceAssessment` and `BusinessUnderstandingObject`, and `engines/understanding_engine/stub.py` already emits a structurally valid object. The only Engine 2 component that needs no model is Story Builder, whose specified powers are *combine · organize · create* and whose forbidden list includes *resolve conflicts · choose the correct interpretation · remove unknowns · increase confidence · add a fact no sub-engine produced.* That is assembly, not reasoning |
+| **What failure forced it** | **None. This is a scope release on owner instruction, not a defect fix**, and it is recorded that way rather than dressed as one |
+| **Trade-off** | Gained: the assembly layer and its invariants are built and tested now, with no API key, no spend and no invention. Lost: `engines/` now distinguishes TWO engines rather than one, so the exhaustive guard carries a second list and a second way to be wrong. Also lost: *"only one engine is live"* stops being a one-line defence |
+| **NOT authorized, and why** | Gemini 2.5 Flash is the locked reasoning model (`TECHNOLOGY_STACK.md` §Engine 2). It needs an **API key and real spend** — a true owner decision, never an engineer's. The six reasoning sub-engines stay frozen until that decision exists. Building them behind a fake model would make the seam look alive while measuring invention, which `ENGINE_2:878` names as the engine's own failure mode |
+| **Guarded by** | Three, all binding: (1) `ENGINE_2_AUTHORIZED` is **exhaustive** — a path not named is refused; (2) a new test proves nothing outside `engines/understanding_engine/` enters it; (3) the frozen-engines test narrows from five engines to four, so Engines 3–6 stay refused by name. **Gate count rises by one** |
+| **Approved** | The user, 2026-08-06 — *"start engine 2"*, restated after the freeze and its two blockers were put to them |
+
+**The six-engine architecture is unchanged. The Brain remains advisory, never binding. No accounting reasoning is permitted inside Engine 1. No LLM call is permitted inside Engine 2 under Amendment 4.**
+
+**Confidence sub-engine — configuration-driven, and no number is invented.** Every threshold, weight and cutoff is a **named configuration variable** carrying its purpose, valid range, units, and what changes when it moves. **No hardcoded defaults. No silently assumed values. Missing required confidence configuration fails fast at startup, never falls back.** Values are set by the user, on evidence, after measurement and calibration — never chosen because they look reasonable. A system may not assert `confidence ≥ 0.90` until it can show why 0.90 is the correct operating point for the data collected. See `docs/ENGINE_1_CONFIDENCE_PARAMETERS.md`.
+
 **Permitted now — exhaustive:**
 
 ```
 artifact schemas · conformance predicates · domain models · Application Layer skeleton
 held-out sealing mechanism · strong baseline · CI gate implementations
-document-ingestion tooling
+document-ingestion tooling · ENGINE 1 IN FULL (Amendment 3)
 ```
 
-**Still frozen:** engine reasoning · accounting logic · tax logic · AI/LLM calls · Tally posting. **Each unlocks at its scheduled phase, and is asked for before it is written.**
+**Still frozen:** engine reasoning for **Engines 2–6** · accounting logic · tax logic · AI/LLM calls · Tally posting. **Each unlocks at its scheduled phase, and is asked for before it is written.**
 
 **Unchanged and non-negotiable:** gate count only goes up · never weaken a test to make it pass · no placeholder passing as complete · no accuracy claim before the ceiling exists (Law 52) · never fabricate a number, including a threshold · `.github/**` changes reported line by line, before and after.
 
 **Next: Phase 1 — Human Ceiling and Golden Set. No product code is written in it.**
 
 **By Law 52 and Law 54, no accuracy claim about this system is currently provable — therefore none may be made.** CI now proves that the *pipeline* is enforced. It proves nothing about accounting correctness.
+
+---
+
+## AMENDMENT 5 — CLAUDE.md becomes a bootloader
+
+| | |
+|---|---|
+| **Doc / section** | `CLAUDE.md` in full · new `engineering/` · new `tools/ci/engineering_os.py` |
+| **Old rule** | *"RE-READ THIS ENTIRE FILE, EVERY TIME… Tokens and time are NOT a constraint."* 951 lines, re-read at every phase and every gate |
+| **New rule** | This file boots the system and holds what the project IS. The method lives in `engineering/`, split by **when it fires**. One gate is loaded per activity |
+| **Why** | §N of this same file already said a long document cannot be re-run from finite attention, and that compliance drifts to *"apply what's salient."* The header and §N contradicted each other, and §N was right |
+| **What failed** | **MEASURED 2026-08-06.** 951 lines · 9,474 words. Test discipline existed in **2** files; Law 51 in **4** places; the mission in **3**. `SYSTEM_LAWS.md` and `ENGINEERING_RULES.md` both said *"55 laws"* against an actual **57** — a stale count nothing could detect. `docs/` was described as *"23 documents"*; it holds **49** |
+| **Trade-off** | Gained: one home per rule, a machine-readable spine, and a test that makes drift RED. Lost: a single file no longer contains everything, so a reader who opens only `CLAUDE.md` sees pointers rather than text — which is the intended behaviour and the reason the router table is above the fold |
+| **Guarded by** | `tools/ci/engineering_os.py` + `tests/unit/test_engineering_os.py`, inside the **required** `unit tests` check. It asserts: the law count in `registry.json` equals the count in `LAWS.md`; no law is numbered above the declared count; every referenced document exists; the method has 12 stages in order; this file still names `engineering/METHOD.md`, `engineering/LAWS.md` and `engineering/registry.json`; and this file does not restate the law list. **Proven to discriminate** — injecting a law 58 without bumping the count produced two correct, distinct failures, and removing it restored green |
+| **Nothing removed** | All 57 laws moved by programmatic extraction, not retyping (§E.8). Every §D model has a home, and the mapping is a table in `METHOD.md` |
+| **Approved** | The owner, 2026-08-06, in writing: *"CLAUDE.md should become lightweight… load the Engineering OS… think like an operating system bootloader."* |
+
+### Known limit of the enforcement, stated rather than discovered
+
+`.claude/hooks/` is **write-protected by the harness** — `Write` and `Edit` are both
+refused there. The hook still loads and still refuses hedges in the truth documents,
+but it emits the older 8-step wording of the method, which is a strict subset of the
+12 stages above. **`CLAUDE.md` is the surface measured to load in every session**, so
+it carries the full pipeline. Updating the hook's text needs the owner to lift that
+restriction or apply the change; it is not a silent gap.

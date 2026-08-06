@@ -1,0 +1,33 @@
+{
+  "id": "GST-ITC-RCM-INPUT-TAX",
+  "status": "VERIFIED",
+  "if": [
+    "tax is payable by a registered person under s.9(3) or s.9(4)"
+  ],
+  "then": "that tax IS INPUT TAX in relation to him under s.2(62)(b), and is therefore capable of being credited \u2014 subject to s.16, s.17 and s.18 like any other input tax",
+  "source_section": "CGST Act s.2(62)(b)",
+  "note": "This is the bridge from paying reverse charge to claiming credit for it: without s.2(62)(b) the tax paid under s.9(3) or s.9(4) would not be 'input tax' at all. Capable of being credited is not the same as creditable \u2014 s.17(5) still blocks it if the underlying supply is a blocked class. Note also that s.2(62) excludes tax paid under the composition levy. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(62)",
+      "quote": "in relation to a registered person, means the central tax, State tax, integrated tax or Union territory tax charged on any supply of goods or services or both made to him and includes",
+      "extraction_note": "The defined term, rendered by the extractor with substituted quotation glyphs, is quoted around rather than reproduced."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(62)(b)",
+      "quote": "the tax payable under the provisions of sub-sections (3) and (4) of section 9;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(62), closing words",
+      "quote": "but does not include the tax paid under the composition levy;"
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.2(63)",
+      "quote": "means the credit of input tax;"
+    }
+  ]
+}

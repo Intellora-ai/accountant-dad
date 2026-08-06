@@ -1,0 +1,28 @@
+{
+  "id": "CO-BOOKS-ACCRUAL-DOUBLE-ENTRY-001",
+  "status": "VERIFIED",
+  "if": [
+    "the entity is a company under the Companies Act, 2013",
+    "books of account are being kept for a financial year"
+  ],
+  "then": "the books of account, other relevant books and papers and the financial statement SHALL be prepared and kept at the registered office, SHALL give a true and fair view of the state of the affairs of the company including that of its branches, SHALL explain the transactions effected, and SHALL be kept on accrual basis and according to the double entry system of accounting",
+  "source_section": "Companies Act, 2013, s.128(1)",
+  "note": "Cash-basis or single-entry recording fails this section on its face, whatever the resulting figures look like: the requirement attaches to the METHOD of keeping, not only to the output. UNKNOWN — source is the Act as enacted 2013; amendments not held locally.",
+  "evidence": [
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(1)",
+      "quote": "Every company shall prepare and keep at its registered office books of account and other relevant books and papers and financial statement for every financial year which give a true and fair view of the state of the affairs of the company"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(1)",
+      "quote": "including that of its branch office or offices, if any, and explain the transactions effected both at the registered office and its branches"
+    },
+    {
+      "file": "Companies-Act-2013-as-enacted.pdf",
+      "section": "s.128(1)",
+      "quote": "such books shall be kept on accrual basis and according to the double entry system of accounting"
+    }
+  ]
+}

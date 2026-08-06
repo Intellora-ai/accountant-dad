@@ -1,0 +1,17 @@
+{
+  "id": "GST-VALUE-010",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is one notified by the Government on the recommendations of the Council"
+  ],
+  "then": "its value is determined in such manner as may be PRESCRIBED, notwithstanding s.15(1) and s.15(4)",
+  "source_section": "CGST s.15(5)",
+  "note": "An override on both the default rule and the fallback. BLOCKED IN PRACTICE: the list of notified supplies is not held locally, so this rule can be recognised but not evaluated.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(5)",
+      "quote": "Notwithstanding anything contained in sub-section (1) or sub-section (4), the value of such supplies as may be notified by the Government on the recommendations of the Council shall be determined in such manner as may be prescribed."
+    }
+  ]
+}

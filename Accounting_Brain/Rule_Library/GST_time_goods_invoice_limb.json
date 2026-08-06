@@ -1,0 +1,24 @@
+{
+  "id": "GST-TIME-GOODS-002",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of goods under forward charge",
+    "an invoice has been issued, OR the last date on which the supplier was required under s.31 to issue it has passed"
+  ],
+  "then": "this limb yields the date of issue of the invoice, or the last date on which the supplier was required under s.31 to issue it \u2014 whichever the clause makes applicable",
+  "source_section": "CGST s.12(2)(a)",
+  "note": "A late invoice does NOT postpone the tax point: the clause names the last date the supplier was REQUIRED to issue it, not the date he actually did. That required date lives in s.31, which is not extracted here, so this limb cannot be fully evaluated yet.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(2)(a)",
+      "quote": "the date of issue of invoice by the supplier or the last date on which he is required, under",
+      "extraction_note": "The extraction inserts an amendment marker '[******]35' between 'under' and 'section 31'. The clause is therefore quoted as two spans on either side of the marker. The artifact is in the extraction, not in the Act."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(2)(a)",
+      "quote": "section 31, to issue the invoice with respect to the supply"
+    }
+  ]
+}

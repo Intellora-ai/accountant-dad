@@ -1,0 +1,24 @@
+{
+  "id": "GST-VALUE-007",
+  "status": "VERIFIED",
+  "if": [
+    "a discount is given before or at the time of the supply",
+    "the discount has been duly recorded IN THE INVOICE issued in respect of that supply"
+  ],
+  "then": "the discount is EXCLUDED from the value of supply",
+  "source_section": "CGST s.15(3)(a)",
+  "note": "Recording it in the invoice is a condition, not paperwork. A pre-supply discount agreed verbally and left off the invoice does not reduce the taxable value under this clause.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(3)",
+      "quote": "The value of the supply shall not include any discount which is given",
+      "extraction_note": "The sub-section ends '\u2013\u2013' in the extraction. The quote stops before them."
+    },
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(3)(a)",
+      "quote": "before or at the time of the supply if such discount has been duly recorded in the invoice issued in respect of such supply"
+    }
+  ]
+}

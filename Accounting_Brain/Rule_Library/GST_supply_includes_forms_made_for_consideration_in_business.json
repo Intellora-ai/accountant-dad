@@ -1,0 +1,19 @@
+{
+  "id": "GST-SUPPLY-001",
+  "status": "VERIFIED",
+  "if": [
+    "the transaction is a form of supply of goods or services or both \u2014 sale, transfer, barter, exchange, licence, rental, lease or disposal",
+    "it is made or agreed to be made for a consideration",
+    "it is made by a person in the course or furtherance of business"
+  ],
+  "then": "the transaction IS a supply for the purposes of the CGST Act, and s.12 or s.13 must then fix its time of supply",
+  "source_section": "CGST s.7(1)(a)",
+  "note": "All three limbs are conjunctive on the face of the clause. 'agreed to be made' is included, so an executory agreement can already be a supply. This clause does NOT decide goods-versus-services \u2014 s.7(1A) sends that to Schedule II, which is not extracted here.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.7(1)(a)",
+      "quote": "all forms of supply of goods or services or both such as sale, transfer, barter, exchange, licence, rental, lease or disposal made or agreed to be made for a consideration by a person in the course or furtherance of business"
+    }
+  ]
+}

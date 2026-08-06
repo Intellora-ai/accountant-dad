@@ -54,6 +54,28 @@ RULED_PRIORITY_VALUES = frozenset({"Critical", "High", "Medium", "Low"})
 
 BLANK = ["", " ", "   ", "\t", "\n", " \t\n "]
 
+#: The exact words `_not_blank` refuses with, spelled here independently of the
+#: module. `pytest.raises(ValidationError)` alone passes when the schema refuses
+#: for some other reason entirely — a blank rejected as "wrong type" would be a
+#: different defect wearing this test's green. Written out in full, not as a
+#: fragment: a message padded or re-cased either side still CONTAINS a fragment.
+BLANK_REASON = (
+    "a blank entry names nothing. It satisfies 'this component is present' "
+    "while pointing at no fact, no conflict and no evidence — which is how a "
+    "request that determined nothing comes to look complete. ENGINE_4:557: an "
+    "incomplete request that NAMES what it could not determine is correct "
+    "output; a complete-looking one is not."
+)
+
+
+def messages(raised: pytest.ExceptionInfo[ValidationError]) -> list[str]:
+    """Every message pydantic reported, EXACTLY as the validator worded it."""
+    return [str(error["msg"]) for error in raised.value.errors()]
+
+
+def assert_refused_as_blank(raised: pytest.ExceptionInfo[ValidationError]) -> None:
+    assert f"Value error, {BLANK_REASON}" in messages(raised)
+
 
 def envelope(**overrides: object) -> IdentityEnvelope:
     base: dict[str, object] = {
@@ -528,8 +550,9 @@ def test_a_request_with_no_supporting_evidence_reference_is_rejected() -> None:
 def test_a_blank_supporting_evidence_reference_is_rejected(blank: str) -> None:
     # An empty string satisfies "at least one reference" while pointing at
     # nothing. That is the cheapest way past the rule above.
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         request(supporting_evidence_references=(blank,))
+    assert_refused_as_blank(raised)
 
 
 # ── ENGINE_4:188-194 — every request must actually answer five questions ─────
@@ -537,26 +560,30 @@ def test_a_blank_supporting_evidence_reference_is_rejected(blank: str) -> None:
 
 @pytest.mark.parametrize("blank", BLANK)
 def test_a_blank_required_clarification_is_rejected(blank: str) -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         request(required_clarification=blank)
+    assert_refused_as_blank(raised)
 
 
 @pytest.mark.parametrize("blank", BLANK)
 def test_a_blank_reason_is_rejected(blank: str) -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         request(reason_clarification_is_required=blank)
+    assert_refused_as_blank(raised)
 
 
 @pytest.mark.parametrize("blank", BLANK)
 def test_a_blank_affected_decision_is_rejected(blank: str) -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         request(affected_decision=blank)
+    assert_refused_as_blank(raised)
 
 
 @pytest.mark.parametrize("field", ["missing_information", "detected_conflicts"])
 def test_a_blank_entry_in_a_finding_collection_is_rejected(field: str) -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         request(**{field: ("a real finding", "  ")})
+    assert_refused_as_blank(raised)
 
 
 def test_text_is_stored_verbatim_and_never_stripped() -> None:

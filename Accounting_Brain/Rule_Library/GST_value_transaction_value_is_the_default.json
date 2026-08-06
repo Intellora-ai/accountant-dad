@@ -1,0 +1,18 @@
+{
+  "id": "GST-VALUE-001",
+  "status": "VERIFIED",
+  "if": [
+    "the supplier and the recipient of the supply are NOT related",
+    "the price is the SOLE consideration for the supply"
+  ],
+  "then": "the value of the supply is the TRANSACTION VALUE \u2014 the price actually paid or payable for the supply",
+  "source_section": "CGST s.15(1)",
+  "note": "Both conditions are on the face of the sub-section. Fail either and s.15(1) does not apply; s.15(4) then sends the valuation to the prescribed manner (GST-VALUE-010). 'Paid OR PAYABLE' \u2014 non-payment does not reduce the value.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.15(1)",
+      "quote": "The value of a supply of goods or services or both shall be the transaction value, which is the price actually paid or payable for the said supply of goods or services or both where the supplier and the recipient of the supply are not related and the price is the sole consideration for the             supply."
+    }
+  ]
+}

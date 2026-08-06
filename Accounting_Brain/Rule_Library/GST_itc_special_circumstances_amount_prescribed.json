@@ -1,0 +1,17 @@
+{
+  "id": "GST-ITC-18-5",
+  "status": "VERIFIED",
+  "if": [
+    "an amount of credit under s.18(1) or an amount payable under s.18(4) has to be quantified"
+  ],
+  "then": "it SHALL BE CALCULATED in such manner as may be PRESCRIBED \u2014 the Act supplies no formula",
+  "source_section": "CGST Act s.18(5)",
+  "note": "Same shape as s.17(6): the Act creates the obligation and defers the arithmetic to the Rules. No s.18 amount can be computed from this source alone; the prescribing Rule is not extracted here and is therefore UNKNOWN. The source is the CGST Act as updated 31-08-2021. UNKNOWN whether a later amendment has changed this provision; later amendments are not held locally.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST Act s.18(5)",
+      "quote": "The amount of credit under sub-section (1) and the amount payable under sub-section (4) shall be calculated in such manner as may be prescribed."
+    }
+  ]
+}

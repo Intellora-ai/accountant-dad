@@ -70,11 +70,12 @@ FOUR THINGS NO DOCUMENT SETTLES. See `SPEC_GAPS`. None is resolved here.
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, PlainValidator, model_validator
 
-from accountant_dad.confidence import Confidence
+from accountant_dad.confidence import Confidence, ConfidenceOrUnmeasured, weakest_link
 from accountant_dad.identity import ArtifactId, IdentityEnvelope, TransactionId
 
 _FROZEN = ConfigDict(frozen=True, extra="forbid")
@@ -502,18 +503,48 @@ class ConfidenceAssessment(BaseModel):  # type: ignore[explicit-any]  # pydantic
 
     model_config = _FROZEN
 
-    evidence_confidence: Confidence
-    understanding_confidence: Confidence
+    #: WIDENED FROM `Confidence` ON 2026-08-06, because the amendment that
+    #: governs this field could not be represented in it.
+    #:
+    #: `ACCOUNTING_DEFINITIONS.md`'s §M *Understanding Confidence Aggregation*
+    #: requires that `UNMEASURED` propagate through the aggregation: *"a `min`
+    #: over a set containing UNMEASURED is UNMEASURED, not the smallest number
+    #: present."* Both slots were `Decimal`-only, so the artifact REFUSED the
+    #: value the normative rule produces, and the rule was unimplementable
+    #: against the schema meant to carry it.
+    #:
+    #: It bites hardest where it is least visible: `confidence.py` records that
+    #: a PDF text layer produces no score and *"is also the MVP's primary
+    #: input"* — so the honest value was exactly the one that could not be
+    #: stored. §M: where code and a frozen document disagree, the document wins
+    #: and the code is wrong.
+    evidence_confidence: ConfidenceOrUnmeasured
+    understanding_confidence: ConfidenceOrUnmeasured
 
     @model_validator(mode="after")
     def _understanding_never_exceeds_evidence(self) -> ConfidenceAssessment:
-        if self.understanding_confidence > self.evidence_confidence:
+        """The ceiling, over four measurement states rather than one.
+
+        `>` between a `Decimal` and an absence raises `TypeError` — loud, but
+        the wrong complaint, and it would fire on the commonest real input
+        rather than on a defect. The comparison is therefore made only where
+        BOTH sides are measured, which is the only case in which "exceeds"
+        means anything at all.
+
+        An absence on either side is NOT silently permissive: nothing is
+        asserted about an ordering that was never measurable, and the amendment
+        already forbids the aggregation from inventing one.
+        """
+        understanding = self.understanding_confidence
+        evidence = self.evidence_confidence
+        both_measured = isinstance(understanding, Decimal) and isinstance(evidence, Decimal)
+        if both_measured and understanding > evidence:
             # ENGINE_2:756, :773 — "A confident interpretation of an unreliable
             # reading is not understanding; it is invention with a score
             # attached."
             raise ValueError(
-                f"understanding confidence {self.understanding_confidence} exceeds "
-                f"evidence reliability {self.evidence_confidence}. Understanding "
+                f"understanding confidence {understanding} exceeds "
+                f"evidence reliability {evidence}. Understanding "
                 "confidence cannot exceed evidence reliability (ENGINE_2:756)."
             )
         return self
@@ -576,17 +607,34 @@ class BusinessUnderstandingObject(BaseModel):  # type: ignore[explicit-any]  # p
                 "this engine leaves it (ENGINE_2:280)."
             )
 
+        # BOTH SIDES MEASURED, OR NO ORDERING IS ASSERTED. `>` between a
+        # `Decimal` and an absence raises `TypeError`, which would fire on the
+        # commonest real input rather than on a defect — `confidence.py` records
+        # that a PDF text layer produces no score and is the MVP's primary
+        # input. Skipping the comparison asserts nothing about an ordering that
+        # was never measurable; it does not permit one.
         evidence = self.confidence_assessment.evidence_confidence
         for result in self.supporting_understanding_data.results:
-            if result.confidence > evidence:
+            if (
+                isinstance(result.confidence, Decimal)
+                and isinstance(evidence, Decimal)
+                and result.confidence > evidence
+            ):
                 raise ValueError(
                     f"{type(result).__name__} carries confidence {result.confidence}, "
                     f"above evidence reliability {evidence}. Understanding confidence "
                     "cannot exceed evidence reliability (ENGINE_2:756)."
                 )
 
-        lowest = min(result.confidence for result in self.supporting_understanding_data.results)
-        if self.confidence_assessment.understanding_confidence > lowest:
+        understanding = self.confidence_assessment.understanding_confidence
+        lowest = weakest_link(
+            tuple(result.confidence for result in self.supporting_understanding_data.results)
+        )
+        if (
+            isinstance(understanding, Decimal)
+            and isinstance(lowest, Decimal)
+            and understanding > lowest
+        ):
             # ENGINE_2:638 with INV-2. Story Builder introduces no evidence, so
             # it cannot be more certain than its least certain input. See the
             # module docstring for why this is `min` and not `max`.

@@ -1,0 +1,33 @@
+{
+  "id": "GST-INV-CHALLAN-002",
+  "status": "VERIFIED",
+  "if": [
+    "a delivery challan is issued under rule 55(1)",
+    "the case is a supply of goods"
+  ],
+  "then": "the delivery challan MUST be prepared in triplicate, marked ORIGINAL FOR CONSIGNEE, DUPLICATE FOR TRANSPORTER and TRIPLICATE FOR CONSIGNER",
+  "source_section": "CGST Rules 2017, rule 55(2)",
+  "note": "The copy names differ from rule 48(1): CONSIGNEE and CONSIGNER, not RECIPIENT and SUPPLIER.",
+  "evidence": [
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(2)",
+      "quote": "The delivery challan shall be prepared in triplicate, in case of supply of goods, in the following manner, namely:"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(2)(a)",
+      "quote": "the original copy being marked as ORIGINAL FOR CONSIGNEE;"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(2)(b)",
+      "quote": "the duplicate copy being marked as DUPLICATE FOR TRANSPORTER; and"
+    },
+    {
+      "file": "CGST-Rules-2017-Part-A-Rules-01012022.pdf",
+      "section": "CGST Rules 2017, rule 55(2)(c)",
+      "quote": "the triplicate copy being marked as TRIPLICATE FOR CONSIGNER."
+    }
+  ]
+}

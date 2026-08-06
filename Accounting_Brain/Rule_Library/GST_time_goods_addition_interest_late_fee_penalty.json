@@ -1,0 +1,18 @@
+{
+  "id": "GST-TIME-GOODS-009",
+  "status": "VERIFIED",
+  "if": [
+    "the supply is a supply of goods",
+    "the value of supply is increased by interest, late fee or penalty for delayed payment of any consideration"
+  ],
+  "then": "the time of supply FOR THAT ADDITION is the date on which the supplier RECEIVES the addition in value",
+  "source_section": "CGST s.12(6)",
+  "note": "Receipt-based, and it applies only to the addition \u2014 the original supply keeps its own time of supply. Pairs with GST-VALUE-005, which puts the same amount into the value of supply.",
+  "evidence": [
+    {
+      "file": "CGST-Act-2017-updated-31082021.pdf",
+      "section": "CGST s.12(6)",
+      "quote": "The time of supply to the            extent   it relates   to  an  addition     in  the  value   of supply by way of interest, late fee or penalty for delayed payment of any consideration shall be the date on which the supplier receives such addition in value."
+    }
+  ]
+}
