@@ -190,7 +190,19 @@ for argument in sys.argv[1:]:
                     "  (exposes no __version__)"
                 )
                 continue
-            agrees = pinned == reported or pinned.startswith(f"{reported}.")
+            # PEP 440: everything after "+" is a LOCAL VERSION IDENTIFIER — the
+            # build variant, not the version. On a Linux runner
+            # `pip install torch==2.13.0` resolves to the CUDA wheel, which
+            # reports `2.13.0+cu130`. That IS 2.13.0; the suffix names the
+            # build. Comparing the raw strings called a correct environment
+            # wrong, and a guard that fires on a correct environment gets
+            # switched off — after which it catches nothing.
+            #
+            # Only the local segment is stripped. The shadow this guard exists
+            # to catch is a PUBLIC version difference (`cv2.__version__` 4.10.0
+            # against a 5.0.0.93 pin), and that is still caught exactly.
+            public = reported.split("+", 1)[0]
+            agrees = pinned in (reported, public) or pinned.startswith(f"{public}.")
             print(f"  {delegate:24} __version__={reported:12} pin={pinned:12} "
                   f"{'ok' if agrees else 'MISMATCH'}  (delegated to {owners})")
             if not agrees:
@@ -222,7 +234,19 @@ for argument in sys.argv[1:]:
             if reported is None:
                 print(f"  {module:24} from {raw_name}=={installed}  (exposes no __version__)")
                 continue
-            agrees = pinned == reported or pinned.startswith(f"{reported}.")
+            # PEP 440: everything after "+" is a LOCAL VERSION IDENTIFIER — the
+            # build variant, not the version. On a Linux runner
+            # `pip install torch==2.13.0` resolves to the CUDA wheel, which
+            # reports `2.13.0+cu130`. That IS 2.13.0; the suffix names the
+            # build. Comparing the raw strings called a correct environment
+            # wrong, and a guard that fires on a correct environment gets
+            # switched off — after which it catches nothing.
+            #
+            # Only the local segment is stripped. The shadow this guard exists
+            # to catch is a PUBLIC version difference (`cv2.__version__` 4.10.0
+            # against a 5.0.0.93 pin), and that is still caught exactly.
+            public = reported.split("+", 1)[0]
+            agrees = pinned in (reported, public) or pinned.startswith(f"{public}.")
             print(f"  {module:24} __version__={reported:12} pin={pinned:12} "
                   f"{'ok' if agrees else 'MISMATCH'}")
             if not agrees:

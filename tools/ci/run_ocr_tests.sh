@@ -126,7 +126,7 @@ JUNIT="${2:-/tmp/ocr-junit.xml}"
 cd "$REPO_ROOT"
 
 # ── the assertion, written once, proved live, then trusted ────────────────
-ASSERT="$(mktemp -t ocr_junit_assert)"
+ASSERT="$(mktemp -t ocr_junit_assert.XXXXXX)"
 cat > "$ASSERT" <<'PY'
 """Refuse a run that collected nothing, skipped anything, or failed anything.
 
@@ -195,7 +195,7 @@ PY
 # a canary that only exercises one branch proves only that branch.
 canary_must_be_rejected() {
   local label="$1" body="$2" report
-  report="$(mktemp -t ocr_junit_canary)"
+  report="$(mktemp -t ocr_junit_canary.XXXXXX)"
   printf '%s\n' "$body" > "$report"
   if python3 "$ASSERT" "$report"; then
     echo "BLOCKED - the result check is HOLLOW: it accepted ${label}."
@@ -218,7 +218,7 @@ canary_must_be_rejected "a failing test" \
 # accepts everything - it would turn this gate permanently red for a reason
 # that has nothing to do with OCR. So a clean result must be ACCEPTED, and
 # that is asserted here rather than assumed.
-CLEAN="$(mktemp -t ocr_junit_clean)"
+CLEAN="$(mktemp -t ocr_junit_clean.XXXXXX)"
 printf '%s\n' \
   '<testsuites><testsuite name="c" tests="1" skipped="0" failures="0" errors="0"/></testsuites>' \
   > "$CLEAN"
