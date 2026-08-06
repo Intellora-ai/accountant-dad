@@ -61,10 +61,26 @@ THE ONE DECISION IT DOES MAKE, AND THE MEASUREMENT BEHIND IT.
     NEITHER STRUCTURAL GUARANTEE IS ALLOWED TO BE ITS OWN AUDITOR. A retention
     counted with the mask that drew the box is 1.0 by algebra whatever the box
     removed, which is how a readable GSTIN left an invoice while the module
-    reported full retention. `content_kept` is therefore counted end to end
-    against each page's own modal intensity — a quantity no stage here
-    transforms anything with — and it is the only retention figure in this
-    module that is free to move.
+    reported full retention. The crop's box comes from line profiles
+    (`_content_box`) and its retention is counted with Otsu (`_ink_mask`) — two
+    different rules, so the quotient is free to move, and measured it does:
+    0.9998077292828302 on a noisy scan whose nine-pixel margin mark the crop
+    discarded, against exactly 1.0 on the same scan without the mark.
+
+    A THIRD, END-TO-END RETENTION FIGURE WAS TRIED HERE AND IS DELETED, because
+    it did not measure what it claimed to. `content_kept` counted pixels
+    departing from the page's median by more than the page's own noise, before
+    against after. Denoising COLLAPSES that noise — which collapses the bound —
+    so the count rose as the page was smoothed, whatever the smoothing cost the
+    document. Measured across 189 page-and-setting combinations: it exceeded 1.0
+    in 162 of them, reaching 36.99 — a "fraction of content pixels" reported at
+    3699%. On the six runs where every mark had genuinely been erased from the
+    page (true retention 0.000000) it reported between 15.04 and 18.09. It fell
+    below 1.0 in 15 runs and NOT ONE of them had lost anything. A number that
+    rises when content is destroyed and falls when it is not is worse than no
+    number: it is a reassurance, shipped inside the artifact, pointing the wrong
+    way (Law 24). The two figures that remain are each audited by a rule that
+    did not produce them, which is the property this one never had.
 
 WHAT IT DOES NOT ACCEPT, AND WHY REFUSING IS THE HONEST ANSWER.
     A float or 16-bit array is refused rather than cast. Casting `float32` to
@@ -126,10 +142,6 @@ DESKEW_APPLIED = "deskew_applied"
 DESKEW_FILL_INTENSITY = "deskew_fill_intensity"
 INK_LOST_TO_DENOISE = "ink_lost_to_denoise"
 INK_KEPT_BY_CROP = "ink_kept_by_crop"
-#: What the WHOLE cleaning kept, counted against the paper the page itself
-#: declares rather than against any rule this module used to transform it. The
-#: one number here that is not 1.0 by construction — see `clean`.
-CONTENT_KEPT = "content_kept"
 
 _DEGREES = "degrees"
 _GREY_LEVELS = "grey levels"
@@ -460,46 +472,6 @@ def _ink_erased(before: Image, after: Image, threshold: float) -> int:
     return int(np.count_nonzero(was & ~still))
 
 
-def _paper_level(grey: Image) -> float:
-    """The paper's own intensity: the median of the page.
-
-    A MEDIAN, AND DELIBERATELY NOT OTSU. Otsu answers a different question —
-    *"where do I split this page into a dark class and a light one?"* — and its
-    answer moves with the content. On an invoice of black print plus a
-    light-grey registration line it lands at 30, which classifies a plainly
-    readable grey mark as paper. The median does not move with a minority: the
-    paper is the majority of a document by definition, in every reproduction of
-    one, and ink cannot drag a median it is outnumbered by.
-
-    A median and not the histogram's mode either, measured: a page of paper at
-    235 carrying sigma 12 of sensor noise CLIPS at 255, which piles a spike
-    there and makes 255 the modal intensity — a paper level 20 grey levels off
-    the paper. The median of the same page is 234.8.
-
-    It carries no threshold, so there is no number here for anyone to have
-    chosen (Law 52).
-    """
-    return float(np.median(_f64(grey)))
-
-
-def _content_at(grey: Image) -> int:
-    """Pixels the paper alone cannot account for. The END-TO-END oracle.
-
-    Neither the crop's rule (line profiles) nor the ink-loss rule (Otsu): a
-    third, independent route to *"is something printed here?"*, so that what the
-    whole cleaning cost the document is measured by something none of its stages
-    consulted. The bound is `_blank_line_tolerance` with a line of ONE sample —
-    the largest excursion the page's own noise could produce at a single pixel —
-    so on a clean page every departure from the paper counts and on a noisy one
-    the noise does not.
-    """
-    if grey.size == 0:
-        return 0
-    sigma = _measure_noise(grey) or 0.0
-    bound = sigma * _extreme_normal(int(grey.size))
-    return int(np.count_nonzero(np.absolute(_f64(grey) - _paper_level(grey)) > bound))
-
-
 def _extreme_normal(draws: int) -> float:
     """`sqrt(2 ln n)` — the leading term of the expected maximum of `n` standard
     normal draws. Arithmetic, and the only reason an extreme needs its own
@@ -586,9 +558,8 @@ def _content_box(grey: Image, painted: Image | None = None) -> tuple[int, int, i
     because the retention was counted with that same mask (`KNOWN_FAILURES.md`
     D1). A number that cannot take any other value is not a measurement.
 
-    So the box comes from line profiles, `ink_kept_by_crop` is counted with the
-    Otsu mask, and `content_kept` is counted end to end against the paper level.
-    Three different rules; none of them marks its own work.
+    So the box comes from line profiles and `ink_kept_by_crop` is counted with
+    the Otsu mask. Two different rules, and neither one marks its own work.
 
     `painted` names the pixels rotation filled in, and is `None` before any
     geometry has been applied — every pixel is then the document's own.
@@ -1335,18 +1306,24 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
         the mark. `ink_lost_to_denoise` is measured at the Otsu split taken from
         the artifact as received — the rule the denoise did not consult — as a
         SET DIFFERENCE, so a stroke destroyed cannot be cancelled by ink gained
-        elsewhere. `content_kept` is measured against each page's own modal
-        intensity, which no stage here transforms anything with, so it answers
-        end to end *"what did this cost the document?"* — the question neither
-        of the other two asks.
+        elsewhere. Neither figure marks its own work.
 
-        NOT ONE OF THE THREE IS 1.0 BY CONSTRUCTION, and an earlier form of this
-        docstring said the first one was, in the same breath as calling
-        `content_kept` "the one figure that is free to move." Both halves were
-        false and the pair was worse than either: a reader told a number is a
-        constant stops reading it, and this is the number that reports a mark
-        the crop threw away. A guarantee described as unbreakable is a guarantee
-        nobody checks.
+        NEITHER OF THE TWO IS 1.0 BY CONSTRUCTION, and an earlier form of this
+        docstring said the first one was. That was false, and saying it was
+        worse than the error itself: a reader told a number is a constant stops
+        reading it, and this is the number that reports a mark the crop threw
+        away. A guarantee described as unbreakable is a guarantee nobody checks.
+
+        A THIRD FIGURE, `content_kept`, USED TO SIT HERE AND HAS BEEN DELETED.
+        It counted pixels departing from the page's median by more than the
+        page's own noise. Denoising collapses that noise and so collapses the
+        bound, which made the count rise as the page was smoothed — measured
+        above 1.0 in 162 of 189 page-and-setting combinations, peaking at 36.99,
+        and reading between 15.04 and 18.09 on runs where every mark had in fact
+        been erased. It never once fell for a real loss. It is deleted rather
+        than repaired because the quantity it divided was not conserved by the
+        stages it spanned, which is a defect of the question and not of the
+        arithmetic (Law 24, Law 49).
     """
     received = _receive(image, settings)
     grey = _to_grey(received)
@@ -1354,7 +1331,6 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
     before = _observe(grey, Stage.ORIGINAL)
     _mask, split = _ink_mask(grey)
     ink_before = _ink_at(grey, split)
-    content_before = _content_at(grey)
 
     denoised = _u8(
         cv2.fastNlMeansDenoising(
@@ -1386,8 +1362,6 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
     # mask, so neither factor is 1.0 by algebra; the product is the ink that
     # survived the pair of them.
     retained = kept_by_first_crop * kept_by_second_crop
-    content_after = _content_at(cleaned)
-    content_kept = 1.0 if content_before == 0 else content_after / content_before
 
     observations = (
         *before,
@@ -1421,22 +1395,7 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
                 "0.9998077292828302 on a noisy scan whose 3x3 margin mark the "
                 "crop discarded, which is exactly that mark's share of the ink, "
                 "against exactly 1.0 on the same scan without it. Below 1.0 "
-                "means a mark Otsu called ink was thrown away; read it with "
-                f"{CONTENT_KEPT}, which asks the wider end-to-end question."
-            ),
-        ),
-        QualityObservation(
-            name=CONTENT_KEPT,
-            stage=Stage.CLEANED,
-            value=content_kept,
-            unit="fraction of content pixels",
-            note=(
-                f"{content_before} pixel(s) differed from the paper on the artifact "
-                f"as received, {content_after} on the page delivered. Counted "
-                "against each page's own modal intensity, which no stage here uses "
-                "to transform anything, so this is the END-TO-END cost: it falls "
-                "when denoising, contrast or the geometry costs the document a "
-                "mark, whatever Otsu and the line profiles each made of that mark."
+                "means a mark Otsu called ink was thrown away."
             ),
         ),
     )
