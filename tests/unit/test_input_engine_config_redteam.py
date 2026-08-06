@@ -213,6 +213,95 @@ def test_a_weight_named_twice_is_refused_rather_than_silently_taking_the_last() 
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# THE DUPLICATE REFUSAL'S OWN WORDS — membership is not the claim
+#
+# The test above asks only whether `gstin` appears somewhere in the message.
+# That is satisfied by a refusal whose entire explanation has been deleted,
+# case-flipped, or replaced with the literal `None` — all of which still raise
+# `ConfigurationError`, and none of which tell the operator anything.
+#
+# The explanation is the only thing the operator gets. `_parse_weights` cannot
+# say WHICH weight was meant — that is the whole reason it refuses — so the
+# message has to justify refusing rather than picking, and specifically has to
+# say that the arithmetic check cannot catch this. An operator who is told only
+# "gstin" will assume the sum check would have caught a real problem, and
+# reach for the shortest edit that makes the error go away.
+#
+# `_object_pairs_without_duplicates` builds that message out of four separate
+# pieces — an f-string and three plain literals — and mutation testing rewrites
+# each independently. Pinning the assembled line is the only assertion that
+# sees all four (§J.2).
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def spec_for(name: str) -> c.ParameterSpec:
+    """The catalogue entry for a parameter, read from the real catalogue so
+    `purpose`, `unit` and `range_text` are never restated here.
+    """
+    for spec in c.PARAMETER_CATALOG:
+        if spec.name == name:
+            return spec
+    raise AssertionError(f"{name!r} is not in PARAMETER_CATALOG")
+
+
+def expected_duplicate_problem(names: str, raw: str) -> str:
+    """The exact sentence a duplicated weight key must produce, after
+    `_parse_weights` has appended the raw input it came from.
+
+    Written out character for character on purpose: this IS the pin. `names`
+    is a parameter rather than a literal so the separator between two
+    duplicated field names is pinned too — a single duplicated name joins to
+    itself no matter what separator `str.join` was given, so only a case with
+    two DISTINCT duplicated names can observe that argument at all.
+    """
+    return (
+        f"names the same field twice: {names}. Two weights "
+        "for one field leaves no authority for which one the document "
+        "score should use, and the surviving pair can still sum to 1.0000, "
+        f"so the arithmetic check cannot catch it. ({raw!r})"
+    )
+
+
+def test_the_duplicate_weight_refusal_is_pinned_character_for_character() -> None:
+    """One field written twice. Pins the whole problem line — the refusal, its
+    justification, the raw input echoed back, and the catalogue wording the
+    loader wraps around every invalid value.
+    """
+    raw = '{"gstin": 0.4000, "gstin": 1.0000}'
+    environment = a_valid_env()
+    environment[env_var(c.DOCUMENT_SCORE_WEIGHTS)] = raw
+
+    with pytest.raises(c.ConfigurationError) as raised:
+        c.load_confidence_parameters(environment)
+
+    (line,) = problem_lines(str(raised.value))
+    assert line == expected_invalid_line(
+        spec_for(c.DOCUMENT_SCORE_WEIGHTS), expected_duplicate_problem("gstin", raw)
+    )
+
+
+def test_two_fields_named_twice_are_listed_sorted_and_comma_separated() -> None:
+    """Two DISTINCT duplicated names, written `hsn` first so the expected
+    order is not the order they appear in.
+
+    This is the only shape that can see the join separator and the `sorted()`
+    at once: with one duplicated name both are invisible. `hsn` before `gstin`
+    in the input, `gstin, hsn` in the message.
+    """
+    raw = '{"hsn": 0.2000, "hsn": 0.3000, "gstin": 0.4000, "gstin": 0.5000}'
+    environment = a_valid_env()
+    environment[env_var(c.DOCUMENT_SCORE_WEIGHTS)] = raw
+
+    with pytest.raises(c.ConfigurationError) as raised:
+        c.load_confidence_parameters(environment)
+
+    (line,) = problem_lines(str(raised.value))
+    assert line == expected_invalid_line(
+        spec_for(c.DOCUMENT_SCORE_WEIGHTS), expected_duplicate_problem("gstin, hsn", raw)
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # NO DEFAULT EXISTS ANYWHERE — the structural half of the claim
 #
 # `test_input_engine_config.py` proves the loader returns nothing when a

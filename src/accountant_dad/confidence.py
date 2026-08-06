@@ -520,6 +520,71 @@ ConfidenceOrUnmeasured = Annotated[
 ]
 
 
+def weakest_link(
+    values: tuple[Decimal | UnmeasuredType, ...],
+) -> Decimal | UnmeasuredType:
+    """The lowest measurement present, or the absence that makes "lowest" moot.
+
+    THE CANONICAL AGGREGATION, and the only one. `ACCOUNTING_DEFINITIONS.md`'s
+    §M amendment *Understanding Confidence Aggregation*, approved 2026-08-06:
+
+        Understanding Confidence = min(
+            transaction, party, item, payment, timeline,
+            business_context, evidence_reliability)
+
+    It lives HERE rather than in the engine that consumes it, for the reason the
+    amendment's own migration strategy requires: *"the aggregation lives behind
+    a single named function… no caller computes a confidence itself."* A rule
+    that is replaceable in one place is a rule that can actually be replaced.
+
+    ── AN ABSENCE IS NOT A SMALL NUMBER ──
+
+    A `min` that ignored `UNMEASURED` and returned the smallest number present
+    would report a MEASURED weak reading where nothing was measured at all —
+    the exact collapse the amendment forbids: *"UNMEASURED represents missing
+    knowledge, not low confidence."* So an absence dominates:
+
+        every value measured            ->  the smallest of them
+        exactly one absence state       ->  that state, unchanged
+        two or more DIFFERENT absences  ->  refused; see below
+
+    ── WHY MIXED ABSENCES RAISE RATHER THAN PICK ──
+
+    `confidence.py` carries THREE absences — `NotMeasuredType`,
+    `NotApplicableType`, `MeasurementFailedType` — and
+    `records_the_same_measurement` already rules that two DIFFERENT ones
+    DISAGREE. The amendment writes one `UNMEASURED` and so does not say which
+    survives a mix. Choosing would be inventing the owner's answer (Law 54);
+    returning one silently would assert a fact nobody established. Refusing is
+    the only honest third option, and it is loud (Law 11).
+
+    Empty input is refused for the same reason: `min()` of nothing is not zero
+    confidence, it is no question having been asked.
+    """
+    if not values:
+        raise ValueError(
+            "weakest_link() was given no values. An aggregate over nothing is "
+            "not a low score - it is the absence of any measurement to "
+            "aggregate, and inventing a number here would be the exact failure "
+            "this function exists to prevent."
+        )
+
+    absences = {type(value) for value in values if isinstance(value, UnmeasuredType)}
+    if len(absences) > 1:
+        named = ", ".join(sorted(absence.__name__ for absence in absences))
+        raise ValueError(
+            f"weakest_link() was given {len(absences)} different kinds of absence: "
+            f"{named}. `records_the_same_measurement` already rules that two "
+            "different absence states DISAGREE, and no document says which one "
+            "survives an aggregation. Refused rather than chosen: picking one "
+            "would invent an answer the specification does not give (Law 54)."
+        )
+    if absences:
+        return next(value for value in values if isinstance(value, UnmeasuredType))
+
+    return min(value for value in values if isinstance(value, Decimal))
+
+
 def records_the_same_measurement(
     left: Decimal | UnmeasuredType, right: Decimal | UnmeasuredType
 ) -> bool:

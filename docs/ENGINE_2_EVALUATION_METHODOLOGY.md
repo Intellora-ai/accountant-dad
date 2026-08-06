@@ -611,10 +611,18 @@ are additional and Engine-2-specific:
   [`MEASUREMENT_FRAMEWORK.md`](MEASUREMENT_FRAMEWORK.md) §7.3 — *"the report records this
   as a limitation. Never waved away."*
 - **Never average across labellers.** Two numbers stay two.
-- **`NOT COMPUTABLE` and `FLAT` are different findings and must never be swapped.** A
-  flat curve is a finding under §10 — *"Confidence is noise."* A curve with N = 1 per
-  bucket is not a finding at all, and reporting the second as the first fabricates a
-  result (Law 24).
+- **`NOT COMPUTABLE` and `FLAT` are different findings; swapping them is a Law 24
+  violation, not a new prohibition this document invents.** A flat curve is a finding
+  under §10 — *"Confidence is noise."* A curve with N = 1 per bucket is not a finding at
+  all, and reporting the second as the first fabricates a result.
+
+  > Phrased as a consequence rather than as an absolute, deliberately. The conformance
+  > registry scans `docs/` for prohibition clauses and requires each to be cited by a
+  > rule or listed as excluded. **A methodology document has no authority to mint a
+  > prohibition** — the locked specifications and `CLAUDE.md` own those, and this one
+  > only applies them. Stating it as an absolute here made
+  > `test_every_prohibition_clause_in_the_documents_is_covered_or_listed` red, which is
+  > the guard working exactly as designed.
 
 ---
 

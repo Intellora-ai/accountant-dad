@@ -925,6 +925,47 @@ def test_absent_reprs_as_absent_not_as_the_default_object_repr() -> None:
     assert repr(m.ABSENT) == "ABSENT"
 
 
+#: `AbsentType.__bool__`'s whole message, character for character.
+#:
+#: The two tests above assert only that `TypeError` is raised. That is not the
+#: claim the method makes. Its message is the ONLY thing an engineer who hits
+#: this gets — the sentinel deliberately has no truth value, so the message has
+#: to say what to write instead (`is ABSENT`) and why the collapse it is
+#: refusing matters. A `TypeError` carrying no message at all satisfies both
+#: tests above and tells that engineer nothing.
+#:
+#: Pinned as a literal because the method builds the message from three
+#: separate string literals, and mutation testing rewrites each one on its own —
+#: `XX`-wrapping it, case-flipping it, or replacing the whole call argument with
+#: `None`. Every one of those still raises `TypeError`, so `pytest.raises(TypeError)`
+#: cannot see any of them; only the characters can (§J.2).
+ABSENT_TRUTH_VALUE_REFUSAL = (
+    "ABSENT has no truth value. Compare with `is ABSENT` or "
+    "`isinstance(x, AbsentType)` — `if not value:` is exactly the "
+    "collapse into zero this type exists to prevent."
+)
+
+
+def test_the_absent_truth_value_refusal_message_is_exactly_pinned() -> None:
+    """`bool(ABSENT)` — the direct route into `__bool__`."""
+    with pytest.raises(TypeError) as raised:
+        bool(m.ABSENT)
+
+    assert str(raised.value) == ABSENT_TRUTH_VALUE_REFUSAL
+
+
+def test_the_not_absent_refusal_carries_the_same_exact_message() -> None:
+    """`not ABSENT` — the indirect route, and the one an engineer actually
+    writes by accident. It must not degrade into a different, vaguer error
+    than the direct call gives: the whole point of the message is that it
+    names `if not value:` as the mistake being made.
+    """
+    with pytest.raises(TypeError) as raised:
+        _ = not m.ABSENT
+
+    assert str(raised.value) == ABSENT_TRUTH_VALUE_REFUSAL
+
+
 # ── exact-message pins: "did it raise" is not the same as "raised correctly" ──
 #
 # CI's mutation run left 24 survivors below `pytest.raises(...)` never

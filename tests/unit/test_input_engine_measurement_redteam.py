@@ -271,6 +271,123 @@ def test_a_stored_failed_field_of_null_is_refused_not_read_as_a_field_named_none
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# THE REFUSALS' OWN WORDS — `"x" in message` is not a pin
+#
+# Every assertion in the block above asks whether a field name appears
+# somewhere in the message. That is satisfied by a refusal whose explanation
+# has been deleted, case-flipped, or `XX`-wrapped — including one that names
+# the field as `XX\`source_document_type\`XX`, which still CONTAINS
+# `source_document_type` and so passes a membership check unchanged.
+#
+# The explanation is load-bearing here, not decoration. A stored `true` is the
+# one corruption that looks like a good reading rather than a broken one:
+# `float(True)` is `1.0`, the highest score the scale has, on a document
+# nobody scored. An operator who is told only "processing_time_ms" will assume
+# a typo. The message has to say WHY a coercion was refused — that `bool` is a
+# subclass of `int` in Python — or the next person removes the guard.
+#
+# `_as_number` builds that refusal from three separate literals and
+# `_row_from_json` passes `subject` in at eleven call sites; mutation rewrites
+# each independently. Only the assembled characters see any of it (§J.2).
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def test_the_boolean_refusal_states_the_int_subclass_trap_in_full(tmp_path: Path) -> None:
+    """`processing_time_ms: true`, pinned end to end.
+
+    The reason clause is the whole value of this message. Without it the
+    refusal reads as pedantry about a type, and the guard looks safe to relax;
+    with it, the operator is told that relaxing it records a one-millisecond
+    document that nobody timed.
+    """
+    store = tmp_path / "store.jsonl"
+    write_lines(store, a_stored_row(processing_time_ms=True))
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as raised:
+        m.read_all(store)
+
+    assert str(raised.value) == (
+        f"line 1 of {store} is not a recordable measurement row: "
+        "`processing_time_ms` must be a number, not a boolean; got True. In Python "
+        "`bool` is a subclass of `int`, so a coercion would record this as "
+        "1.0 or 0.0 — a reading nobody took."
+    )
+
+
+def test_the_boolean_refusal_names_document_score_when_that_is_the_field(
+    tmp_path: Path,
+) -> None:
+    """The same message, entered through the OTHER `_as_number` call site that
+    a stored `true` can reach. Both call sites hand `_as_number` their own
+    `subject`, so a mutation that blanked one of them would leave the other's
+    test green — the field name is only pinned for the field the test used.
+    """
+    store = tmp_path / "store.jsonl"
+    write_lines(store, a_stored_row(document_score=True))
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as raised:
+        m.read_all(store)
+
+    assert str(raised.value) == (
+        f"line 1 of {store} is not a recordable measurement row: "
+        "`document_score` must be a number, not a boolean; got True. In Python "
+        "`bool` is a subclass of `int`, so a coercion would record this as "
+        "1.0 or 0.0 — a reading nobody took."
+    )
+
+
+def test_a_null_source_document_type_names_that_field_and_nothing_around_it(
+    tmp_path: Path,
+) -> None:
+    """The `source_document_type` refusal, pinned character for character.
+
+    `assert "source_document_type" in message` above cannot tell the real
+    subject apart from a wrapped or padded one, and the subject is what a
+    calibration run splits its cohorts by — the wrong field name here sends
+    someone to fix the wrong column.
+    """
+    store = tmp_path / "store.jsonl"
+    write_lines(store, a_stored_row(source_document_type=None))
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as raised:
+        m.read_all(store)
+
+    assert str(raised.value) == (
+        f"line 1 of {store} is not a recordable measurement row: "
+        "`source_document_type` must be a string; got None."
+    )
+
+
+def test_a_signal_value_of_the_wrong_shape_names_the_signal_it_came_from(
+    tmp_path: Path,
+) -> None:
+    """A signal `value` that is a JSON object reaches `_as_number` through
+    `_signal_value`'s tail call — the only route by which a signal's own
+    `subject` is forwarded rather than rebuilt.
+
+    Pinned in full because the subject is the ONLY thing that says which of a
+    row's signals is broken. A row can carry dozens across four categories; a
+    refusal that lost the signal's name would send a calibration run looking
+    through all of them.
+    """
+    store = tmp_path / "store.jsonl"
+    write_lines(
+        store,
+        a_stored_row(
+            per_field=[{"name": "gstin", "value": {"nested": 1}, "instrument": "PaddleOCR"}]
+        ),
+    )
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as raised:
+        m.read_all(store)
+
+    assert str(raised.value) == (
+        f"line 1 of {store}: signal 'gstin''s value must be "
+        "a number, a numeric string, or null; got {'nested': 1}."
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # THE SAME DEFECT'S REMAINING SURFACE
 #
 # The four tests above are the four shapes that were MEASURED fabricating a
