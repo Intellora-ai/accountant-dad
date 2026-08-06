@@ -2656,30 +2656,110 @@ def test_a_document_naming_no_catalogued_type_is_recorded_as_unknown_not_guessed
     )
 
 
+def _end_of_pdf_literal_string(payload: bytes, opening: int) -> int:
+    """Index just past the `)` closing the literal string that opens at `opening`.
+
+    NEITHER `payload.index(b")")` NOR A NON-GREEDY REGEX FINDS THIS, and the
+    difference is not academic — it is the whole reason the helper exists. A PDF
+    literal string may contain BALANCED unescaped parentheses, and may escape any
+    byte with a backslash (`\\375`, `\\)`, `\\\\`). A scanner that stops at the
+    first `)` stops inside the string on exactly the saves this file is about,
+    leaving half an identifier in the "everything else" it was supposed to
+    remove — which is the original bug wearing a new hat.
+    """
+    depth = 0
+    index = opening
+    while index < len(payload):
+        byte = payload[index]
+        if byte == ord("\\"):
+            index += 2  # an escape consumes the byte after it, whatever it is
+            continue
+        if byte == ord("("):
+            depth += 1
+        elif byte == ord(")"):
+            depth -= 1
+            if depth == 0:
+                return index + 1
+        index += 1
+    raise AssertionError("the PDF trailer holds an unterminated literal string")
+
+
+def _pdf_file_identifier_span(payload: bytes) -> tuple[int, int]:
+    """The byte span of the trailer's `/ID [ ... ]` array, ends included.
+
+    Walks the array rather than pattern-matching it, because EITHER of its two
+    strings may be serialised as hex (`<...>`) or as a literal (`(...)`), and a
+    literal may contain `]`. Measured over 3000 saves of one document: both
+    forms occur, and in three of them the FIRST string was a literal too — so an
+    assumption that entry one is always hex is false, not merely fragile.
+    """
+    start = payload.rindex(b"/ID")
+    index = payload.index(b"[", start) + 1
+    while index < len(payload):
+        byte = payload[index]
+        if byte == ord("]"):
+            return start, index + 1
+        if byte == ord("("):
+            index = _end_of_pdf_literal_string(payload, index)
+            continue
+        if byte == ord("<"):
+            index = payload.index(b">", index) + 1
+            continue
+        index += 1
+    raise AssertionError("the PDF trailer holds an unterminated /ID array")
+
+
 def test_a_rebuilt_scan_differs_only_in_the_pdf_file_identifier_never_in_a_pixel() -> None:
     """A REAL FINDING, PINNED RATHER THAN FIXED, and the reason it is not a bug
     this change repairs.
 
-    Cleaning the SAME scan twice does not produce the same bytes. Measured on a
-    400x200 one-page scan at 150 dpi: two payloads of identical length, 5465
-    bytes, differing in exactly 58 of them — every one inside
-    `trailer <</ID[...]>>`, PyMuPDF's per-save random file identifier. The
-    rasters are `np.array_equal`.
+    Cleaning the SAME scan twice does not produce the same bytes. The difference
+    is confined to `trailer <</ID[...]>>`, PyMuPDF's per-save random file
+    identifier. The rasters are `np.array_equal`.
 
     IT IS NOT A CONTENT DEFECT, and `CLAUDE.md`'s own standing rule says why:
     *"IDENTITY != INTELLIGENCE. IDs identify objects. They never influence
     reasoning."* Nothing reads `/ID`, and no reading changes because of it.
 
-    IT IS STILL WORTH A TEST, because it is a live trap for anyone who compares
-    two cleaned PDFs byte for byte — which is what a determinism check does, and
-    which cost this suite one red test before it was diagnosed. This asserts the
-    exact shape of the difference, so the day a rebuild starts differing in a
-    PIXEL, or in a byte outside the trailer, it goes red and says so instead of
-    reading as the same known-harmless noise.
+    ── WHY THIS TEST WAS REWRITTEN: IT PINNED AN INVARIANT THAT IS NOT TRUE ──
 
-    RECORDED, NOT FIXED (`CLAUDE.md` §E.7). Making the identifier deterministic
-    is a decision about PDF output nobody has asked for, and it is outside this
-    change's mission.
+    It used to assert `len(first.payload) == len(second.payload)` and then, for
+    the differing bytes, that they all fell after `trailer`. Both halves were
+    wrong, and the first one was RED ON CI while green locally, which is how it
+    was found:
+
+        AssertionError: assert 5457 == 5465
+
+    A PDF byte string has two legal serialisations — hex `<...>`, a fixed 34
+    bytes for 16 bytes of identifier, or a literal `(...)`, which is 2 bytes
+    plus one byte per content byte plus one more for every byte that needs a
+    backslash escape. PyMuPDF picks per string, per save, over bytes that are
+    RANDOM BY CONSTRUCTION. Measured on this exact fixture at 150 dpi, 3000
+    saves, commit `3bd31e2`:
+
+        /ID span (bytes)   66  67  68  69  70  71  72  73
+        occurrences         2   2   1   1   4   1  19  2969
+
+    Eight distinct lengths. **The old assertion compared a random variable to
+    itself and passed 99% of the time**, which is the worst possible failure
+    mode: rare enough to look like flakiness, frequent enough to redden the
+    `coverage` gate and block everything behind it.
+
+    A hypothesis of mine was REFUTED here and is recorded so nobody re-derives
+    it: the literal form is NOT chosen only when it is strictly shorter. In 20
+    of 3000 saves it was chosen at exactly 34 bytes, the same width as hex. The
+    selection rule inside MuPDF is not needed to fix this and is not claimed.
+
+    The second half was wrong differently — merely LOOSE. `trailer` is followed
+    by `/Size`, `/Root` and `/ID`, so "after the trailer keyword" permitted a
+    changed root object or object count to pass as identifier noise.
+
+    ── THE INVARIANT THAT IS ACTUALLY TRUE, AND IS STRICTER ──
+
+    Excise the `/ID` array from both payloads and *everything else is byte for
+    byte identical*. That needs no equal length, and it forbids what the old
+    version allowed. Measured over 300 cleans at `3bd31e2`: 3 distinct payload
+    lengths, and **exactly 1 distinct remainder**.
     """
     scan = a_scanned_pdf()
     settings = a_cleaner_settings()
@@ -2695,19 +2775,26 @@ def test_a_rebuilt_scan_differs_only_in_the_pdf_file_identifier_never_in_a_pixel
         "determinism defect, not the known file-identifier difference, and "
         "MEASUREMENT_FRAMEWORK cannot obtain a number from a stage like that."
     )
-    assert len(first.artifact.payload) == len(second.artifact.payload)
 
-    differing = [
-        index
-        for index, (left, right) in enumerate(
-            zip(first.artifact.payload, second.artifact.payload, strict=True)
+    payloads = (first.artifact.payload, second.artifact.payload)
+    # ASSERTED, NOT ASSUMED. If a future PyMuPDF stopped writing `/ID` at all,
+    # both remainders would be whole payloads and would still compare equal —
+    # the test would pass while checking nothing. This is what stops that.
+    for payload in payloads:
+        assert payload.count(b"/ID") == 1, (
+            "the rebuilt PDF does not carry exactly one file identifier, so "
+            "'everything except the identifier' is not a thing this test can "
+            "still measure. Re-derive the span before trusting the comparison."
         )
-        if left != right
+
+    spans = [_pdf_file_identifier_span(payload) for payload in payloads]
+    without_identifier = [
+        payload[:start] + payload[end:]
+        for payload, (start, end) in zip(payloads, spans, strict=True)
     ]
-    if differing:
-        trailer = first.artifact.payload.rindex(b"trailer")
-        assert min(differing) > trailer, (
-            f"the two payloads differ at byte {min(differing)}, before the "
-            f"trailer at {trailer}. Only the file identifier is allowed to "
-            "vary between two cleans of one document."
-        )
+
+    assert without_identifier[0] == without_identifier[1], (
+        "two cleans of one scan differ OUTSIDE the PDF file identifier. Only "
+        f"`/ID` is allowed to vary. Identifier spans were {spans[0]} and "
+        f"{spans[1]}; the payloads outside them must be byte for byte equal."
+    )

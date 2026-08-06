@@ -409,6 +409,58 @@ def document_origin_text(artifact: DocumentEvidenceObject) -> tuple[str, ...]:
 # and that dominates the cost; the tests below only READ this result.
 
 
+def _refuse_an_unparsed_artifact(artifact: DocumentEvidenceObject) -> None:
+    """Fail here, with Engine 1's own recorded words, rather than let a FAILURE
+    RECORD be read by every test below as if it were a parsed document.
+
+    ── THE FALSE GREEN THIS EXISTS TO KILL, OBSERVED ON CI, NOT IMAGINED ──
+
+    `pipeline._stopped` classifies a `DocumentUnreadableError` as a BUSINESS
+    failure, so `run` does not raise: it returns a Document Evidence Object
+    whose `document_structure` reads *"not parsed: ..."*. That object still
+    carries `reader`'s REAL extracted text (`pipeline.py:1224`) — the failure
+    path populates the very field the first test asserts on.
+
+    So when Docling failed on CI at `55eb987`, the mutation job printed:
+
+        .F
+
+    A PASS, then a fail. `test_a_real_pdf_..._carrying_that_text_layers_content`
+    — the test that exists to prove the ROADMAP criterion *"a real document runs
+    end to end"* — went GREEN against a document that never reached the parser.
+    It compared `extracted_text` to the ground truth, and the failure record
+    matched, because reader had genuinely read it.
+
+    That is the exact shape §J forbids: a passing test that does not mean the
+    real path worked. One test reported the problem and one hid it, and the one
+    that hid it was the more important of the two.
+
+    The second failure this repairs is diagnostic. The parser's real reason —
+    Docling's own `result.errors`, via `parser.py:750` — is carried on the
+    artifact in `reliability_information` and in the uncertainty marker, and
+    both were discarded. All CI could say was:
+
+        assert 'page_count=2' in "not parsed: Engine 1 stopped at the
+        'parser' stage because the document could not be read."
+
+    A message that names the stage and withholds the cause. Everything needed
+    was already in the object; nothing was reading it. This reads it.
+    """
+    structure = artifact.structured_document.document_structure
+    if "page_count=" in structure:
+        return
+    report = artifact.confidence_report
+    markers = "".join(
+        f"\n    uncertainty : {m.subject}: {m.reason}" for m in report.uncertainty_markers
+    )
+    raise AssertionError(
+        "Engine 1 returned a FAILURE RECORD, not a parsed document, and every "
+        "test reading this fixture would otherwise assert against it. Engine 1's "
+        f"own account of why:\n    structure   : {structure}\n"
+        f"    reliability : {report.reliability_information}{markers}"
+    )
+
+
 @pytest.fixture(scope="session")
 def engine1_artifact() -> DocumentEvidenceObject:
     intake = pipeline.DocumentIntake(
@@ -416,13 +468,15 @@ def engine1_artifact() -> DocumentEvidenceObject:
         media_type=reader.MediaType.PDF,
         source_references=("upload:invoice-two-page.pdf",),
     )
-    return pipeline.run(
+    artifact = pipeline.run(
         intake,
         identity=an_identity(),
         settings=a_pipeline_settings(),
         recorded_at=RECORDED_AT,
         human_business_context=a_human_business_context(),
     )
+    _refuse_an_unparsed_artifact(artifact)
+    return artifact
 
 
 # ── 1. a real document goes in, a Document Evidence Object comes out ─────
