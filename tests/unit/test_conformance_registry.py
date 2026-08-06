@@ -56,6 +56,7 @@ from typing import Protocol, cast
 
 import pymupdf
 import pytest
+from authored_source import authored_path
 from pydantic import BaseModel, ValidationError, create_model
 
 import accountant_dad
@@ -149,7 +150,7 @@ CANONICAL_ARTIFACTS = frozenset(
 #: pointing at nothing in particular.
 SHORTEST_USEFUL_QUOTE = 20
 
-_REPO_ROOT = pathlib.Path(str(accountant_dad.__file__)).parent.parent.parent
+_REPO_ROOT = authored_path(accountant_dad).parent.parent.parent
 
 
 #: The phrase the specifications use for an absolute prohibition. Deliberately

@@ -25,11 +25,11 @@ enforced.
 from __future__ import annotations
 
 import ast
-import pathlib
 from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
+from authored_source import authored_source
 from pydantic import ValidationError
 
 from accountant_dad.artifacts.decision import (
@@ -132,7 +132,7 @@ def _incomplete_decision(identity: IdentityEnvelope) -> AccountingDecision:
 
 def _module_tree() -> ast.Module:
     """The stub's own source, parsed. Read off disk, not off a memory of it."""
-    return ast.parse(pathlib.Path(str(stub.__file__)).read_text(encoding="utf-8"))
+    return ast.parse(authored_source(stub))
 
 
 # ── the one that must never go quiet ───────────────────────────────────────

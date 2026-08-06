@@ -27,13 +27,13 @@ from __future__ import annotations
 
 import ast
 import inspect
-import pathlib
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import ModuleType
 
 import pytest
+from authored_source import authored_source
 from pydantic import ValidationError
 
 from accountant_dad.artifacts.evidence import (
@@ -135,7 +135,7 @@ def modules_imported_by(module: ModuleType) -> set[str]:
     becomes `..brain`) instead of being resolved, so it cannot slip past an
     allowlist of absolute names by being written the other way round.
     """
-    source = pathlib.Path(str(module.__file__)).read_text(encoding="utf-8")
+    source = authored_source(module)
     imported: set[str] = set()
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):

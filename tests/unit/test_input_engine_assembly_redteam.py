@@ -56,6 +56,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
+from authored_source import authored_source
 from pydantic import BaseModel, ValidationError
 
 from accountant_dad.artifacts.evidence import (
@@ -533,7 +534,7 @@ def test_assembly_performs_no_arithmetic_at_all() -> None:
     an `+`, `-`, `*` or `/` appearing anywhere turns this red — including one
     written inside an f-string or a comprehension, which a grep would miss.
     """
-    source = inspect.getsource(assembly_module)
+    source = authored_source(assembly_module)
     arithmetic = sorted(
         {
             (node.lineno, type(node.op).__name__)
@@ -558,11 +559,11 @@ def test_assembly_calls_no_aggregation_function() -> None:
     aggregations = {"min", "max", "sum", "mean", "median", "fmean", "fsum", "prod", "average"}
     called = {
         node.func.id
-        for node in ast.walk(ast.parse(inspect.getsource(assembly_module)))
+        for node in ast.walk(ast.parse(authored_source(assembly_module)))
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
     } | {
         node.func.attr
-        for node in ast.walk(ast.parse(inspect.getsource(assembly_module)))
+        for node in ast.walk(ast.parse(authored_source(assembly_module)))
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
     }
     assert called & aggregations == set(), (
@@ -578,7 +579,7 @@ def test_assembly_compares_only_against_none() -> None:
     """
     comparisons = [
         (node.lineno, [ast.dump(comparator) for comparator in node.comparators])
-        for node in ast.walk(ast.parse(inspect.getsource(assembly_module)))
+        for node in ast.walk(ast.parse(authored_source(assembly_module)))
         if isinstance(node, ast.Compare)
         and not all(
             isinstance(comparator, ast.Constant) and comparator.value is None
@@ -601,7 +602,7 @@ def test_assembly_reads_no_confidence_configuration() -> None:
     no decision lives at all. The names come from the catalog itself, so a
     seventeenth parameter is covered without editing this test.
     """
-    source = inspect.getsource(assembly_module)
+    source = authored_source(assembly_module)
     imported = {
         node.module
         for node in ast.walk(ast.parse(source))

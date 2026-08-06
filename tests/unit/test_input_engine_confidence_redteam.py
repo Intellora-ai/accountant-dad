@@ -54,6 +54,7 @@ from decimal import Decimal
 
 import numpy as np
 import pytest
+from authored_source import authored_source
 
 from accountant_dad.artifacts.evidence import (
     ConfidenceReport,
@@ -396,7 +397,7 @@ def test_the_recorder_performs_no_arithmetic_at_all() -> None:
     arithmetic = sorted(
         {
             (node.lineno, type(node.op).__name__)
-            for node in ast.walk(ast.parse(inspect.getsource(recorder_module)))
+            for node in ast.walk(ast.parse(authored_source(recorder_module)))
             if isinstance(node, ast.BinOp) and not isinstance(node.op, ast.BitOr)
         }
     )
@@ -410,7 +411,7 @@ def test_the_only_aggregation_in_the_recorder_counts_regions_and_never_combines_
     `CONFIDENCE_SPECIFICATION.md`'s own Objection 1 predicts precisely the
     `min(...)` that would appear here first.
     """
-    tree = ast.parse(inspect.getsource(recorder_module))
+    tree = ast.parse(authored_source(recorder_module))
     called = {
         node.func.id
         for node in ast.walk(tree)
@@ -598,7 +599,7 @@ def test_the_recorder_reads_no_confidence_configuration() -> None:
     step toward a threshold living here. Names come from the catalog, so a
     seventeenth parameter is covered without editing this test.
     """
-    source = inspect.getsource(recorder_module)
+    source = authored_source(recorder_module)
     imported = {
         node.module
         for node in ast.walk(ast.parse(source))

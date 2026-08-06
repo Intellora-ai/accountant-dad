@@ -51,6 +51,7 @@ import numpy as np
 import numpy.typing as npt
 import pymupdf
 import pytest
+from authored_source import authored_function_source, authored_source
 from pydantic import ValidationError
 
 from accountant_dad.artifacts.evidence import (
@@ -1429,7 +1430,7 @@ def test_pipeline_reads_no_clock_of_its_own() -> None:
     search would fail on the explanation instead of on a call. The AST sees
     code only.
     """
-    tree = ast.parse(pathlib.Path(inspect.getfile(pipeline)).read_text(encoding="utf-8"))
+    tree = ast.parse(authored_source(pipeline))
     clocks = sorted(
         {
             node.attr
@@ -1623,13 +1624,7 @@ def test_the_pipeline_reads_the_cleaned_document_not_the_original() -> None:
     is structural: a future edit passing `intake.document` to a later stage
     would restore two pipelines while every behavioural test still passed.
     """
-    source = inspect.getsource(pipeline.run)
-    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
-        pytest.skip(
-            "mutmut rewrote this module in its `mutants/` copy, so the source read "
-            "here is the instrumentation rather than ours. Skipped under mutation "
-            "only; it runs in every ordinary suite."
-        )
+    source = authored_function_source(pipeline, "run")
 
     after_cleaner = source.split("_payload_of(cleaned)", 1)[1]
     assert "intake.document" not in after_cleaner, (

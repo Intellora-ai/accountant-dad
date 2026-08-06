@@ -43,6 +43,7 @@ import pathlib
 import tomllib
 
 import yaml
+from authored_source import running_path
 
 import accountant_dad
 
@@ -275,7 +276,7 @@ def test_the_package_under_test_lives_in_the_same_tree_as_these_tests() -> None:
     with a different directory name is covered without editing this.
     """
     tests_root = pathlib.Path(__file__).resolve().parents[2]
-    package_root = pathlib.Path(str(accountant_dad.__file__)).resolve().parents[2]
+    package_root = running_path(accountant_dad).parents[2]
 
     assert package_root == tests_root, (
         "the package under test is NOT in the same tree as these tests.\n"

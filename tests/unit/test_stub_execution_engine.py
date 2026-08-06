@@ -30,6 +30,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
+from authored_source import authored_source
 from pydantic import ValidationError
 
 from accountant_dad.artifacts.execution import (
@@ -193,7 +194,7 @@ def _call(**overrides: object) -> ExecutionResult:
 
 
 def _module_tree() -> ast.Module:
-    return ast.parse(inspect.getsource(stub))
+    return ast.parse(authored_source(stub))
 
 
 def _imported_names() -> set[str]:

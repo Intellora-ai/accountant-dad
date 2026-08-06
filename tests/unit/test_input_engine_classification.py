@@ -35,6 +35,7 @@ import inspect
 from dataclasses import fields, is_dataclass
 
 import pytest
+from authored_source import authored_function_source, authored_source
 
 from accountant_dad.engines.input_engine import classification as classification_module
 from accountant_dad.engines.input_engine.classification import (
@@ -310,15 +311,7 @@ def test_no_numeric_comparison_appears_anywhere_in_the_module() -> None:
     `if len(candidates) > Decimal("1"):` cannot hide inside a `Decimal(...)`
     call the way a bare `ast.Constant` check would miss.
     """
-    source = inspect.getsource(classification_module)
-    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
-        pytest.skip(
-            "mutmut rewrote this module in its `mutants/` copy, so the source read "
-            "here is mutmut's instrumentation rather than ours. Asserting on it "
-            "measures the mutation tool, not the code under test — and a structural "
-            "assertion about OUR source cannot be evaluated against a file we did "
-            "not write. Skipped under mutation only; it runs in every ordinary suite."
-        )
+    source = authored_source(classification_module)
     tree = ast.parse(source)
     offending_lines = sorted(
         {
@@ -345,15 +338,7 @@ def test_status_is_decided_by_pattern_matching_the_shape_not_a_count() -> None:
     "no Compare against a suspicious-looking number" rule that a renamed
     threshold could dodge.
     """
-    source = inspect.getsource(classification_module.classify)
-    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
-        pytest.skip(
-            "mutmut rewrote this module in its `mutants/` copy, so the source read "
-            "here is mutmut's instrumentation rather than ours. Asserting on it "
-            "measures the mutation tool, not the code under test — and a structural "
-            "assertion about OUR source cannot be evaluated against a file we did "
-            "not write. Skipped under mutation only; it runs in every ordinary suite."
-        )
+    source = authored_function_source(classification_module, "classify")
     tree = ast.parse(source)
     assert any(isinstance(node, ast.Match) for node in ast.walk(tree))
 

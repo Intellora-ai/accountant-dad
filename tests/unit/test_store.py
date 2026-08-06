@@ -27,11 +27,11 @@ import ast
 import collections
 import inspect
 import itertools
-import pathlib
 import uuid
 from typing import cast
 
 import pytest
+from authored_source import authored_source
 
 import accountant_dad.services.store as store_module
 from accountant_dad.identity import TransactionId
@@ -127,7 +127,7 @@ FORBIDDEN_API_MARKERS = (
 PUBLIC_API = ["create", "exists", "move", "state_of"]
 
 _SOURCE_TREE = ast.parse(
-    pathlib.Path(str(store_module.__file__)).read_text(encoding="utf-8"),
+    authored_source(store_module),
 )
 
 

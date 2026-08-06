@@ -65,9 +65,9 @@ a heading that carries control characters on one side, which still matches.
 from __future__ import annotations
 
 import ast
-import inspect
 
 import pytest
+from authored_source import authored_source
 
 from accountant_dad.engines.input_engine import classification as classification_module
 from accountant_dad.engines.input_engine.classification import (
@@ -195,25 +195,6 @@ def set_aside_reason(cue: str, location: str) -> str:
 # ── 1. the "no number" claim, attacked structurally and behaviourally ────────
 
 
-def _module_source_or_skip() -> str:
-    """`classification.py`'s own source, or a skip under mutation.
-
-    Same guard `test_input_engine_classification.py` already carries, for the
-    same measured reason: mutmut runs the suite against a rewritten copy in
-    `mutants/`, so a structural assertion about OUR source would be evaluated
-    against a file we did not write. It is a runtime skip, not a marker, so the
-    suite's skip-marker ratchet is untouched.
-    """
-    source = inspect.getsource(classification_module)
-    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
-        pytest.skip(
-            "mutmut rewrote this module in its `mutants/` copy; a structural "
-            "assertion about our source cannot be evaluated against it. Skipped "
-            "under mutation only; it runs in every ordinary suite."
-        )
-    return source
-
-
 def test_no_slice_anywhere_could_silently_keep_only_the_first_candidate() -> None:
     """The hole a `Compare`-only sweep leaves open.
 
@@ -223,7 +204,7 @@ def test_no_slice_anywhere_could_silently_keep_only_the_first_candidate() -> Non
     document would silently become TYPED. Nothing in this module has any
     legitimate need to slice, so the rule here is zero tolerance.
     """
-    tree = ast.parse(_module_source_or_skip())
+    tree = ast.parse(authored_source(classification_module))
 
     slices = sorted({node.lineno for node in ast.walk(tree) if isinstance(node, ast.Slice)})
 
@@ -242,7 +223,7 @@ def test_no_ranking_builtin_could_pick_a_most_likely_type_without_comparing() ->
     that no winner is chosen, so none of the three may appear.
     """
     ranking = {"max", "min", "sorted"}
-    tree = ast.parse(_module_source_or_skip())
+    tree = ast.parse(authored_source(classification_module))
 
     found = sorted(
         {

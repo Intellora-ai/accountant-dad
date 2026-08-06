@@ -16,10 +16,10 @@ import ast
 import dataclasses
 import inspect
 import itertools
-import pathlib
 from datetime import UTC, datetime, timedelta, timezone, tzinfo
 
 import pytest
+from authored_source import authored_source
 
 import accountant_dad.services.audit as audit_module
 from accountant_dad.identity import TransactionId
@@ -111,7 +111,7 @@ CLOCK_ATTRIBUTES = (
     "clock_gettime",
 )
 
-MODULE_SOURCE = pathlib.Path(str(audit_module.__file__)).read_text(encoding="utf-8")
+MODULE_SOURCE = authored_source(audit_module)
 MODULE_TREE = ast.parse(MODULE_SOURCE)
 
 

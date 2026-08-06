@@ -41,6 +41,8 @@ import ast
 import pathlib
 import re
 
+from authored_source import authored_path
+
 import accountant_dad
 from accountant_dad.artifacts.evidence import DocumentEvidenceObject
 
@@ -145,7 +147,7 @@ AUTHORIZED_STUBS = {
 
 def package_modules() -> set[str]:
     """Every module in the package, by its path relative to the package root."""
-    root = pathlib.Path(str(accountant_dad.__file__)).parent
+    root = authored_path(accountant_dad).parent
     return {
         path.relative_to(root).with_suffix("").as_posix()
         for path in root.rglob("*.py")
@@ -337,7 +339,7 @@ def test_no_module_escapes_the_package_the_wheel_ships() -> None:
     Code outside it is code CI cannot judge, and Law 44 says a result exists
     only if CI produced it. This asserts the guard is reading the shipped tree.
     """
-    root = pathlib.Path(str(accountant_dad.__file__)).parent
+    root = authored_path(accountant_dad).parent
     assert root.name == "accountant_dad"
     assert root.parent.name == "src"
 
@@ -456,7 +458,7 @@ def engine_1_sources() -> list[pathlib.Path]:
     invisible to the content checks — the interesting failure is a file that is
     both unlisted and full of tax logic, and it has to fail twice, not once.
     """
-    root = pathlib.Path(str(accountant_dad.__file__)).parent / "engines" / "input_engine"
+    root = authored_path(accountant_dad).parent / "engines" / "input_engine"
     sources = sorted(path for path in root.rglob("*.py") if "__pycache__" not in path.parts)
     assert sources != [], (
         f"no modules found under {root}. The content guard derives everything "

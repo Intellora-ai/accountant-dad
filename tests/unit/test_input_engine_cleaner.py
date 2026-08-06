@@ -33,6 +33,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import pytest
+from authored_source import authored_source
 
 from accountant_dad.engines.input_engine import cleaner, reader
 
@@ -796,7 +797,7 @@ def test_the_module_reads_no_text_and_owns_no_field_names() -> None:
     `parser`, scoring is `confidence`. A field name or a confidence score
     appearing in this module is a boundary crossed in code.
     """
-    source = inspect.getsource(cleaner)
+    source = authored_source(cleaner)
     for forbidden in ("pytesseract", "tesseract", "easyocr", "PIL", "Image.open"):
         assert forbidden not in source, f"{forbidden} is not on the approved stack"
     exported = {name for name in vars(cleaner) if not name.startswith("_")}

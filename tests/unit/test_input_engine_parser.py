@@ -45,6 +45,7 @@ from dataclasses import fields
 from typing import TYPE_CHECKING
 
 import pytest
+from authored_source import authored_source
 
 from accountant_dad.engines.input_engine import parser
 
@@ -356,7 +357,7 @@ def test_no_output_type_carries_a_name_that_means_something() -> None:
 
 def test_the_module_reaches_for_no_other_engine_and_no_accounting_knowledge() -> None:
     """Pinned imports. A dependency on the Brain or another engine is a boundary breach."""
-    source = pathlib.Path(inspect.getfile(parser)).read_text(encoding="utf-8")
+    source = authored_source(parser)
     imported: set[str] = set()
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):

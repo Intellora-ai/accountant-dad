@@ -61,6 +61,7 @@ from typing import Protocol, cast
 import numpy
 import pymupdf
 import pytest
+from authored_source import authored_path, authored_source
 from PIL import Image
 
 from accountant_dad.engines.input_engine import reader
@@ -914,7 +915,7 @@ NOT_APPROVED = frozenset(
 )
 
 
-def top_level_imports(module_path: str) -> set[str]:
+def top_level_imports(module_path: pathlib.Path) -> set[str]:
     """Every distribution `module_path` imports, by AST rather than by text.
 
     An earlier version of this test searched the source for the banned names and
@@ -923,15 +924,7 @@ def top_level_imports(module_path: str) -> set[str]:
     Reading the import statements asserts the real one: nothing unapproved is
     actually reachable from this module.
     """
-    source = pathlib.Path(module_path).read_text(encoding="utf-8")
-    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
-        pytest.skip(
-            "mutmut rewrote this module in its `mutants/` copy, so the source read "
-            "here is mutmut's instrumentation rather than ours. Asserting on it "
-            "measures the mutation tool, not the code under test — and a structural "
-            "assertion about OUR source cannot be evaluated against a file we did "
-            "not write. Skipped under mutation only; it runs in every ordinary suite."
-        )
+    source = module_path.read_text(encoding="utf-8")
     tree = ast.parse(source)
     imported: set[str] = set()
     for node in ast.walk(tree):
@@ -944,7 +937,7 @@ def top_level_imports(module_path: str) -> set[str]:
 
 def test_the_reader_imports_no_unapproved_ocr_engine() -> None:
     """`TECHNOLOGY_STACK.md`: Tesseract and EasyOCR are explicitly NOT approved."""
-    imported = top_level_imports(reader.__file__)
+    imported = top_level_imports(authored_path(reader))
     offenders = {name for name in imported if name.lower() in NOT_APPROVED}
     assert offenders == set(), f"{sorted(offenders)} not approved by TECHNOLOGY_STACK.md"
 
@@ -956,7 +949,7 @@ def test_the_reader_imports_only_the_approved_stack() -> None:
     for ANY third-party import added later, approved or not, which is what makes
     a silent technology swap impossible rather than merely discouraged.
     """
-    assert top_level_imports(reader.__file__) == {
+    assert top_level_imports(authored_path(reader)) == {
         # standard library
         "__future__",
         "importlib",
@@ -982,15 +975,7 @@ def test_the_only_dynamically_imported_module_is_the_approved_ocr() -> None:
     only reads `import` statements. So the string literals are pinned too, and
     the two tests together cover both ways a dependency can enter this module.
     """
-    source = pathlib.Path(reader.__file__).read_text(encoding="utf-8")
-    if "__mutmut_" in source or "MUTANT_UNDER_TEST" in source:
-        pytest.skip(
-            "mutmut rewrote this module in its `mutants/` copy, so the source read "
-            "here is mutmut's instrumentation rather than ours. Asserting on it "
-            "measures the mutation tool, not the code under test — and a structural "
-            "assertion about OUR source cannot be evaluated against a file we did "
-            "not write. Skipped under mutation only; it runs in every ordinary suite."
-        )
+    source = authored_source(reader)
     tree = ast.parse(source)
     dynamic: set[str] = set()
     for node in ast.walk(tree):

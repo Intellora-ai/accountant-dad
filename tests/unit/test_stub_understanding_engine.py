@@ -26,12 +26,12 @@ implementation:
 from __future__ import annotations
 
 import ast
-import pathlib
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
+from authored_source import authored_source
 from pydantic import ValidationError
 
 from accountant_dad.artifacts.evidence import (
@@ -358,7 +358,7 @@ def test_the_six_results_are_the_six_named_types() -> None:
 
 def imported_modules() -> set[str]:
     """Every module `stub.py` imports, read off the file rather than the process."""
-    source = pathlib.Path(str(stub.__file__)).read_text(encoding="utf-8")
+    source = authored_source(stub)
     names: set[str] = set()
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):

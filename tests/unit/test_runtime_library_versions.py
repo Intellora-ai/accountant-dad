@@ -75,6 +75,7 @@ import sys
 from types import ModuleType
 
 import pytest
+from authored_source import running_path
 
 # ── where the repository is ─────────────────────────────────────────────
 #
@@ -313,7 +314,9 @@ def test_every_present_pinned_library_reports_the_version_it_is_pinned_to() -> N
         runtime = reported_version(module)
         pin = PINNED_IMPORTS[root]
         if not agrees(runtime, pin):
-            disagreements.append(f"{root}: reports {runtime}, pinned {pin} ({module.__file__})")
+            disagreements.append(
+                f"{root}: reports {runtime}, pinned {pin} ({running_path(module)})"
+            )
     assert not disagreements, "runtime libraries disagree with the manifests:\n" + "\n".join(
         disagreements
     )
