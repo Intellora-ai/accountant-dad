@@ -141,6 +141,7 @@ NO CONFIGURATION IS DEFINED HERE, AND NONE IS NEEDED.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 
 from accountant_dad.artifacts.evidence import (
     ConfidenceReport,
@@ -182,6 +183,39 @@ class MalformedSignalError(ValueError):
     """
 
 
+class ReadingState(Enum):
+    """Which of the three things `reader` can report about one region.
+
+    THREE STATES, NOT TWO (Law 24, and the same discipline
+    `ENGINE_1_INPUT_ENGINE_RULES.md:569` imposes on absent/zero/unreadable and
+    `measurement.py:41-59` imposes on absent/zero/unread).
+
+    | State | `text` | `extraction_confidence` |
+    |---|---|---|
+    | `UNREAD` | `None` | `None` |
+    | `READ_AND_SCORED` | present | present |
+    | `READ_BUT_UNSCORED` | present | `None` |
+
+    `READ_BUT_UNSCORED` is not a degenerate case; it is what
+    `reader.read_pdf_text_layer` produces for EVERY region, because a PDF text
+    layer is transcribed rather than recognised and no recogniser ran to
+    produce a score (`reader.py:255-259`, *"`None` is NOT zero confidence and
+    NOT full confidence - it is the absence of a measurement"*).
+
+    This enum exists so no caller re-derives the state from a bare
+    `extraction_confidence is None`, which is ambiguous: that test is true for
+    an unread region AND for a read-but-unscored one. Naming the state forces
+    every reader to say which it means — the same reason
+    `measurement.AbsentType` refuses `__bool__` (`measurement.py:122-150`, the
+    F-005 resolution) rather than answering `False` and letting two facts
+    collapse into one.
+    """
+
+    UNREAD = "unread"
+    READ_AND_SCORED = "read and scored"
+    READ_BUT_UNSCORED = "read but unscored"
+
+
 @dataclass(frozen=True, slots=True)
 class RegionReading:
     """One thing `reader` found, or failed to find, at one place on the page.
@@ -192,12 +226,14 @@ class RegionReading:
     code, which does not yet carry this shape.
 
     `text` is `None` for *"a region that could not be read at all ...
-    reported as unread, not omitted silently"* (§1.2 Failure Behaviour).
-    `extraction_confidence` is `None` in exactly that case and no other: an
-    instrument cannot score a reading that does not exist. An unclear
-    character or word still carries text — however garbled — and a
-    confidence; §1.2's *"never resolved by guessing"* describes the VALUE a
-    reading holds, not whether a score accompanies it.
+    reported as unread, not omitted silently"* (§1.2 Failure Behaviour), and
+    that — never the confidence — is what makes a region unread. A region
+    that was read carries text and may or may not carry a score; see
+    `ReadingState` for why both are legitimate.
+
+    The one pairing still refused is a confidence with NO text: an instrument
+    cannot score a reading that does not exist, no backend produces that
+    shape, and there is no honest meaning to give it.
     """
 
     source_location: str
@@ -211,12 +247,37 @@ class RegionReading:
                 "requires source locations even for low-confidence extractions, "
                 "precisely so a human can find the spot later."
             )
-        if (self.text is None) != (self.extraction_confidence is None):
+        if self.text is None and self.extraction_confidence is not None:
             raise MalformedSignalError(
-                f"region {self.source_location!r} carries text without a "
-                "confidence, or a confidence without text; an unread region has "
-                "neither, and a read region -- however unclear -- has both."
+                f"region {self.source_location!r} carries a confidence but no "
+                "text; an instrument cannot score a reading that does not "
+                "exist. Text with no confidence is the opposite case and is "
+                "legitimate -- see ReadingState.READ_BUT_UNSCORED."
             )
+
+    @property
+    def state(self) -> ReadingState:
+        """Which of `ReadingState`'s three this reading is. Derived, never
+        stored, so it cannot disagree with the fields it describes.
+
+        EVERY TEST BELOW IS `is None`, NEVER FALSINESS, AND THAT IS LOAD-BEARING.
+        `Confidence`'s own `MIN` is `Decimal("0")` and the empty string is
+        `""`; both are FALSY. Written `if not self.extraction_confidence`, a
+        region a recogniser scored at rock bottom would be reported as one it
+        never scored at all — the most alarming signal in the report, lost
+        silently, in the direction that reads as reassuring. Written
+        `if not self.text`, a box `reader` read and found empty would be
+        reported as one `reader` could not read — an instrument failure that
+        did not happen. Absent, zero and empty are three different facts
+        (`ENGINE_1_INPUT_ENGINE_RULES.md:569`, `measurement.py:41-59`), and
+        falsiness answers the same `True` to all three. Both substitutions are
+        pinned red in `test_input_engine_confidence.py`.
+        """
+        if self.text is None:
+            return ReadingState.UNREAD
+        if self.extraction_confidence is None:
+            return ReadingState.READ_BUT_UNSCORED
+        return ReadingState.READ_AND_SCORED
 
 
 @dataclass(frozen=True, slots=True)
@@ -358,7 +419,33 @@ def _unread_region_markers(regions: tuple[RegionReading, ...]) -> tuple[Uncertai
             reason="reader could not read this region at all; nothing is guessed in its place.",
         )
         for region in regions
-        if region.text is None
+        if region.state is ReadingState.UNREAD
+    )
+
+
+def _unscored_region_markers(regions: tuple[RegionReading, ...]) -> tuple[UncertaintyMarker, ...]:
+    """One marker per region `reader` read but did not score.
+
+    Its text reaches the artifact with no reliability signal behind it. Saying
+    nothing would be concealed uncertainty — the thing §1.4 and
+    `ENGINE_1_ARCHITECTURE.md` P-F3 forbid — while inventing a stand-in score
+    would be the fabrication `ENGINE_1_INPUT_ENGINE_RULES.md:337` forbids. The
+    marker is the only honest third option: name it, score nothing.
+    """
+    return tuple(
+        UncertaintyMarker(
+            subject=region.source_location,
+            reason=(
+                "reader read this region but produced no per-region extraction "
+                "score for it: the backend transcribed the text rather than "
+                "recognising it, so no recogniser ran to produce one "
+                "(engines/input_engine/reader.py, 'THE CONFIDENCE OF A TEXT "
+                "LAYER IS None'). The text is real and is carried through; the "
+                "absence of a score is recorded rather than filled in."
+            ),
+        )
+        for region in regions
+        if region.state is ReadingState.READ_BUT_UNSCORED
     )
 
 
@@ -416,12 +503,14 @@ def _reliability_information(
     or risky, because none of those is a term this module is authorised to
     define (CLAUDE.md Law 54).
     """
-    unread = sum(1 for region in reader_regions if region.text is None)
+    unread = sum(1 for region in reader_regions if region.state is ReadingState.UNREAD)
+    unscored = sum(1 for region in reader_regions if region.state is ReadingState.READ_BUT_UNSCORED)
     capture_state = _capture_fidelity_state(human_capture)
     return (
         f"{len(parsed_fields)} field(s) carry a confidence score from parser; "
         f"{unread} of {len(reader_regions)} region(s) reader attempted could not "
-        f"be read at all; {len(missing_fields)} field(s) parser recorded as "
+        f"be read at all; {unscored} of them were read but carry no per-region "
+        f"extraction score; {len(missing_fields)} field(s) parser recorded as "
         f"missing; cleaner's preservation status: {cleaned.preservation_status.value}; "
         f"human business context capture fidelity: {capture_state}."
     )
@@ -467,6 +556,7 @@ def record_confidence(
     if preservation is not None:
         markers.append(preservation)
     markers.extend(_unread_region_markers(reader_regions))
+    markers.extend(_unscored_region_markers(reader_regions))
     markers.extend(_missing_field_markers(missing_fields))
 
     scores = list(_field_confidence_scores(parsed_fields))

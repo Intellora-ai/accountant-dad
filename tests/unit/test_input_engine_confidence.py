@@ -60,6 +60,7 @@ from accountant_dad.engines.input_engine.confidence_report import (
     MalformedSignalError,
     MissingField,
     ParsedField,
+    ReadingState,
     RegionReading,
     capture_fidelity,
     record_confidence,
@@ -338,6 +339,488 @@ def test_absent_zero_and_unreadable_produce_three_distinguishable_outcomes() -> 
     assert by_subject["PO Number"] != by_subject["page 1, footer strip"]
 
 
+# ── a region can be READ and still carry no score (F-013) ────────────────────
+# `reader.read_pdf_text_layer` sets `extraction_confidence=None` on EVERY region
+# it produces (`reader.py:293-294`), because no recogniser ran to produce one —
+# and `reader.py:255-259` says so outright: "`None` is NOT zero confidence and
+# NOT full confidence - it is the absence of a measurement." A PDF text layer is
+# the MVP's own primary input (`CLAUDE.md` §B.7), so refusing that shape refused
+# every region the MVP actually reads. Three states exist; an invariant that
+# admits two collapses one of them, which is the same defect
+# `ENGINE_1_INPUT_ENGINE_RULES.md:569` and `measurement.py:41-59` already name.
+
+
+def test_a_region_read_without_a_score_is_accepted_not_refused() -> None:
+    """The exact shape `read_pdf_text_layer` emits, which used to raise."""
+    reading = RegionReading(
+        source_location="page 1, box at (72, 100)", text="TAX INVOICE", extraction_confidence=None
+    )
+    assert reading.text == "TAX INVOICE"
+    assert reading.extraction_confidence is None
+    assert reading.state is ReadingState.READ_BUT_UNSCORED
+
+
+def test_the_three_reading_states_are_three_and_never_collapse_into_two() -> None:
+    """Unread · read-and-scored · read-but-unscored. Distinguishable by a NAMED
+    state, so no caller has to re-derive them from a bare `is None` — which is
+    ambiguous now that `extraction_confidence is None` means two different
+    things depending on `text`. This is `measurement.AbsentType`'s principle
+    (`measurement.py:122-150`, the F-005 resolution) applied here.
+    """
+    unread = RegionReading(source_location="p1 footer", text=None, extraction_confidence=None)
+    scored = RegionReading(source_location="p1 total", text="1180.00", extraction_confidence=HIGH)
+    unscored = RegionReading(
+        source_location="p1 head", text="TAX INVOICE", extraction_confidence=None
+    )
+
+    assert unread.state is ReadingState.UNREAD
+    assert scored.state is ReadingState.READ_AND_SCORED
+    assert unscored.state is ReadingState.READ_BUT_UNSCORED
+    # Compared against the enum itself, never against the literal 3: this stays
+    # true only while every member is REACHABLE and the three are DISTINCT, so
+    # adding a fourth state without a reading that produces it turns it red.
+    assert {unread.state, scored.state, unscored.state} == set(ReadingState)
+
+
+def test_a_zero_confidence_reading_is_scored_not_unscored() -> None:
+    """ABSENT is not ZERO — the exact collapse F-005 resolved, one level down.
+
+    `Confidence`'s `MIN` is `Decimal("0")`, which is FALSY. A `state` written
+    `if not self.extraction_confidence` instead of `is None` would report a
+    region the recogniser scored at rock bottom as one it never scored at all —
+    losing the single most alarming signal in the report, silently, and in the
+    direction that looks reassuring. That is why `measurement.AbsentType`
+    refuses `__bool__` (`measurement.py:122-150`) and why
+    `ENGINE_1_INPUT_ENGINE_RULES.md:569` keeps absent, zero and unreadable
+    apart.
+    """
+    at_the_floor = RegionReading(
+        source_location="p1 smudge", text="118O.OO", extraction_confidence=MIN
+    )
+    assert at_the_floor.extraction_confidence == MIN
+    assert not at_the_floor.extraction_confidence  # falsy — the trap this guards
+    assert at_the_floor.state is ReadingState.READ_AND_SCORED
+
+    report = record_confidence(
+        cleaned=a_cleaned_document(),
+        reader_regions=(at_the_floor,),
+        parsed_fields=(),
+        missing_fields=(),
+    )
+    # it is neither unread nor unscored, so it earns NO region marker and is
+    # counted in neither tally — the score itself is the signal
+    assert report.uncertainty_markers == ()
+    assert report.reliability_information == (
+        "0 field(s) carry a confidence score from parser; "
+        "0 of 1 region(s) reader attempted could not be read at all; "
+        "0 of them were read but carry no per-region extraction score; "
+        "0 field(s) parser recorded as missing; "
+        "cleaner's preservation status: the cleaned representation is the safer "
+        "basis for reading; "
+        "human business context capture fidelity: not supplied."
+    )
+
+
+def test_a_region_read_as_empty_text_is_read_not_unread() -> None:
+    """EMPTY is not ABSENT, the same collapse on the other field.
+
+    `""` is falsy exactly as `None` is. A region `reader` read and found to
+    contain nothing is a DIFFERENT fact from a region `reader` could not read,
+    and reporting the first as the second would claim an instrument failure
+    that did not happen.
+    """
+    empty = RegionReading(source_location="p1 blank box", text="", extraction_confidence=None)
+    assert empty.text == ""
+    assert not empty.text  # falsy — the trap this guards
+    assert empty.state is ReadingState.READ_BUT_UNSCORED
+
+    # and the same falsiness trap on the REFUSAL: only `text is None` with a
+    # score is incoherent. "I read this box, it is empty, and I am confident of
+    # that" is a real recogniser output and an honest one — refusing it would
+    # discard the signal rather than record it (§1.4, cannot hide uncertainty).
+    confidently_empty = RegionReading(
+        source_location="p1 blank box", text="", extraction_confidence=HIGH
+    )
+    assert confidently_empty.state is ReadingState.READ_AND_SCORED
+
+    report = record_confidence(
+        cleaned=a_cleaned_document(),
+        reader_regions=(empty,),
+        parsed_fields=(),
+        missing_fields=(),
+    )
+    assert [marker.subject for marker in report.uncertainty_markers] == ["p1 blank box"]
+    assert "could not read this region at all" not in report.uncertainty_markers[0].reason
+    assert "0 of 1 region(s) reader attempted could not be read at all" in (
+        report.reliability_information
+    )
+
+
+def test_an_unscored_region_is_never_reported_as_one_reader_could_not_read() -> None:
+    """The collapse that would matter most: an unscored region reported as
+    unread is a lie about a region whose text WAS recovered. Their markers must
+    be worded differently, and the unread COUNT must not include it.
+    """
+    report = record_confidence(
+        cleaned=a_cleaned_document(),
+        reader_regions=(
+            RegionReading(source_location="p1 footer", text=None, extraction_confidence=None),
+            RegionReading(
+                source_location="p1 head", text="TAX INVOICE", extraction_confidence=None
+            ),
+        ),
+        parsed_fields=(),
+        missing_fields=(),
+    )
+    by_subject = {marker.subject: marker.reason for marker in report.uncertainty_markers}
+    assert set(by_subject) == {"p1 footer", "p1 head"}
+    assert "could not read this region at all" in by_subject["p1 footer"]
+    assert "could not read this region at all" not in by_subject["p1 head"]
+    # the unread tally counts one region, not both
+    assert "1 of 2 region(s) reader attempted could not be read at all" in (
+        report.reliability_information
+    )
+
+
+def test_a_read_but_unscored_region_still_raises_an_uncertainty_marker() -> None:
+    """P-F3, "cannot hide uncertainty" (`ENGINE_1_ARCHITECTURE.md` G5.4). Text
+    reaching the artifact with NO reliability signal behind it, and nothing
+    saying so, is concealed uncertainty. The marker names it without inventing
+    a score for it.
+    """
+    report = record_confidence(
+        cleaned=a_cleaned_document(),
+        reader_regions=(
+            RegionReading(
+                source_location="p1 head", text="TAX INVOICE", extraction_confidence=None
+            ),
+        ),
+        parsed_fields=(),
+        missing_fields=(),
+    )
+    assert len(report.uncertainty_markers) == 1
+    marker = report.uncertainty_markers[0]
+    assert marker.subject == "p1 head"
+    assert "no per-region extraction score" in marker.reason
+    # named, never scored: no number is invented to stand in for the missing one
+    assert report.confidence_scores == ()
+
+
+def test_reliability_information_counts_every_region_reader_actually_attempted() -> None:
+    """The regression test for the FALSE COUNT this defect emitted.
+
+    Measured before the fix, on a real 3-region text-layer PDF, the artifact
+    said *"0 of 0 region(s) reader attempted"* — `reader` had attempted three
+    and read all three. A count that is wrong inside a financial artifact is
+    Law 24 (never fabricate data), so the total is asserted explicitly here and
+    can no longer drift back to zero silently.
+    """
+    regions = tuple(
+        RegionReading(source_location=f"p1 line {n}", text=f"line {n}", extraction_confidence=None)
+        for n in range(3)
+    )
+    report = record_confidence(
+        cleaned=a_cleaned_document(),
+        reader_regions=regions,
+        parsed_fields=(),
+        missing_fields=(),
+    )
+    # Pinned WHOLE, not by substring: a substring match cannot notice a wrong
+    # number that happens to sit outside the quoted fragment, and this file's
+    # own convention (commit 7e0efe2) is to pin the emitted text exactly.
+    assert report.reliability_information == (
+        "0 field(s) carry a confidence score from parser; "
+        "0 of 3 region(s) reader attempted could not be read at all; "
+        "3 of them were read but carry no per-region extraction score; "
+        "0 field(s) parser recorded as missing; "
+        "cleaner's preservation status: the cleaned representation is the safer "
+        "basis for reading; "
+        "human business context capture fidelity: not supplied."
+    )
+
+
+def test_every_region_handed_in_is_accounted_for_in_exactly_one_state() -> None:
+    """A CONSERVATION LAW, not a spot check: unread + unscored + scored must
+    equal the number of regions handed in, always.
+
+    Two quantities that must be equal need no threshold, no label and no
+    judgement — they hold or they do not (`CLAUDE.md` §D.10, evidence). This is
+    the check that makes the whole CLASS of counting defects impossible rather
+    than the one instance F-013 happened to expose: any future branch that
+    drops a region, double-counts one, or invents a fourth bucket breaks the
+    sum even if every individual phrase still reads plausibly.
+    """
+    regions = (
+        RegionReading(source_location="p1 footer", text=None, extraction_confidence=None),
+        RegionReading(source_location="p1 head", text="TAX INVOICE", extraction_confidence=None),
+        RegionReading(source_location="p1 sub", text="Acme Traders", extraction_confidence=None),
+        RegionReading(source_location="p1 total", text="1180.00", extraction_confidence=HIGH),
+    )
+    by_state = [region.state for region in regions]
+    unread = by_state.count(ReadingState.UNREAD)
+    unscored = by_state.count(ReadingState.READ_BUT_UNSCORED)
+    scored = by_state.count(ReadingState.READ_AND_SCORED)
+    assert unread + unscored + scored == len(regions)
+
+    report = record_confidence(
+        cleaned=a_cleaned_document(),
+        reader_regions=regions,
+        parsed_fields=(ParsedField(field_name="Total", extraction_confidence=HIGH),),
+        missing_fields=(),
+    )
+    assert report.reliability_information == (
+        "1 field(s) carry a confidence score from parser; "
+        f"{unread} of {len(regions)} region(s) reader attempted could not be read at all; "
+        f"{unscored} of them were read but carry no per-region extraction score; "
+        "0 field(s) parser recorded as missing; "
+        "cleaner's preservation status: the cleaned representation is the safer "
+        "basis for reading; "
+        "human business context capture fidelity: not supplied."
+    )
+    # and the region markers likewise account for every region that is not a
+    # plain, scored reading — one each, never merged, never dropped (P-F3)
+    region_subjects = [
+        marker.subject for marker in report.uncertainty_markers if marker.subject.startswith("p1 ")
+    ]
+    assert sorted(region_subjects) == ["p1 footer", "p1 head", "p1 sub"]
+    assert len(region_subjects) == unread + unscored
+
+
+# ── a human note never raises a document-derived score ───────────────────────
+# INV-11 / `ENGINE_1_INPUT_ENGINE_RULES.md:624` — "A human note may never raise
+# Evidence Reliability simply by existing." The ablation shape
+# `ENGINE_1_ARCHITECTURE.md` P-F7 specifies: same document signals, with and
+# without a Human Business Description, every document-derived score
+# byte-identical.
+
+
+def test_a_human_note_never_changes_a_single_document_derived_score() -> None:
+    cleaned = a_cleaned_document()
+    regions = (
+        RegionReading(source_location="p1 total", text="1180.00", extraction_confidence=HIGH),
+    )
+    fields = (ParsedField(field_name="Total", extraction_confidence=HIGH),)
+    note = a_human_business_context(original_user_text="Advance paid to supplier.")
+
+    without = record_confidence(
+        cleaned=cleaned, reader_regions=regions, parsed_fields=fields, missing_fields=()
+    )
+    with_note = record_confidence(
+        cleaned=cleaned,
+        reader_regions=regions,
+        parsed_fields=fields,
+        missing_fields=(),
+        human_capture=HumanCaptureEvidence(submitted_text="Advance paid to supplier.", stored=note),
+    )
+    document_scores = {
+        score.field_name: score.confidence
+        for score in without.confidence_scores
+        if score.field_name != CAPTURE_FIDELITY_FIELD_NAME
+    }
+    document_scores_with_note = {
+        score.field_name: score.confidence
+        for score in with_note.confidence_scores
+        if score.field_name != CAPTURE_FIDELITY_FIELD_NAME
+    }
+    assert document_scores == {"Total": HIGH}
+    assert document_scores_with_note == document_scores
+    # and the human-derived score stays separable from them by name, never
+    # merged into an anonymous fact (INV-11)
+    human_derived = [
+        score
+        for score in with_note.confidence_scores
+        if score.field_name == CAPTURE_FIDELITY_FIELD_NAME
+    ]
+    assert len(human_derived) == 1
+    # ORDER carries meaning in an audit artifact, so it is pinned too: the
+    # document's own scores lead, in the order `parsed_fields` supplied them,
+    # and the human-derived one is APPENDED. A note that arrived first would
+    # read, to any consumer that takes the head of the tuple, as the
+    # document's primary score — the same "raises reliability by existing"
+    # failure by a positional route rather than a numeric one.
+    assert [score.field_name for score in with_note.confidence_scores] == [
+        "Total",
+        CAPTURE_FIDELITY_FIELD_NAME,
+    ]
+    assert with_note.confidence_scores[: len(without.confidence_scores)] == (
+        without.confidence_scores
+    )
+
+
+def test_the_note_s_own_words_never_move_a_document_derived_score() -> None:
+    """P-F7's harder half. The ablation above removes the note entirely; this
+    one keeps it and changes only WHAT IT SAYS — including a note that asserts
+    a value about the document.
+
+    "Evidence carries its origin, permanently. A human note is evidence, not
+    truth" (`CLAUDE.md` §O). A note that could move a document-derived score by
+    what it CLAIMS would make the note truth, and would also breach P-F4
+    (business plausibility is never evidence).
+    """
+    cleaned = a_cleaned_document()
+    regions = (
+        RegionReading(source_location="p1 total", text="1180.00", extraction_confidence=LOW),
+    )
+    fields = (ParsedField(field_name="Total", extraction_confidence=LOW),)
+
+    def run_with(text: str) -> tuple[tuple[str, Confidence], ...]:
+        report = record_confidence(
+            cleaned=cleaned,
+            reader_regions=regions,
+            parsed_fields=fields,
+            missing_fields=(),
+            human_capture=HumanCaptureEvidence(
+                submitted_text=text,
+                stored=a_human_business_context(original_user_text=text),
+            ),
+        )
+        return tuple(
+            (score.field_name, score.confidence)
+            for score in report.confidence_scores
+            if score.field_name != CAPTURE_FIDELITY_FIELD_NAME
+        )
+
+    bland = run_with("Advance paid to supplier.")
+    assertive = run_with("The total is definitely 1180.00, I typed it myself, it is correct.")
+    assert bland == (("Total", LOW),)
+    assert assertive == bland
+
+
+def test_a_human_note_never_alters_or_removes_a_document_derived_marker() -> None:
+    """P-F3's executable form, applied to the note: *"markers are never dropped,
+    summarised or deduplicated. Assert marker count out >= marker count in"*
+    (`ENGINE_1_ARCHITECTURE.md` G5.4). A note that could silence a document's
+    own doubt would raise reliability by existing, by subtraction rather than
+    addition.
+    """
+    cleaned = a_cleaned_document(preservation_status=PreservationStatus.ORIGINAL_IS_SAFER)
+    regions = (
+        RegionReading(source_location="p1 footer", text=None, extraction_confidence=None),
+        RegionReading(source_location="p1 head", text="TAX INVOICE", extraction_confidence=None),
+    )
+    missing = (MissingField(field_name="PO Number", state="absent"),)
+
+    def markers_of(human_capture: HumanCaptureEvidence | None) -> list[tuple[str, str]]:
+        report = record_confidence(
+            cleaned=cleaned,
+            reader_regions=regions,
+            parsed_fields=(),
+            missing_fields=missing,
+            human_capture=human_capture,
+        )
+        return [(marker.subject, marker.reason) for marker in report.uncertainty_markers]
+
+    without = markers_of(None)
+    with_match = markers_of(
+        HumanCaptureEvidence(
+            submitted_text="Advance paid.",
+            stored=a_human_business_context(original_user_text="Advance paid."),
+        )
+    )
+    with_mismatch = markers_of(
+        HumanCaptureEvidence(
+            submitted_text="Advance paid.",
+            stored=a_human_business_context(original_user_text="Advance paid to supplier."),
+        )
+    )
+    # the document's own four doubts, named rather than counted: a count of 4
+    # is satisfied by any four markers, including four copies of one — the
+    # subjects are what actually proves each distinct doubt is present
+    assert [subject for subject, _reason in without] == [
+        "the document as cleaned",  # cleaner's preservation verdict
+        "p1 footer",  # the unread region
+        "p1 head",  # the read-but-unscored region
+        "PO Number",  # parser's missing field
+    ]
+    # every one of them survives, byte-identical, in the same order, both ways
+    assert with_match[: len(without)] == without
+    assert with_mismatch[: len(without)] == without
+    # count out >= count in, never fewer
+    assert len(with_match) >= len(without)
+    assert len(with_mismatch) > len(without)
+
+
+def test_a_human_note_never_changes_a_single_count_the_document_earned() -> None:
+    """The reliability text carries counts as well as scores. A note that moved
+    one of them would raise reliability by existing just as surely as a note
+    that moved a score — the counts are what a reader downstream sees first.
+    """
+    cleaned = a_cleaned_document()
+    regions = (
+        RegionReading(source_location="p1 footer", text=None, extraction_confidence=None),
+        RegionReading(source_location="p1 head", text="TAX INVOICE", extraction_confidence=None),
+    )
+
+    def counts_sentence(human_capture: HumanCaptureEvidence | None) -> str:
+        report = record_confidence(
+            cleaned=cleaned,
+            reader_regions=regions,
+            parsed_fields=(ParsedField(field_name="Total", extraction_confidence=HIGH),),
+            missing_fields=(MissingField(field_name="PO Number", state="absent"),),
+            human_capture=human_capture,
+        )
+        # everything up to, but excluding, the clause that is ABOUT the note
+        head, _, _tail = report.reliability_information.partition(
+            "; human business context capture fidelity:"
+        )
+        return head
+
+    without = counts_sentence(None)
+    with_note = counts_sentence(
+        HumanCaptureEvidence(
+            submitted_text="Advance paid.",
+            stored=a_human_business_context(original_user_text="Advance paid."),
+        )
+    )
+    assert without == (
+        "1 field(s) carry a confidence score from parser; "
+        "1 of 2 region(s) reader attempted could not be read at all; "
+        "1 of them were read but carry no per-region extraction score; "
+        "1 field(s) parser recorded as missing; "
+        "cleaner's preservation status: the cleaned representation is the safer "
+        "basis for reading"
+    )
+    assert with_note == without
+
+
+def test_a_note_on_a_document_with_no_signals_scores_only_itself_under_its_own_name() -> None:
+    """The case where a note is most dangerous: nothing was read, so anything
+    the note contributes is the ONLY score in the artifact.
+
+    Measured: with zero regions and zero parsed fields, a matching note makes
+    `confidence_scores` a one-entry collection. This test does not decide what
+    an aggregator downstream may do with that — `document_score_rule` is
+    UNDEFINED and pending the owner (Law 54, `ENGINE_1_ARCHITECTURE.md` G9.2) —
+    it pins the only thing that is knowable without it: the entry is human-
+    derived, it is named as such, and NOT ONE document-derived score was
+    manufactured out of the note.
+    """
+    report = record_confidence(
+        cleaned=a_cleaned_document(),
+        reader_regions=(),
+        parsed_fields=(),
+        missing_fields=(),
+        human_capture=HumanCaptureEvidence(
+            submitted_text="Advance paid.",
+            stored=a_human_business_context(original_user_text="Advance paid."),
+        ),
+    )
+    names = [score.field_name for score in report.confidence_scores]
+    assert names == [CAPTURE_FIDELITY_FIELD_NAME]
+    # the name is namespaced so no aggregator has to guess which origin it is:
+    # a parsed document field can never be called this, and a collision is
+    # refused rather than resolved (see the name-collision test below).
+    assert "." in CAPTURE_FIDELITY_FIELD_NAME
+    assert CAPTURE_FIDELITY_FIELD_NAME.startswith("human_business_context.")
+    # and nothing document-derived was invented to accompany it
+    document_derived = [
+        score
+        for score in report.confidence_scores
+        if score.field_name != CAPTURE_FIDELITY_FIELD_NAME
+    ]
+    assert document_derived == []
+
+
 # ── a signal from each instrument survives with identity and region intact ───
 # §1.4 Input: "The outputs of cleaner, reader and parser." Each one's finding
 # must reach the report attributed to the instrument that produced it, at the
@@ -478,12 +961,12 @@ def test_region_reading_refuses_a_blank_source_location() -> None:
         RegionReading(source_location="   ", text=None, extraction_confidence=None)
 
 
-def test_region_reading_refuses_text_without_a_confidence() -> None:
-    with pytest.raises(MalformedSignalError):
-        RegionReading(source_location="page 1", text="Total", extraction_confidence=None)
-
-
 def test_region_reading_refuses_a_confidence_without_text() -> None:
+    """The one pairing that stays incoherent: an instrument cannot score a
+    reading that does not exist. Unlike text-without-a-score (a real backend
+    state, see the tri-state tests below), there is no reader that produces
+    this, and no honest meaning to give it.
+    """
     with pytest.raises(MalformedSignalError):
         RegionReading(source_location="page 1", text=None, extraction_confidence=MAX)
 
