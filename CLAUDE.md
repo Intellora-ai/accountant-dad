@@ -262,6 +262,45 @@ modules. Nothing was wrong with the number. Everything was wrong with quoting it
 dangerous artifact is not a red metric; it is a **green metric attached to code that has
 since moved**, read by someone deciding to merge. Approved by the user, 2026-08-06.
 
+### 57. An explicitly requested skill is a requirement, not a suggestion
+
+When the user types a skill name — `/rtk`, `/systematic-debugging`,
+`/superpowers:verification-before-completion` — that skill is **MANDATORY for
+that turn**.
+
+```
+automatic routing may ADD skills    ->  always allowed
+automatic routing may REPLACE one   ->  never, under any reasoning
+silently dropping a requested skill ->  an ERROR, not a judgement call
+```
+
+**The failure this prevents, observed repeatedly before it was written.** Skill
+names arrived appended to engineering directives and were treated as noise —
+not refused, not questioned, simply never mentioned again. Silent omission is
+worse than refusal, because refusal is visible and can be argued with.
+
+**What is required of every turn carrying an explicit request:**
+
+1. Invoke each named skill **before** planning begins.
+2. If a name is not an installed skill, **say so and name it.** Never drop it.
+3. If a requested skill is genuinely wrong for the work, say that in one line.
+   Disagreeing out loud is permitted; going quiet is not.
+4. Automatic routing runs *after*, and only ever adds.
+
+**Priority, when they conflict:** explicit user request → project rules →
+`CLAUDE.md` → engineering rules → automatic selection. Nothing downgrades the
+first.
+
+**Enforced by** `~/.claude/hooks/explicit-skill-policy.py`, a `UserPromptSubmit`
+hook that parses the raw prompt for `/name` tokens and emits them as REQUIRED
+before the model plans. That parse is deterministic — no model judgement stands
+between the user typing a name and it arriving marked mandatory.
+
+**The honest limit:** the hook enforces that the request is *seen*. No supported
+mechanism can force the invocation, and no hook is given a record of which
+skills ran, so "verify each participated" has no data source and any check
+claiming to do it would be theatre. Approved by the user, 2026-08-06.
+
 ---
 
 ## D. HOW TO THINK (apply, don't just name)

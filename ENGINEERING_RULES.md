@@ -138,3 +138,16 @@ is decided **before** the changes land, not after.
 **A number without its commit is an opinion. A number tied to the wrong commit is false.**
 
 **Full text:** [`CLAUDE.md`](CLAUDE.md)
+
+
+## Explicit Skill Invocation — Law 57
+
+A skill name typed by the user is a REQUIREMENT for that turn. Routing may add
+skills; it may never replace or silently drop a requested one. An unavailable
+name must be reported by name, never omitted.
+
+Enforced at `~/.claude/hooks/explicit-skill-policy.py` (`UserPromptSubmit`),
+which parses the prompt and emits the requested names as REQUIRED before
+planning. The hook guarantees the request is SEEN. It cannot guarantee
+invocation, and nothing in Claude Code exposes a record of which skills ran —
+so post-hoc verification is impossible and is not claimed.
