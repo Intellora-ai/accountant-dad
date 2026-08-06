@@ -50,7 +50,7 @@ from accountant_dad.artifacts.evidence import (
     StructuredDocument,
     UncertaintyMarker,
 )
-from accountant_dad.confidence import MAX, MIN, Confidence
+from accountant_dad.confidence import MAX, MIN, Confidence, ConfidenceOrUnmeasured
 from accountant_dad.engines.input_engine import confidence_report as confidence_report_module
 from accountant_dad.engines.input_engine.cleaner import CleanedDocument, PreservationStatus
 from accountant_dad.engines.input_engine.confidence_report import (
@@ -663,7 +663,7 @@ def test_the_note_s_own_words_never_move_a_document_derived_score() -> None:
     )
     fields = (ParsedField(field_name="Total", extraction_confidence=LOW),)
 
-    def run_with(text: str) -> tuple[tuple[str, Confidence], ...]:
+    def run_with(text: str) -> tuple[tuple[str, ConfidenceOrUnmeasured], ...]:
         report = record_confidence(
             cleaned=cleaned,
             reader_regions=regions,

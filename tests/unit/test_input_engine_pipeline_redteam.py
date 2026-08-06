@@ -1262,9 +1262,7 @@ def test_the_pipeline_returns_a_document_evidence_object_only_through_assembly(
             cleaner=pipeline.cleaner_output(cleaned),
             reader=pipeline.reader_output(reading),
             parser=pipeline.parser_output(parsed, recorded_at=RECORDED_AT),
-            confidence=pipeline.confidence_output(
-                report, pipeline.unmeasured_field_scores(parsed)
-            ),
+            confidence=pipeline.confidence_output(report, pipeline.unmeasured_field_scores(parsed)),
         ),
         identity=an_identity(),
         source_references=("upload:observed.pdf",),

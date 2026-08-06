@@ -146,14 +146,20 @@ class UnmeasuredType:
 
     NOT `None`, NOT a number, and NOT the same fact as
     `measurement.AbsentType`. The three shapes it must stay distinguishable
-    from, and what each one already means elsewhere in this repository:
+    from, and what each already means elsewhere in this repository:
 
-    | Shape | Fact | Where |
-    |---|---|---|
-    | `None` on `TextRegion.extraction_confidence` | the raw signal `reader` reports when no recogniser ran | `reader.py:255-259` |
-    | `None` on `RegionReading.text` | the region could not be read at all | `confidence_report.ReadingState.UNREAD` |
-    | `measurement.ABSENT` | this whole signal CATEGORY was never produced for the document | `measurement.py:147-170` |
-    | `UNMEASURED` (here) | the value WAS read, and nothing scored it | `Provenance.confidence`, `FieldConfidence.confidence` |
+        None on TextRegion.extraction_confidence
+            the raw signal `reader` reports when no recogniser ran
+            (`reader.py:255-259`)
+        None on RegionReading.text
+            the region could not be read at all
+            (`confidence_report.ReadingState.UNREAD`)
+        measurement.ABSENT
+            this whole signal CATEGORY was never produced for the document
+            (`measurement.py:147-170`)
+        UNMEASURED, here
+            the value WAS read, and nothing scored it
+            (`Provenance.confidence`, `FieldConfidence.confidence`)
 
     WHY NOT SHARE ONE SENTINEL WITH `measurement.AbsentType`. Two reasons, one
     of them mechanical and unarguable.
