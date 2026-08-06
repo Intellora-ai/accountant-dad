@@ -192,3 +192,66 @@ dependency order, base first. Zero conflicts, because the order was right.
 Related: **L-007** — integration finds what unit tests structurally cannot. This is the
 same shape one level up: nothing in a unit test can see that a *neighbouring module's*
 half of a change never landed.
+
+---
+
+## L-013 — A test that reads source is reading the *interpreter*, not the repository
+
+**Cost: the `mutation` gate scored nothing for eight commits, and nine architecture
+guards were silently switched off inside it.**
+
+The gate did not run long and fail. It died in six minutes reporting `4075 not
+checked`, which reads exactly like an unbuilt placeholder and is not one. mutmut runs
+the whole suite ONCE to collect stats before the first mutant; one red test there
+aborts the run, and every mutant is reported unscored.
+
+The red test:
+
+```
+FAILED tests/unit/test_input_engine_assembly_redteam.py::
+       test_assembly_compares_only_against_none
+AssertionError: assembly compares against something other than None:
+  [(136, ["Constant(value='fail')"]), (139, ["Constant(value='stats')"])]
+failed to collect stats. runner returned 1
+```
+
+Lines 136 and 139 are **mutmut's own dispatcher**, injected into every module it
+mutates. Pristine `assembly.py` contains zero occurrences of either literal. The
+test asked a question about the repository and `inspect.getsource` answered a
+different question: *what is this interpreter running.*
+
+**The silent direction is worse.** mutmut renames every function — `run` becomes
+`x_run__mutmut_orig` and the public name becomes the dispatcher — so
+`inspect.getsource(module.run)` returns eight lines of boilerplate. An assertion like
+"`run` never calls `min()`" then PASSES against mutmut's code. A red gate gets
+investigated; a green one does not.
+
+**What made it expensive was the response, not the bug.** This class had been hit and
+patched **seven times**, each with a runtime `pytest.skip` under mutation. Every patch
+was locally reasonable and globally wrong: nine structural red-team guards — the ones
+pinning Engine 1's architecture — stopped running in the one job that scores Engine 1,
+and the gate went on reporting a number with them disabled.
+
+**Rule.** *Authored source is a property of the repository, not of the process.* Any
+test asserting about source reads it from the authored file, through
+`tools/ci/authored_source.py`. When a test must instead see what is LOADED — `runpy
+.run_path` on a CLI entry point, where executing the authored file would leave every
+mutant in it alive and undetected — it says so with `running_path`. The choice is
+never made by reaching for `__file__`.
+
+**On finding all of it at once.** CI runs with `-x`, so it showed one failure. Fixing
+that one would have cost another six-minute round to find the next. Reproducing the
+instrumented tree locally and running both trees WITHOUT `-x` gave the whole list in
+one pass: **4 hard failures and 9 silent skips**, not 1. When a slow gate fails, make
+the cheap version of its environment first and read the full failure set.
+
+**On the guard.** The validator's first version banned only
+`Path(x.__file__).read_text()` and was defeated within the hour by
+`top_level_imports(reader.__file__)` — the read and the `__file__` in different
+functions. Connecting those needs dataflow analysis; banning the attribute needs none.
+**A guard scoped to the instance you just fixed is not a guard.** It then caught a
+brand-new offending call site the same afternoon, in an agent's work, before it landed.
+
+Related: **L-011** — measured numbers expire when source changes. The two compound:
+a stale number attached to a gate that was not measuring is the worst artifact in the
+repository.
