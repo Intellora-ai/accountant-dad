@@ -277,6 +277,10 @@ class StagesObserved:
     parser_path: Path | None = None
     parser_bytes: bytes | None = None
     parser_source_reference: str | None = None
+    #: `reader`'s regions as `parser` actually received them — the F-019 arrow,
+    #: observed rather than assumed. `None` means `parse` was never called;
+    #: `()` would mean it was called with nothing, and the two are different.
+    parser_regions: tuple[parser.ExtractedRegion, ...] | None = None
     parsed: parser.ParsedStructure | None = None
     result: DocumentEvidenceObject | None = None
 
@@ -320,6 +324,7 @@ def _install_spies(patch: pytest.MonkeyPatch, observed: StagesObserved) -> None:
         source: Path,
         *,
         source_reference: str,
+        extracted_regions: tuple[parser.ExtractedRegion, ...] = (),
         table_structure: parser.TableStructureSettings | None = None,
     ) -> parser.ParsedStructure:
         observed.parser_path = source
@@ -327,8 +332,16 @@ def _install_spies(patch: pytest.MonkeyPatch, observed: StagesObserved) -> None:
         # bytes on disk are the only evidence of which document was handed on.
         observed.parser_bytes = source.read_bytes()
         observed.parser_source_reference = source_reference
+        # `extracted_regions` is `reader`'s output reaching `parser` — the F-019
+        # arrow. A spy that dropped it would let a regression that stopped
+        # passing regions through go unnoticed here, so it is forwarded
+        # verbatim rather than defaulted away.
+        observed.parser_regions = extracted_regions
         observed.parsed = real_parse(
-            source, source_reference=source_reference, table_structure=table_structure
+            source,
+            source_reference=source_reference,
+            extracted_regions=extracted_regions,
+            table_structure=table_structure,
         )
         return observed.parsed
 
@@ -579,15 +592,41 @@ def test_parser_produces_the_same_structure_when_run_first_instead_of_third(
     it runs alone, from a file this test wrote, with no cleaner and no reader
     before it. An identical `ParsedStructure` is what proves the third position
     carries no hidden dependency on the first two.
+
+    THE COMPARISON IS NOW LIKE-FOR-LIKE, WHICH IT SILENTLY WAS NOT. `parser` has
+    a second input since the F-019 fix — `extracted_regions`, `reader`'s output —
+    and this test used to call it without them while the pipeline called it with
+    five. The structures then differed in `mapped_fields` for a reason that had
+    nothing to do with ORDER, which is what this test is about.
+
+    Giving both calls the same input is what makes the assertion mean what its
+    name says, and it makes the test STRONGER rather than weaker: `mapped_fields`
+    is now part of what must match, so a `parser` that mapped reader's regions
+    differently depending on what ran before it would now be caught. The regions
+    are the ones the spy OBSERVED being passed, not a set this test invented, so
+    the pipeline's real input is what gets replayed.
     """
     document = observed_run.parser_bytes
     assert document is not None
+    in_pipeline = observed_run.parsed
+    assert in_pipeline is not None
+    regions = observed_run.parser_regions
+    assert regions is not None, "parse was never called, so there is no order to compare"
+    assert regions, "parse was called with no regions at all, which would make this test vacuous"
     source = tmp_path / "isolated.pdf"
     source.write_bytes(document)
 
-    isolated = parser.parse(source, source_reference="upload:observed.pdf", table_structure=None)
+    isolated = parser.parse(
+        source,
+        source_reference="upload:observed.pdf",
+        extracted_regions=regions,
+        table_structure=None,
+    )
 
-    assert isolated == observed_run.parsed
+    assert isolated == in_pipeline
+    # and the mapped fields specifically — the part that only exists because
+    # reader's output reached parser at all
+    assert isolated.mapped_fields == in_pipeline.mapped_fields
 
 
 def test_the_conversion_functions_give_the_same_answer_in_any_order(
@@ -833,7 +872,7 @@ def test_a_failing_assembly_still_preserves_every_earlier_stage_unmodified(
         ),
     ],
 )
-def test_a_degenerate_document_stops_at_the_named_stage_with_nothing_preserved(
+def test_a_degenerate_document_is_named_as_unread_never_absorbed_as_an_empty_reading(
     name: str,
     document: bytes,
     media_type: reader.MediaType,
@@ -842,27 +881,61 @@ def test_a_degenerate_document_stops_at_the_named_stage_with_nothing_preserved(
 ) -> None:
     """Empty, nearly-empty and mistyped input, run through the real pipeline.
 
-    Each must stop at a NAMED stage carrying a REAL cause — never be absorbed
-    into an empty reading, which downstream is indistinguishable from an honest
-    reading of a page that genuinely had nothing on it (`ENGINE_1_INPUT_ENGINE_
-    RULES.md` §1.2's own words).
+    THE ATTACK THIS DEFENDS AGAINST IS UNCHANGED AND IS NOW SHARPER. None of
+    these may be absorbed into an empty reading, because downstream that is
+    indistinguishable from an honest reading of a page that genuinely had
+    nothing on it (`ENGINE_1_INPUT_ENGINE_RULES.md` §1.2's own words).
+
+    WHAT CHANGED, AND WHY THE ASSERTION MOVED RATHER THAN RELAXED. This used to
+    require `PipelineStageError`. All five inputs here are BUSINESS failures —
+    `APPLICATION_LAYER_CONTRACTS.md:30`, *"unreadable, corrupt, zero-byte: an
+    object is produced recording the failure"* — so raising was itself the
+    defect, and they now cross as artifacts.
+
+    That makes this test MORE necessary, not less: an emitted artifact is
+    exactly the shape that could masquerade as a successful read of a blank
+    page. So the assertion is no longer "it raised" but the thing actually at
+    stake — the artifact must be DISTINGUISHABLE from an honest empty reading,
+    and the only thing that distinguishes them is the named uncertainty marker.
+    An implementation that emitted a silent empty artifact would have satisfied
+    neither the old test nor this one, but only this one says why.
     """
     intake = pipeline.DocumentIntake(
         document=document, media_type=media_type, source_references=(f"upload:{name}",)
     )
 
-    with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(
-            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
-        )
-
-    assert raised.value.stage == expected_stage
-    assert isinstance(raised.value.cause, expected_cause)
-    assert raised.value.preserved == pipeline.PipelinePartialResult()
-    assert not any(
-        isinstance(reachable, DocumentEvidenceObject)
-        for reachable in _artifacts_reachable_from(raised.value)
+    evidence = pipeline.run(
+        intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
     )
+
+    # nothing was read, and nothing was invented to stand in for it
+    assert evidence.structured_document.extracted_text == ""
+    assert evidence.structured_document.detected_fields == ()
+    assert evidence.structured_document.detected_tables == ()
+    assert evidence.confidence_report.confidence_scores == ()
+
+    # and it is NOT silent: the failure is named, at the right stage, carrying
+    # the real cause's own words — this is the whole difference between this
+    # artifact and one produced by honestly reading a blank page
+    (marker,) = evidence.confidence_report.uncertainty_markers
+    assert marker.subject == f"upload:{name}"
+
+    # each parametrised cause is classified BUSINESS — that classification is
+    # the reason an artifact exists here at all instead of an exception, so it
+    # is asserted rather than assumed
+    assert issubclass(expected_cause, pipeline.BUSINESS_FAILURE)
+
+    # the sub-engine's OWN message travelled into the marker. Checked by
+    # extracting whatever sits between the template's two fixed halves rather
+    # than by hardcoding two different libraries' wording, so this stays true
+    # if either message is reworded and still fails if the cause is dropped.
+    prefix = f"this document could not be read at the {expected_stage!r} stage: "
+    assert marker.reason.startswith(prefix)
+    cause_text = marker.reason[len(prefix) :].split(" No value was extracted")[0]
+    assert cause_text.strip(), "the sub-engine's own message did not reach the marker"
+
+    assert expected_stage in evidence.confidence_report.reliability_information
+    assert "nothing was measured" in evidence.confidence_report.reliability_information
 
 
 def test_a_valid_container_holding_nothing_is_cleaned_then_refused_not_returned_empty() -> None:
@@ -1027,6 +1100,17 @@ def test_a_reader_failure_leaves_parser_uncalled_entirely() -> None:
 
 
 def test_a_cleaner_failure_leaves_both_reader_and_parser_uncalled() -> None:
+    """UNCHANGED SUBJECT, CORRECTED SHAPE. What this test guards — that no stage
+    after a failed one is ever entered — is untouched and is still asserted by
+    direct observation through the spies, not inferred from `preserved`.
+
+    Only the failure's SHAPE changed. Zero bytes is a business failure
+    (`APPLICATION_LAYER_CONTRACTS.md:30`), so the run now returns an artifact
+    recording it instead of raising. The risk that creates is precisely that
+    emitting could be implemented by letting the rest of the pipeline run over
+    empty values — so "reader and parser were never called" matters MORE once
+    an artifact comes back, and it is asserted on the same real spies as before.
+    """
     observed = StagesObserved()
     intake = pipeline.DocumentIntake(
         document=b"", media_type=reader.MediaType.PDF, source_references=("upload:empty.pdf",)
@@ -1034,19 +1118,26 @@ def test_a_cleaner_failure_leaves_both_reader_and_parser_uncalled() -> None:
 
     with pytest.MonkeyPatch.context() as patch:
         _install_spies(patch, observed)
-        with pytest.raises(pipeline.PipelineStageError) as raised:
-            pipeline.run(
-                intake,
-                identity=an_identity(),
-                settings=a_pipeline_settings(),
-                recorded_at=RECORDED_AT,
-            )
+        evidence = pipeline.run(
+            intake,
+            identity=an_identity(),
+            settings=a_pipeline_settings(),
+            recorded_at=RECORDED_AT,
+        )
 
-    assert raised.value.stage == "cleaner"
+    # cleaner was reached and refused; nothing after it ran at all
     assert observed.cleaner_data == b""
     assert observed.cleaned is None
     assert observed.reader_document is None
     assert observed.parser_path is None
+    assert observed.parser_regions is None
+
+    # and the artifact that came back is the failure record, not a run over
+    # empty values dressed up as a reading
+    assert evidence.structured_document.extracted_text == ""
+    assert evidence.structured_document.detected_fields == ()
+    (marker,) = evidence.confidence_report.uncertainty_markers
+    assert "'cleaner'" in marker.reason
 
 
 # ── ATTACK 8: the artifact a successful run returns is whole ────────────
