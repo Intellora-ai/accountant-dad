@@ -42,6 +42,7 @@ import pathlib
 import re
 
 import accountant_dad
+from accountant_dad.artifacts.evidence import DocumentEvidenceObject
 
 #: CLAUDE.md §P, Amendment 2, "Permitted now — exhaustive". A module lands here
 #: only when the amendment already permits its category. Adding a name here is
@@ -730,3 +731,282 @@ def test_the_content_guard_reads_every_file_on_disk_not_the_allowlist() -> None:
     # on disk, are covered by AUTHORIZED_STUBS rather than ENGINE_1_AUTHORIZED,
     # and must not fall through the gap between the two lists.
     assert {"__init__", "stub"} <= on_disk
+
+
+# ---------------------------------------------------------------------------
+# Amendment 5 — is this module a SUB-ENGINE, or something else?
+#
+# `ENGINE_1_INPUT_ENGINE_RULES.md:353` — a LOCKED level-3 specification — says
+# the Input Engine contains *"exactly four"* sub-engines, and `:365-367` forbids
+# adding, removing or merging one. Engine 1 ships NINE source modules. For a day
+# those two facts sat next to each other and nobody could say whether the code
+# violated the lock, because the document stated a COUNT and never stated what
+# it counted (`KNOWN_FAILURES.md` F-010).
+#
+# It was never counting files. `ENGINE_1_INPUT_ENGINE_RULES.md:8` forbids
+# implementation outright — *"Specification only — no implementation. No code,
+# no libraries … no pipelines"* — so a number written there cannot have been a
+# number of source files, because none were permitted to exist.
+#
+# THE TEST THE DOCUMENT ALREADY GAVE, now written down. `:399`, captioning the
+# four sub-engine output contracts: *"These are the four parts the parent engine
+# combines."* So:
+#
+#     A component is a sub-engine IF AND ONLY IF it produces one of the four
+#     parts the parent engine combines into the Document Evidence Object.
+#
+# That predicate is checkable, and it sorts all nine without a judgement call.
+# `ENGINE_1_INPUT_ENGINE_RULES.md` §7 *"What is and is not a sub-engine"* now
+# carries it, added by Amendment 5 in `docs/ARCHITECTURE_AMENDMENTS.md`.
+#
+# WHAT THESE FOUR TESTS ARE FOR. The lists below are a DECISION, one per module.
+# The tests make the decision mandatory: a tenth module cannot appear without
+# being sorted into exactly one of the three categories, and nothing can be
+# quietly promoted into the sub-engine set, which is pinned at four permanently.
+# ---------------------------------------------------------------------------
+
+#: *"Exactly four."* The number the locked specification states, given a name so
+#: that changing the set below cannot pass without also editing a constant that
+#: says what the locked document says.
+ENGINE_1_SUB_ENGINE_COUNT = 4
+
+#: The four architectural names, exactly as `ENGINE_1_INPUT_ENGINE_RULES.md:355-361`
+#: prints them in its own tree — Cleaner · Reader · Parser · Confidence. Quoted,
+#: not paraphrased.
+ENGINE_1_SUB_ENGINE_ARCHITECTURAL_NAMES = frozenset({"cleaner", "reader", "parser", "confidence"})
+
+#: Architectural name -> the file that implements it. `SUB_ENGINE_RESPONSIBILITIES.md`
+#: §1.1-1.4 and `ENGINE_1_INPUT_ENGINE_RULES.md:403-408`, which names what each one
+#: produces. Each entry is one of the four parts the parent combines — that is the
+#: whole reason it is here and not in one of the two categories below.
+#:
+#: The mapping is stated rather than inferred: `confidence_report` is the FILE and
+#: `confidence` is the NAME, and a test that guessed at that relationship would
+#: also quietly accept `confidence_v2`.
+ENGINE_1_SUB_ENGINE_FILE_FOR_NAME = {
+    "cleaner": "cleaner",  # -> cleaned representation · quality issues · preservation
+    "reader": "reader",  # -> raw extracted information · source locations · confidence
+    "parser": "parser",  # -> structured fields · field mappings · missing fields
+    "confidence": "confidence_report",  # -> scores · uncertainty markers · reliability
+}
+
+ENGINE_1_SUB_ENGINES = frozenset(ENGINE_1_SUB_ENGINE_FILE_FOR_NAME.values())
+
+#: NOT sub-engines. This is the parent Input Engine itself — the box the assembly
+#: diagram at `ENGINE_1_INPUT_ENGINE_RULES.md:372-382` draws AROUND the four.
+#:
+#: `:384` is explicit and is the reason this category has to exist at all:
+#: *"No new assembler sub-engine is created."* Assembly must nevertheless happen
+#: — `:62` puts it in the engine's own Owns list, and `:95` gives the parent its
+#: own row in the Decision Authority table. So engine-level work that is not
+#: sub-engine work already existed in the architecture before any code did, and
+#: THAT is what proves a module is not the same thing as a sub-engine.
+#:
+#: Two files, one responsibility: `pipeline` calls the four in order, `assembly`
+#: combines the four parts they returned. Splitting one engine-level job across
+#: two files is a file-layout choice; it creates no second owner and no fifth
+#: sub-engine. §3A still binds both: neither may override a sub-engine output,
+#: and neither may raise or lower a confidence value.
+ENGINE_1_PARENT_MACHINERY = {
+    "pipeline",  # the engine's runner: calls cleaner -> reader -> parser -> confidence
+    "assembly",  # the engine's boundary step: four parts -> one Document Evidence Object
+}
+
+#: NOT sub-engines either. A facility produces NO part of the Document Evidence
+#: Object and answers no question about the contents of any document.
+#:
+#: `config`      — Amendment 3: *"Every threshold, weight and cutoff is a named
+#:                 configuration variable … Missing required confidence
+#:                 configuration fails fast at startup, never falls back."*
+#: `measurement` — step 2 of `ENGINE_1_CONFIDENCE_PARAMETERS.md`'s "only route"
+#:                 a threshold may take. A calibration record, not an artifact.
+#: `classification` — authorised BY NAME by Amendment 3, and a facility because
+#:                 the Document Evidence Object has no document-type component
+#:                 and gains none. Its cues are evidence for calibration, never
+#:                 a part of the artifact. `test_the_evidence_object_has_no_
+#:                 document_type_field` below is the falsifier for that claim.
+#:
+#: THE LINE TO WATCH. A facility is cheap to add and a sub-engine may not be
+#: added at all, so "facility" is the category an unwanted fifth sub-engine would
+#: hide in. The moment a facility's output enters the Document Evidence Object it
+#: has produced a fifth part and has stopped being a facility.
+ENGINE_1_FACILITIES = {
+    "config",  # named parameters, no defaults, fails fast
+    "measurement",  # the calibration record
+    "classification",  # document-type cues, never a document-type conclusion
+}
+
+#: On disk under `engines/input_engine/` but deliberately outside all three
+#: categories: they are package plumbing and the P3 stub, covered by
+#: `AUTHORIZED_STUBS`. Named one by one so a tenth real module cannot claim to be
+#: plumbing.
+ENGINE_1_NOT_A_COMPONENT = {"__init__", "stub"}
+
+
+def test_the_sub_engine_set_is_exactly_the_four_the_locked_specification_names() -> None:
+    """*"Exactly four."* Pinned here so a fifth cannot be promoted quietly.
+
+    `ENGINE_1_INPUT_ENGINE_RULES.md:353` and `:365` — *"Do not add new
+    sub-engines. Do not remove sub-engines."* Widening `ENGINE_1_SUB_ENGINES` is
+    exactly the edit that would let `classification` be reclassified into the
+    architecture without anyone amending the locked document, so the count and
+    the four names are both asserted, not just the count.
+    """
+    assert len(ENGINE_1_SUB_ENGINES) == ENGINE_1_SUB_ENGINE_COUNT, (
+        f"Engine 1 has exactly four sub-engines; this list has "
+        f"{len(ENGINE_1_SUB_ENGINES)}: {sorted(ENGINE_1_SUB_ENGINES)}. "
+        "ENGINE_1_INPUT_ENGINE_RULES.md:353 is LOCKED and level 3. Adding a "
+        "fifth takes an amendment (§M), not an edit to this set."
+    )
+    assert len(ENGINE_1_SUB_ENGINE_ARCHITECTURAL_NAMES) == ENGINE_1_SUB_ENGINE_COUNT
+
+    # The file names and the architectural names are pinned to each other, so a
+    # rename on either side is visible. Two files cannot share one name either:
+    # `ENGINE_1_SUB_ENGINES` is built from `.values()`, so a duplicated file name
+    # would shrink it and fail the count above.
+    named = frozenset(ENGINE_1_SUB_ENGINE_FILE_FOR_NAME)
+    assert named == ENGINE_1_SUB_ENGINE_ARCHITECTURAL_NAMES, (
+        f"the sub-engine names drifted: {sorted(named)} vs "
+        f"{sorted(ENGINE_1_SUB_ENGINE_ARCHITECTURAL_NAMES)}. "
+        "ENGINE_1_INPUT_ENGINE_RULES.md:355-361 prints Cleaner, Reader, Parser, "
+        "Confidence, and :365 forbids adding, removing or merging one."
+    )
+
+
+def test_the_three_architectural_categories_are_disjoint() -> None:
+    """One module, one category. A name in two lists is an undecided module.
+
+    Without this, the cheapest way to smuggle a fifth sub-engine past the test
+    above is to leave it in `ENGINE_1_FACILITIES` as well — passing both, while
+    the repository can no longer say which it is.
+    """
+    for left_name, left, right_name, right in (
+        ("sub-engines", ENGINE_1_SUB_ENGINES, "parent machinery", ENGINE_1_PARENT_MACHINERY),
+        ("sub-engines", ENGINE_1_SUB_ENGINES, "facilities", ENGINE_1_FACILITIES),
+        ("parent machinery", ENGINE_1_PARENT_MACHINERY, "facilities", ENGINE_1_FACILITIES),
+        ("sub-engines", ENGINE_1_SUB_ENGINES, "not-a-component", ENGINE_1_NOT_A_COMPONENT),
+        (
+            "parent machinery",
+            ENGINE_1_PARENT_MACHINERY,
+            "not-a-component",
+            ENGINE_1_NOT_A_COMPONENT,
+        ),
+        ("facilities", ENGINE_1_FACILITIES, "not-a-component", ENGINE_1_NOT_A_COMPONENT),
+    ):
+        overlap = sorted(left & right)
+        assert overlap == [], (
+            f"module(s) classified as BOTH {left_name} and {right_name}: {overlap}. "
+            "A module the architecture cannot place in one category is a module "
+            "nobody has decided about."
+        )
+
+
+def test_every_engine_1_module_carries_exactly_one_architectural_classification() -> None:
+    """Every AUTHORIZED module is sorted. The allowlist and the decision agree.
+
+    `ENGINE_1_AUTHORIZED` says a module may exist. These three sets say WHAT it
+    is. The two lists are maintained by hand and must not drift apart: a module
+    authorized but unclassified is code the freeze admitted and the architecture
+    never placed.
+    """
+    classified = ENGINE_1_SUB_ENGINES | ENGINE_1_PARENT_MACHINERY | ENGINE_1_FACILITIES
+    authorized = {name.rsplit("/", 1)[-1] for name in ENGINE_1_AUTHORIZED}
+
+    unclassified = sorted(authorized - classified)
+    assert unclassified == [], (
+        f"module(s) on ENGINE_1_AUTHORIZED with no architectural classification: "
+        f"{unclassified}. Decide, using the test at ENGINE_1_INPUT_ENGINE_RULES.md "
+        "§7: does it produce one of the four parts the parent combines? Yes -> it "
+        "is a fifth sub-engine and is FORBIDDEN. No -> parent machinery or facility."
+    )
+
+    phantom = sorted(classified - authorized)
+    assert phantom == [], (
+        f"module(s) classified but not on ENGINE_1_AUTHORIZED: {phantom}. "
+        "Classifying a module does not authorize it; Amendment 3's list is what does."
+    )
+
+
+def test_no_engine_1_module_exists_without_an_architectural_decision() -> None:
+    """The tenth-module guard, read off DISK — the allowlist is what gets edited.
+
+    This is F-010's permanent fix. The failure it traps is not a wrong answer, it
+    is an ABSENT one: a new file under `engines/input_engine/` whose status as a
+    sub-engine nobody stated, leaving the repository unable to say whether
+    *"exactly four"* still holds.
+
+    Deliberately derived from `engine_1_sources()` and not from any list above,
+    for the reason `test_the_content_guard_reads_every_file_on_disk_not_the_
+    allowlist` gives: the allowlist is what an attacker edits, the disk is what
+    ships.
+    """
+    on_disk = {path.stem for path in engine_1_sources()}
+    decided = (
+        ENGINE_1_SUB_ENGINES
+        | ENGINE_1_PARENT_MACHINERY
+        | ENGINE_1_FACILITIES
+        | ENGINE_1_NOT_A_COMPONENT
+    )
+
+    undecided = sorted(on_disk - decided)
+    assert undecided == [], (
+        f"Engine 1 module(s) on disk with no architectural decision: {undecided}. "
+        "Engine 1 may contain exactly four sub-engines (ENGINE_1_INPUT_ENGINE_"
+        "RULES.md:353, LOCKED, level 3). Before this file grows, say which of the "
+        "three each new module is: SUB-ENGINE (produces one of the four parts the "
+        "parent combines - FORBIDDEN, there are already four), PARENT MACHINERY "
+        "(the engine's own runner or assembly step), or FACILITY (produces no part "
+        "of the Document Evidence Object at all)."
+    )
+
+    missing = sorted(decided - on_disk)
+    assert missing == [], (
+        f"classified module(s) absent from disk: {missing}. A decision about a "
+        "module that no longer exists is a decision nobody can check."
+    )
+
+
+def test_the_evidence_object_has_no_document_type_field() -> None:
+    """The falsifier for calling `classification` a facility, not a sub-engine.
+
+    Amendment 5 states what would prove it wrong: *"A document-type field
+    appearing in the Document Evidence Object. That would make cue detection a
+    producer of a fifth part — a fifth sub-engine in all but name."*
+
+    So the claim is checked against the real artifact, not asserted. The Document
+    Evidence Object's components are fixed by `ENGINE_RESPONSIBILITIES.md` §1
+    Outputs — Structured Document, optional Human Business Context, Confidence
+    Report — and there is no fourth. `COMMUNICATION_RULES_INPUT_ENGINE.md` Rule 1
+    is why: a bare document type is an interpretation, and *"the Input Engine
+    sends observations, it does not send interpretations."*
+
+    This fails the day someone wires `classification` straight into the artifact,
+    which is precisely when F-010's residual falls due (`KNOWN_FAILURES.md` F-018).
+    """
+    fields = set(DocumentEvidenceObject.model_fields)
+
+    # The general rule is asserted FIRST, deliberately. The exact-set pin below
+    # would catch `document_type` too — but an engineer who adds the field and
+    # then "fixes" the test by updating the pin would sail past a check that only
+    # ran second. Ordered this way the pin is the pin and this is the rule, and
+    # neither can be satisfied by editing the other.
+    offenders = sorted(name for name in fields if "type" in words_in(name))
+    assert offenders == [], (
+        f"the Document Evidence Object gained a type field: {offenders}. If a "
+        "document type must reach Engine 2 it travels as matched cues carrying "
+        "their locations, never as a bare type (COMMUNICATION_RULES_INPUT_ENGINE.md "
+        "Rule 1). A bare type is an interpretation and Engine 1 sends observations."
+    )
+
+    assert fields == {
+        "identity",
+        "document_id",
+        "source_references",
+        "structured_document",
+        "human_business_context",
+        "confidence_report",
+    }, (
+        f"the Document Evidence Object's fields changed: {sorted(fields)}. Its "
+        "components are fixed by ENGINE_RESPONSIBILITIES.md §1 Outputs. A new "
+        "one is a fifth part, and whatever produces it is a fifth sub-engine."
+    )
