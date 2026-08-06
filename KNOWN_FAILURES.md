@@ -713,44 +713,140 @@ changes across `reader`, `parser`, `confidence_report` and `assembly`.
 
 | | |
 |---|---|
-| **Severity** | MEDIUM — a precedence question, resolved by precedence but not reconciled |
-| **Status** | 🔒 **HALF RESOLVED, HALF RE-OPENED 2026-08-06** — a SECOND conflict was found, and this one IS on the ladder |
+| **Severity** | MEDIUM — a precedence question and a definition question, both now answered |
+| **Status** | ✅ **CLOSED 2026-08-06** — resolved at `a482ad6` by delegated engineering authority. Neither half needs the owner |
 | **Found** | 2026-08-05, building `classification` |
 
-### The G9.5 half is settled. A different clause re-opens it.
+### How it closed — the specification was right, and so is the code
 
-`ENGINE_1_ARCHITECTURE.md` §G9.5 loses, for the reasons set out below — it self-declares
-*"Status: DRAFT — NOT FROZEN"* (verified at `:8` on 2026-08-06) and appears nowhere on the
-precedence ladder. That half needs no owner.
+**The owner delegated the decision**, in these words: *"Determine which is correct: the
+implementation, or the specification. … Do not leave them inconsistent. The repository
+must have one source of truth."*
 
-**But a second document says the same thing and it IS on the ladder.**
+**Answer: both, because `module` and `sub-engine` are not the same thing** — and the
+documents settle that without anybody's preference being involved.
+
+**The clause was never counting files.** `ENGINE_1_INPUT_ENGINE_RULES.md:8`, four lines
+below the one that says LOCKED:
+
+> *"**Specification only — no implementation.** No code, no libraries, no OCR, computer
+> vision or handwriting systems, no pipelines, no dependencies."*
+
+A count written by a document that forbids source files from existing cannot have been a
+count of source files. It counts **owned problems** — the unit
+`SUB_ENGINE_RESPONSIBILITIES.md:20` uses: *"Each sub-engine owns exactly one problem."*
+
+**The document already contained the membership test; it was a table caption.**
+`ENGINE_1_INPUT_ENGINE_RULES.md:399`, over the four output contracts:
+
+> *"These are the four parts the parent engine combines."*
+
+So: **a component is a sub-engine if and only if it produces one of the four parts the
+parent combines into the Document Evidence Object.** Checkable, not a judgement call.
+
+**Engine-level work that is not sub-engine work already existed before any code did.**
+`:384` — *"The four sub-engines are specialised workers. The parent engine is the boundary
+at which their individual observations become one artifact. **No new assembler sub-engine
+is created**"* — while `:62` puts assembly in the engine's own `owns` list and `:95` gives
+**Input Engine (parent)** its own row in the Decision Authority table, beside the four and
+distinct from them. `SUB_ENGINE_RESPONSIBILITIES.md` §1 says it once more: *"No assembler
+sub-engine exists, and none may be added."* That is the proof by construction.
+
+### All nine, classified
+
+| Module | Produces one of the four parts? | Verdict |
+|---|---|---|
+| `cleaner` | cleaned representation · quality issues · preservation status | **SUB-ENGINE** §1.1 |
+| `reader` | raw extracted information · source locations · extraction confidence | **SUB-ENGINE** §1.2 |
+| `parser` | structured fields · field mappings · missing field information | **SUB-ENGINE** §1.3 |
+| `confidence_report` | confidence scores · uncertainty markers · reliability | **SUB-ENGINE** §1.4 |
+| `pipeline` | No — it *calls* the four | **PARENT ENGINE'S OWN MACHINERY** |
+| `assembly` | No — it *is* the combining | **PARENT ENGINE'S OWN MACHINERY** |
+| `config` | No | **FACILITY** |
+| `measurement` | No | **FACILITY** |
+| `classification` | No | **FACILITY** |
+
+**Four sub-engines. The lock holds. Nothing is deleted and nothing is refactored.**
+
+### `classification` was the hard one, and the artifact decided it
+
+Verified at `a482ad6`, not asserted:
 
 ```
-docs/ENGINE_1_INPUT_ENGINE_RULES.md:352
-    "The Input Engine contains **exactly four** sub-engines:"
+$ grep -c "document_type" src/accountant_dad/artifacts/evidence.py
+0
+
+DocumentEvidenceObject.model_fields
+    identity · document_id · source_references
+    structured_document · human_business_context? · confidence_report
 ```
 
-`ENGINE_1..6_*_RULES.md` sits at **level 3** of the ladder in `SYSTEM_INVARIANTS.md:11-18`.
-Engine 1 today ships **nine** modules:
+**No document-type field. No fifth component.** Its output therefore cannot be one of the
+four parts, so it is not a sub-engine — it is a facility, and `exactly four` is untouched.
+
+Two further checks, both run rather than recalled:
 
 ```
-cleaner  reader  parser  confidence_report          <- the four
-assembly  pipeline                                  <- the engine's own assembly
-classification  config  measurement                 <- what "exactly four" does not cover
+$ grep -in "classif|document type" docs/ENGINE_1_INPUT_ENGINE_RULES.md
+(exit 1 — zero matches in 669 lines)
+
+$ grep -rn "input_engine import|input_engine\." src
+pipeline.py:228   from ...input_engine import assembly, cleaner, confidence_report, parser, reader
 ```
 
-**Two readings, and only the owner may pick.** Either `classification`, `config` and
-`measurement` are *not* sub-engines — internal assembly and infrastructure, which the
-boxed note above §1.1 arguably permits — or `exactly four` is violated by three modules.
-`assembly` and `pipeline` have the same question hanging over them. **`CLAUDE.md` §M: if
-code and a frozen doc disagree, the doc wins and the code is wrong.** Nothing here may be
-resolved silently in code.
+The level-3 locked document is **silent** on classification — it forbids a fifth
+*sub-engine*, never a facility. And `classification`, `config` and `measurement` have
+**zero consumers in `src/`**; only tests import them (F-018, still open and untouched).
 
-**This is not the same conflict as the G9.5 one.** G9.5 is about *capability* (may Engine 1
-classify at all) and is settled by Amendment 3. This is about *shape* (how many parts
-Engine 1 may have) and Amendment 3 does not address it.
+### The G9.5 half, also closed
 
-### The G9.5 reasoning, unchanged and still correct
+`ENGINE_1_ARCHITECTURE.md` §G9.5 said document-type detection was *"not authorised … out
+of scope until the owner rules."* **The ruling already existed** — `CLAUDE.md` §P
+Amendment 3, owner-approved 2026-08-05, names *"document classification"* explicitly. That
+document self-declares *"Status: DRAFT — NOT FROZEN"* (`:8`) and *"Where this document
+contradicts any of them, this document is wrong"* (`:5`), and appears at no level of the
+ladder in `SYSTEM_INVARIANTS.md:11-18`. §M binds **frozen** documents; a draft is revised,
+not amended. **G9.5 has now been revised** at `a482ad6` rather than left to rot.
+
+This entry previously said the shape question was *"only the owner may pick."* That was
+right on 2026-08-05 and is superseded by the delegation of 2026-08-06.
+
+### What now guards it — four tests, each proven to fail first
+
+| Guard | Traps |
+|---|---|
+| `test_no_engine_1_module_exists_without_an_architectural_decision` | a tenth module on disk with no decision |
+| `test_the_sub_engine_set_is_exactly_the_four_the_locked_specification_names` | a fifth sub-engine promoted quietly |
+| `test_the_three_architectural_categories_are_disjoint` | a module left in two categories, i.e. undecided |
+| `test_the_evidence_object_has_no_document_type_field` | the amendment's **own stated falsifier** |
+
+All four in `tests/unit/test_package.py`. Each was mutated red before being accepted
+(§J.1): a tenth file added, `classification` promoted, a name double-listed, and
+`document_type` added to the schema **together with** a matching edit to the field pin —
+that last case is why the general type sweep runs *before* the exact-set assertion, since
+in the other order it could never fail.
+
+**Written up as Amendment 5** in `docs/ARCHITECTURE_AMENDMENTS.md`, all eight §M items.
+The membership test is now `ENGINE_1_INPUT_ENGINE_RULES.md` **§9A** — placed after §9 for
+the tooling reason recorded in **F-027**, not for an architectural one.
+
+### The class, not the instance
+
+**A count with no stated unit is Law 52 unmet inside a locked document.** F-010 was not a
+disagreement about architecture; it was a number that never said what it counted, sitting
+in a document nobody could edit. The general fix is the one applied here: when a locked
+document states a quantity, it must also state the predicate that decides membership, and
+a test must enforce the predicate. Six other locked documents state counts — 39
+sub-engines, 6 engines, 13 invariants, 6 artifacts, 10 contracts, 16 parameters.
+**`FORWARD_DEPENDENCY_INVENTORY.md:96` already records the 39 as `Open` — *"no engine's
+count has been tested against its real needs."*** This entry is the first instance of that
+open question reaching real code, and it will not be the last.
+
+### HISTORY — the G9.5 reasoning as it stood on 2026-08-05, kept verbatim
+
+> *This file's rule: "a closed entry keeps its history." Everything below is the original
+> analysis of the capability half. It remains correct; it is no longer the current status.
+> The current status is the CLOSED section above.*
 
 **Description.** Two documents written on the same day say opposite things.
 
@@ -815,11 +911,24 @@ governed, that line would be a live freeze violation, and nothing flags it.
 declared rule. It should be revised to match Amendment 3 when
 `ENGINE_1_ARCHITECTURE.md` is next touched.
 
-**Residual, and it is real.** `ClassificationResult.document_type` returns a type rather
-than a cue. Harmless *today* only because the module has zero consumers — see F-018 —
-so its output never reaches the Document Evidence Object. The moment assembly wires it
+> **DONE at `a482ad6`.** G9.5 now reads *"Document-type detection — REVISED 2026-08-06, no
+> longer open"* and states the capability is authorised as a **facility, never a fifth
+> sub-engine**. The line it drew — observation permitted, conclusion forbidden — was the
+> right line and is carried forward unchanged.
+
+**Residual, and it is real. STILL OPEN — this half did not close.**
+`ClassificationResult.document_type` returns a type rather than a cue. Harmless *today*
+only because the module has zero consumers — see F-018, re-verified at `a482ad6`: the only
+`src/` import of anything under `input_engine` is `pipeline.py:228`, which names
+`assembly, cleaner, confidence_report, parser, reader` and **not** `classification` — so
+its output never reaches the Document Evidence Object. The moment assembly wires it
 in, `COMMUNICATION_RULES_INPUT_ENGINE.md:71` goes live and the field must arrive
 carrying its `MatchedCue`s, never as a bare type.
+
+**This residual now has a tripwire.** `test_the_evidence_object_has_no_document_type_field`
+fails the moment a document type reaches the artifact, so the day the wiring happens the
+suite says so instead of the defect shipping quietly. **It tracks the residual; it does not
+fix it.** The fix is a contract change and belongs with F-018.
 
 **The class, not the instance.** An index that restates a conclusion can restate the
 wrong one. `BLOCKERS.md:3-6` calls itself *"Index, not a copy"* while its "Why only the
@@ -1530,10 +1639,69 @@ judge it. **Merge is not discussable until every mandatory gate is at or above i
 
 ---
 
+## F-027 · A locked document is append-only after its last cited line, and nothing says so
+
+| | |
+|---|---|
+| **Severity** | LOW — no wrong output. It silently constrains where a specification may be edited |
+| **Status** | ⬜ **OPEN** · worked around at `a482ad6`, not fixed |
+| **Found** | 2026-08-06, adding the membership test that closed F-010 |
+
+**`conformance_registry.py` pins conformance predicates to LINE NUMBERS in the locked
+documents**, and `test_the_identifier_carries_the_line_its_source_names` requires the line
+to appear in **both** the predicate's identifier and its source, so the two cannot drift.
+`test_every_quote_is_still_on_the_line_it_cites` then re-reads the file and fails if the
+sentence moved.
+
+**The consequence nobody wrote down: inserting a paragraph into a locked document breaks
+tests that have nothing to do with the paragraph.** Measured at `a482ad6`, adding ~50 lines
+to `ENGINE_1_INPUT_ENGINE_RULES.md` §7:
+
+```
+FAILED test_every_quote_is_still_on_the_line_it_cites[ENGINE_1:569/absent-zero-and-unreadable-stay-distinct]
+FAILED test_every_quote_is_still_on_the_line_it_cites[ENGINE_1:626/every-uncertainty-marker-carries-a-reason]
+```
+
+**Renumbering is not the cheap fix it looks like.** The line number is part of the
+predicate's *identity*, and that identity is quoted in prose across the repository. Moving
+`626` to `654` would leave six citations pointing at the wrong sentence:
+
+```
+src/accountant_dad/artifacts/evidence.py:83          src/.../input_engine/cleaner.py:213
+src/accountant_dad/engines/input_engine/confidence_report.py:79
+tests/unit/test_evidence.py:722                      tests/unit/test_input_engine_cleaner.py:718
+tests/unit/test_input_engine_parser.py:431,603
+```
+
+So a documentation edit forces a rename across `src/` and four test files, or it does not
+happen. **In practice `ENGINE_1_INPUT_ENGINE_RULES.md` is append-only after line 626** —
+its last cited line — and nothing in the repository states that.
+
+**Workaround taken.** The membership test was placed at **§9A**, after §9, the first
+position that moves no cited line. Both cited lines verified still at 569 and 626 at
+`a482ad6`. The section says so in its own opening note, so the placement does not read as
+an arbitrary choice. **`src/` was not touched.**
+
+**Impact.** Every future edit to a locked specification hits this. The next agent will
+either discover it by a confusing red test, or renumber and strand citations silently.
+
+**Root cause, stated as a class.** *A stable identifier was built out of a volatile
+coordinate.* A line number identifies a position, not a sentence; using it as an identity
+makes every document edit an identity change.
+
+**Permanent fix — not chosen here, this entry changes no mechanism.** Identify a
+prohibition by its **quoted sentence** (or a slug/anchor) and treat the line number as
+derived metadata that the drift test *recomputes* rather than asserts. The quote is already
+stored in every predicate, so the identity it needs exists. That is a change to
+`conformance_registry.py` and `test_conformance_registry.py`, both outside F-010's scope.
+
+---
+
 ## Closed
 
 | ID | Title | Closed | Fix | Guarded by |
 |---|---|---|---|---|
+| **F-010** | *"Exactly four sub-engines"* vs nine modules — and whether classification is authorised | 2026-08-06 | `13ce25d`, `38b97e3`, `a482ad6` — module ≠ sub-engine; membership test stated at §9A; Amendment 5; G9.5 revised. **No code changed** | `test_package.py` — four named tests, each mutated red first. Residual (a bare type reaching the artifact) tracked by `test_the_evidence_object_has_no_document_type_field`, open under F-018 |
 | **F-003** | Stale duplicate carrying the inverted `worst_k` row | 2026-08-05 | Deleted after proving nothing depended on it and that its only unique line *was* the bug | — *(deletion; nothing to guard)* |
 | **F-002** | Two OpenCV distributions in one environment | 2026-08-05 | OCR stack separated into its own manifest | ⚠️ downgraded to PARTLY RESOLVED — see F-023 |
 | **F-012** | The pipeline is not a pipe | 2026-08-06 | `412eed6` (cleaner half) · `6b32425`, `41b23e6`, `d29985a` (reader→parser half) | `test_input_engine_pipeline.py`; the red-team half is **not running** — F-025 |
