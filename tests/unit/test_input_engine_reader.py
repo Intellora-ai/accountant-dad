@@ -621,16 +621,21 @@ def test_an_image_only_pdf_falls_through_to_ocr_and_reads_it() -> None:
     assert tuple(region.text for region in reading.regions) == INVOICE_LINES
 
 
-def test_an_image_only_pdf_reaches_the_ocr_path_before_failing_on_missing_paddleocr() -> None:
+def test_an_image_only_pdf_reaches_the_ocr_path_before_failing_on_missing_paddleocr(
+    paddleocr_is_absent: list[str],
+) -> None:
     """Falsification of the router, run WITHOUT the OCR guard: a PDF with no
     text layer must not just stop at the text-layer path - it must actually
-    rasterise and call the recogniser. PaddleOCR is genuinely absent in this
-    environment (`KNOWN_FAILURES.md` F-002), exactly as
-    `test_input_engine_pipeline.py`'s
-    `test_reader_failing_after_cleaner_preserves_cleaners_work_and_names_reader`
-    already measures for the same reason, so the real, unmocked failure this
-    test asserts is `ModuleNotFoundError` - never reached if the router gave
-    up at the text-layer stage instead of continuing to the rasteriser.
+    rasterise and call the recogniser. The failure asserted is
+    `ModuleNotFoundError`, which is never reached if the router gave up at the
+    text-layer stage instead of continuing to the rasteriser.
+
+    THE ABSENCE IS NOW CREATED RATHER THAN INHERITED. This test used to depend
+    on PaddleOCR simply not being installed (`KNOWN_FAILURES.md` F-002). That
+    held for as long as F-009 held, and stopped holding the moment CI grew an
+    interpreter with the real OCR stack in it - where this test failed at commit
+    `c4fbb5f` for a reason that had nothing to do with the router it measures.
+    See the `paddleocr_is_absent` fixture for the general principle.
     """
     with pytest.raises(ModuleNotFoundError, match="paddleocr"):
         reader.read(
@@ -639,6 +644,11 @@ def test_an_image_only_pdf_reaches_the_ocr_path_before_failing_on_missing_paddle
             render_dpi=FIXTURE_DPI,
             vision_fallback_threshold=NO_FALLBACK,
         )
+
+    # Stronger than the raise alone: the router did not merely fail, it got as
+    # far as ASKING for the recogniser. A router that stopped at the text-layer
+    # stage would raise nothing and this list would be empty.
+    assert "paddleocr" in paddleocr_is_absent
 
 
 @needs_the_real_ocr
@@ -1143,13 +1153,26 @@ class _ScriptedRecogniser:
         return [_ScriptedResult(payload, self.keys_asked)]
 
 
-class _RecordingFactory:
-    """Stands in for `paddleocr.PaddleOCR`, and records how `reader` builds it."""
+#: How `reader` asked for a recogniser: language, the three preprocessing
+#: switches, and the kernel. Recorded whole rather than field by field, so an
+#: argument added later cannot go unnoticed.
+BuildRequest = tuple[str, bool, bool, bool, bool]
 
-    def __init__(self, recogniser: _ScriptedRecogniser) -> None:
-        self.recogniser = recogniser
+
+class _RecordingFactory[R: reader._Recogniser]:
+    """Stands in for `paddleocr.PaddleOCR`, and records how `reader` builds it.
+
+    Generic in the recogniser it hands back, so the SAME recording factory
+    serves a recogniser that succeeds, one that explodes and one that answers
+    with the wrong shape. A second copy of it per failure mode would be a second
+    place for the construction contract to drift (Law 14).
+    """
+
+    def __init__(self, recogniser: R) -> None:
+        self.recogniser: R = recogniser
         self.languages: list[str] = []
         self.preprocessing: list[tuple[bool, bool, bool]] = []
+        self.onednn: list[bool] = []
 
     def __call__(
         self,
@@ -1158,12 +1181,77 @@ class _RecordingFactory:
         use_doc_orientation_classify: bool,
         use_doc_unwarping: bool,
         use_textline_orientation: bool,
-    ) -> reader._Recogniser:
+        enable_mkldnn: bool,
+    ) -> R:
         self.languages.append(lang)
         self.preprocessing.append(
             (use_doc_orientation_classify, use_doc_unwarping, use_textline_orientation)
         )
+        self.onednn.append(enable_mkldnn)
         return self.recogniser
+
+
+class _UnbuildableFactory:
+    """A `PaddleOCR` that raises instead of returning. Model weights are fetched
+    over the network during construction, so this is not a hypothetical."""
+
+    def __init__(self, failure: Exception) -> None:
+        self._failure = failure
+        self.attempts: list[BuildRequest] = []
+
+    def __call__(
+        self,
+        *,
+        lang: str,
+        use_doc_orientation_classify: bool,
+        use_doc_unwarping: bool,
+        use_textline_orientation: bool,
+        enable_mkldnn: bool,
+    ) -> reader._Recogniser:
+        self.attempts.append(
+            (
+                lang,
+                use_doc_orientation_classify,
+                use_doc_unwarping,
+                use_textline_orientation,
+                enable_mkldnn,
+            )
+        )
+        raise self._failure
+
+
+class _FailingRecogniser:
+    """A recogniser that is built fine and then explodes on the page."""
+
+    def __init__(self, failure: Exception) -> None:
+        self._failure = failure
+        self.pages_seen: list[reader.Page] = []
+
+    def predict(self, image: reader.Page) -> list[reader._OcrResult]:
+        self.pages_seen.append(image)
+        raise self._failure
+
+
+class _MisshapenRecogniser:
+    """A recogniser that returns a result missing one of the three documented keys.
+
+    PaddleOCR is a pinned but living dependency; a renamed key is a real way for
+    recognition to stop working without anything raising inside `reader` itself.
+    """
+
+    def __init__(self, drop: str) -> None:
+        self._drop = drop
+        self.pages_seen: list[reader.Page] = []
+
+    def predict(self, image: reader.Page) -> list[reader._OcrResult]:
+        self.pages_seen.append(image)
+        payload: dict[str, object] = {
+            "rec_texts": [line.text for line in SCRIPTED_LINES],
+            "rec_scores": [line.score for line in SCRIPTED_LINES],
+            "rec_polys": [numpy.array(line.box, dtype=numpy.int16) for line in SCRIPTED_LINES],
+        }
+        del payload[self._drop]
+        return [_ScriptedResult(payload, [])]
 
 
 class _FakePaddleOcr(types.ModuleType):
@@ -1172,34 +1260,104 @@ class _FakePaddleOcr(types.ModuleType):
     PaddleOCR: reader._RecogniserFactory
 
 
-InstallRecogniser = Callable[[tuple[ScriptedLine, ...]], _RecordingFactory]
+InstallRecogniser = Callable[[tuple[ScriptedLine, ...]], _RecordingFactory[_ScriptedRecogniser]]
+InstallFactory = Callable[[reader._RecogniserFactory], None]
+ForgetTheRecogniser = Callable[[], None]
 
 
 @pytest.fixture
-def substitute_the_recogniser(monkeypatch: pytest.MonkeyPatch) -> Iterator[InstallRecogniser]:
-    """Put a scripted recogniser behind `importlib.import_module("paddleocr")`.
+def a_clean_recogniser_cache() -> Iterator[ForgetTheRecogniser]:
+    """Empty `reader._recogniser`'s cache on the way IN and again on the way OUT,
+    and hand out the means to empty it in between.
 
-    `reader._recogniser` is `@cache`d, so the substitution is cleared out of it
-    on the way IN and again on the way OUT. Left behind, a scripted recogniser
-    would silently answer every later test in the process - including the
+    `reader._recogniser` is `@cache`d, so anything a test puts behind it would
+    otherwise silently answer every LATER test in the process - including the
     `@needs_the_real_ocr` ones wherever PaddleOCR is genuinely installed, whose
     whole value is that they run against the real backend. That is a false
     green of exactly the kind §J exists to prevent, so it is closed by
     construction rather than by remembering (§J.6).
+
+    Written once and depended on by every fixture below (Law 14). A second copy
+    of this discipline is a second place for it to be got wrong, and getting it
+    wrong is invisible - it leaks into a later test rather than failing this one.
     """
     reader._recogniser.cache_clear()
+    yield reader._recogniser.cache_clear
+    reader._recogniser.cache_clear()
 
-    def install(lines: tuple[ScriptedLine, ...]) -> _RecordingFactory:
-        factory = _RecordingFactory(_ScriptedRecogniser(lines))
+
+@pytest.fixture
+def install_paddleocr(
+    monkeypatch: pytest.MonkeyPatch, a_clean_recogniser_cache: ForgetTheRecogniser
+) -> InstallFactory:
+    """Put ANY factory behind `importlib.import_module("paddleocr")`."""
+
+    def install(factory: reader._RecogniserFactory) -> None:
         module = _FakePaddleOcr("paddleocr")
         module.PaddleOCR = factory
         monkeypatch.setitem(sys.modules, "paddleocr", module)
-        reader._recogniser.cache_clear()
+        a_clean_recogniser_cache()
+
+    return install
+
+
+@pytest.fixture
+def paddleocr_is_absent(
+    monkeypatch: pytest.MonkeyPatch, a_clean_recogniser_cache: ForgetTheRecogniser
+) -> Iterator[list[str]]:
+    """Make the dynamic import fail the way a deployment with no OCR installed does.
+
+    Yields the list of module names the code under test actually tried to
+    import, which is what lets a caller assert that the OCR path was REACHED
+    rather than merely that nothing came back.
+
+    THE ABSENCE IS CREATED, NEVER ASSUMED, AND THAT IS THE WHOLE POINT.
+    The tests using this fixture used to rely on PaddleOCR simply not being
+    installed on the machine running them (`KNOWN_FAILURES.md` F-002, F-009).
+    That is not a test fixture, it is an environmental accident, and the moment
+    F-009 was fixed and CI grew an interpreter that DOES have PaddleOCR, those
+    tests asserted something that was no longer true and turned red - measured
+    at commit `c4fbb5f`, not predicted.
+
+    The general principle, so the class cannot recur (§J.9): A TEST THAT NEEDS A
+    DEPENDENCY TO BE ABSENT MUST CREATE THE ABSENCE. Otherwise it is really a
+    test of the environment, it silently changes meaning when the environment
+    changes, and it is at its least trustworthy exactly when someone has just
+    improved the environment.
+
+    `importlib.import_module` is the narrowest possible edge to fake here
+    (§J.7): it is the single call `reader._recogniser` makes to reach PaddleOCR,
+    everything else in the path stays real, and a module that resolves under a
+    different name is not quietly accepted.
+    """
+    real_import_module = importlib.import_module
+    attempted: list[str] = []
+
+    def refuse(name: str) -> types.ModuleType:
+        attempted.append(name)
+        if name == "paddleocr":
+            raise ModuleNotFoundError(f"No module named {name!r}", name=name)
+        return real_import_module(name)
+
+    monkeypatch.setattr(importlib, "import_module", refuse)
+    # Cleared AFTER the refusal is in place, so a recogniser built by anything
+    # earlier in this process cannot answer from the cache and make the import
+    # look as though it never happened.
+    a_clean_recogniser_cache()
+
+    yield attempted
+
+
+@pytest.fixture
+def substitute_the_recogniser(install_paddleocr: InstallFactory) -> InstallRecogniser:
+    """A scripted recogniser that SUCCEEDS, and records how `reader` built it."""
+
+    def install(lines: tuple[ScriptedLine, ...]) -> _RecordingFactory[_ScriptedRecogniser]:
+        factory = _RecordingFactory(_ScriptedRecogniser(lines))
+        install_paddleocr(factory)
         return factory
 
-    yield install
-
-    reader._recogniser.cache_clear()
+    return install
 
 
 def test_no_region_below_the_threshold_returns_the_reading_exactly_as_read(
@@ -1500,3 +1658,256 @@ def test_the_reader_asks_the_recogniser_for_exactly_the_three_documented_keys(
     )
 
     assert set(factory.recogniser.keys_asked) == {"rec_texts", "rec_scores", "rec_polys"}
+
+
+def test_the_recogniser_is_built_with_the_onednn_kernel_path_disabled(
+    substitute_the_recogniser: InstallRecogniser,
+) -> None:
+    """Pins the kernel `reader` asks PaddleOCR for, because the default breaks.
+
+    PaddleOCR 3.7.0 defaults `enable_mkldnn` to `True` (`_constants.py:18`), and
+    on CI's x86-64 runner that routes every convolution through Paddle's oneDNN
+    instruction path, which raised on all twelve OCR tests at commit `c4fbb5f`:
+
+        NotImplementedError: (Unimplemented) ConvertPirAttribute2Runtime
+        Attribute not support [pir::ArrayAttribute<pir::DoubleAttribute>]
+        (at .../new_executor/instruction/onednn/onednn_instruction.cc:116)
+
+    `_common_args.py:90-94` is the whole mechanism: on a CPU device
+    `enable_mkldnn=False` sets `run_mode="paddle"`, the plain kernels, and the
+    oneDNN instruction path is never built. Both facts were read out of the
+    pinned 3.7.0 wheel, not recalled.
+
+    This is asserted on the CALL because it is invisible in the reading - the
+    two kernels compute the same function, so nothing downstream reveals which
+    one ran. Delete the argument and the local suite still passes while CI
+    returns to twelve red; this test is what stands in that gap.
+    """
+    factory = substitute_the_recogniser(SCRIPTED_LINES)
+
+    reader.read(
+        an_invoice_png(),
+        media_type=reader.MediaType.IMAGE,
+        render_dpi=FIXTURE_DPI,
+        vision_fallback_threshold=LOWEST_SCORE_REPORTED,
+    )
+
+    assert factory.onednn == [False]
+
+
+# ── the recogniser failing is NOT the document being bad ──────────────────
+#
+# Every test below exists because of one measured defect. `read_by_ocr` called
+# `engine.predict` with no failure boundary at all, so whatever PaddleOCR raised
+# left `reader` wearing PaddleOCR's name. On CI that was a `NotImplementedError`
+# carrying a C++ file path, which is a Python builtin meaning "this abstract
+# method is unimplemented" - so any caller anywhere up the stack with an
+# `except NotImplementedError` for its OWN purposes swallows a dead OCR engine.
+#
+# `COMMUNICATION_RULES_INPUT_ENGINE.md` §4 item 9 requires failed extractions to
+# cross the boundary as NAMED uncertainty. A C++ message is not a name.
+
+
+#: The upstream failure `ocr tests` actually produced, verbatim, at commit
+#: `c4fbb5f`. Copied from the CI log rather than paraphrased: the point of these
+#: tests is that `reader` survives THIS, and a tidied-up message would be a
+#: different input than the one that broke it.
+ONEDNN_FAILURE_MESSAGE = (
+    "(Unimplemented) ConvertPirAttribute2RuntimeAttribute not support "
+    "[pir::ArrayAttribute<pir::DoubleAttribute>]  (at /paddle/paddle/fluid/framework/"
+    "new_executor/instruction/onednn/onednn_instruction.cc:116)"
+)
+
+
+def a_paddle_onednn_failure() -> NotImplementedError:
+    """A FRESH instance per call. A shared exception object accumulates
+    `__traceback__` and `__context__` from whichever test raised it first, so
+    reusing one silently couples these tests to their execution order."""
+    return NotImplementedError(ONEDNN_FAILURE_MESSAGE)
+
+
+def test_a_recogniser_that_explodes_raises_a_named_reader_error(
+    install_paddleocr: InstallFactory,
+) -> None:
+    """The CI failure, reproduced exactly, then required to arrive named."""
+    install_paddleocr(_RecordingFactory(_FailingRecogniser(a_paddle_onednn_failure())))
+
+    with pytest.raises(reader.RecognitionFailedError) as raised:
+        reader.read(
+            an_invoice_png(),
+            media_type=reader.MediaType.IMAGE,
+            render_dpi=FIXTURE_DPI,
+            vision_fallback_threshold=NO_FALLBACK,
+        )
+
+    assert isinstance(raised.value, reader.ReaderError)
+
+
+def test_the_recognition_failure_preserves_the_upstream_error_completely(
+    install_paddleocr: InstallFactory,
+) -> None:
+    """Naming the failure must not COST the diagnosis.
+
+    Wrapping is only an improvement if the thing wrapped survives. The upstream
+    type, its exact text and the original exception object all have to reach
+    whoever has to debug it - a named error that eats the C++ file and line has
+    replaced an unhelpful message with a differently unhelpful one.
+    """
+    original = a_paddle_onednn_failure()
+    install_paddleocr(_RecordingFactory(_FailingRecogniser(original)))
+
+    with pytest.raises(reader.RecognitionFailedError) as raised:
+        reader.read_by_ocr([an_invoice_png()])
+
+    message = str(raised.value)
+    assert "NotImplementedError" in message
+    assert ONEDNN_FAILURE_MESSAGE in message
+    assert raised.value.__cause__ is original
+
+
+def test_the_recognition_failure_names_which_page_failed(
+    install_paddleocr: InstallFactory,
+) -> None:
+    """A multi-page document that dies on page 2 must not report page 1's number.
+
+    The first page recognises normally; only the second raises. Without the
+    index in the message, every page of a fifty-page scan produces the identical
+    error and nothing says where to look.
+    """
+
+    class _FailsOnTheSecondPage:
+        def __init__(self) -> None:
+            self.pages_seen: list[reader.Page] = []
+
+        def predict(self, image: reader.Page) -> list[reader._OcrResult]:
+            self.pages_seen.append(image)
+            if len(self.pages_seen) == 1:
+                return [_ScriptedResult({"rec_texts": [], "rec_scores": [], "rec_polys": []}, [])]
+            raise a_paddle_onednn_failure()
+
+    recogniser = _FailsOnTheSecondPage()
+    install_paddleocr(_RecordingFactory(recogniser))
+
+    with pytest.raises(reader.RecognitionFailedError) as raised:
+        reader.read_by_ocr([an_invoice_png(), an_invoice_png()])
+
+    assert len(recogniser.pages_seen) == BOTH_PAGES, "page 0 did not recognise cleanly"
+    assert "page 1" in str(raised.value)
+
+
+def test_a_recognition_failure_is_never_reported_as_an_unreadable_document(
+    install_paddleocr: InstallFactory,
+) -> None:
+    """THE point of the whole section, and the one assertion with teeth.
+
+    `pipeline.BUSINESS_FAILURE` decides by `isinstance` which failures cross the
+    Engine 1 boundary as "this document is bad" rather than crashing, and
+    `reader.UnreadableDocumentError` is on that list. A broken OCR engine
+    reported as an unreadable document would tell a user their invoice is
+    damaged when the invoice is fine and our recogniser is not - the exact
+    fabrication `ENGINE_1_INPUT_ENGINE_RULES.md:337` forbids, and the reason
+    `pipeline.py:337-344` already keeps `VisionFallbackUnavailableError` off
+    that list. A tool being broken is not a fact about the document.
+    """
+    install_paddleocr(_RecordingFactory(_FailingRecogniser(a_paddle_onednn_failure())))
+
+    with pytest.raises(reader.RecognitionFailedError) as raised:
+        reader.read(
+            an_invoice_png(),
+            media_type=reader.MediaType.IMAGE,
+            render_dpi=FIXTURE_DPI,
+            vision_fallback_threshold=NO_FALLBACK,
+        )
+
+    assert not isinstance(raised.value, reader.UnreadableDocumentError)
+    assert "document" in str(raised.value).lower()
+
+
+def test_a_genuinely_undecodable_page_is_still_an_unreadable_document(
+    install_paddleocr: InstallFactory,
+) -> None:
+    """Falsification of the test above: the new wrapper must not swallow the
+    verdict it was built to sit beside.
+
+    Both failures happen inside `read_by_ocr`. If the boundary were drawn one
+    line too wide it would catch `_decode_image`'s `UnreadableDocumentError` and
+    relabel a genuinely broken page as a broken engine - losing the distinction
+    the module's whole docstring is about. Passing this AND the test above is
+    what proves the boundary sits in the right place.
+
+    The recogniser installed here would explode if it were ever reached. It must
+    not be: the page is undecodable, so the verdict is reached before any
+    recognition is attempted.
+    """
+    install_paddleocr(_RecordingFactory(_FailingRecogniser(a_paddle_onednn_failure())))
+
+    with pytest.raises(reader.UnreadableDocumentError) as raised:
+        reader.read_by_ocr([b"this is plainly not an image"])
+
+    assert not isinstance(raised.value, reader.RecognitionFailedError)
+
+
+def test_a_recogniser_that_cannot_be_built_raises_a_named_reader_error(
+    install_paddleocr: InstallFactory,
+) -> None:
+    """Construction downloads model weights over the network, so it fails too.
+
+    Measured on CI at `c4fbb5f`: `PP-OCRv6_medium_det` and `PP-OCRv6_medium_rec`
+    are each fetched as five files at first use. A refused connection there is
+    the same class of event as a dead kernel - the recogniser did not run - and
+    it must not arrive as a bare `OSError` either.
+    """
+    install_paddleocr(_UnbuildableFactory(OSError("connection refused fetching PP-OCRv6")))
+
+    with pytest.raises(reader.RecognitionFailedError) as raised:
+        reader.read(
+            an_invoice_png(),
+            media_type=reader.MediaType.IMAGE,
+            render_dpi=FIXTURE_DPI,
+            vision_fallback_threshold=NO_FALLBACK,
+        )
+
+    assert "connection refused fetching PP-OCRv6" in str(raised.value)
+
+
+@pytest.mark.parametrize("dropped", ["rec_texts", "rec_scores", "rec_polys"])
+def test_a_result_missing_a_documented_key_raises_a_named_reader_error(
+    dropped: str, install_paddleocr: InstallFactory
+) -> None:
+    """A renamed key in a later PaddleOCR is recognition failing, not a crash.
+
+    `reader` documents exactly three keys read off a real 3.7.0 result. If a
+    future version renames one, a bare `KeyError('rec_scores')` escapes with no
+    statement about what it means - and `KeyError` is the single most commonly
+    caught-and-ignored builtin there is.
+    """
+    install_paddleocr(_RecordingFactory(_MisshapenRecogniser(dropped)))
+
+    with pytest.raises(reader.RecognitionFailedError) as raised:
+        reader.read_by_ocr([an_invoice_png()])
+
+    assert dropped in str(raised.value)
+
+
+def test_a_missing_paddleocr_is_deliberately_left_as_a_plain_import_error(
+    paddleocr_is_absent: list[str],
+) -> None:
+    """The ONE upstream failure that is deliberately NOT wrapped, pinned so it stays that way.
+
+    `ModuleNotFoundError: No module named 'paddleocr'` is already precise, and
+    it says something different from every error above: not "recognition
+    failed" but "this deployment has no OCR at all", which is knowable before
+    any document arrives. Three test modules outside this one measure it as the
+    real, unwrapped error - `test_input_engine_pipeline.py`,
+    `test_input_engine_pipeline_redteam.py` and `test_engine1_end_to_end.py` -
+    so widening the boundary to swallow it would silently break six assertions
+    nobody editing `reader.py` is looking at.
+
+    Without this test that asymmetry is an undocumented accident that the next
+    person tidies away. With it, tidying it away turns something red HERE,
+    beside the reason.
+    """
+    with pytest.raises(ModuleNotFoundError, match="paddleocr"):
+        reader.read_by_ocr([an_invoice_png()])
+
+    assert "paddleocr" in paddleocr_is_absent

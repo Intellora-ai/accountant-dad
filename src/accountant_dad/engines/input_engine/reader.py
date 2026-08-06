@@ -181,6 +181,7 @@ class _RecogniserFactory(Protocol):
         use_doc_orientation_classify: bool,
         use_doc_unwarping: bool,
         use_textline_orientation: bool,
+        enable_mkldnn: bool,
     ) -> _Recogniser: ...
 
 
@@ -194,6 +195,46 @@ class UnreadableDocumentError(ReaderError):
     Deliberately NOT the same outcome as a blank page. A blank page is a
     successful reading of nothing; this is the absence of a reading, and the two
     must stay distinguishable for the whole life of the artifact built from them.
+    """
+
+
+class RecognitionFailedError(ReaderError):
+    """The recogniser was reached, was asked to read a page, and could not.
+
+    NOT A STATEMENT ABOUT THE DOCUMENT, AND THE DISTINCTION IS THE WHOLE REASON
+    THIS CLASS EXISTS. `UnreadableDocumentError` means *this file is broken*.
+    This means *our OCR engine is broken* - the page may be a perfectly good
+    invoice. `pipeline.BUSINESS_FAILURE` decides by `isinstance` which failures
+    cross the Engine 1 boundary as a verdict about the document, and this type is
+    deliberately absent from that list for the same reason
+    `VisionFallbackUnavailableError` is: telling a user their document is
+    damaged when our tool is the thing that broke asserts something false about
+    their document, which `ENGINE_1_INPUT_ENGINE_RULES.md:337` forbids outright.
+
+    WHAT FORCED IT, MEASURED RATHER THAN IMAGINED. At commit `c4fbb5f` the
+    `ocr tests` job ran Engine 1's OCR path on CI for the first time in the
+    project's history, and all twelve tests died with
+
+        NotImplementedError: (Unimplemented) ConvertPirAttribute2Runtime
+        Attribute not support [pir::ArrayAttribute<pir::DoubleAttribute>]
+        (at .../new_executor/instruction/onednn/onednn_instruction.cc:116)
+
+    raised inside PaddlePaddle's C++ executor. `read_by_ocr` had no failure
+    boundary at all, so that left this module wearing PaddlePaddle's name and a
+    C++ file path. Two things are wrong with that and neither is cosmetic:
+
+      * `NotImplementedError` is a Python builtin that already means *this
+        abstract method is unimplemented*. Any caller anywhere up the stack that
+        catches it for its OWN purposes silently swallows a dead OCR engine -
+        the exact silent failure Law 11 forbids.
+      * `COMMUNICATION_RULES_INPUT_ENGINE.md` §4 item 9 requires failed
+        extractions to cross the boundary as NAMED uncertainty. A C++ message is
+        not a name, and nothing downstream can branch on one without matching a
+        string that upstream is free to reword.
+
+    The upstream exception is preserved entire - its type and text in the
+    message, the object itself as `__cause__`. Naming a failure must not cost
+    the diagnosis.
     """
 
 
@@ -399,14 +440,55 @@ def _recogniser() -> _Recogniser:
     The literal string stays in the file, so the AST test that pins this
     module's dynamic imports still sees it — moving the call does not hide a
     technology swap from the stack check.
+
+    ONEDNN IS SWITCHED OFF, AND THE DEFAULT IS WHY. PaddleOCR 3.7.0 ships
+    `DEFAULT_ENABLE_MKLDNN = True` (`paddleocr/_constants.py:18`), which on a CPU
+    device routes inference through PaddlePaddle's oneDNN instruction path. At
+    commit `c4fbb5f` that path raised `NotImplementedError` out of
+    `onednn_instruction.cc:116` for EVERY page, on every one of the twelve OCR
+    tests, on CI's x86-64 runner — the first time this code had ever executed
+    where proof lives. `paddleocr/_common_args.py:90-94` is the entire
+    mechanism: on a CPU device, `enable_mkldnn=False` sets `run_mode="paddle"`
+    and the oneDNN instruction path is never constructed. Both lines were read
+    out of the pinned 3.7.0 wheel, not recalled.
+
+    This is a KERNEL selection, not a tool swap: same PaddleOCR, same pinned
+    version, same models, same arithmetic — a different implementation of it.
+    `TECHNOLOGY_STACK.md`'s lock is untouched. Two consequences are stated
+    rather than left to be discovered:
+
+      * Kernel implementations differ in accumulation order, so a per-region
+        confidence MAY differ in its low-order digits from what oneDNN would
+        have reported. There is no "before" to compare against — oneDNN reports
+        nothing on this runner, it raises — so this replaces no measurement.
+      * oneDNN exists to be faster. Switching it off costs latency, by an amount
+        NOBODY HAS MEASURED. It is accepted here because an unmeasured slowdown
+        beats an engine that does not run, and it is flagged rather than
+        quietly absorbed.
     """
     build_recogniser = cast(_RecogniserFactory, importlib.import_module("paddleocr").PaddleOCR)
-    return build_recogniser(
-        lang="en",
-        use_doc_orientation_classify=False,
-        use_doc_unwarping=False,
-        use_textline_orientation=False,
-    )
+    # `ModuleNotFoundError` from the line above is deliberately NOT caught. It
+    # says "this deployment has no OCR at all", which is knowable before any
+    # document arrives and is already exact; everything below is "the OCR we
+    # have could not run", which is not. Constructing the recogniser downloads
+    # model weights over the network, so it fails for real reasons.
+    try:
+        return build_recogniser(
+            lang="en",
+            use_doc_orientation_classify=False,
+            use_doc_unwarping=False,
+            use_textline_orientation=False,
+            enable_mkldnn=False,
+        )
+    except Exception as failure:
+        raise RecognitionFailedError(
+            f"the OCR recogniser could not be constructed: "
+            f"{type(failure).__name__}: {failure}. This is a failure of OUR tool, "
+            "not a verdict on any document — no document had been read when it "
+            "happened. Raised as a named reader failure rather than passed on as "
+            "the backend's own exception, which downstream code cannot tell apart "
+            "from a damaged file."
+        ) from failure
 
 
 def read_by_ocr(pages: list[bytes]) -> Reading:
@@ -418,39 +500,66 @@ def read_by_ocr(pages: list[bytes]) -> Reading:
 
     A page with nothing recognisable on it contributes zero regions. It does not
     contribute an empty-string region, and it is not an error.
+
+    Raises `UnreadableDocumentError` if a page's bytes cannot be decoded — a
+    verdict on the PAGE. Raises `RecognitionFailedError` if the recogniser
+    itself fails — a verdict on OUR TOOL. Those are different answers and this
+    function never conflates them; see `RecognitionFailedError` for what forced
+    the distinction.
     """
     engine = _recogniser()
 
     regions: list[TextRegion] = []
     for page_index, page in enumerate(pages):
-        for result in engine.predict(_decode_image(page)):
-            # The three keys PaddleOCR 3.7.0 populates for a text-only pipeline,
-            # read off a real result rather than assumed. `rec_polys` holds one
-            # four-point quadrilateral per recognised line.
-            texts = cast(list[str], result["rec_texts"])
-            scores = cast(list[float], result["rec_scores"])
-            polygons = cast(list[Quadrilateral], result["rec_polys"])
-            for text, score, polygon in zip(texts, scores, polygons, strict=True):
-                if not text.strip():
-                    continue
-                xs = [float(point[0]) for point in polygon]
-                ys = [float(point[1]) for point in polygon]
-                regions.append(
-                    TextRegion(
-                        text=text,
-                        location=SourceLocation(
-                            page_index=page_index,
-                            left=min(xs),
-                            top=min(ys),
-                            right=max(xs),
-                            bottom=max(ys),
-                        ),
-                        # `str(score)` then Decimal: `Decimal(float)` would expand
-                        # the binary value into its full expansion, which is not
-                        # the number PaddleOCR reported.
-                        extraction_confidence=Decimal(str(score)),
+        # DECODED OUTSIDE THE BOUNDARY BELOW, DELIBERATELY. `_decode_image`
+        # raises `UnreadableDocumentError`, which is a statement about this
+        # page's bytes and is one of the few failures the pipeline is allowed to
+        # carry across the Engine 1 boundary as a document verdict. Drawing the
+        # boundary one line wider would relabel a genuinely broken page as a
+        # broken engine and lose exactly the distinction this module exists to
+        # keep.
+        decoded = _decode_image(page)
+        try:
+            for result in engine.predict(decoded):
+                # The three keys PaddleOCR 3.7.0 populates for a text-only
+                # pipeline, read off a real result rather than assumed.
+                # `rec_polys` holds one four-point quadrilateral per recognised
+                # line. A later PaddleOCR renaming one of them is recognition
+                # failing, so the lookups sit inside the boundary too: a bare
+                # `KeyError('rec_scores')` says nothing about what went wrong.
+                texts = cast(list[str], result["rec_texts"])
+                scores = cast(list[float], result["rec_scores"])
+                polygons = cast(list[Quadrilateral], result["rec_polys"])
+                for text, score, polygon in zip(texts, scores, polygons, strict=True):
+                    if not text.strip():
+                        continue
+                    xs = [float(point[0]) for point in polygon]
+                    ys = [float(point[1]) for point in polygon]
+                    regions.append(
+                        TextRegion(
+                            text=text,
+                            location=SourceLocation(
+                                page_index=page_index,
+                                left=min(xs),
+                                top=min(ys),
+                                right=max(xs),
+                                bottom=max(ys),
+                            ),
+                            # `str(score)` then Decimal: `Decimal(float)` would
+                            # expand the binary value into its full expansion,
+                            # which is not the number PaddleOCR reported.
+                            extraction_confidence=Decimal(str(score)),
+                        )
                     )
-                )
+        except Exception as failure:
+            raise RecognitionFailedError(
+                f"the OCR recogniser failed on page {page_index}: "
+                f"{type(failure).__name__}: {failure}. This is a failure of OUR "
+                "recogniser, not a verdict on the document — the page decoded "
+                "cleanly and may be perfectly readable. Raised as a named reader "
+                "failure rather than passed on as the backend's own exception, "
+                "which downstream code cannot tell apart from a damaged file."
+            ) from failure
 
     return Reading(regions=tuple(regions), backend=Backend.OCR, pages_read=len(pages))
 
