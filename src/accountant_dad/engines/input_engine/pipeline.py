@@ -401,6 +401,20 @@ class DocumentIntake:
                 "DocumentEvidenceObject's own schema refuses an empty tuple "
                 "regardless. Refused here, before any sub-engine runs."
             )
+        if any(not reference.strip() for reference in self.source_references):
+            raise ValueError(
+                "source_references must not contain a blank entry: a reference "
+                "of '' or whitespace names no source, and evidence with no "
+                "stated source is not evidence (INV-11). Refused here, before "
+                "any sub-engine runs, because a blank reference is invalid on "
+                "every path rather than only the one that happens to notice "
+                "it: parser._reject_blank refuses it later, "
+                "DocumentEvidenceObject's schema refuses it later still, and "
+                "on a business failure it reached UncertaintyMarker.subject, "
+                "whose NonEmptyText raised out of the very except block that "
+                "exists to handle failures -- producing no artifact, no named "
+                "stage and no preserved work."
+            )
 
 
 #: The caller declares a `reader.MediaType`; `cleaner` speaks `MediaKind`. One

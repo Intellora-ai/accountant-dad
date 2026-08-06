@@ -506,6 +506,54 @@ def test_a_corrupt_pdf_crosses_as_an_artifact_too_naming_its_own_cause() -> None
     assert "cleaner" in marker.reason
 
 
+def test_a_blank_source_reference_is_refused_at_construction_not_deep_in_a_failure() -> None:
+    """FOUND BY RED-TEAMING THE BUSINESS-FAILURE PATH, AND FIXED AT THE ROOT
+    (§J.10, Law 13, §I.12 — fix the CLASS, not the instance).
+
+    THE BUG, MEASURED. `DocumentIntake` refused an EMPTY tuple of source
+    references but accepted a tuple holding a blank string. Feed that a
+    business failure — `run(intake(document=b"", source_references=("",)))` —
+    and `_failure_artifact` tried to build an `UncertaintyMarker` whose
+    `subject` is that blank reference. `UncertaintyMarker.subject` is
+    `NonEmptyText`, so pydantic raised `ValidationError` FROM INSIDE the except
+    block that exists to handle failures. The result escaped every discipline
+    this module has: not a `PipelineStageError`, no stage named, no `preserved`,
+    and no artifact either — the one shape `run` is never supposed to produce.
+
+    WHY THE FIX IS HERE AND NOT IN `_failure_artifact`. Catching it there would
+    patch the instance. A blank source reference is invalid on EVERY path, not
+    just the failing one: `parser._reject_blank` refuses it later, and
+    `DocumentEvidenceObject`'s own schema refuses it later still. Refusing it at
+    construction is the same job `__post_init__` already does for the empty
+    tuple, one step earlier than any sub-engine, which is where garbage input
+    belongs (Law 23).
+    """
+    with pytest.raises(ValueError, match="blank") as raised:
+        pipeline.DocumentIntake(
+            document=b"x", media_type=reader.MediaType.IMAGE, source_references=("",)
+        )
+    assert "source_references" in str(raised.value)
+
+    # whitespace is blank too — a reference of three spaces names nothing
+    with pytest.raises(ValueError, match="blank"):
+        pipeline.DocumentIntake(
+            document=b"x", media_type=reader.MediaType.IMAGE, source_references=("   ",)
+        )
+
+    # and a blank one hiding behind a good one is still refused
+    with pytest.raises(ValueError, match="blank"):
+        pipeline.DocumentIntake(
+            document=b"x",
+            media_type=reader.MediaType.IMAGE,
+            source_references=("upload:real.png", ""),
+        )
+
+    # the valid case still constructs, so the guard is not refusing everything
+    assert pipeline.DocumentIntake(
+        document=b"x", media_type=reader.MediaType.IMAGE, source_references=("upload:real.png",)
+    ).source_references == ("upload:real.png",)
+
+
 def test_a_runtime_failure_still_raises_and_is_never_dressed_as_a_business_outcome() -> None:
     """THE OTHER SIDE OF THE LINE, AND THE ONE THAT MATTERS MOST.
 
@@ -571,28 +619,78 @@ def test_reader_failing_after_cleaner_preserves_cleaners_work_and_names_reader()
 
 
 def test_parser_failing_after_cleaner_and_reader_preserves_both_and_names_parser() -> None:
-    """A blank source reference is real, caller-supplied bad input: `parser.
-    parse` refuses it (`_reject_blank`) before it ever touches Docling.
-    `cleaner` and `reader` both already succeeded on the same valid PDF, so
-    their real output must be preserved when parser is the one that fails.
+    """UNCHANGED SUBJECT, CORRECTED TRIGGER. What must hold is untouched: when
+    `parser` is the stage that fails, it is NAMED, and `cleaner`'s and
+    `reader`'s already-completed work survives on `preserved`.
+
+    This used to reach `parser` with a blank source reference, relying on
+    `parser._reject_blank`. `DocumentIntake` now refuses a blank reference at
+    construction — the root-cause fix for the hole red-teaming found, see
+    `test_a_blank_source_reference_is_refused_at_construction_not_deep_in_a_
+    failure` — so that input can no longer reach `parser`, which is the point
+    of the guard.
+
+    The failure is therefore injected at the `parser.parse` SEAM, the same way
+    and for the same reason `test_input_engine_pipeline_redteam.py` injects one
+    at `confidence_report.record_confidence`: no real document this environment
+    can process makes `parser` fail after `cleaner` and `reader` both succeed,
+    and §J.7 permits faking exactly at the boundary. `cleaner` and `reader` are
+    genuine here and genuinely succeed on a real PDF first, so what is under
+    test — the pipeline's response to its third stage failing — is real.
     """
+    injected = RuntimeError("Docling could not lay this document out")
     intake = pipeline.DocumentIntake(
-        document=an_invoice_pdf(), media_type=reader.MediaType.PDF, source_references=("",)
+        document=an_invoice_pdf(),
+        media_type=reader.MediaType.PDF,
+        source_references=("upload:invoice.pdf",),
     )
 
-    with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(
-            intake,
-            identity=an_identity(),
-            settings=a_pipeline_settings(),
-            recorded_at=RECORDED_AT,
+    seen: dict[str, object] = {}
+
+    def refusing_parse(
+        source: pathlib.Path,
+        *,
+        source_reference: str,
+        extracted_regions: tuple[parser.ExtractedRegion, ...] = (),
+        table_structure: parser.TableStructureSettings | None = None,
+    ) -> parser.ParsedStructure:
+        # Recorded, not discarded: what `parser` was HANDED before it failed is
+        # asserted below, so this fake proves the third stage was entered
+        # properly rather than merely that something raised.
+        seen.update(
+            source=source,
+            source_reference=source_reference,
+            extracted_regions=extracted_regions,
+            table_structure=table_structure,
         )
+        raise injected
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(parser, "parse", refusing_parse)
+        with pytest.raises(pipeline.PipelineStageError) as raised:
+            pipeline.run(
+                intake,
+                identity=an_identity(),
+                settings=a_pipeline_settings(),
+                recorded_at=RECORDED_AT,
+            )
 
     assert raised.value.stage == "parser"
+    assert raised.value.cause is injected
     assert raised.value.preserved.cleaned is not None
     assert raised.value.preserved.reading is not None
     assert raised.value.preserved.parsed is None
     assert raised.value.preserved.confidence is None
+    # cleaner and reader really ran: their preserved output holds real content,
+    # not an empty placeholder that would satisfy `is not None` alone
+    assert raised.value.preserved.cleaned.artifact is not None
+    assert raised.value.preserved.reading.regions != ()
+
+    # and parser was entered with the real inputs, including reader's regions —
+    # the F-019 arrow still carries on the path that ends in a failure
+    assert seen["source_reference"] == "upload:invoice.pdf"
+    assert seen["extracted_regions"] == pipeline.extracted_regions(raised.value.preserved.reading)
+    assert seen["extracted_regions"] != ()
 
 
 def test_assembly_failing_last_preserves_every_earlier_stage_and_names_assembly() -> None:
