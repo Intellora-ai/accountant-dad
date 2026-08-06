@@ -438,6 +438,11 @@ hypothesis costs a full CI run.**
 At the current scale that is roughly **3+ hours per attempt**, which makes guessing
 expensive and makes the first attempt worth getting right.
 
+**That estimate is now a measurement.** The completed run took **3h 21m 01s** at commit
+`7e0efe2` (GitHub Actions run 31041552213, job 92426852650). The cost per mutation
+hypothesis at HEAD is UNMEASURED and can only be larger — `src/` grew by 2591 lines after
+that commit.
+
 **Two dead ends already paid for**, recorded so nobody pays again:
 1. Scoping `paths_to_mutate` to one directory makes mutmut copy *only* that directory, so
    every sibling import fails and the stats phase reports `failed to collect stats`.
@@ -606,11 +611,27 @@ boundary question, so it is the owner's.
 | | |
 |---|---|
 | **Severity** | HIGH — architecture, not code |
-| **Status** | ⬜ OPEN |
+| **Status** | ✅ **CLOSED 2026-08-06** — both halves built. The residue moved to F-019 |
 | **Found** | 2026-08-05, wiring the pipeline |
 
-**Description.** `docs/DATA_FLOW.md` draws `cleaner → reader → parser` as a chain. The
-code is not one:
+**How it closed, in two halves and two commits.**
+
+| Half | Commit | Guarding test |
+|---|---|---|
+| `cleaner → {reader, parser}` — both now read `cleaned.artifact.payload`; the `rasterise_first_page_for_cleaning` adapter was **deleted**, not deprecated | `412eed6` | `tests/unit/test_input_engine_pipeline.py` — three tests replaced two, one asserting on `run`'s own source so the bypass cannot return quietly |
+| `reader → parser` — `extracted_regions` converts `reader`'s regions and hands them to `parser.parse`, which is `SUB_ENGINE_RESPONSIBILITIES.md` §1.3's stated input | `6b32425`, `41b23e6`, `d29985a` | `tests/unit/test_input_engine_pipeline_redteam.py::test_reader_and_parser_were_handed_the_same_cleaned_bytes_as_each_other` and siblings — **currently RED for an unrelated reason, see F-025** |
+
+**What did NOT close, stated plainly rather than folded into a green tick.** `parser.parse`
+still *also* opens the document, because `reader` reports spans and only Docling reports
+layout; and `reader.read` still takes `bytes` rather than `cleaner`'s object. Neither costs
+traceability any more — the values that cross now carry their own origin — and both are
+recorded in `parser.py`'s own docstring as work outstanding.
+
+**The consequence this entry claimed is gone.** It said *"cleaning does not affect what is
+read or parsed."* That is no longer true; it was true when written.
+
+**Original description, kept.** `docs/DATA_FLOW.md` draws `cleaner → reader → parser` as a
+chain. The code was not one:
 
 ```
 reader.read(document: bytes, ...)     opens the PDF itself
@@ -635,13 +656,33 @@ That changes three locked module contracts and is an architecture change, not a 
 | | |
 |---|---|
 | **Severity** | HIGH |
-| **Status** | ⬜ OPEN |
+| **Status** | 🔄 **HALF CLOSED 2026-08-06** — gap 1 fixed; the text-layer half is F-019 and needs the owner |
 | **Found** | 2026-08-05, wiring the pipeline |
 
-**Description.** Two independent gaps compose into one hole.
+**Gap 1 is fixed — `502e166`.** `confidence_report.ReadingState` now names three states,
+not two: `UNREAD`, `READ_AND_SCORED`, `READ_BUT_UNSCORED`. It mirrors the
+`measurement.AbsentType` precedent that resolved F-005, so no caller re-derives the state
+from a bare `is None`. Only the reverse pairing stays refused — a confidence with no text.
+**Guarding tests:** `tests/unit/test_input_engine_confidence.py` pins all three states by
+name, and two further tests pin that `state` tests `is None` and never falsiness —
+load-bearing, because `Decimal("0")` and `""` are both falsy.
+
+**A named, scored field now exists for the OCR path — F-012's `reader → parser` pipe.**
+`pipeline.detected_fields` builds a real `evidence.DetectedField` per mapped value and
+`parsed_fields` builds the matching `confidence_report.ParsedField`, carrying the identical
+`Decimal` object, so the field's provenance and the Confidence Report agree by construction.
+
+**What is still true, and it is the half that matters for the MVP.** A PDF text layer has
+no honest score to put on `Provenance.confidence`, which is mandatory. `1.0000` is the
+default `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids and `0.0000` asserts a measured
+worthlessness nobody measured — so `detected_fields` **skips** an unscored mapping rather
+than inventing a number. Tracked as F-019; closing it is a §M amendment to a frozen P2
+schema and is the owner's decision.
+
+**Original description, kept.** Two independent gaps composed into one hole.
 
 1. `confidence_report.RegionReading(text="TAX INVOICE", extraction_confidence=None)`
-   **always raises** `MalformedSignalError`. Its invariant assumes text-without-a-score
+   **always raised** `MalformedSignalError`. Its invariant assumed text-without-a-score
    means "unread" — true for OCR, **false for a PDF text layer**, whose entire design is
    real text with an honestly absent score.
 2. Deeper, and measured: even a validly-constructed *scored* `RegionReading` never
@@ -799,8 +840,59 @@ than the engine — then wire only what is required, test-first. In progress.
 | | |
 |---|---|
 | **Severity** | **CRITICAL** — this is the *"never post a wrong entry"* non-goal failing at the source |
-| **Status** | 🔄 OPEN · agents fixing it in three files |
+| **Status** | 🔄 **THREE OF FOUR MECHANISMS FIXED · the text-layer half is 🔒 BLOCKED on the owner (§M)** |
 | **Found** | 2026-08-06, by two agents investigating different questions who converged on the same three lines |
+
+### What closed, 2026-08-06 — each with its commit and its guarding test
+
+| Mechanism | Fixed at | Guarding test |
+|---|---|---|
+| `pipeline.py:364` filtered out 100% of PDF text-layer regions before confidence saw them | `41b23e6` | `test_extracted_regions_hands_on_an_unscored_region_rather_than_filtering_it_out` (corrected at `d29985a` — its old premise asserted the drop as correct) |
+| `RegionReading` could not represent read-but-unscored | `502e166` | `tests/unit/test_input_engine_confidence.py`, three states pinned by name |
+| `parser_output()` unconditionally returned `detected_fields=()` — because nothing joined a NAME to a SCORE | `6b32425` (recovered), `41b23e6` | `tests/unit/test_input_engine_pipeline_redteam.py` — 1081 lines, new. **Currently RED for an unrelated reason: F-025** |
+| Engine 1 **raised** where its contract says **emit** — a business failure was indistinguishable from a crash | `1e65b91` | `test_a_document_engine_1_cannot_read_stops_the_run_loudly`, rewritten stricter at `b3c1b51`: four claims where there was one |
+
+**The false number is gone.** `reliability_information` used to publish *"0 of 0 region(s)
+reader attempted"* for a document holding three. Measured before and after, same input:
+
+```
+with the filter     region_readings 0    markers 0    "0 of 0 region(s) reader attempted"
+without it          region_readings 3    markers 3    "0 of 3 ... 3 read but carry no score"
+```
+
+Three real `UncertaintyMarker`s that `_unscored_region_markers` was already built to emit
+had never reached the artifact. That is `ENGINE_1_ARCHITECTURE.md` P-F3, concealed
+uncertainty, and Law 24, a fabricated denominator. Both are now carried. **No score is
+invented** — `extraction_confidence` stays exactly `reader`'s `None`.
+
+### What is still OPEN, and it is the MVP's primary input
+
+**The text-layer path still emits values with no per-field confidence.** Measured at HEAD
+`e921c3c`, by the test written to catch exactly this, which is **RED**:
+
+```
+tests/integration/test_engine1_end_to_end.py
+  ::test_every_extracted_value_that_crosses_the_boundary_carries_source_confidence_and_uncertainty
+
+FAILED: 5 extracted values crossed the Input -> Understanding boundary inside
+extracted_text while detected_fields is empty, so not one of them carries a
+source location, a confidence or an uncertainty marker of its own.
+```
+
+That is a **correct test failing against a real defect**, not a wrong expectation. It must
+not be eased (Law 4, §J.4).
+
+**Why it cannot be closed by an engineer.** `Provenance.confidence` is mandatory and
+`accountant_dad.confidence.Confidence` has no member meaning *not measured*. `1.0000` is
+the forbidden default (`ENGINE_1_INPUT_ENGINE_RULES.md:625`); `0.0000` is a lie the other
+way; none of the sixteen `ENGINE_1_CONFIDENCE_PARAMETERS.md` entries covers this case, so
+the number cannot be looked up either. Closing it means an **absent-measurement state on a
+frozen P2 schema** — a §M amendment, mirroring the `measurement.AbsentType` precedent that
+resolved F-005. **Owner's decision.**
+
+**Tables are unchanged and unclaimed.** `parser.Cell` knows its row, its column and its
+box; it does not know it holds an amount, and no sub-engine scores it. `parser_output`
+still returns `detected_tables=()` for exactly the reason it used to return no fields.
 
 **Demonstrated, executed against the real modules.**
 
