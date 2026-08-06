@@ -26,14 +26,28 @@ that is not checked is not evidence.
 from __future__ import annotations
 
 import json
-import pathlib
 import shutil
 import subprocess
 import sys
 
 import pytest
+from authored_source import authored_repo_root
 
-REPOSITORY = pathlib.Path(__file__).resolve().parents[2]
+#: THE AUTHORED TREE, NEVER THE RUNNING ONE — and this line blocked the whole
+#: mutation pipeline until 2026-08-07.
+#:
+#: `pathlib.Path(__file__).resolve().parents[2]` is the repository when pytest
+#: runs normally. Under mutation it is `mutants/`, which is a COPY with no
+#: `.git`, so `git ls-files .claude/` returns nothing, every assertion below
+#: fails, and mutmut's stats phase — which runs the whole suite with `-x` before
+#: forking a single worker — aborts. The result is not a low score. It is NO
+#: SCORE AT ALL, for every one of the 4,709 mutants.
+#:
+#: This is the fourth spelling of the defect `authored_source` exists to fix,
+#: and L-013 already states the principle: **a test that reads source is
+#: reading the interpreter unless it says otherwise.** The irony is exact — the
+#: file enforcing "measure, do not assume" assumed its own location.
+REPOSITORY = authored_repo_root()
 SETTINGS = REPOSITORY / ".claude" / "settings.json"
 HOOK = REPOSITORY / ".claude" / "hooks" / "engineering_method.py"
 
