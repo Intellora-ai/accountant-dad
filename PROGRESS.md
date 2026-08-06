@@ -727,3 +727,83 @@ a one-file rewrite, and the swap has not been made.
 
 Push, so CI produces a current coverage and mutation number for this tree. Both are
 UNMEASURED here and neither may be reported until it does.
+
+---
+
+## 2026-08-06 · Two CI-only red gates root-caused, F-028 fixed, mutation's cause made to emit
+
+**Commits** `4c7fc78` · `c13930c` · `78e99d4` on `ci/mutation-runs`.
+
+### What was done
+
+**F-028 — a cleaned scan came back `render_dpi / 96` times its original size.** Closed.
+`pdf_of_page_images` took pixels and let the backend decide what they measured;
+`cv2.imencode` writes no `pHYs` chunk, so MuPDF fell back to 96 dpi. Measured at
+`3bd31e2` on a 612x792 pt page: 0.7500x at 72 dpi, 1.0000x at 96, 1.5625x at 150,
+3.1250x at 300, 6.2500x at 600. Correct at exactly one DPI, by accident.
+
+Fixed by making `dpi` a required argument rather than writing the missing metadata — a
+`pHYs` chunk would restore correctness and leave the defect's shape intact, since the next
+re-encode that dropped it would silently reintroduce 96. Guarded across five DPIs, with 96
+kept as the control that would pass against the bug.
+
+**A regression I introduced and pushed, then fixed at `78e99d4`.** Replacing
+`convert_to_pdf()` with `new_page` + `insert_image` made the rebuild emit **raw pixels**:
+6,314,818 B at 150 dpi and 25,248,570 B at 300, against 9,479 B and 27,873 B before —
+**663x and 905x**. `deflate=True` on save is the whole fix and lands within 0.4% of the old
+baseline. F-028's own test did not catch it because that test asserts the page's size in
+POINTS, and the geometry was right in both worlds. Recorded rather than quietly repaired.
+
+**`coverage` — an assertion on a value that is random by construction.** The rebuilt-scan
+determinism test asserted equal payload LENGTH between two cleans. PyMuPDF serialises the
+random `/ID` as hex (fixed 34 bytes) or as a literal (length depends on how many bytes need
+escaping), choosing per save. Measured over 3000 saves at `3bd31e2`: eight distinct `/ID`
+span lengths. The assertion compared a random variable to itself and failed 14 times in 400
+pairs; re-measured at `c13930c`, 10 in 400. Replaced with excision of `/ID` and byte
+equality of everything else — no length dependency, and **stricter** than before, since the
+old version let any byte after the `trailer` keyword vary, including `/Root`.
+
+**`mutation` — the gate has never produced a score, and the test hiding it was green.**
+CI printed `.F`. The pass is the defect: `pipeline._stopped` classifies a parser failure as
+a BUSINESS failure, so `run` returns an artifact that still carries reader's real text —
+the exact field the end-to-end test asserts on. The test proving *"a real document runs end
+to end"* was green against a document that never reached the parser. Proven on the real
+pipeline. The session fixture now refuses a failure record and prints Engine 1's own
+recorded cause, which was in the artifact the whole time and unread.
+
+### Measurements — Law 56
+
+```
+Commit     : 78e99d4
+Suite      : 3794 passed · 0 failed · 11 skipped   Source: LOCAL ONLY - NOT AUTHORITATIVE
+ruff check : All checks passed                     Source: LOCAL ONLY - NOT AUTHORITATIVE
+ruff format: 130 files already formatted           Source: LOCAL ONLY - NOT AUTHORITATIVE
+mypy strict: no issues in 117 source files         Source: LOCAL ONLY - NOT AUTHORITATIVE
+Coverage   : PENDING CI
+Mutation   : PENDING CI - and has never yet produced a valid score on this branch
+```
+
+Every earlier coverage and mutation number is **EXPIRED**: `src/` moved +5785 / -801 across
+15 files since `7e0efe2`. No number is carried forward (Law 56), and nothing here is
+authoritative until GitHub produces it (Law 44).
+
+### Three hypotheses killed, recorded so they are not re-derived
+
+- `mutants/` missing a file the test needs — **REFUTED**, a snapshot of the real tree runs
+  the file 13/13 green locally.
+- CI resolving `docling` to `docling-slim` — **REFUTED**, the local venv resolves it to
+  `docling-slim` too, identical versions.
+- mutmut trampolines changing parser behaviour — **REFUTED**, the local snapshot has them
+  and passes.
+- My own claim that PyMuPDF picks the literal `/ID` form only when strictly shorter —
+  **REFUTED**, chosen at exactly equal width in 20 of 3000 saves.
+
+### Blockers
+
+**None that are engineering's.** F-029's underlying CI-only parser failure is undiagnosed,
+but the next CI run will print its cause rather than needing a guess — the sensor is built.
+
+### Next work
+
+Read the `coverage` and `mutation` results for `78e99d4` and act on what F-029's new
+diagnostic prints.

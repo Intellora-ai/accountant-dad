@@ -13,15 +13,14 @@ Last updated: **2026-08-06**
 
 ## Measurement state of this file — Law 56
 
-**HEAD is `e921c3c`. Every metric below carries the commit that produced it, or says
+**HEAD is `78e99d4`. Every metric below carries the commit that produced it, or says
 UNMEASURED.**
 
-`origin/ci/mutation-runs` is at `f31e3cd`. HEAD is **24 commits ahead and unpushed**, and
-GitHub returns *"No commit found for SHA"* for `0babf47` and `e921c3c`. **No CI evidence
-exists for any commit after `f31e3cd`** — see F-026.
+`origin/ci/mutation-runs` is at `78e99d4` — **0 commits ahead, everything pushed.** The
+unpushed-work condition recorded here previously (F-026) no longer holds.
 
-Source churn `7e0efe2` → `e921c3c`: `src/` 10 files **+2591 / −300**; `tests/` 18 files
-**+13335 / −148**. Every measurement taken at or before `f31e3cd` is therefore EXPIRED
+Source churn `7e0efe2` → `78e99d4`: `src/` 15 files **+5785 / −801**; `tests/` 40 files
+**+21688 / −375**. Every measurement taken at or before `f31e3cd` is therefore EXPIRED
 for HEAD.
 
 | Metric | Value | Commit | Source | Status |
@@ -29,9 +28,16 @@ for HEAD.
 | Mutation | 95.3% — killed 2324, survived 115, 919 not scoreable | `7e0efe2` | GitHub Actions run 31041552213, job 92426852650 | **EXPIRED** — source moved |
 | Mutation runtime | 3h 21m 01s | `7e0efe2` | GitHub Actions, same job | **EXPIRED** |
 | Coverage | 97.64%, effective floor 97.46% | `f31e3cd` | GitHub Actions run 31047186940, job 92445466419 | **EXPIRED** — source moved |
-| Mutation · coverage · anything at HEAD | — | `e921c3c` | — | **UNMEASURED** |
+| Mutation at HEAD | — | `78e99d4` | — | **PENDING CI** |
+| Coverage at HEAD | — | `78e99d4` | — | **PENDING CI** |
+| Test suite | 3794 passed, 11 skipped | `78e99d4` | local `pytest -p randomly --randomly-seed=98765` | **LOCAL ONLY — NOT AUTHORITATIVE** (Law 44) |
 
 Previous measurements expired because source changed after commit `7e0efe2`.
+
+**The mutation gate has never produced a valid score on any commit in this branch.** Its
+statistics phase collapsed — `NOT SCOREABLE : 4402 (100.00% of 4402)` — so the 2%
+unscoreable cap suppressed the number deliberately rather than reporting one computed over
+nothing. The cause is recorded as F-029.
 
 ---
 
@@ -2195,10 +2201,35 @@ a key — it inherits this defect and needs its own entry.
 
 **Description.** Cleaning the SAME scanned PDF twice does not produce the same bytes.
 
+> **⚠ NUMBERING COLLISION, NOT YET REPAIRED.** This entry and *"Twenty-four commits carry
+> zero CI evidence"* above are both numbered **F-026**. Recorded rather than renumbered:
+> other documents cite these identifiers, and silently moving one would break a reference
+> nobody would notice. Flagged for repair as a deliberate, single change.
+
 **Measured**, on a 400x200 one-page scan at 150 dpi, commit `a967a46`: two payloads of
 identical length — 5465 bytes — differing in exactly **58** of them, every one inside
 `trailer <</ID[...]>>`. The rasters are `np.array_equal`. The cause is PyMuPDF writing
 a fresh random file identifier on every save.
+
+**CORRECTION — the "identical length" half of that measurement was WRONG, and it cost a
+red `coverage` gate on CI.** It was one sample reported as a property. Re-measured over
+3000 saves of the same fixture at commit `3bd31e2`:
+
+```
+/ID span (bytes)   66  67  68  69  70  71  72  73
+occurrences         2   2   1   1   4   1  19  2969
+```
+
+A PDF byte string has two legal serialisations — hex `<...>`, a fixed 34 bytes, or a
+literal `(...)`, whose length grows by one for every byte needing a backslash escape — and
+PyMuPDF chooses per string, per save, over bytes that are random by construction. **The
+serialised length of `/ID` is itself random.** Re-measured again at `c13930c` after the
+F-028 rebuild changed: 5 distinct span lengths, still exactly **1** distinct remainder once
+`/ID` is excised.
+
+A hypothesis tested and REFUTED, recorded so nobody re-derives it: the literal form is not
+chosen only when strictly shorter. In 20 of 3000 saves it was chosen at exactly 34 bytes,
+the same width as hex.
 
 **Impact.** None on any reading: nothing in this repository reads `/ID`, and
 `CLAUDE.md`'s standing rule is explicit — *"IDENTITY ≠ INTELLIGENCE. IDs identify
@@ -2214,10 +2245,23 @@ than fixed (`CLAUDE.md` §E.7): it was found while doing something else and is o
 that change's mission.
 
 **Guarded by** `test_a_rebuilt_scan_differs_only_in_the_pdf_file_identifier_never_in_a_
-pixel`, which asserts the exact SHAPE of the difference — identical rasters, identical
-length, and every differing byte after the trailer — so the day a rebuild starts
-differing in a pixel, or before the trailer, it goes red instead of reading as the same
-known-harmless noise.
+pixel`. **Rewritten at `c13930c`, because the guard as first written asserted the wrong
+invariant twice over.**
+
+It asserted equal payload LENGTH — the random value above — which failed on CI about 2.5%
+of the time (measured: 10 failures in 400 pairs at `c13930c`, 14 in 400 at `3bd31e2`).
+Rare enough to read as flakiness, frequent enough to redden `coverage` and block
+everything behind it. It then asserted only that differing bytes fall after the `trailer`
+KEYWORD — but `trailer` is followed by `/Size`, `/Root` and `/ID`, so a changed root
+object would have passed as identifier noise.
+
+It now excises the `/ID` array and asserts everything else is byte for byte identical:
+no length dependency, and strictly less permitted variation than before. Excision walks
+the array rather than pattern-matching it, because either entry may be hex or literal, a
+literal may legally contain `]`, and in 3 of 3000 saves the FIRST entry was a literal too.
+Falsified in both directions before it was trusted — 5 of 5 tampered bytes outside `/ID`
+caught, a byte inside it permitted, a pixel change caught, and an `/ID`-less payload
+refused rather than passing vacuously.
 
 ---
 
@@ -2226,7 +2270,7 @@ known-harmless noise.
 | | |
 |---|---|
 | **Severity** | HIGH — every `SourceLocation` read from a cleaned scan is in the wrong coordinate space |
-| **Status** | ⬜ OPEN · recorded, deliberately not fixed (`CLAUDE.md` §E.7 — found while evaluating F-001 backends, outside that mission) |
+| **Status** | ✅ **FIXED** at `4c7fc78`, with a regression it introduced fixed at `78e99d4` |
 | **Found** | 2026-08-06, probing whether a candidate PDF backend preserves page geometry |
 
 **Description.** `cleaner._pdf_rebuilt_from_cleaned_pages` renders each page at
@@ -2264,16 +2308,168 @@ Bounded, and the bound matters: only the **scanned** branch reaches here.
 `cleaner._clean_pdf` passes a PDF with a text layer straight through
 (`cleaner.py:1076-1078`), so a born-digital invoice is untouched.
 
-**Workaround.** None in place. Nothing currently asserts the rebuilt page size.
+**A SECOND CONSEQUENCE, ADDED AT `4c7fc78`, AND IT IS THE ONE THAT SETTLED THE SEVERITY.**
+The impact above depends on a downstream reader that does not exist yet, which is what
+made this look deferrable. It is not: the scale factor is a function of `render_dpi`, so
+**the same document measured at two DPIs reports different coordinates for the same ink.**
+Engine 1 owes a truthful, measurable and *reproducible* Document Evidence Object. A
+coordinate space that moves with a render setting is not reproducible, and that failure is
+real today with no other engine built.
 
-**Permanent fix — not an engineer's call, and it is two decisions.** Either
-`_encode_png` writes the resolution it rendered at, or `pdf_of_page_images` takes the DPI
-as an argument instead of inferring it from the image. The second changes a signature in
-the file F-001's containment is built on; the first changes what `cleaner` writes. Both
-touch behaviour the owner has not been asked about, and F-017 — the entry this sits under
-— is already **BLOCKED on an owner decision (§M)** about the same code path.
+**Workaround.** None was in place. Nothing asserted the rebuilt page size.
 
-**What would guard it.** A test that renders a page at two different DPIs, rebuilds, and
-asserts the rebuilt page size equals the ORIGINAL page size in both — which fails today
-at every DPI other than 96. Not added here: writing a red test into the suite would break
-the build for a defect this task was not authorized to fix.
+── **RESOLVED at `4c7fc78`** ──
+
+**Re-measured at `3bd31e2`** through the real `pdf_backend` and the real `cv2.imencode`,
+on a 612 x 792 pt (US Letter) page, before and after:
+
+| render_dpi | 72 | 96 | 150 | 300 | 600 |
+|---|---|---|---|---|---|
+| **before** | 459 pt | 612 pt | 956.25 pt | 1912.5 pt | 3825 pt |
+| scale | 0.7500x | 1.0000x | 1.5625x | 3.1250x | 6.2500x |
+| **after** | 612 pt | 612 pt | 612 pt | 612 pt | 612 pt |
+
+The `render_dpi / 96` law is confirmed exactly. The earlier table's `1.563x` / `3.126x` are
+superseded by the exact `1.5625` / `3.1250` — the same law, measured more precisely.
+
+**Which of the two candidate fixes was taken, and why the other was rejected.** Not the
+owner's call after all: both options were engineering, and the choice is derivable from
+this module's own stated rule. `pdf_of_page_images` now takes `dpi` as a required argument
+with no default. Writing a `pHYs` chunk would restore correctness while leaving the
+defect's SHAPE intact — physical size would still travel as optional metadata inside an
+image, and the next re-encode that dropped it would silently reintroduce 96 dpi. As a
+required argument, a caller that does not know the DPI fails to typecheck.
+
+That also makes the function consistent with the file it lives in: `render_page_png`,
+`reader.read` and `cleaner.clean_artifact` each already refuse a DPI default, for the
+stated reason that choosing one would answer a question put to the owner (Law 52). This
+was the one place that silently answered it, and answered it wrongly.
+
+`reader._require_positive_dpi` moved to `pdf_backend.require_positive_dpi` rather than
+being copied, now that it has two callers (Law 14). `page_size` was added because the
+regression test had no way to assert a page's physical size without a caller reaching into
+the backend, which the module exists to prevent.
+
+**Guarded by** `test_a_rebuilt_page_is_the_physical_size_its_pixels_represent_at_that_dpi`,
+parametrised over 72 / 96 / 150 / 300 / 600. **96 is in the list deliberately**: it is the
+value the old code got right by accident, so a single-DPI test written there would pass
+against the bug and prove nothing. Falsified before it was trusted — restoring
+`convert_to_pdf()` reddens the other four and leaves 96 green. The test also asserts its
+own fixture still lacks a `pHYs` chunk, so it cannot silently stop exercising the real path.
+
+── **A REGRESSION THE FIX INTRODUCED, AND SHIPPED — fixed at `78e99d4`** ──
+
+`convert_to_pdf()` returned an already-compressed document. `new_page` + `insert_image`
+writes an image object that is Flate-compressed only when the document is **saved**, and
+the default save does not. Measured on the same US Letter page:
+
+| dpi | default save | `deflate=True` | old `convert_to_pdf` |
+|---|---|---|---|
+| 150 | 6,314,818 B | 9,517 B | 9,479 B |
+| 300 | 25,248,570 B | 27,915 B | 27,873 B |
+
+**663x and 905x**, pushed to `origin` before it was caught. With `deflate=True` the rebuild
+is within 0.4% of the old baseline and still geometrically correct. `garbage=` was measured
+and changes nothing here, so it is not passed (Law 10).
+
+**Why F-028's own test did not catch it.** That test asserts the rebuilt page's size in
+POINTS, and the geometry was correct in both worlds — the bytes were wrong, not the
+coordinates. **A test can only fail on what it looks at.** The general principle, for
+`LESSONS.md`: *when a fix replaces a library call with a hand-built equivalent, the new
+call's DEFAULTS are new behaviour and need their own assertion.*
+
+**Guarded by** `test_a_rebuilt_page_stores_its_image_compressed_not_raw`, which compares
+the rebuilt PDF against the size its own pixels would occupy uncompressed — width x height
+x channels, read off the image rather than chosen (Law 10). "Smaller than raw" is precisely
+what "stored compressed" means, so it needs no invented threshold and no tolerance.
+
+---
+
+## F-029 · The mutation gate has never produced a score, and the test that hid it was green
+
+| | |
+|---|---|
+| **Severity** | **CRITICAL** — Engine 1 has never been measured by the gate that is meant to measure it |
+| **Status** | ⚠️ **PARTIALLY FIXED** at `c13930c` — the false green is closed and the failure now reports its cause; the underlying CI-only parser failure is **UNDIAGNOSED** |
+| **Found** | 2026-08-06, reading the CI log for the `mutation` job instead of its summary |
+
+**Description.** The `mutation` job's statistics phase runs the suite once, with `-x`, to
+time each test. One red test there ends the phase, so **no mutant is ever scored**:
+
+```
+1 failed, 1 passed
+failed to collect stats. runner returned 1
+NOT SCOREABLE : 4402 (100.00% of 4402)
+BLOCKED - 100.00% of mutants are unscoreable, above the 2% maximum.
+THE MUTATION SCORE IS INVALID and is deliberately not reported.
+```
+
+The 2% unscoreable cap worked exactly as intended: it refused to print a number computed
+over nothing. **Without it this would have reported a score.**
+
+**The failing test, at `55eb987`:**
+
+```
+FAILED tests/integration/test_engine1_end_to_end.py::
+       test_the_pages_after_the_first_are_not_silently_dropped
+assert 'page_count=2' in "not parsed: Engine 1 stopped at the 'parser' stage
+                          because the document could not be read."
+```
+
+── **THE FALSE GREEN, WHICH IS THE SERIOUS HALF — FIXED at `c13930c`** ──
+
+CI printed `.F`. **A pass, then a fail.** The pass is the defect.
+
+`pipeline._stopped` classifies `DocumentUnreadableError` as a BUSINESS failure, so `run`
+returns an artifact recording the failure instead of raising. That artifact still carries
+`reader`'s **real extracted text** (`pipeline.py:1224`) — the exact field the first test
+asserts on. So `test_a_real_pdf_with_a_text_layer_produces_an_object_carrying_that_text_
+layers_content`, the test that exists to prove `ROADMAP.md:151`'s completion criterion
+*"a real document runs end to end"*, **went green against a document that never reached
+the parser.**
+
+Proven on the real pipeline rather than argued: with `parser._convert` raising, the
+session fixture's artifact satisfies `extracted_text == "\n".join(ALL_LINES)` — `True`.
+
+One test reported the problem and one hid it, and the one that hid it was the more
+important of the two.
+
+**Fixed** by a fixture guard that refuses a failure record and reports Engine 1's own
+account of why. The cause was never missing: Docling's `result.errors` reach the artifact
+through `parser.py:750` and sit in `reliability_information` and the uncertainty marker.
+Nothing was reading them, so CI could name the stage and never the cause.
+
+── **THE UNDERLYING FAILURE — STILL UNDIAGNOSED** ──
+
+Why the parser fails on CI and nowhere else. **Measured, and three hypotheses are already
+dead:**
+
+| Hypothesis | Verdict |
+|---|---|
+| `mutants/` is missing a file the test needs (the `also_copy` class) | **REFUTED** — a snapshot of the real `mutants/` tree runs the file 13/13 green locally |
+| CI resolves `docling` to the stripped `docling-slim` distribution | **REFUTED** — the local venv resolves it to `docling-slim` too, same versions |
+| The mutmut trampolines change parser behaviour | **REFUTED** — the local `mutants/` snapshot has them and passes |
+
+**Decisive and unexplained:** at `55eb987`, `typecheck · lint · tests · build` and
+`unit tests` were both **green** while `mutation` was red — same commit, same runner
+image, same installs, the same test. The difference is inside the mutation environment
+and is not yet named.
+
+**The strongest surviving hypothesis, stated so it can be attacked:** Docling initialises
+torch inside a process mutmut forked, and initialisation in a forked child is unsafe.
+Supporting evidence, `LOCAL ONLY — NOT AUTHORITATIVE`: a local `mutmut run` at `3bd31e2`
+reached 1134/4402 mutants and then died with `Fatal Python error: Segmentation fault`
+inside `docling/document_converter.py:_get_pipeline` — the model-loading path. That is the
+same class as F-016, where a CoreFoundation call after a raw `os.fork()` segfaulted. On
+Linux the same unsafety would surface as a soft failure rather than a crash, which is
+exactly the shape CI shows. **Not proven. Do not record it as the cause.**
+
+**Next step, already in place.** The `c13930c` guard makes the next CI run print Docling's
+own `result.errors`. The diagnosis is now something the system emits rather than something
+to be guessed at — which is the correct response to a defect that cannot be reproduced
+locally.
+
+**Permanent prevention, for the class.** A gate whose *statistics* phase can be ended by a
+single red test reports "unmeasured" identically to "unbuilt". The 2% unscoreable cap is
+what turned that silence into a loud, specific refusal, and it is the reason this entry
+exists at all rather than a fabricated score sitting in a report.
