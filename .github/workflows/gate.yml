@@ -25,6 +25,16 @@ jobs:
 
       - name: Engine 1 dependencies
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        # SHADOW DEFENCE. Two distributions can install the same top-level
+        # module. pip reports success, records both, and `import` resolves to
+        # whichever landed last. Measured on this repository, not imagined:
+        # `importlib.metadata.version("opencv-python")` returned 5.0.0.93 while
+        # `cv2.__version__` returned 4.10.0. A guard written against installed
+        # METADATA reports green straight through that. This one asks the
+        # interpreter which distribution provides each module and what the
+        # module reports as its own version.
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
 
       # ─────────────────────────────────────────────────────────────────────
       # LEGACY COMBINED GATE — implemented, deliberately duplicating the four

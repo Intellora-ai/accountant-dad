@@ -26,6 +26,16 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
       - name: Engine 1 dependencies
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        # SHADOW DEFENCE. Two distributions can install the same top-level
+        # module. pip reports success, records both, and `import` resolves to
+        # whichever landed last. Measured on this repository, not imagined:
+        # `importlib.metadata.version("opencv-python")` returned 5.0.0.93 while
+        # `cv2.__version__` returned 4.10.0. A guard written against installed
+        # METADATA reports green straight through that. This one asks the
+        # interpreter which distribution provides each module and what the
+        # module reports as its own version.
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
       - name: prove this gate can still fail
         # HOLLOW-GATE DEFENCE. A failing test MUST make pytest exit non-zero.
         run: |
@@ -128,6 +138,16 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
       - name: Engine 1 dependencies
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        # SHADOW DEFENCE. Two distributions can install the same top-level
+        # module. pip reports success, records both, and `import` resolves to
+        # whichever landed last. Measured on this repository, not imagined:
+        # `importlib.metadata.version("opencv-python")` returned 5.0.0.93 while
+        # `cv2.__version__` returned 4.10.0. A guard written against installed
+        # METADATA reports green straight through that. This one asks the
+        # interpreter which distribution provides each module and what the
+        # module reports as its own version.
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
       - name: prove this gate can still fail
         # HOLLOW-GATE DEFENCE. An impossible floor MUST be rejected.
         run: |
@@ -224,6 +244,16 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
       - name: Engine 1 dependencies
         run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        # SHADOW DEFENCE. Two distributions can install the same top-level
+        # module. pip reports success, records both, and `import` resolves to
+        # whichever landed last. Measured on this repository, not imagined:
+        # `importlib.metadata.version("opencv-python")` returned 5.0.0.93 while
+        # `cv2.__version__` returned 4.10.0. A guard written against installed
+        # METADATA reports green straight through that. This one asks the
+        # interpreter which distribution provides each module and what the
+        # module reports as its own version.
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
       - name: mutation score at or above 93 percent
         # Coverage says a line RAN. Mutation says a bug in that line would be
         # CAUGHT. Tests that execute code without asserting score high on
@@ -334,3 +364,48 @@ jobs:
           echo "'CLI, no UI'. Playwright drives a browser; there is nothing to"
           echo "drive and the blueprint says there will not be in this build."
           exit 1
+
+  ocr-tests:
+    name: ocr tests
+    runs-on: ubuntu-24.04
+    # 89 s measured locally on python3.12 (macOS arm64, warm pip cache) for the
+    # venv build plus the full suite; the resulting venv is 1.0 GB. What a COLD
+    # GitHub runner costs is UNKNOWN until this job reports it, so this number
+    # is a ceiling chosen to be generous, not a measurement (Law 24). Tighten it
+    # once a run has produced the real figure.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: prove this gate can still fail
+        # HOLLOW-GATE DEFENCE, the same shape every sibling job carries. Feeds
+        # the result check a skipped result, an empty collection and a failing
+        # result and requires all three to be REJECTED, then feeds it a clean
+        # result and requires it to be ACCEPTED - so the check is proved neither
+        # stuck-green nor stuck-red. Builds nothing, downloads nothing.
+        run: tools/ci/run_ocr_tests.sh --self-test
+      - name: the OCR path runs, in its own interpreter
+        # WHY A SEPARATE INTERPRETER RATHER THAN A RESOLVED CONFLICT.
+        # paddlex pins numpy<2.4 against this repo's numpy==2.5.1, so pip
+        # returns ResolutionImpossible; and paddleocr drags in
+        # opencv-contrib-python beside the pinned opencv-python, where both
+        # provide `cv2` and install order alone decides the winner.
+        #
+        # `reader.py` imports pymupdf, numpy, PIL and PaddleOCR. It imports NO
+        # cv2 - pinned by a test. The two dependency sets never needed to share
+        # a site-packages; only the runner did. So the fix is to stop making
+        # PaddleOCR coexist with numpy 2.5.1 and instead give the OCR tests an
+        # interpreter that never contains the pins they do not use (Law 53).
+        # No pin changes. No measurement invalidated.
+        #
+        # The script asserts ZERO SKIPS. This job exists only to be the
+        # environment those tests need, so a skip here means the environment it
+        # built is not the one it claimed to build - which is exactly what hid
+        # F-009.
+        run: tools/ci/run_ocr_tests.sh /tmp/ocr-venv /tmp/ocr-junit.xml

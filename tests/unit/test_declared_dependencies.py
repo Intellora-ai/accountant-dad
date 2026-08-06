@@ -71,8 +71,16 @@ def declared_specifiers() -> list[str]:
 
     `tomllib` returns `object`, so every subscript is an error under
     `disallow_any_explicit`. Narrowing at each hop keeps the type honest and
-    costs NO `# type: ignore` — this repository counts suppressions and blocks
-    on any increase, so a guard that needed one would break another gate.
+    costs no type-ignore comment — this repository counts suppressions and
+    blocks on any increase, so a guard that needed one would break another gate.
+
+    The phrasing above is deliberate and must stay that way. The suppression
+    budget in `quality.yml` greps for the literal token, in every file, without
+    parsing Python — so writing the token here, even inside a docstring
+    explaining that we avoid it, RAISES THE COUNT and fails the gate. It cost a
+    CI run to learn that twice. A text-based guard cannot tell prose from code,
+    and making it smarter would make it weaker: the bluntness is what stops the
+    token being smuggled past in a string, an f-string or a generated file.
     """
     with PYPROJECT.open("rb") as handle:
         node: object = tomllib.load(handle)
