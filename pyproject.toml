@@ -167,4 +167,17 @@ also_copy = [
     ".github",
     "pyproject.toml",
     "requirements-ci.txt",
+    # The Engine 1 manifests, for the same reason one line up and a worse
+    # failure mode. `test_runtime_library_versions` reads every pin off disk so
+    # it carries no version literal of its own. Under mutation the root IS
+    # `mutants/`, which held only `requirements-ci.txt` — so `PINNED_IMPORTS`
+    # lost every Engine 1 pin and the test raised `KeyError: 'cv2'` for EVERY
+    # mutant.
+    #
+    # That direction is the dangerous one. A test that fails for every mutant
+    # reports every mutant as KILLED, so a missing file here does not redden the
+    # gate — it INFLATES the score. The suite was green locally throughout,
+    # because a local run resolves against the real tree and never notices.
+    "requirements-engine1.txt",
+    "requirements-engine1-ocr.txt",
 ]
