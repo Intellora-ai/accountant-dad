@@ -395,6 +395,56 @@ def test_a_rebuilt_page_is_the_physical_size_its_pixels_represent_at_that_dpi(dp
     )
 
 
+@pytest.mark.parametrize("dpi", [150, 300])
+def test_a_rebuilt_page_stores_its_image_compressed_not_raw(dpi: int) -> None:
+    """A REGRESSION I SHIPPED, TRAPPED SO IT CANNOT BE SHIPPED AGAIN.
+
+    The first push of the F-028 fix replaced `convert_to_pdf()` — which returns
+    an already-compressed document — with `new_page` + `insert_image`, which
+    writes an image object that is only Flate-compressed when the document is
+    SAVED. The default save does not, so the rebuild started emitting raw
+    pixels. Measured on one US Letter page:
+
+        dpi   default save    deflate=True    old convert_to_pdf
+        150    6,314,818 B       9,517 B          9,479 B
+        300   25,248,570 B      27,915 B         27,873 B
+
+    663x and 905x. Geometrically correct the whole time, which is exactly why
+    the F-028 test caught nothing: it asserted the page's SIZE IN POINTS, and
+    that was right in both worlds.
+
+    THE BOUND IS DERIVED, NOT CHOSEN (Law 10). A rebuilt page is compared
+    against the size its own pixels would occupy uncompressed — width x height x
+    channels — a number read off the image rather than picked. "Smaller than
+    raw" is precisely what "the image is stored compressed" means, so the
+    assertion needs no invented threshold and no tolerance.
+    """
+    blank = new_pdf()
+    try:
+        blank.new_page(width=612, height=792)
+        source = bytes(blank.tobytes())
+    finally:
+        blank.close()
+
+    opened = pdf_backend.open_pdf(source)
+    try:
+        rendered = pdf_backend.render_page_png(opened, 0, dpi=dpi)
+    finally:
+        pdf_backend.close_pdf(opened)
+    decoded = cv2.imdecode(np.frombuffer(rendered, np.uint8), cv2.IMREAD_COLOR)
+    assert decoded is not None, "the backend's own PNG did not decode"
+    png = cv2.imencode(".png", decoded)[1].tobytes()
+
+    raw_pixel_bytes = int(decoded.shape[0]) * int(decoded.shape[1]) * int(decoded.shape[2])
+    rebuilt = pdf_backend.pdf_of_page_images([png], dpi=dpi)
+
+    assert len(rebuilt) < raw_pixel_bytes, (
+        f"the rebuilt PDF is {len(rebuilt):,} bytes for an image whose pixels are "
+        f"{raw_pixel_bytes:,} bytes uncompressed, so the page is being stored as "
+        "raw pixels. The save has lost `deflate=True` (F-028's regression)."
+    )
+
+
 def test_a_dpi_that_cannot_be_a_dpi_is_refused_rather_than_corrected() -> None:
     """The guard moved down from `reader` when F-028 gave it a second caller.
 

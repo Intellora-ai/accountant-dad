@@ -167,7 +167,7 @@ class _Document(Protocol):
     def __getitem__(self, index: int) -> _Page: ...
     def close(self) -> None: ...
     def insert_pdf(self, source: _Document) -> None: ...
-    def tobytes(self) -> bytes: ...
+    def tobytes(self, *, deflate: bool = False) -> bytes: ...
     def new_page(self, *, width: float, height: float) -> _Page: ...
 
 
@@ -366,7 +366,23 @@ def pdf_of_page_images(pages: list[bytes], *, dpi: int) -> bytes:
             rebuilt.new_page(width=width, height=height).insert_image(
                 _rectangle(0, 0, width, height), stream=page
             )
-        return bytes(rebuilt.tobytes())
+        # `deflate=True` IS NOT A TUNING KNOB — WITHOUT IT THIS FUNCTION EMITS
+        # RAW PIXELS. `convert_to_pdf()` handed back an already-compressed
+        # document, so the old code never had to ask. `insert_image` writes an
+        # image object that is only Flate-compressed when the document is
+        # SAVED, and the default save does not. Measured on one US Letter page:
+        #
+        #     dpi   default save    deflate=True    old convert_to_pdf
+        #     150    6,314,818 B       9,517 B          9,479 B
+        #     300   25,248,570 B      27,915 B         27,873 B
+        #
+        # 663x and 905x. This line was missing when the F-028 fix was first
+        # pushed, so the regression is recorded rather than quietly repaired,
+        # and `test_a_rebuilt_page_stores_its_image_compressed_not_raw` now
+        # fails if it is ever dropped again. `garbage=` was measured too and
+        # changes nothing here, so it is not passed (Law 10: no number that is
+        # not doing work).
+        return bytes(rebuilt.tobytes(deflate=True))
     finally:
         rebuilt.close()
 
