@@ -196,6 +196,50 @@ convention, and conventions drift — the exact failure `confidence.py:16-24` wa
 after. **Recorded as open item O4 in §9. Not fixed here: the schema is frozen P2 work and a
 change is an amendment (§M).**
 
+> **O4 is still open. A DIFFERENT gap in the same two types has been closed by
+> amendment — see below.** The sentence above says a schema change is an amendment; one
+> has now been made, and this section names it rather than leaving a locked document
+> describing a schema the code has moved past.
+
+#### A measurement and the absence of one — Amendment 5, approved 2026-08-06
+
+`docs/ARCHITECTURE_AMENDMENTS.md` **Amendment 5**. Two slots, and only these two, now
+record **either** a measurement **or** the stated absence of one:
+
+| Slot | Was | Is |
+|---|---|---|
+| `Provenance.confidence` | `Confidence` | `ConfidenceOrUnmeasured` |
+| `FieldConfidence.confidence` | `Confidence` | `ConfidenceOrUnmeasured` |
+
+```
+ConfidenceOrUnmeasured  =  Confidence      a Decimal in [0.0000, 1.0000], ≤ 4 places
+                        |  UNMEASURED      a distinct sentinel class, not None, not a number
+```
+
+**What did NOT change, and each of these is load-bearing:**
+
+- **`Confidence` itself is untouched** (`confidence.py:113-117`). It still admits only a
+  `Decimal`, still refuses `float`/`int`, still enforces `[0.0000, 1.0000]` and four
+  places. The new union **delegates to the same validator**, so §1's table above
+  describes both types exactly. The owner's ruling defines confidence as *a score*, and
+  the absence of a score is not a score.
+- **INV-11 stands.** Six provenance attributes, none optional. The sentinel makes the
+  **value** absent, never the **attribute**.
+- **The five artifacts of Engines 2–6 are unaffected** — none of them uses `Provenance`.
+- **Neither structural guarantee above was weakened.** Both still run for an unscored
+  field. Agreement gained one more way to **fail**: measured-against-unmeasured is a
+  refusal, because one side asserts a number the other says was never taken.
+
+**Why it was forced.** `reader.read_pdf_text_layer` sets `extraction_confidence=None` on
+every region by design (`reader.py:255-259` — *"`None` is NOT zero confidence and NOT full
+confidence — it is the absence of a measurement"*), a PDF text layer is the MVP's primary
+input, and no honest number exists for the slot: `1.0000` is the default
+`ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids by name, `0.0000` asserts a worthlessness
+nobody measured, and none of the sixteen parameters covers the case. Under the old schema
+those values could not be emitted at all (`ENGINE_1_INPUT_ENGINE_RULES.md:245`), so the
+MVP's primary input produced **zero `Provenance` objects**. Full reasoning, the trade-off
+and open item **O11** are in the amendment.
+
 ---
 
 ## 4. Why there is no document-level scalar
@@ -599,6 +643,7 @@ this document, which supplies none.
 | **O8** | **Every calibration parameter is `UNSET` and must be fixed BEFORE the first run.** High-confidence region boundary · bin count and edges · minimum bin occupancy · MCE ceiling · whether MCE is region-restricted. Pre-registration means these are committed and hashed before results are seen (`MEASUREMENT_FRAMEWORK.md:11-27`); choosing any of them afterwards **invalidates the run**. | **The owner.** | Five numbers, supplied once, before the first calibration run — not before Stage 3 begins. |
 | **O9** | **Calibration may not be reachable inside the MVP.** `GOLDEN_DATASET.md:166` puts confidence separation and calibration at **~100 golden documents**; the planned set is **16 golden** (`GOLDEN_DATASET.md:15-21`). If that stands, **confidence gates nothing for the entire MVP** — which is a coherent outcome and arguably the intended one, but it should be a decision rather than a discovery. `MEASUREMENT_FRAMEWORK.md:285` permits an **indicative** curve below N = 100, which supports no probability claim and therefore does not unblock gating. | **The owner.** | Either (a) accept that confidence is measurement-only through MVP and say so in the blueprint, or (b) fund the growth of the golden set toward ~100, which is accountant time — *"the scarcest resource"* (`MEASUREMENT_FRAMEWORK.md:360`). |
 | **O10** | **`ACCOUNTING_DEFINITIONS.md:215` defines `Uncertainty` partly as *"any confidence below **the threshold** at which the system may act unattended."*** The singular *"the threshold"* implies a single, document-level cutoff — which A5 removes. Line 219 already self-corrects (*"until confidence passes the separation test … the second term is undefined and uncertainty is the doubt count alone"*), so nothing is currently broken. **But the wording will be implemented by whoever reads it next.** | **The owner.** | A wording revision under §M, re-expressing the second term per-field, or striking it. |
+| **O11** | **`ConfidenceReport.confidence_scores` now has two producers.** `confidence_report.ParsedField.extraction_confidence` is typed `Confidence` and cannot hold `UNMEASURED` (Amendment 5), so `pipeline.py` assembles the unmeasured entries itself while the `confidence` sub-engine assembles the measured ones. Both are guarded structurally — `_each_name_is_scored_once` refuses an overlap and the agreement check refuses any disagreement with the provenance — so drift fails loudly. **It is still two producers for one component** (INV-10). | **The owner.** | Widen `ParsedField.extraction_confidence` to `ConfidenceOrUnmeasured` and drop the filter in `pipeline.parsed_fields`. One annotation; sole ownership returns to the `confidence` sub-engine, with no behaviour change beyond who builds the entry. Full detail in `ARCHITECTURE_AMENDMENTS.md` Amendment 5. |
 
 ---
 ---

@@ -301,6 +301,171 @@ DocumentEvidenceObject  =  identity · document_id · source_references
 ```
 
 **No document-type field. No fifth component.** Its output therefore cannot be one of the four parts, so it is not a sub-engine — it is a facility, alongside configuration loading and the calibration record.
+# Amendment 6 — an absent-measurement state on `Provenance.confidence`
+
+> Continues **this file's** sequence, after Amendment 4. The numbering collision flagged
+> at the top of this file — `CLAUDE.md` §P also has an Amendment 2 — is **unchanged and
+> unresolved here**; renumbering is not this amendment's to do.
+
+| | |
+|---|---|
+| **Status** | ✅ **APPROVED 2026-08-06** |
+| **Affects** | `src/accountant_dad/confidence.py` · `src/accountant_dad/artifacts/evidence.py` — `Provenance.confidence`, `FieldConfidence.confidence`, `DocumentEvidenceObject._every_reading_is_scored_and_the_scores_agree` · `docs/CONFIDENCE_SPECIFICATION.md` §3.4 |
+| **Does NOT affect** | `SYSTEM_INVARIANTS.md` INV-11 — **six provenance attributes, none optional, unchanged and not weakened** · the `Confidence` type itself — **still `Decimal` only, [0.0000, 1.0000], ≤ 4 places** · the artifacts of Engines 2–6, none of which use `Provenance` |
+| **Raised** | 2026-08-06, from three red tests on the MVP's primary input |
+
+## What changed
+
+**Old rule** — `evidence.py:118-130`, restating `SYSTEM_INVARIANTS.md:243-252` and
+`CONFIDENCE_SPECIFICATION.md` §3.3:
+
+```python
+class Provenance(BaseModel):
+    ...
+    confidence: Confidence        # Decimal, [0.0000, 1.0000], ≤ 4 places
+```
+
+`Confidence` admits **only** a number. So a value that was genuinely read, and that
+nothing scored, has **no representable provenance** — and by
+`ENGINE_1_INPUT_ENGINE_RULES.md:245` (*"A value carried without all three is not evidence
+and must not be emitted"*) it must therefore not be emitted at all.
+
+**New rule** — two slots, and only these two, now record **either** a measurement **or**
+the stated absence of one:
+
+```python
+confidence: ConfidenceOrUnmeasured    # Provenance.confidence
+confidence: ConfidenceOrUnmeasured    # FieldConfidence.confidence
+```
+
+```
+ConfidenceOrUnmeasured  =  Confidence            a Decimal in [0.0000, 1.0000]
+                        |  UNMEASURED            a distinct sentinel class
+```
+
+Three things this is **not**, each stated because each was the obvious wrong answer:
+
+| Not | Why it was refused |
+|---|---|
+| `Confidence \| None` | `None` already means three other things in this pipeline — `TextRegion.extraction_confidence` (no recogniser ran), `RegionReading.text` (unread), the absence of a `HumanBusinessContext`. A fourth meaning on a fourth slot is how a distinction dies. |
+| A widened `Confidence` | The owner's ruling defines confidence as *"a normalized Decimal score."* The absence of a score is not a score. Widening it would have let **every** artifact in the system carry "not measured" wherever a number belongs, including five schemas that never asked for it. |
+| An optional attribute | INV-11 is untouched. The sentinel makes the **value** absent; the **attribute** is still mandatory, still six, still `extra="forbid"`. |
+
+**The agreement rule is extended, never exempted.** `evidence.py:337-353` refuses a
+detected field with no entry in the Confidence Report, and refuses an entry that
+disagrees with the field's own provenance. Both still run for an unscored field. What
+"agreement" means now has one more way to **fail**:
+
+```
+both unmeasured        AGREE      neither claims a score; there is nothing to contradict
+both measured, equal   AGREE      unchanged
+both measured, differ  DISAGREE   unchanged
+one of each            DISAGREE   NEW — one side asserts a number the other says was
+                                  never taken. This is the precise shape of the bug the
+                                  sentinel exists to prevent, so it fails loudest.
+```
+
+Decided by `isinstance`, never by `is` and never by `==`: `==` between a `Decimal` and
+the sentinel answers `False` only by falling through two `NotImplemented`s to identity —
+the right answer reached by accident, from a rule about neither type.
+
+## Which doc / section
+
+| File | Change |
+|---|---|
+| `src/accountant_dad/confidence.py` | **Added** `UnmeasuredType`, the `UNMEASURED` instance, `ConfidenceOrUnmeasured`, `records_the_same_measurement`. `Confidence`, `MIN`, `MAX`, `CONFIDENCE_PLACES` and `_exactly_a_decimal_in_range` are **unchanged** — the new validator delegates to the existing one, so both types enforce one scale (Law 14, Law 19). |
+| `src/accountant_dad/artifacts/evidence.py` | `Provenance.confidence` and `FieldConfidence.confidence` retyped. The agreement check now calls `records_the_same_measurement`. |
+| `src/accountant_dad/engines/input_engine/pipeline.py` | An unscored mapping now becomes a real `DetectedField` carrying `UNMEASURED`, instead of being dropped. |
+| `docs/CONFIDENCE_SPECIFICATION.md` §3.4 | Records this amendment by name, so a locked document no longer describes a schema the code has moved past. |
+
+## Why
+
+`reader.read_pdf_text_layer` sets `extraction_confidence=None` on **every** region it
+produces, deliberately (`reader.py:255-259`):
+
+> *"`None` is NOT zero confidence and NOT full confidence — it is the absence of a
+> measurement."*
+
+A PDF text layer is **transcribed, not recognised**. No instrument runs, so no instrument
+produces a score. There is nothing wrong with the document and nothing wrong with the
+reading — the score simply does not exist.
+
+**And a PDF text layer is the MVP's primary input.** `CLAUDE.md` §B.7 puts the MVP inside
+Tally and the Indian GST regime, where documents are overwhelmingly PDF.
+
+**No honest number exists to put there**, and this is why the fix had to be a *type* and
+not a *value*:
+
+| Candidate | Why it is a lie |
+|---|---|
+| `1.0000` | The default `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids **by name** — *"never to a default 'good enough' value."* |
+| `0.0000` | Asserts a measured worthlessness **nobody measured**. On a scale where low confidence is the most alarming signal in the artifact, this manufactures the alarm. |
+| A looked-up parameter | None of the sixteen in `ENGINE_1_CONFIDENCE_PARAMETERS.md` covers this case, and all sixteen are `UNSET` regardless. |
+
+Law 54 is explicit: never invent the definition. So the absence was **named** instead of
+filled in.
+
+## What failure forced it
+
+Three tests, red on `99f62bf`, all on this one root cause:
+
+```
+tests/integration/test_engine1_end_to_end.py::
+    test_every_extracted_value_that_crosses_the_boundary_carries_source_confidence_and_uncertainty
+tests/unit/test_conformance_registry.py::
+    test_every_value_the_engine_extracted_carries_where_it_came_from
+tests/unit/test_conformance_registry.py::
+    test_the_artifact_carries_provenance_for_the_evidence_it_states
+```
+
+The third one's failure message is the whole defect in one line:
+
+> *"the artifact carries no Provenance anywhere, so nothing crosses the Input →
+> Understanding boundary with an origin attached."*
+
+The mechanism, measured rather than reasoned about:
+
+```
+reader.read_pdf_text_layer   →  every region: extraction_confidence = None
+pipeline.detected_fields     →  `if field.extraction_confidence is not None` — SKIPS them
+StructuredDocument           →  detected_fields = ()
+DocumentEvidenceObject       →  zero Provenance objects, on the MVP's primary input
+```
+
+Every extracted value crossed the Input → Understanding boundary as a bare `str` inside
+`extracted_text`, carrying **no source, no confidence and no uncertainty of its own** —
+which is what `COMMUNICATION_RULES_INPUT_ENGINE.md:111` forbids stripping and what
+`ENGINE_1_INPUT_ENGINE_RULES.md:245` forbids emitting.
+
+The skip was **correct given the schema** — `pipeline.py`'s own docstring said so, and
+`test_an_unscored_reading_is_skipped_rather_than_given_an_invented_score` pinned it, with
+the note that changing it *"needs a §M amendment to a frozen schema, and it must not
+arrive quietly."* **This is that amendment.** The schema was the defect, not the skip.
+
+## Why not share one sentinel with `measurement.AbsentType`
+
+The F-005 resolution (`measurement.py:147-170`) established this exact shape one module
+away. It is copied as a **pattern**, never as a shared object (Law 53 — copy the
+principle, never the mechanism). Two reasons, one of them mechanical and unarguable:
+
+1. **The two facts differ, and merging them destroys what both types exist to keep.**
+   `ABSENT` says a whole signal **category was never produced** — nothing was attempted.
+   `UNMEASURED` says a reading **exists, is real, and travels into the artifact**, and
+   only its score is missing. One shared class makes `isinstance(x, AbsentType)` answer
+   yes to both — the exact collapse Law 24 forbids and the reason `measurement.py:41-59`
+   refuses to let two facts wear one shape.
+2. **Sharing is a circular import, measured not assumed.** `measurement.py:138` imports
+   `DocumentId` from `artifacts.evidence`; `artifacts.evidence` imports `confidence`. So
+   `confidence → measurement → evidence → confidence` does not import at all.
+
+Layering agrees without needing either argument: `measurement.py` is an Engine 1
+calibration store, and a type six artifact schemas depend on cannot be owned by one
+engine's internal module (INV-10 — one owner per concept).
+
+**And it is not `confidence_report.ReadingState` either.** That enum's `READ_BUT_UNSCORED`
+fixed the *Confidence Report's* view of a **region**. This fixes the *provenance* of a
+**named field**. Different object, different level, different owner — `ReadingState` is
+derived from two fields and stored nowhere, and it cannot sit in a schema slot.
 
 ## The trade-off
 
@@ -315,6 +480,32 @@ DocumentEvidenceObject  =  identity · document_id · source_references
 **A document-type field appearing in the Document Evidence Object.** That would make cue detection a producer of a fifth part — a fifth sub-engine in all but name — and this amendment would be wrong rather than merely incomplete. Checked: `src/accountant_dad/artifacts/evidence.py` has zero matches for `document_type`, and `ENGINE_1_INPUT_ENGINE_RULES.md` has **zero matches** for `classif` or `document type` anywhere in its 669 lines.
 
 Second falsifier, weaker: a sub-engine that produces none of the four parts. None exists — `cleaner`, `reader`, `parser` and `confidence` each map to exactly one row of the `:403-408` table.
+| The MVP's primary input can emit evidence at all. Every text-layer value now crosses the boundary with a source, a stated measurement state, and an uncertainty marker | Two schema slots are no longer "a number, always." Every reader of them must now ask which state they hold |
+| `ENGINE_1_INPUT_ENGINE_RULES.md:245` is satisfied **honestly** rather than by dropping the value — the disjunction is met by carrying all three, not by emitting none | `Provenance.confidence` can no longer be fed straight to arithmetic or a comparison. That is the point, and it is enforced by `__bool__` raising, but it is still a cost at every call site |
+| The agreement check gets **stricter**: measured-vs-unmeasured is a new refusal that did not exist before | A frozen P2 schema changed. `CONFIDENCE_SPECIFICATION.md` §3.4's *"the schema is frozen P2 work"* is now qualified rather than absolute |
+| "Not measured" is representable **once, in one type**, instead of six modules each inventing a convention — the drift `confidence.py:16-24` was written after | `confidence_report.ParsedField.extraction_confidence` is still typed `Confidence` and cannot carry the sentinel, so the Confidence Report's unmeasured entries are assembled in `pipeline.py` rather than by the `confidence` sub-engine. **Named as open item O11 below, not hidden** |
+
+**Not chosen: exempting an unscored field from the agreement check.** It would have made
+the artifact silent about exactly the fields whose reliability is least established —
+concealed uncertainty, which `ENGINE_1_ARCHITECTURE.md` P-F3 forbids outright.
+
+**Not chosen: a `Decimal` subclass as the sentinel.** It would satisfy every existing type
+annotation and pass `isinstance(value, Decimal)` inside the confidence validator — which
+means it would carry a numeric value, and the collapse into zero would be back, wearing
+the type system's approval.
+
+## What would prove this wrong
+
+**A slot that needs a third measurement state.** If some reading is neither scored nor
+honestly unmeasured — say, scored on a scale not yet established to be this one — then a
+two-member union is the same under-modelling this amendment is fixing, one level up.
+Nothing in `reader`, `parser` or `cleaner` produces such a shape today: every score is a
+`Decimal` from one instrument, or `None`. **If one is found, this amendment needs a
+successor, not a patch.**
+
+**Or: an unmeasured value reaching a caller that treats it as a number.** That would be
+this amendment failing at its actual job. `__bool__` raising is the guard, and the
+red-team test below is the check.
 
 ## What now guards it
 
@@ -324,6 +515,18 @@ Second falsifier, weaker: a sub-engine that produces none of the four parts. Non
 | The sub-engine set is pinned to the four the locked document names — a fifth fails | `tests/unit/test_package.py::test_the_sub_engine_set_is_exactly_the_four_the_locked_specification_names` |
 | A tenth module cannot appear without a decision | `tests/unit/test_package.py::test_no_engine_1_module_exists_without_an_architectural_decision` |
 | The three categories cannot overlap | `tests/unit/test_package.py::test_the_three_architectural_categories_are_disjoint` |
+| `UNMEASURED` has no truth value — `if not confidence:` raises `TypeError` rather than collapsing into a measured zero | `confidence.py` `UnmeasuredType.__bool__`, pinned in `tests/unit/test_confidence.py` |
+| `Confidence` still refuses `float`, `int`, `bool`, `str`, `None`, out-of-range and > 4 places — the new type delegates to the **same** validator | `confidence.py` `_a_measurement_or_its_stated_absence`, pinned in `tests/unit/test_confidence.py` |
+| Measured against unmeasured is a **refusal**, not a pass | `evidence.py` `_every_reading_is_scored_and_the_scores_agree`, pinned in `tests/unit/test_evidence.py` |
+| A field the reader **did** score still carries that exact `Decimal` — a mutant putting `1.0000` on an unscored reading, or `UNMEASURED` on a scored one, goes red | `tests/unit/test_input_engine_pipeline.py`, `tests/unit/test_evidence.py` |
+| Six provenance attributes, none optional, still refused when absent | `evidence.py` `Provenance`, `extra="forbid"` — unchanged, pinned in `tests/unit/test_evidence.py` |
+| Every detected field still appears in the Confidence Report, unscored ones included | `evidence.py:337-344`, pinned in `tests/integration/test_engine1_end_to_end.py` |
+
+## Open item this creates
+
+| # | Finding | Owner | What unblocks it |
+|---|---|---|---|
+| **O11** | **`confidence_report.ParsedField.extraction_confidence` is typed `Confidence` and cannot hold `UNMEASURED`**, so `pipeline.py` assembles the unmeasured `FieldConfidence` entries itself and `ConfidenceReport.confidence_scores` now has two producers. Both are guarded structurally — `_each_name_is_scored_once` refuses an overlap, and the agreement check refuses any disagreement with the provenance — so drift fails loudly rather than silently. It is still two producers for one component. | **The owner.** | Widening `ParsedField.extraction_confidence` to `ConfidenceOrUnmeasured` and removing the filter in `pipeline.parsed_fields`, which returns sole ownership of `confidence_scores` to the `confidence` sub-engine. One annotation; no behaviour change beyond who builds the entry. |
 
 ## Approval
 
@@ -342,4 +545,11 @@ Applied     : ✅ ENGINE_1_INPUT_ENGINE_RULES.md §7 — membership test added
                  boxed note already states the engine-level-assembly rule, and
                  ENGINE_1_INPUT_ENGINE_RULES.md:10 makes that document the
                  deeper authority for Input Engine specifics. Nothing to change.
+Approved by : The owner, 2026-08-06  — option A of three put to them
+Applied     : ✅ src/accountant_dad/confidence.py          — new sentinel, new union, new predicate
+              ✅ src/accountant_dad/artifacts/evidence.py  — two slots retyped, agreement rule extended
+              ✅ src/accountant_dad/engines/input_engine/pipeline.py
+              ✅ docs/CONFIDENCE_SPECIFICATION.md §3.4     — amendment named
+              ⬜ SYSTEM_INVARIANTS.md INV-11               — DELIBERATELY UNTOUCHED, not weakened
+              ⬜ src/accountant_dad/confidence.py `Confidence` — DELIBERATELY UNCHANGED
 ```
