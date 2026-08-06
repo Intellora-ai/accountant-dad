@@ -2473,3 +2473,114 @@ locally.
 single red test reports "unmeasured" identically to "unbuilt". The 2% unscoreable cap is
 what turned that silence into a loud, specific refusal, and it is the reason this entry
 exists at all rather than a fabricated score sitting in a report.
+
+---
+
+## F-030 · A cleaned scan is CROPPED, and where the crop started is thrown away
+
+| | |
+|---|---|
+| **Severity** | **HIGH** — no coordinate on a cleaned scan can be mapped back to the document it came from |
+| **Status** | ⬜ **OPEN** · found while verifying F-028's residual, recorded not fixed (`CLAUDE.md` §E.7 — out of the current task's scope, and the current task is the mutation gate) |
+| **Found** | 2026-08-06, checking whether preserving the source page size would remove F-028's rounding residual. It would not, and this is why |
+
+**Description.** `cleaner._crop_to_content` crops each rasterised page to its content
+box plus a margin. It computes the crop's origin and **discards it**:
+
+```
+cleaner.py:845   top_kept  = max(top - margin, 0)
+cleaner.py:846   left_kept = max(left - margin, 0)
+cleaner.py:849   cropped: Image = grey[top_kept:bottom_kept, left_kept:right_kept]
+                 #                     ^^^^^^^^  ^^^^^^^^^ used, then gone
+```
+
+`_crop_to_content` returns `(cropped, ink_ratio)`. `CleanedDocument` has no field for
+an origin, an offset or a source rectangle — verified against the dataclass, which
+carries `original`, `cleaned`, `quality_observations`, `preservation_status` and
+`artifact`, and nothing else.
+
+**Measured at `eaa448d`**, `LOCAL ONLY — NOT AUTHORITATIVE`, through the real cleaner
+on the repository's own scanned fixture:
+
+| render_dpi | source page | rendered | cleaned raster | rebuilt page |
+|---|---|---|---|---|
+| 150 | 400.00 x 200.00 pt | 834 x 417 px | 466 x 188 px | **223.68 x 90.24 pt** |
+| 300 | 400.00 x 200.00 pt | 1667 x 834 px | 913 x 359 px | **219.12 x 86.16 pt** |
+
+Two separate facts, and the second is the defect:
+
+1. The cleaned page is **44% narrower** than its source. That is intended — cropping
+   to content is what the cleaner is for.
+2. **The crop lands differently at different DPIs**: 223.68 pt against 219.12 pt, a
+   **4.56 pt / 2.1% disagreement** about the same document. Not the ≤1-pixel rounding
+   residual F-028 leaves behind — two orders of magnitude larger, and caused by the
+   content box falling on different pixel boundaries at each resolution.
+
+**Impact.** `reader.SourceLocation` promises coordinates *"in the backend's own pixel
+or point space for the page"*, kept unnormalised so *"a human can find the region
+again."* On a cleaned scan the region cannot be found again by anyone:
+
+- the coordinate is offset by an unrecorded `(left_kept, top_kept)` pixels, and
+- that offset changes with `render_dpi`, so two runs of the same document do not even
+  agree with each other.
+
+This is the **traceability contract** — Rule 4, *a value must be traceable back to the
+thing it was read off* (`COMMUNICATION_RULES_INPUT_ENGINE.md`). F-028 fixed the SCALE
+of this coordinate space. The **translation** is still lost, and a scale fix does not
+touch it.
+
+**Why nothing has broken yet.** The scanned branch reaches `reader`, which routes a
+PDF with no text layer to PaddleOCR — genuinely absent here and on CI (F-002/F-009).
+So no `SourceLocation` is produced from a cleaned scan today. **This is latent, not
+harmless**, and it is the same shape as the `Approved With Warning` guard that had
+zero callers: correct-looking, unreachable, and wrong the moment the path is live.
+
+**Permanent fix — the direction, not a decision taken here.** `_crop_to_content`
+already computes the origin; it should return it, and `CleanedDocument` should carry
+the crop rectangle in SOURCE pixel coordinates alongside the cleaned raster, so a
+coordinate on the cleaned page can be mapped back. That adds a field to an Engine 1
+type and touches what the cleaner reports, so it is a change to make deliberately with
+its own tests, not a line to slip into a task about the mutation gate.
+
+**What must NOT be done, checked before it was recommended anywhere.** Forcing the
+rebuilt page back to the SOURCE page size — the obvious-looking fix for the DPI
+disagreement — would stretch cropped content to fill a page it does not occupy. That
+is a worse misstatement than the offset, because it would make the coordinates look
+self-consistent while being wrong about the whole page.
+
+---
+
+## F-031 · A page whose points are not whole pixels cannot rebuild to its exact size
+
+| | |
+|---|---|
+| **Severity** | LOW — bounded by one pixel, and the bound is now asserted |
+| **Status** | ✅ **BOUNDED and GUARDED** at `eaa448d` · not removable, and the reason is recorded |
+| **Found** | 2026-08-06, by adversarial review of the F-028 fix |
+
+**Description.** A raster has a whole number of pixels, so a page whose size is not a
+whole number of pixels at a given DPI cannot rebuild to its exact original size.
+
+**Measured at `eaa448d`**, `LOCAL ONLY — NOT AUTHORITATIVE`, spread across 150 / 300 /
+600 dpi:
+
+| page | source width | 150 dpi | 300 dpi | 600 dpi | spread |
+|---|---|---|---|---|---|
+| US Letter | 612.0000 pt | 612.0000 | 612.0000 | 612.0000 | **0.0000 pt** |
+| A4 | 595.2756 pt | 595.6800 | 595.4400 | 595.3200 | **0.3600 pt** |
+| A5 | 419.5276 pt | 420.0000 | 419.7600 | 419.6400 | **0.3600 pt** |
+
+**Why F-028's own guard could not see it.** Its fixture is US Letter, and 612 and 792
+are whole multiples of 72, so they divide evenly at every DPI and rebuild EXACT. The
+same shape of accident as *"96 dpi was right by accident"* — a fixture that happens to
+sit on the one value where the defect is invisible.
+
+**Why it is not fixable by preserving the source page size.** Checked before being
+claimed: the cleaner CROPS (F-030), so a cleaned page is genuinely a different page
+from its source. Forcing the source size onto it would stretch cropped content to fill
+a page it does not occupy.
+
+**Guarded by** `test_a_page_whose_points_are_not_whole_pixels_rebuilds_within_one_pixel`,
+parametrised over A4 and A5 at 150 / 300 / 600. The bound is derived, not chosen (Law
+10): one pixel is exactly `72 / dpi` points. A reintroduced scale error exceeds it
+immediately.

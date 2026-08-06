@@ -110,6 +110,12 @@ PAGES_IN_THE_TWO_PAGE_FIXTURE = 2
 #: What the first eight bytes of a PNG always are.
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
+#: PDF user space is 1/72 inch, fixed by the PDF specification. Declared here
+#: rather than imported from `pdf_backend._POINTS_PER_INCH`: a test that took
+#: the constant from the module under test would agree with it by construction,
+#: including when the module is wrong. This is arithmetic, not a chosen value.
+_POINTS_PER_INCH = 72
+
 
 def image_filters(payload: bytes) -> list[tuple[str, str]]:
     """The `/Filter` of every image object in a PDF, as PyMuPDF reports it.
@@ -430,6 +436,76 @@ def test_a_rebuilt_page_is_the_physical_size_its_pixels_represent_at_that_dpi(dp
         "Every coordinate reported against this page is wrong by that factor, "
         "and the factor changes with a render setting (F-028)."
     )
+
+
+@pytest.mark.parametrize(
+    ("label", "width", "height"),
+    [
+        # NOT US LETTER. 612 and 792 are whole multiples of 72, so they divide
+        # evenly at every DPI tried and the rebuilt page comes back EXACT — the
+        # same shape of accident as "96 dpi was right by accident". A guard
+        # written only on Letter cannot see the residual at all. Measured
+        # spread across 150/300/600 dpi: Letter 0.0000 pt, A4 0.3600, A5 0.3600.
+        ("A4", 595.2755905511812, 841.8897637795277),
+        ("A5", 419.5275590551181, 595.2755905511812),
+    ],
+)
+@pytest.mark.parametrize("dpi", [150, 300, 600])
+def test_a_page_whose_points_are_not_whole_pixels_rebuilds_within_one_pixel(
+    label: str, width: float, height: float, dpi: int
+) -> None:
+    """THE RESIDUAL OF F-028, BOUNDED SO IT CANNOT GROW.
+
+    A raster has a whole number of pixels, so a page whose size is not a whole
+    number of pixels at this DPI cannot rebuild to its exact original size. The
+    error is real and it is why the same document rebuilt at two DPIs occupies
+    two slightly different coordinate spaces.
+
+    IT IS NOT REMOVABLE BY PRESERVING THE SOURCE PAGE SIZE, and that was checked
+    before being claimed: `cleaner._crop_to_content` crops to the content box, so
+    a cleaned page is genuinely a DIFFERENT page from its source — measured, a
+    400x200 pt scan rebuilds as 223.68x90.24 pt. Forcing the source size onto it
+    would stretch cropped content to fill a page it does not occupy, which is a
+    worse lie than a third of a point.
+
+    So the honest statement is a BOUND, and the bound is derived rather than
+    chosen (Law 10): one pixel is exactly `72 / dpi` points, and no rebuild may
+    be further out than that. If a future change reintroduces a scale error, it
+    exceeds one pixel immediately and this fails.
+    """
+    blank = new_pdf()
+    try:
+        blank.new_page(width=width, height=height)
+        source = bytes(blank.tobytes())
+    finally:
+        blank.close()
+
+    opened = pdf_backend.open_pdf(source)
+    try:
+        rendered = pdf_backend.render_page_png(opened, 0, dpi=dpi)
+    finally:
+        pdf_backend.close_pdf(opened)
+    decoded = cv2.imdecode(np.frombuffer(rendered, np.uint8), cv2.IMREAD_COLOR)
+    assert decoded is not None, "the backend's own PNG did not decode"
+    png = cv2.imencode(".png", cv2.cvtColor(decoded, cv2.COLOR_BGR2GRAY))[1].tobytes()
+
+    rebuilt = pdf_backend.open_pdf(pdf_backend.pdf_of_page_images([png], dpi=dpi))
+    try:
+        rebuilt_width, rebuilt_height = pdf_backend.page_size(rebuilt, 0)
+    finally:
+        pdf_backend.close_pdf(rebuilt)
+
+    one_pixel_in_points = _POINTS_PER_INCH / dpi
+    for axis, got, wanted in (
+        ("width", rebuilt_width, width),
+        ("height", rebuilt_height, height),
+    ):
+        assert abs(got - wanted) <= one_pixel_in_points, (
+            f"{label} at {dpi} dpi rebuilt {axis} {got} pt against a source {wanted} pt — "
+            f"out by {abs(got - wanted)} pt, more than the {one_pixel_in_points} pt that "
+            "one pixel is worth. A rounding residual is bounded by one pixel; anything "
+            "larger is a scale error (F-028)."
+        )
 
 
 @pytest.mark.parametrize("dpi", [150, 300])
