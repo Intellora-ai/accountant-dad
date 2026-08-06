@@ -46,7 +46,9 @@ import sys
 import tomllib
 from importlib.metadata import packages_distributions
 
-REPO = pathlib.Path(__file__).resolve().parents[2]
+from authored_source import authored_repo_root
+
+REPO = authored_repo_root()
 PACKAGE = REPO / "src" / "accountant_dad"
 PYPROJECT = REPO / "pyproject.toml"
 

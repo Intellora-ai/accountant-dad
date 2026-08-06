@@ -381,3 +381,94 @@ def test_the_validator_looks_at_every_test_file() -> None:
         f"only {len(files)} test files found; the walk is wrong"
     )
     assert pathlib.Path(__file__).resolve() in files
+
+
+def test_no_test_derives_the_source_tree_from_its_own_location() -> None:
+    """THE THIRD SPELLING. Banning `inspect.getsource` and `<module>.__file__`
+    left one route open, and it cost a whole mutation run at `4fc7187`:
+
+        REPO = pathlib.Path(__file__).resolve().parents[2]
+        PACKAGE = REPO / "src" / "accountant_dad"
+
+    No module object, no `inspect` call — just the test file asking where it
+    is. Under mutation the test file itself lives in `mutants/`, so `PACKAGE`
+    walks the instrumented copies.
+
+    It survived because the two trees agreed on everything the reader asked.
+    mutmut 3.7.0 ended that: its dispatcher imports `mutmut` at module scope,
+    so `test_declared_dependencies` reported thirty-three modules "needing"
+    mutmut, failed the stats phase, and left all 4097 mutants unscored.
+
+    Bare `__file__` stays legal — a test locating its own fixtures is right to
+    use it. Deriving the SOURCE TREE from it is what is banned; use
+    `authored_repo_root()`.
+    """
+    offenders: list[str] = []
+    for path in _test_files():
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        rooted_in_own_location = {
+            target.id
+            for node in tree.body
+            if isinstance(node, ast.Assign) and "__file__" in ast.unparse(node.value)
+            for target in node.targets
+            if isinstance(target, ast.Name)
+        }
+        if not rooted_in_own_location:
+            continue
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div)):
+                continue
+            joined = ast.unparse(node)
+            reaches_source = '"src"' in joined or "'src'" in joined
+            if reaches_source and any(name in joined for name in rooted_in_own_location):
+                # `A / "src" / "pkg"` is two nested BinOps and would report
+                # the same line twice. A duplicated finding reads as two
+                # defects and makes the count meaningless.
+                finding = f"{path.name}:{node.lineno}"
+                if not any(o.startswith(finding) for o in offenders):
+                    offenders.append(f"{finding} {joined[:70]}")
+    assert offenders == [], (
+        "these derive the source tree from the test file's own location, which "
+        "points into `mutants/` under mutation. Use `authored_repo_root()`:\n  "
+        + "\n  ".join(sorted(offenders))
+    )
+
+
+def test_the_third_spelling_validator_catches_what_it_bans() -> None:
+    """HOLLOW-GATE DEFENCE, both directions.
+
+    The banned shape must be seen, and the legal one must NOT be — a validator
+    that flags every `__file__` would be rejected on sight and quietly deleted.
+    """
+    banned = ast.parse(
+        "import pathlib\n"
+        "REPO = pathlib.Path(__file__).resolve().parents[2]\n"
+        "PACKAGE = REPO / 'src' / 'accountant_dad'\n"
+    )
+    legal = ast.parse(
+        "import pathlib\n"
+        "HERE = pathlib.Path(__file__).parent\n"
+        "FIXTURE = HERE / 'fixtures' / 'invoice.pdf'\n"
+    )
+
+    def offences(tree: ast.Module) -> int:
+        roots = {
+            t.id
+            for n in tree.body
+            if isinstance(n, ast.Assign) and "__file__" in ast.unparse(n.value)
+            for t in n.targets
+            if isinstance(t, ast.Name)
+        }
+        return len(
+            {
+                n.lineno
+                for n in ast.walk(tree)
+                if isinstance(n, ast.BinOp)
+                and isinstance(n.op, ast.Div)
+                and ("'src'" in ast.unparse(n) or '"src"' in ast.unparse(n))
+                and any(r in ast.unparse(n) for r in roots)
+            }
+        )
+
+    assert offences(banned) == 1, "the validator misses the shape that broke the mutation run"
+    assert offences(legal) == 0, "the validator flags a test locating its own fixtures"

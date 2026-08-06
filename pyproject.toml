@@ -133,7 +133,11 @@ exclude_lines = []
 # It must be a LIST. A comma-joined string is taken as one literal path and
 # fails with FileNotFoundError: 'tools/ci,src' — measured, not assumed.
 [tool.mutmut]
-paths_to_mutate = ["src"]
+# Renamed from `paths_to_mutate` at mutmut 3.7.0, which warns on the old
+# name AND writes that warning into the results stream, where the gate
+# parsed it as a mutant status. Measured at `4fc7187`:
+#   no verdict: The config paths_to_mutate is deprecated...   1
+source_paths = ["src"]
 
 # mutmut runs the suite from a `mutants/` copy of the tree, and copies only what
 # it mutates. This repository's tests read files that are NOT code, so without

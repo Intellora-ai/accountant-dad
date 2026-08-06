@@ -112,6 +112,41 @@ def running_path(module: ModuleType) -> Path:
     return Path(inspect.getfile(module)).resolve()
 
 
+def authored_repo_root() -> Path:
+    """The repository root of the AUTHORED tree, never a mutation copy.
+
+    The third spelling of this defect, and the one that cost a whole mutation
+    run at `4fc7187`. A test that writes
+
+        REPO = pathlib.Path(__file__).resolve().parents[2]
+        PACKAGE = REPO / "src" / "accountant_dad"
+
+    is reading its OWN location — and under mutation the test file itself lives
+    in `mutants/`, so `PACKAGE` resolves to the instrumented copies. Every path
+    derived from `__file__` inherits whichever tree the test was loaded from.
+
+    It went unnoticed for as long as it did because the instrumented and
+    authored trees agreed on everything that test asked about. mutmut 3.7.0
+    ended that: its dispatcher imports `mutmut` at module scope, so
+    `test_declared_dependencies` — which derives the needed distribution set by
+    walking the package's AST — correctly reported that thirty-three modules
+    "need one of ['mutmut']", failed the stats phase, and left all 4097 mutants
+    unscored.
+
+    Bare `__file__` is not banned: a test locating its own fixtures is right to
+    use it. What must not happen is deriving the SOURCE TREE from it.
+    """
+    here = Path(__file__).resolve()
+    for index, part in enumerate(here.parts):
+        if part != MUTATION_COPY_DIRECTORY:
+            continue
+        candidate = Path(*here.parts[:index])
+        if (candidate / "pyproject.toml").is_file():
+            return candidate
+    # `tools/ci/authored_source.py` -> repository root
+    return here.parents[2]
+
+
 def authored_source(module: ModuleType) -> str:
     """The full text of `module` as authored."""
     return authored_path(module).read_text(encoding="utf-8")
