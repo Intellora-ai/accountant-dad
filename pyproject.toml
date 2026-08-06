@@ -8,10 +8,41 @@ version = "0.0.0"
 description = "CI scaffolding only. No engine, no accounting logic, no AI, no Tally."
 readme = "README.md"
 requires-python = ">=3.12"
+# DERIVED FROM THE CODE, not copied from a requirements file. `pip install
+# accountant-dad` installs exactly this list, so it must cover every third-party
+# module the package imports AT MODULE SCOPE - the imports that run when a module
+# is imported, not when a function is called. What CI happens to install is a
+# different question and is not evidence about the wheel.
+#
+# Measured on a stdlib-only interpreter with only this list installed:
+# `import accountant_dad` succeeded while `...input_engine.cleaner` raised
+# `No module named 'cv2'`, `...reader` raised `No module named 'numpy'` and
+# `...pipeline` raised `No module named 'pymupdf'`. Four of nine Engine 1
+# modules were unimportable from a correct install. `tests/unit/
+# test_declared_dependencies.py` now derives the same set structurally and
+# fails naming anything imported but undeclared, so this list cannot drift again.
+#
+# Pinned exactly, every one: an unpinned runtime dependency makes the same commit
+# validate differently on two runs. Each version is the one already pinned in
+# `requirements-engine1.txt`, copied character for character - none was chosen here.
+#
+# NOT listed, deliberately: `docling`, `pypdfium2`, `torch`, `transformers` and
+# `paddleocr`. Those are resolved through `parser.require_module()` and
+# `importlib.import_module()` INSIDE a function, so the package imports without
+# them and says which one is missing when the work that needs it is actually run
+# (`reader.py:396`). Making them install-time requirements would put ~2 GB of ML
+# wheels behind `import accountant_dad` to no purpose.
 dependencies = [
-    # Blueprint section 1 Stack names Pydantic. Pinned exactly: an unpinned
-    # runtime dependency makes the same commit validate differently on two runs.
+    # Blueprint section 1 Stack names Pydantic. Every artifact schema imports it.
     "pydantic==2.12.3",
+    # cleaner.py:96 `import cv2` - the distribution that provides `cv2`.
+    "opencv-python==5.0.0.93",
+    # cleaner.py:97, reader.py:101 `import numpy`.
+    "numpy==2.5.1",
+    # reader.py:104 `from PIL import Image` - the distribution that provides `PIL`.
+    "pillow==12.3.0",
+    # reader.py:103, pipeline.py:171 `import pymupdf`.
+    "pymupdf==1.28.0",
 ]
 
 [tool.hatch.build.targets.wheel]
