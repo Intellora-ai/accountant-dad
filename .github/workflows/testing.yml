@@ -433,6 +433,88 @@ jobs:
               sys.exit(1)
           PY
 
+  mutation-manifest:
+    name: mutation manifest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
+      - name: freeze and hash the manifest ONCE
+        run: python3 -m mutation_manifest --shards 16 --out manifest.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-manifest
+          path: manifest.json
+
+  mutation-shards:
+    name: mutation shard ${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    needs: mutation-manifest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - name: Engine 1 dependencies
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-engine1.txt
+      - name: the imported libraries are the pinned ones
+        run: tools/ci/assert_imports_match_pins.sh python3 requirements-ci.txt requirements-engine1.txt
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: mutation-manifest
+      - name: run shard ${{ matrix.shard }} of 16
+        run: python3 -m mutation_shard_runner --manifest manifest.json --shard ${{ matrix.shard }} --shard-count 16 --out shard-${{ matrix.shard }}.jsonl
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: mutation-results-shard-${{ matrix.shard }}
+          path: shard-${{ matrix.shard }}.jsonl
+
+  mutation-aggregate:
+    name: mutation aggregate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [mutation-manifest, mutation-shards]
+    if: always()
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: install tooling
+        run: python3 -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: reconcile every mutant id, then score
+        run: python3 -m mutation_aggregate --manifest mutation-manifest/manifest.json --shards 'mutation-results-shard-*/shard-*.jsonl' --expected-shards 16 --floor 93
+
   end-to-end:
     name: end-to-end
     runs-on: ubuntu-24.04
