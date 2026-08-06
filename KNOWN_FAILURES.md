@@ -1643,9 +1643,10 @@ judge it. **Merge is not discussable until every mandatory gate is at or above i
 
 | | |
 |---|---|
-| **Severity** | LOW — no wrong output. It silently constrains where a specification may be edited |
-| **Status** | ⬜ **OPEN** · worked around at `a482ad6`, not fixed |
+| **Severity** | LOW — no wrong output. It silently constrained where a specification could be edited |
+| **Status** | ✅ **CLOSED** · fixed at the root; the coordinate is gone from every identity |
 | **Found** | 2026-08-06, adding the membership test that closed F-010 |
+| **Fixed** | 2026-08-06 · **UNMEASURED on GitHub — PENDING CI** (Law 44, Law 56) |
 
 **`conformance_registry.py` pins conformance predicates to LINE NUMBERS in the locked
 documents**, and `test_the_identifier_carries_the_line_its_source_names` requires the line
@@ -1677,23 +1678,94 @@ So a documentation edit forces a rename across `src/` and four test files, or it
 happen. **In practice `ENGINE_1_INPUT_ENGINE_RULES.md` is append-only after line 626** —
 its last cited line — and nothing in the repository states that.
 
-**Workaround taken.** The membership test was placed at **§9A**, after §9, the first
-position that moves no cited line. Both cited lines verified still at 569 and 626 at
-`a482ad6`. The section says so in its own opening note, so the placement does not read as
-an arbitrary choice. **`src/` was not touched.**
-
-**Impact.** Every future edit to a locked specification hits this. The next agent will
-either discover it by a confusing red test, or renumber and strand citations silently.
+**Workaround taken at the time.** The membership test was placed at **§9A**, after §9, the
+first position that moved no cited line. **`src/` was not touched.** That workaround is now
+obsolete — §9A may sit anywhere, and so may anything else.
 
 **Root cause, stated as a class.** *A stable identifier was built out of a volatile
-coordinate.* A line number identifies a position, not a sentence; using it as an identity
-makes every document edit an identity change.
+coordinate.* A line number identifies a position, not a sentence. A sentence does not own
+its line number — **the lines above it do** — so any identity derived from it is
+invalidated by edits it has nothing to do with.
 
-**Permanent fix — not chosen here, this entry changes no mechanism.** Identify a
-prohibition by its **quoted sentence** (or a slug/anchor) and treat the line number as
-derived metadata that the drift test *recomputes* rather than asserts. The quote is already
-stored in every predicate, so the identity it needs exists. That is a change to
-`conformance_registry.py` and `test_conformance_registry.py`, both outside F-010's scope.
+**Why it was possible, past the immediate cause.** `conformance.py` did not merely permit
+the fragile form, it **required** it. `_must_name_a_line()` raised unless a source
+contained `:` and a number, so every citation in the repository was *obliged* to be the
+shape that breaks. The checker and the citation then shared the same coordinate system —
+`_line()` read by ordinal index and the quote test compared text on that index — so
+neither could see the other's mistake, and no test ever edited a document. The repository
+had already solved this exact problem once, in `tools/evidence/verify.py`, which addresses
+a passage by *(document, section, normalised quote)* with a containment proof and no line
+numbers at all. Law 15 — reuse before building — is the rule that would have prevented it.
+
+---
+
+### The fix — content-addressed citations
+
+A citation is now `document#words@digest`:
+
+```
+docs/SYSTEM_INVARIANTS.md#every-artifact-is-immuta@dd6776b727b3
+─────────────┬───────────  ──────────┬───────────  ──────┬─────
+        document        the clause's own words     SHA-256 over
+                        (readable in a diff)      (section, clause)
+```
+
+Resolution searches the document for the line whose content hashes to that digest.
+**The line number is not deleted, it is DEMOTED** — recomputed on every run, printed in
+failure messages, asserted by nothing.
+
+**The heading path is in the digest, and it is load-bearing.** Measured: **4 of 185** cited
+clauses are not unique by their own words. `docs/SYSTEM_BOUNDARIES.md` states
+`1. Create journal entries.` at two lines under an identical introducer
+(`It **MUST NEVER**:`); they are two different rules — one binds the Understanding Engine,
+one the Clarification Engine — separated only by the `##` heading above them. With the
+heading hashed in, all 185 resolve uniquely. That coupling is the correct one: renaming a
+section changes what the rules inside it govern, and it invalidates **only** the clauses
+inside that section, never the rest of the file.
+
+**Normalisation is whitespace and nothing else.** Deliberately narrower than
+`tools/evidence/model.normalise`, which folds curly quotes, dashes and NFKC forms because
+it reads PDF-extracted text. This reads markdown a human typed, where an em dash is a
+character the author chose. Wording, casing, punctuation, digits and typography all still
+have to match exactly.
+
+**The class cannot recur.** `_must_be_content_addressed` and `_must_not_be_positional`
+refuse a line-pinned source or identifier **at construction**, so such a citation cannot
+reach the inventory to be tested at all. The old guard demanded the opposite; the new one
+names F-027 in its error message.
+
+### Evidence — both directions, on the real repository
+
+`LOCAL ONLY — NOT AUTHORITATIVE` (Law 44). GitHub has not run this yet.
+
+| Experiment | Before the fix | After |
+|---|---|---|
+| 3 lines inserted at `docs/SYSTEM_INVARIANTS.md:100` | **12 tests failed** | **0 failed** |
+| 140 lines inserted at line 2 of **7** locked documents | not attempted — 1 document already broke it | **0 failed** |
+| One cited sentence reworded (`immutable` → `mostly immutable`) | red | **red, 5 tests**, each naming the rule |
+
+The third row is the one that matters as much as the first: content addressing must not
+buy stability with tolerance. An edited, deleted, or re-sectioned clause resolves to
+**nothing**, loudly.
+
+**Mutation-proven (§J.5).** Six deliberate breaks of the fix — anchor ignoring the section,
+normalisation folding case, either guard disabled, a fuzzy resolver matching on the
+readable half alone, a heading anchored under itself — **all six caught**, each by a named
+new test.
+
+**Guarded by.** `test_a_paragraph_inserted_above_a_cited_clause_does_not_break_the_citation`
+· `test_touching_the_cited_clause_itself_still_breaks_the_citation` (3 cases) ·
+`test_no_citation_in_the_inventory_is_identified_by_a_line_number` ·
+`test_no_clause_the_scanner_derives_is_identified_by_a_line_number` ·
+`test_every_citation_resolves_to_exactly_one_clause` (185 cases) ·
+`test_a_prohibition_pinned_to_a_line_number_is_refused` (3 cases) ·
+`test_normalisation_folds_whitespace_and_nothing_else` (6 cases), and ten more.
+
+**Residual, recorded not fixed.** ~1,126 `FILE.md:NNN` pointers remain in docstrings and
+prose across `src/` and `tests/`. Those are **documentation, not identities** — nothing
+resolves them, so none can redden a gate — and most live in files owned by other agents.
+Out of scope here. If one is ever promoted to an identity — resolved, asserted, or used as
+a key — it inherits this defect and needs its own entry.
 
 ---
 
@@ -1701,6 +1773,7 @@ stored in every predicate, so the identity it needs exists. That is a change to
 
 | ID | Title | Closed | Fix | Guarded by |
 |---|---|---|---|---|
+| **F-027** | A locked document is append-only after its last cited line | 2026-08-06 | Citations bind to CONTENT — `document#words@digest` over (heading path, clause). The line number is recomputed, printed, and asserted by nothing. 232 identities migrated; the fragile form is refused at construction | 17 tests, 6 mutations all caught. Both directions measured: 140 lines inserted across 7 locked docs → **0 failures**; one cited sentence reworded → **5 failures**. `LOCAL ONLY — NOT AUTHORITATIVE` |
 | **F-010** | *"Exactly four sub-engines"* vs nine modules — and whether classification is authorised | 2026-08-06 | `13ce25d`, `38b97e3`, `a482ad6` — module ≠ sub-engine; membership test stated at §9A; Amendment 5; G9.5 revised. **No code changed** | `test_package.py` — four named tests, each mutated red first. Residual (a bare type reaching the artifact) tracked by `test_the_evidence_object_has_no_document_type_field`, open under F-018 |
 | **F-003** | Stale duplicate carrying the inverted `worst_k` row | 2026-08-05 | Deleted after proving nothing depended on it and that its only unique line *was* the bug | — *(deletion; nothing to guard)* |
 | **F-002** | Two OpenCV distributions in one environment | 2026-08-05 | OCR stack separated into its own manifest | ⚠️ downgraded to PARTLY RESOLVED — see F-023 |

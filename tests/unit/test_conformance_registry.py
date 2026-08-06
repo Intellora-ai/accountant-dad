@@ -47,6 +47,8 @@ exist — which is why the against-the-real-artifact predicates live here.
 from __future__ import annotations
 
 import dataclasses
+import functools
+import hashlib
 import pathlib
 import re
 import uuid
@@ -69,6 +71,7 @@ from accountant_dad.artifacts.evidence import (
 )
 from accountant_dad.artifacts.execution import ExecutionAttemptId, ExecutionId
 from accountant_dad.conformance import (
+    ANCHOR_DIGEST,
     PHASES,
     Attribution,
     Enforcement,
@@ -77,7 +80,11 @@ from accountant_dad.conformance import (
     Prohibition,
     Registry,
     Uncovered,
+    anchor,
     attribute,
+    cite,
+    normalise_clause,
+    split_citation,
 )
 from accountant_dad.conformance_registry import (
     _CONFIDENCE,
@@ -153,6 +160,22 @@ SHORTEST_USEFUL_QUOTE = 20
 _REPO_ROOT = authored_path(accountant_dad).parent.parent.parent
 
 
+def _fixture(marker: str, document: str = "docs/DATA_FLOW.md") -> str:
+    """A well-formed citation to a clause no document states.
+
+    Construction tests need a source that clears the citation guard so the rule
+    they are actually about is the one that fires. Built by `cite` rather than
+    hand-typed, so a fixture cannot drift out of the grammar the real inventory
+    uses — and it names an invented sentence, so nothing here can quietly start
+    resolving and asserting something about a real document.
+    """
+    return cite(document, "", f"a clause invented for a test: {marker}")
+
+
+#: The one most construction tests use. Named because it appears seven times.
+_A_FIXTURE_CLAUSE = _fixture("one")
+
+
 #: The phrase the specifications use for an absolute prohibition. Deliberately
 #: ONE phrase and not a clever pattern: `never`, `cannot` and `may never` also
 #: appear, so what this scanner finds is a LOWER BOUND on what `docs/` forbids
@@ -167,15 +190,96 @@ _PROHIBITION_MARKER = re.compile(r"must never", re.IGNORECASE)
 _LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+\.)\s+\S")
 
 
-def _line(source: str) -> str:
-    """The one line `source` names, read off disk. `path:line`, 1-based."""
-    path, _, number = source.rpartition(":")
-    body = (_REPO_ROOT / path).read_text(encoding="utf-8").splitlines()
-    return body[int(number) - 1]
+#: A markdown heading, and how deep it is. The heading path a clause sits under
+#: is half of its content address — see `conformance.anchor`.
+_HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _Clause:
+    """One line of a document, addressed by what it says rather than where it is.
+
+    `number` is DERIVED. It is recomputed on every run from the file as it is
+    now, printed in failures so a human is still told where to look, and
+    asserted by nothing. That demotion is the whole of F-027's fix: the line
+    number stops being an identity and becomes a lookup result.
+    """
+
+    anchor: str
+    number: int
+    section: str
+    text: str
+
+
+@functools.cache
+def _anchored(body: str) -> tuple[_Clause, ...]:
+    """Every line of `body` that says something, with its content anchor.
+
+    Keyed on the document's TEXT, not its path or its mtime. A cache on either
+    of those would hand back a stale answer to the one test that matters here —
+    the one that edits a document in place and asks what moved (§J.6). Identical
+    bytes give an identical answer by definition, so this cache cannot lie.
+    """
+    found: list[_Clause] = []
+    stack: list[tuple[int, str]] = []
+    for number, raw in enumerate(body.splitlines(), 1):
+        text = normalise_clause(raw)
+        # A heading is anchored under its PARENT path, so it is pushed after it
+        # is recorded. Otherwise a heading would sit inside itself and renaming
+        # a section would change the section's own address twice over.
+        if text:
+            section = " > ".join(title for _, title in stack)
+            found.append(_Clause(anchor(section, raw), number, section, text))
+        heading = _HEADING.match(raw)
+        if heading:
+            level = len(heading.group(1))
+            while stack and stack[-1][0] >= level:
+                stack.pop()
+            stack.append((level, normalise_clause(heading.group(2))))
+    return tuple(found)
+
+
+def _locate(body: str, wanted: str) -> tuple[_Clause, ...]:
+    """EVERY clause in `body` whose anchor is `wanted`. Zero, one, or ambiguous.
+
+    Returns rather than raises, because both of the other answers are things a
+    test has to be able to observe: a citation to a sentence that was edited
+    away must resolve to nothing, and a document that says the same thing twice
+    in one section must be refused rather than silently resolved to whichever
+    copy came first.
+    """
+    return tuple(clause for clause in _anchored(body) if clause.anchor == wanted)
+
+
+def _resolve(source: str) -> _Clause:
+    """The one clause a repository citation names, found by CONTENT.
+
+    Exact, and loud. There is no nearest match and no fallback: a citation whose
+    sentence was edited or deleted resolves to nothing and says so, naming the
+    document and the anchor it looked for. That is the behaviour F-027's fix has
+    to keep — content addressing must not buy stability with tolerance.
+    """
+    document, wanted = split_citation(source)
+    body = (_REPO_ROOT / document).read_text(encoding="utf-8")
+    found = _locate(body, wanted)
+    if not found:
+        raise AssertionError(
+            f"{source} names no clause in {document}. The sentence it cites was "
+            f"edited or deleted — a citation resolves by content, so this is the "
+            f"one edit that must force a human to look again."
+        )
+    if len(found) > 1:
+        raise AssertionError(
+            f"{source} names {len(found)} clauses in {document}, at lines "
+            f"{[clause.number for clause in found]}. One document says the same "
+            f"thing twice in one section; cite the section that distinguishes them "
+            f"rather than letting a citation pick one."
+        )
+    return found[0]
 
 
 def _prohibition_clauses(root: pathlib.Path) -> tuple[tuple[str, str], ...]:
-    """Every prohibition clause in `root/docs`, as `(path:line, text)`.
+    """Every prohibition clause in `root/docs`, as `(citation, text)`.
 
     Derived, never listed. A count written down here would be a second source
     of truth about the specifications, and the moment somebody edited a
@@ -197,15 +301,23 @@ def _prohibition_clauses(root: pathlib.Path) -> tuple[tuple[str, str], ...]:
     """
     found: list[tuple[str, str]] = []
     for document in sorted(root.glob("docs/**/*.md")):
-        lines = document.read_text(encoding="utf-8").splitlines()
+        body = document.read_text(encoding="utf-8")
+        lines = body.splitlines()
         relative = document.relative_to(root).as_posix()
+        # ONE walk defines what a clause's address is (Law 14). The scanner
+        # chooses WHICH lines are clauses; `_anchored` decides how any line is
+        # addressed. If these two computed anchors separately they would
+        # eventually disagree, and the completeness check compares their output
+        # by set equality — so a disagreement would read as a missing rule.
+        addressed = {clause.number: clause for clause in _anchored(body)}
+
         for number, line in enumerate(lines, 1):
             if not _PROHIBITION_MARKER.search(line):
                 continue
             stripped = line.rstrip()
             introduces = stripped.endswith(":")
             if not (introduces or stripped.startswith("#")):
-                found.append((f"{relative}:{number}", stripped.strip()))
+                found.append(_cited(addressed, relative, number))
                 continue
             cursor = number
             while cursor < len(lines) and not lines[cursor].strip():
@@ -215,16 +327,37 @@ def _prohibition_clauses(root: pathlib.Path) -> tuple[tuple[str, str], ...]:
                 items.append(cursor + 1)
                 cursor += 1
             if items:
-                found.extend((f"{relative}:{at}", lines[at - 1].strip()) for at in items)
+                found.extend(_cited(addressed, relative, at) for at in items)
             elif introduces and cursor < len(lines):
-                found.append((f"{relative}:{cursor + 1}", lines[cursor].strip()))
+                found.append(_cited(addressed, relative, cursor + 1))
             else:
-                found.append((f"{relative}:{number}", stripped.strip()))
+                found.append(_cited(addressed, relative, number))
     return tuple(found)
 
 
+def _cited(addressed: dict[int, _Clause], document: str, at: int) -> tuple[str, str]:
+    """One selected line, as `(citation, text)`.
+
+    Takes the map rather than closing over it: a closure defined inside the
+    document loop would capture the LAST document's map, and every clause would
+    be addressed against the wrong file — silently, because the anchors would
+    still be well-formed.
+    """
+    clause = addressed[at]
+    return f"{document}#{clause.anchor}", clause.text
+
+
 def _quotes_its_source(prohibition: Prohibition) -> bool:
-    return prohibition.quote in _line(prohibition.source)
+    """Is the stored quote really a substring of the clause the citation names?
+
+    Both sides are normalised, because the anchor already treats two lines that
+    differ only in whitespace runs as the same clause. Comparing raw here while
+    anchoring normalised would let a citation resolve and its quote fail on a
+    difference neither markdown nor a reader can see. Nothing else is folded —
+    wording, casing, punctuation and digits all still have to match exactly.
+    """
+    clause = normalise_clause(_resolve(prohibition.source).text)
+    return normalise_clause(prohibition.quote) in clause
 
 
 def _identify(prohibition: Prohibition) -> str:
@@ -342,43 +475,52 @@ def test_a_genuine_refusal_still_reads_as_enforcement() -> None:
 
 
 @pytest.mark.parametrize("prohibition", PROHIBITIONS, ids=_identify)
-def test_every_quote_is_still_on_the_line_it_cites(prohibition: Prohibition) -> None:
+def test_every_quote_is_still_in_the_clause_it_cites(prohibition: Prohibition) -> None:
     """A citation that drifted from its document is a lie a comment cannot catch.
 
-    Verbatim substring, not a fuzzy match: a quote that has to be normalised to
-    match is a quote that has already started to diverge.
+    Substring, not a similarity score. The citation has already proved WHICH
+    sentence it names — resolving the anchor is that proof — so this asks the
+    remaining question: does the sentence stored here still say what the
+    document says?
     """
     assert _quotes_its_source(prohibition), (
         f"{prohibition.identifier} quotes {prohibition.quote!r}, but "
-        f"{prohibition.source} now reads {_line(prohibition.source)!r}"
+        f"{prohibition.source} now reads {_resolve(prohibition.source).text!r}"
     )
 
 
-def test_the_citation_check_notices_a_line_that_drifted() -> None:
-    """Mutation proof for the test above. Without this, a check that always
-    returned True would pass the whole suite and prove nothing about any
-    document."""
+def test_the_citation_check_notices_an_anchor_that_names_no_clause() -> None:
+    """Mutation proof for the test above, at the shape the new scheme has.
+
+    Under the old `path:line` scheme the mutation was `line + 1`. There is no
+    such mutation any more — that is the fix — so the equivalent is a digest
+    that no line in the document hashes to. A resolver that shrugged and
+    returned the nearest clause would pass the whole suite and prove nothing.
+    """
     real = next(item for item in PROHIBITIONS if item.identifier == IMMUTABLE)
     assert _quotes_its_source(real)
 
-    path, _, number = real.source.rpartition(":")
-    moved = dataclasses.replace(real, source=f"{path}:{int(number) + 1}")
-    assert not _quotes_its_source(moved)
+    document, found = split_citation(real.source)
+    words, _, digest = found.partition("@")
+    # One hex character, flipped. Everything else about the citation is intact.
+    flipped = "0" if digest[0] != "0" else "1"
+    with pytest.raises(AssertionError, match="names no clause"):
+        _resolve(f"{document}#{words}@{flipped}{digest[1:]}")
 
 
 def test_the_citation_check_notices_a_quote_that_was_never_there() -> None:
-    """The other direction: right line, invented sentence."""
+    """The other direction: right clause, invented sentence."""
     real = next(item for item in PROHIBITIONS if item.identifier == IMMUTABLE)
     invented = dataclasses.replace(real, quote="Artifacts may be edited in place when convenient.")
     assert not _quotes_its_source(invented)
 
 
 @pytest.mark.parametrize("prohibition", PROHIBITIONS, ids=_identify)
-def test_every_source_names_a_line_in_a_document_that_exists(prohibition: Prohibition) -> None:
-    path, _, number = prohibition.source.rpartition(":")
-    assert path.startswith("docs/"), f"{prohibition.identifier} cites {path}, outside docs/"
-    assert (_REPO_ROOT / path).is_file(), f"{prohibition.identifier} cites a missing file: {path}"
-    assert int(number) >= 1
+def test_every_source_names_a_clause_in_a_document_that_exists(prohibition: Prohibition) -> None:
+    document, _ = split_citation(prohibition.source)
+    assert document.startswith("docs/"), f"{prohibition.identifier} cites {document}, outside docs/"
+    assert (_REPO_ROOT / document).is_file(), f"{prohibition.identifier} cites a missing file"
+    assert _resolve(prohibition.source).text, f"{prohibition.identifier} resolves to nothing"
 
 
 @pytest.mark.parametrize("prohibition", PROHIBITIONS, ids=_identify)
@@ -387,25 +529,302 @@ def test_every_quote_is_long_enough_to_identify_a_sentence(prohibition: Prohibit
 
 
 @pytest.mark.parametrize("prohibition", PROHIBITIONS, ids=_identify)
-def test_the_identifier_carries_the_line_its_source_names(prohibition: Prohibition) -> None:
-    """`DOC:LINE/slug`. The line is in both halves so a finding names the exact
-    sentence, and so the two cannot drift apart silently."""
-    path, _, number = prohibition.source.rpartition(":")
-    document = path.removeprefix("docs/").removesuffix(".md")
+def test_the_identifier_names_the_document_its_source_cites(prohibition: Prohibition) -> None:
+    """`DOCUMENT/slug`, and no coordinate anywhere in it.
+
+    The line used to be in both halves, on the reasoning that a finding should
+    name the exact sentence. It did — and it also made the rule's NAME change
+    whenever anybody inserted a paragraph above it (F-027). The source now names
+    the exact sentence by its content, which is strictly more precise than a
+    line number was, so the identifier is free to be a stable name.
+    """
+    document, _ = split_citation(prohibition.source)
+    stem = document.removeprefix("docs/").removesuffix(".md")
     cited, separator, slug = prohibition.identifier.partition("/")
     assert separator == "/", f"{prohibition.identifier} has no slug"
     assert slug, f"{prohibition.identifier} has an empty slug"
-    assert cited.endswith(f":{number}"), f"{prohibition.identifier} does not name line {number}"
     # The identifier abbreviates the filename (`ENGINE_1`, not
     # `ENGINE_1_INPUT_ENGINE_RULES`); it may shorten the name, never change it.
-    assert cited.rpartition(":")[0] in document
+    assert cited in stem, f"{prohibition.identifier} names a document it does not cite"
 
 
-def test_no_two_prohibitions_cite_the_same_line() -> None:
-    """One line, one rule. Two entries on one sentence is the same prohibition
+def test_no_two_prohibitions_cite_the_same_clause() -> None:
+    """One clause, one rule. Two entries on one sentence is the same prohibition
     counted twice, which inflates coverage without adding any."""
     sources = [item.source for item in PROHIBITIONS]
     assert sorted(sources) == sorted(set(sources))
+
+
+@pytest.mark.parametrize("source", [item.source for item in PROHIBITIONS + EXCLUSIONS])
+def test_every_citation_resolves_to_exactly_one_clause(source: str) -> None:
+    """Not merely 'at least one'. Two lines with the same content in the same
+    section would let a citation pick whichever came first, and the picked one
+    could change under an edit that touched neither — a positional bug wearing a
+    content address. Measured over the live inventory: 185 citations, 185 unique
+    matches, and the four clauses that are NOT unique by their words alone are
+    separated by the heading in their digest."""
+    document, wanted = split_citation(source)
+    body = (_REPO_ROOT / document).read_text(encoding="utf-8")
+    assert len(_locate(body, wanted)) == 1
+
+
+# ── F-027: an edit above a clause must not move the clause ────────────────
+#
+# THE DEFECT, MEASURED BEFORE IT WAS FIXED. A citation used to be `path:line`
+# and a test read that ordinal line off disk. Inserting one three-line paragraph
+# at `docs/SYSTEM_INVARIANTS.md:100` — a paragraph about nothing in this
+# inventory — turned twelve tests red, six of them citations to sentences that
+# had not been touched. Nothing in the repository said so, so in practice every
+# locked document was append-only after its last cited line.
+#
+# The two tests below are the permanent guard, and they are deliberately a PAIR.
+# The first alone could be passed by a resolver that never fails; the second
+# alone could be passed by one that never succeeds. Together they pin the only
+# behaviour that is correct: an edit ELSEWHERE resolves, an edit to the cited
+# SENTENCE does not.
+
+#: A document with a clause to cite, a heading over it, and room above it.
+_A_SPEC = """# A Locked Specification
+
+## 1. The Section That Matters
+
+The engine **MUST NEVER** post an entry it cannot explain.
+
+## 2. Something Else
+"""
+
+_A_CITED_CLAUSE = "The engine **MUST NEVER** post an entry it cannot explain."
+_ITS_SECTION = "A Locked Specification > 1. The Section That Matters"
+
+
+def _spec_with_a_paragraph_inserted_above() -> str:
+    """The exact edit F-027 was found by: prose added ABOVE the cited clause."""
+    return _A_SPEC.replace(
+        "## 1. The Section That Matters",
+        "A paragraph somebody added later, about something else entirely.\n"
+        "\n"
+        "It runs to several lines, none of which state a rule.\n"
+        "\n"
+        "## 1. The Section That Matters",
+    )
+
+
+def test_a_paragraph_inserted_above_a_cited_clause_does_not_break_the_citation() -> None:
+    """F-027's regression test. The clause MOVED and the citation still resolves.
+
+    The line number is asserted to have CHANGED, and that assertion is the point.
+    Without it this test would pass on a document where nothing happened, and it
+    would be exactly the kind of green that proves nothing (§J.3). With it, the
+    only way to pass is for resolution to have found the same sentence at a
+    different position — which is the whole of the fix.
+    """
+    anchored = cite("docs/A_SPEC.md", _ITS_SECTION, _A_CITED_CLAUSE)
+    _, wanted = split_citation(anchored)
+
+    before = _locate(_A_SPEC, wanted)
+    assert len(before) == 1, "the clause must resolve in the document as written"
+
+    after = _locate(_spec_with_a_paragraph_inserted_above(), wanted)
+    assert len(after) == 1, "an edit above a cited clause must not break its citation"
+    assert after[0].text == before[0].text
+    assert after[0].number == before[0].number + 4, (
+        "the paragraph must really have moved the clause, or this test is asserting "
+        "that nothing changed"
+    )
+
+
+@pytest.mark.parametrize(
+    ("what", "edited"),
+    [
+        (
+            "edited",
+            _A_SPEC.replace(
+                "post an entry it cannot explain",
+                "post an entry it cannot fully explain",
+            ),
+        ),
+        ("deleted", _A_SPEC.replace(_A_CITED_CLAUSE + "\n", "")),
+        (
+            "moved to another section",
+            _A_SPEC.replace("## 1. The Section That Matters", "## 1. A Renamed Section"),
+        ),
+    ],
+)
+def test_touching_the_cited_clause_itself_still_breaks_the_citation(what: str, edited: str) -> None:
+    """The other direction, and the reason this fix is not 'be more tolerant'.
+
+    Content addressing must not buy stability with fuzziness. A citation whose
+    sentence was reworded, removed, or moved under a different heading resolves
+    to NOTHING — loudly — because each of those is an edit a human has to
+    reconfirm. Only edits that leave the cited sentence and its section alone are
+    invisible to a citation.
+    """
+    anchored = cite("docs/A_SPEC.md", _ITS_SECTION, _A_CITED_CLAUSE)
+    _, wanted = split_citation(anchored)
+    assert len(_locate(_A_SPEC, wanted)) == 1
+    assert _locate(edited, wanted) == (), f"a {what} clause must not still resolve"
+
+
+def test_the_resolver_refuses_a_document_that_says_the_same_thing_twice() -> None:
+    """Ambiguity is refused, never resolved to whichever copy came first.
+
+    This is the shape `docs/SYSTEM_BOUNDARIES.md` really has — `1. Create
+    journal entries.` at two lines under an identical introducer — and it is why
+    the heading is in the digest. Inside ONE section the heading cannot separate
+    them, so the only honest answer is to refuse and say where both are.
+    """
+    twice = f"## One Section\n\n{_A_CITED_CLAUSE}\n\n{_A_CITED_CLAUSE}\n"
+    _, wanted = split_citation(cite("docs/T.md", "One Section", _A_CITED_CLAUSE))
+    found = _locate(twice, wanted)
+    assert [clause.number for clause in found] == [3, 5]
+
+
+def test_the_same_clause_under_two_headings_gets_two_addresses() -> None:
+    """The positive half of the same rule, measured on the real defect.
+
+    `docs/SYSTEM_BOUNDARIES.md` forbids `1. Create journal entries.` of the
+    Understanding Engine and of the Clarification Engine, in identical words. A
+    citation that could not tell them apart would silently report one rule as
+    covering two.
+    """
+    clause = "1. Create journal entries."
+    understanding = cite(
+        "docs/SYSTEM_BOUNDARIES.md", "System Boundaries > 2. Understanding Engine", clause
+    )
+    clarification = cite(
+        "docs/SYSTEM_BOUNDARIES.md", "System Boundaries > 4. Clarification Engine", clause
+    )
+    assert understanding != clarification
+
+    body = (_REPO_ROOT / "docs/SYSTEM_BOUNDARIES.md").read_text(encoding="utf-8")
+    found = [_locate(body, split_citation(source)[1]) for source in (understanding, clarification)]
+    assert [len(match) for match in found] == [1, 1]
+    # Same words, same document, two different lines — separated only because
+    # the heading is in the digest.
+    assert found[0][0].number != found[1][0].number
+    assert found[0][0].text == found[1][0].text == clause
+
+
+# ── F-027: no identity in this repository is a coordinate ─────────────────
+
+
+def test_no_citation_in_the_inventory_is_identified_by_a_line_number() -> None:
+    """The invariant, asserted over every identity the registry actually holds.
+
+    Read off the live objects rather than off the source text, because the text
+    is where the OLD form is legitimately quoted — the module docstrings explain
+    what F-027 was, and they have to be able to name it. What may not carry a
+    coordinate is a thing the machinery RESOLVES.
+    """
+    positional = re.compile(r":\d+")
+    offenders = sorted(
+        f"{kind}: {value}"
+        for kind, value in (
+            [("prohibition source", item.source) for item in PROHIBITIONS]
+            + [("prohibition identifier", item.identifier) for item in PROHIBITIONS]
+            + [("exclusion source", item.source) for item in EXCLUSIONS]
+            + [("exclusion restates", item.restates or "") for item in EXCLUSIONS]
+            + [("control names", control.prohibition) for control in CONTROLS]
+        )
+        if positional.search(value)
+    )
+    assert offenders == [], (
+        "these identities are pinned to a line number. A line is a coordinate the "
+        "cited sentence does not own, so anything named after one changes whenever "
+        "a paragraph is inserted above it (F-027)."
+    )
+
+
+def test_no_clause_the_scanner_derives_is_identified_by_a_line_number() -> None:
+    """The other side of the set the completeness check compares.
+
+    Both sides have to be content addresses or the comparison is meaningless —
+    and if the scanner alone reverted to line numbers, every clause in `docs/`
+    would read as unaccounted for rather than as mis-addressed.
+    """
+    positional = re.compile(r":\d+")
+    derived = [source for source, _ in _prohibition_clauses(_REPO_ROOT)]
+    assert derived, "the scanner found nothing, so this asserts nothing"
+    assert [source for source in derived if positional.search(source)] == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "docs/DATA_FLOW.md:1",
+        "docs/DATA_FLOW.md",
+        "docs/DATA_FLOW.md#not-an-anchor",
+        "docs/DATA_FLOW.md#words@tooshort",
+        "docs/DATA_FLOW.md#words@ZZZZZZZZZZZZ",
+        "#a-clause@0123456789ab",
+    ],
+)
+def test_an_exclusion_that_is_not_content_addressed_cannot_be_built(source: str) -> None:
+    """Refused at construction, so a malformed citation never reaches the list.
+
+    That matters more for an exclusion than for a prohibition: a bad prohibition
+    makes a control fail, and a failing control is loud. A bad exclusion makes a
+    live clause LOOK accounted for, and nothing downstream ever runs it.
+    """
+    with pytest.raises(ValueError):
+        _unwitnessable(source, _A_REASON)
+
+
+def test_the_anchor_of_a_blank_line_is_refused() -> None:
+    """A blank line states no clause, so it has no content to be addressed by.
+
+    Minting one would give every blank line in `docs/` the same address, and the
+    resolver would then refuse every one of them for ambiguity — a real defect
+    reported as a confusing one."""
+    with pytest.raises(ValueError, match="blank line states no clause"):
+        anchor("A Section", "   \t  ")
+
+
+def test_two_clauses_that_differ_only_in_whitespace_are_one_clause() -> None:
+    """Markdown renders `a  b` and `a b` identically, so a table reformat is not
+    an edit to a rule. This is the ONLY thing normalisation folds — the test
+    below proves nothing else is."""
+    assert anchor("A Section", "1.  Create   journal entries.") == anchor(
+        "A Section", "1. Create journal entries."
+    )
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        "1. Create journal entry.",
+        "1. create journal entries.",
+        "1. Create journal entries",
+        "1. Create journal entries!",
+        "2. Create journal entries.",
+        "1. Create journal entries.—",
+    ],
+)
+def test_normalisation_folds_whitespace_and_nothing_else(changed: str) -> None:
+    """Wording, casing, punctuation, digits and typography all still count.
+
+    `tools/evidence/model.normalise` folds curly quotes and dashes because it
+    reads text a PDF extractor mangled. This one reads markdown a human typed,
+    where an em dash is a character the author chose — folding it would let an
+    edit to a locked document pass unnoticed, and F-027's fix must not buy
+    stability with strictness.
+    """
+    assert anchor("A Section", changed) != anchor("A Section", "1. Create journal entries.")
+
+
+def test_the_digest_is_the_declared_width_of_a_sha256_over_section_and_clause() -> None:
+    """Pinned to the real construction, so a digest that silently became a
+    truncated hash of the section alone — or of nothing — is red. A resolver
+    cannot notice that: every anchor would still be self-consistent."""
+    section, clause = "A Section", "A clause that states a rule."
+    expected = hashlib.sha256(
+        normalise_clause(section).encode() + b"\x00" + normalise_clause(clause).encode() + b"\x00"
+    ).hexdigest()[:ANCHOR_DIGEST]
+    words, separator, digest = anchor(section, clause).partition("@")
+    assert separator == "@"
+    assert digest == expected
+    assert len(digest) == ANCHOR_DIGEST
+    assert words == "a-clause-that-states-a-r"
 
 
 # ── every clause in docs/ is accounted for ────────────────────────────────
@@ -464,7 +883,7 @@ def test_no_exclusion_excuses_a_line_that_is_not_a_clause() -> None:
 def test_an_exclusion_with_no_reason_is_refused() -> None:
     """An unexplained exclusion is an omission with a nicer name."""
     with pytest.raises(ValueError, match="needs a reason"):
-        _unwitnessable("docs/DATA_FLOW.md:1", "   ")
+        _unwitnessable(_A_FIXTURE_CLAUSE, "   ")
 
 
 def test_an_exclusion_with_no_source_is_refused() -> None:
@@ -475,7 +894,7 @@ def test_an_exclusion_with_no_source_is_refused() -> None:
 def test_an_exclusion_attributed_to_a_whole_document_is_refused() -> None:
     """Same rule a prohibition lives under: without a line it cannot be
     re-checked when the document changes."""
-    with pytest.raises(ValueError, match="must name a line"):
+    with pytest.raises(ValueError, match="names no clause"):
         _unwitnessable("docs/DATA_FLOW.md", _A_REASON)
 
 
@@ -483,7 +902,7 @@ def test_a_restatement_that_names_no_rule_is_refused() -> None:
     """'Covered somewhere else' is not a citation, and it is the single
     easiest way to make a clause disappear while looking handled."""
     with pytest.raises(ValueError, match="must name the rule"):
-        _restates("docs/DATA_FLOW.md:1", "   ", _A_REASON)
+        _restates(_A_FIXTURE_CLAUSE, "   ", _A_REASON)
 
 
 def test_only_a_restatement_may_name_a_rule_that_carries_it() -> None:
@@ -491,7 +910,7 @@ def test_only_a_restatement_may_name_a_rule_that_carries_it() -> None:
     and denying it in the same entry."""
     with pytest.raises(ValueError, match="only a restatement"):
         Exclusion(
-            source="docs/DATA_FLOW.md:1",
+            source=_A_FIXTURE_CLAUSE,
             kind=Uncovered.UNWITNESSABLE,
             reason=_A_REASON,
             restates=IMMUTABLE,
@@ -503,7 +922,7 @@ def test_a_debt_with_no_due_date_is_refused() -> None:
     reasoning that makes a review-only prohibition carry an expiry."""
     with pytest.raises(ValueError, match="must name the phase"):
         Exclusion(
-            source="docs/DATA_FLOW.md:1",
+            source=_A_FIXTURE_CLAUSE,
             kind=Uncovered.NOT_YET_A_PREDICATE,
             reason=_A_REASON,
         )
@@ -512,7 +931,7 @@ def test_a_debt_with_no_due_date_is_refused() -> None:
 @pytest.mark.parametrize("bad", ["P1", "P7", "later", "soon", "", "p4"])
 def test_a_debt_due_at_something_that_is_not_a_phase_is_refused(bad: str) -> None:
     with pytest.raises(ValueError, match="is not a phase"):
-        _not_yet("docs/DATA_FLOW.md:1", _A_REASON, bad)
+        _not_yet(_A_FIXTURE_CLAUSE, _A_REASON, bad)
 
 
 def test_a_clause_no_artifact_can_witness_cannot_come_due() -> None:
@@ -520,16 +939,16 @@ def test_a_clause_no_artifact_can_witness_cannot_come_due() -> None:
     promise nobody can keep, quietly aging in a list."""
     with pytest.raises(ValueError, match="only a clause that is 'not yet a predicate'"):
         Exclusion(
-            source="docs/DATA_FLOW.md:1",
+            source=_A_FIXTURE_CLAUSE,
             kind=Uncovered.UNWITNESSABLE,
             reason=_A_REASON,
             expiry="P4",
         )
 
 
-def test_two_exclusions_may_not_name_the_same_line() -> None:
+def test_two_exclusions_may_not_name_the_same_clause() -> None:
     """The second is invisible, and a reason nobody reads is not a reason."""
-    with pytest.raises(ValueError, match="two exclusions name the line"):
+    with pytest.raises(ValueError, match="two exclusions name the clause"):
         Registry(
             PROHIBITIONS,
             CONTROLS,
@@ -537,7 +956,7 @@ def test_two_exclusions_may_not_name_the_same_line() -> None:
         )
 
 
-def test_a_line_may_not_be_both_cited_by_a_rule_and_excluded() -> None:
+def test_a_clause_may_not_be_both_cited_by_a_rule_and_excluded() -> None:
     """One of the two is false — either the rule is enforced or it is not — and
     a reader believing the wrong one is exactly the state this refuses."""
     with pytest.raises(ValueError, match="both cited by a prohibition and listed"):
@@ -555,11 +974,11 @@ def test_an_exclusion_may_not_be_excused_by_a_rule_nobody_wrote_down() -> None:
         Registry(
             PROHIBITIONS,
             CONTROLS,
-            (*EXCLUSIONS, _restates("docs/DATA_FLOW.md:1", "a rule nobody wrote", _A_REASON)),
+            (*EXCLUSIONS, _restates(_A_FIXTURE_CLAUSE, "a rule nobody wrote", _A_REASON)),
         )
 
 
-def test_the_accounted_for_set_is_every_cited_line_and_every_excluded_one() -> None:
+def test_the_accounted_for_set_is_every_cited_clause_and_every_excluded_one() -> None:
     """The set the completeness check reads. Built from both halves, so a
     registry that quietly dropped its exclusions would report every excluded
     clause as missing rather than as fine."""
@@ -592,12 +1011,33 @@ def test_the_clause_scanner_reads_the_documents_and_not_a_fixture() -> None:
     vacuously and prove nothing about any document. Pinned against two clauses
     whose text is asserted verbatim — one plain, one expanded out of a header."""
     found = dict(_prohibition_clauses(_REPO_ROOT))
-    assert found["docs/SYSTEM_INVARIANTS.md:209"] == (
-        "**Execution must never discover that posting was impossible.**"
+    plain = "**Execution must never discover that posting was impossible.**"
+    assert (
+        found[
+            cite(
+                "docs/SYSTEM_INVARIANTS.md",
+                "INV-8 — Permission to execute is decided before execution",
+                plain,
+            )
+        ]
+        == plain
     )
-    # Line 314 carries no marker of its own. It is here only because line 312,
-    # `The Input Engine **MUST NEVER**:`, was expanded into its list.
-    assert found["docs/ENGINE_1_INPUT_ENGINE_RULES.md:314"] == "1. Decide transaction type."
+    # This clause carries no marker of its own. It is here only because `The
+    # Input Engine **MUST NEVER**:` above it was expanded into its list. The
+    # heading it sits under is asserted too, because the heading is half of the
+    # address — a scanner that anchored clauses without their section would
+    # collapse the four measured duplicate clauses onto one citation.
+    expanded = "1. Decide transaction type."
+    assert (
+        found[
+            cite(
+                "docs/ENGINE_1_INPUT_ENGINE_RULES.md",
+                "6. Absolute Engine Boundaries",
+                expanded,
+            )
+        ]
+        == expanded
+    )
 
 
 def test_the_clause_scanner_finds_a_prohibition_a_document_did_not_have_before(
@@ -620,13 +1060,14 @@ def test_the_clause_scanner_finds_a_prohibition_a_document_did_not_have_before(
         "A closing line that must never be read as a list item.\n",
         encoding="utf-8",
     )
+    heading = "A document nobody wrote"
+    first = "1. Do the first forbidden thing."
+    second = "2. Do the second forbidden thing."
+    closing = "A closing line that must never be read as a list item."
     assert _prohibition_clauses(tmp_path) == (
-        ("docs/INVENTED.md:5", "1. Do the first forbidden thing."),
-        ("docs/INVENTED.md:6", "2. Do the second forbidden thing."),
-        (
-            "docs/INVENTED.md:8",
-            "A closing line that must never be read as a list item.",
-        ),
+        (cite("docs/INVENTED.md", heading, first), first),
+        (cite("docs/INVENTED.md", heading, second), second),
+        (cite("docs/INVENTED.md", heading, closing), closing),
     )
 
 
@@ -642,9 +1083,8 @@ def test_the_clause_scanner_takes_the_sentence_when_a_header_introduces_prose(
         "Validation **MUST NEVER**:\n\ninvent facts · ask users · post transactions.\n",
         encoding="utf-8",
     )
-    assert _prohibition_clauses(tmp_path) == (
-        ("docs/PROSE.md:3", "invent facts · ask users · post transactions."),
-    )
+    sentence = "invent facts · ask users · post transactions."
+    assert _prohibition_clauses(tmp_path) == ((cite("docs/PROSE.md", "", sentence), sentence),)
 
 
 def test_the_clause_scanner_keeps_a_heading_that_introduces_no_list(
@@ -659,24 +1099,28 @@ def test_the_clause_scanner_keeps_a_heading_that_introduces_no_list(
         "## What it must never do\n\n```text\nSomething forbidden\n```\n",
         encoding="utf-8",
     )
-    assert _prohibition_clauses(tmp_path) == (("docs/FENCED.md:1", "## What it must never do"),)
+    # A heading is addressed under its PARENT path, so this one's section is
+    # empty — it is the outermost heading in its document.
+    only = "## What it must never do"
+    assert _prohibition_clauses(tmp_path) == ((cite("docs/FENCED.md", "", only), only),)
 
 
 @pytest.mark.parametrize("exclusion", EXCLUSIONS, ids=lambda item: item.source)
-def test_every_exclusion_names_a_line_that_exists_in_the_document_it_cites(
+def test_every_exclusion_names_a_clause_that_exists_in_the_document_it_cites(
     exclusion: Exclusion,
 ) -> None:
     """The same re-checkability a prohibition owes. An exclusion citing a file
-    that moved, or a line past the end of one, excuses a clause nobody can find.
+    that moved, or a sentence that was rewritten, excuses a clause nobody can
+    find — and an exclusion is the more dangerous of the two to get wrong,
+    because a stale one makes a live clause LOOK accounted for.
 
-    That the line is a real CLAUSE is the neighbouring test's job — some are
-    the prose sentence under a `MUST NEVER:` header and carry no marker of
+    That the clause is a real PROHIBITION is the neighbouring test's job — some
+    are the prose sentence under a `MUST NEVER:` header and carry no marker of
     their own, which is exactly why the scanner reaches for them."""
-    path, _, number = exclusion.source.rpartition(":")
-    assert path.startswith("docs/"), f"{exclusion.source} cites {path}, outside docs/"
-    assert (_REPO_ROOT / path).is_file(), f"{exclusion.source} cites a missing file"
-    assert int(number) >= 1
-    assert _line(exclusion.source).strip(), f"{exclusion.source} names a blank line"
+    document, _ = split_citation(exclusion.source)
+    assert document.startswith("docs/"), f"{exclusion.source} cites {document}, outside docs/"
+    assert (_REPO_ROOT / document).is_file(), f"{exclusion.source} cites a missing file"
+    assert _resolve(exclusion.source).text, f"{exclusion.source} resolves to nothing"
 
 
 @pytest.mark.parametrize("exclusion", EXCLUSIONS, ids=lambda item: item.source)
@@ -1225,14 +1669,14 @@ def test_the_predicate_builder_keeps_every_field_and_marks_it_enforced_now() -> 
     no expiry, so `__post_init__` has nothing to object to and the malformed
     entry is filed silently."""
     assert _predicate(
-        "SYSTEM_INVARIANTS:1/a-slug-no-real-entry-uses",
+        "SYSTEM_INVARIANTS/a-slug-no-real-entry-uses",
         _A_QUOTE,
-        "docs/SYSTEM_INVARIANTS.md:1",
+        _fixture("invariants", "docs/SYSTEM_INVARIANTS.md"),
         "a subject no real entry names",
     ) == Prohibition(
-        identifier="SYSTEM_INVARIANTS:1/a-slug-no-real-entry-uses",
+        identifier="SYSTEM_INVARIANTS/a-slug-no-real-entry-uses",
         quote=_A_QUOTE,
-        source="docs/SYSTEM_INVARIANTS.md:1",
+        source=_fixture("invariants", "docs/SYSTEM_INVARIANTS.md"),
         subject="a subject no real entry names",
         enforcement=Enforcement.PREDICATE,
         expiry=None,
@@ -1246,15 +1690,15 @@ def test_the_review_only_builder_keeps_every_field_including_the_end_date() -> N
     not-None: an expiry pinned to a constant phase would outlive every entry
     that named a later one."""
     assert _review_only(
-        "SYSTEM_BOUNDARIES:2/another-slug-no-real-entry-uses",
+        "SYSTEM_BOUNDARIES/another-slug-no-real-entry-uses",
         _ANOTHER_QUOTE,
-        "docs/SYSTEM_BOUNDARIES.md:2",
+        _fixture("boundaries", "docs/SYSTEM_BOUNDARIES.md"),
         "another subject no real entry names",
         "P5",
     ) == Prohibition(
-        identifier="SYSTEM_BOUNDARIES:2/another-slug-no-real-entry-uses",
+        identifier="SYSTEM_BOUNDARIES/another-slug-no-real-entry-uses",
         quote=_ANOTHER_QUOTE,
-        source="docs/SYSTEM_BOUNDARIES.md:2",
+        source=_fixture("boundaries", "docs/SYSTEM_BOUNDARIES.md"),
         subject="another subject no real entry names",
         enforcement=Enforcement.REVIEW_ONLY,
         expiry="P5",
@@ -1265,7 +1709,7 @@ def test_the_review_only_builder_keeps_every_field_including_the_end_date() -> N
 def test_the_review_only_builder_passes_each_phase_through_unchanged(expiry: str) -> None:
     """Every declared phase, so no single hard-coded one can impersonate the
     argument."""
-    assert _review_only("D:3/s", _A_QUOTE, "docs/DATA_FLOW.md:3", "a subject", expiry).expiry == (
+    assert _review_only("D/three", _A_QUOTE, _fixture("three"), "a subject", expiry).expiry == (
         expiry
     )
 
@@ -1274,8 +1718,8 @@ def test_the_two_builders_disagree_about_exactly_one_field() -> None:
     """The enforcement, and nothing else. If they ever diverged elsewhere, the
     inventory would hold two shapes of entry and the counts above would be
     counting different things."""
-    enforced = _predicate("D:4/s", _A_QUOTE, "docs/DATA_FLOW.md:4", "a subject")
-    exempt = _review_only("D:4/s", _A_QUOTE, "docs/DATA_FLOW.md:4", "a subject", "P3")
+    enforced = _predicate("D/four", _A_QUOTE, _fixture("four"), "a subject")
+    exempt = _review_only("D/four", _A_QUOTE, _fixture("four"), "a subject", "P3")
     differing = {
         field.name
         for field in dataclasses.fields(enforced)
@@ -1294,9 +1738,9 @@ def test_the_control_builder_keeps_both_payloads_and_declares_the_refusal() -> N
     enforcement while all 47 stay green."""
     clean = _evidence
     violating = _journal_line
-    built = _control("D:5/s", clean=clean, violating=violating)
+    built = _control("D/five", clean=clean, violating=violating)
     assert built == NegativeControl(
-        "D:5/s", clean=clean, violating=violating, refusal=(ValidationError,)
+        "D/five", clean=clean, violating=violating, refusal=(ValidationError,)
     )
     assert built.clean is clean
     assert built.violating is violating
@@ -1307,29 +1751,29 @@ def test_the_four_exclusion_builders_each_produce_their_own_kind() -> None:
     asserted whole, by equality: a builder that dropped `reason` or swapped a
     kind would still produce a legal `Exclusion`, and 140 entries would quietly
     change meaning without one test going red."""
-    assert _not_a_prohibition("docs/DATA_FLOW.md:6", _A_REASON) == Exclusion(
-        source="docs/DATA_FLOW.md:6",
+    assert _not_a_prohibition(_fixture("six"), _A_REASON) == Exclusion(
+        source=_fixture("six"),
         kind=Uncovered.NOT_A_PROHIBITION,
         reason=_A_REASON,
         restates=None,
         expiry=None,
     )
-    assert _restates("docs/DATA_FLOW.md:7", IMMUTABLE, _A_REASON) == Exclusion(
-        source="docs/DATA_FLOW.md:7",
+    assert _restates(_fixture("seven"), IMMUTABLE, _A_REASON) == Exclusion(
+        source=_fixture("seven"),
         kind=Uncovered.RESTATEMENT,
         reason=_A_REASON,
         restates=IMMUTABLE,
         expiry=None,
     )
-    assert _unwitnessable("docs/DATA_FLOW.md:8", _A_REASON) == Exclusion(
-        source="docs/DATA_FLOW.md:8",
+    assert _unwitnessable(_fixture("eight"), _A_REASON) == Exclusion(
+        source=_fixture("eight"),
         kind=Uncovered.UNWITNESSABLE,
         reason=_A_REASON,
         restates=None,
         expiry=None,
     )
-    assert _not_yet("docs/DATA_FLOW.md:9", _A_REASON, "P6") == Exclusion(
-        source="docs/DATA_FLOW.md:9",
+    assert _not_yet(_fixture("nine"), _A_REASON, "P6") == Exclusion(
+        source=_fixture("nine"),
         kind=Uncovered.NOT_YET_A_PREDICATE,
         reason=_A_REASON,
         restates=None,
@@ -1341,7 +1785,7 @@ def test_the_four_exclusion_builders_each_produce_their_own_kind() -> None:
 def test_the_debt_builder_passes_each_phase_through_unchanged(expiry: str) -> None:
     """Every declared phase, so no single hard-coded one can impersonate the
     argument and make every debt come due at the same time."""
-    assert _not_yet("docs/DATA_FLOW.md:10", _A_REASON, expiry).expiry == expiry
+    assert _not_yet(_fixture("ten"), _A_REASON, expiry).expiry == expiry
 
 
 def test_every_exclusion_in_the_real_list_matches_what_its_builder_produces() -> None:

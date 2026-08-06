@@ -25,7 +25,7 @@ Updated: **2026-08-06**
 | **F-018** | **Three Engine 1 modules are wired to nothing** — `classification`, `config`, `measurement` have zero consumers in `src/`. Same shape as F-012 | 🔄 agent wiring it |
 | **F-010** | *"Exactly four sub-engines"* vs nine modules, and classification's authorisation | ✅ **closed 2026-08-06.** See below |
 | **F-016** | Mutation cannot run on macOS — mutmut forks, `fork()` after OpenCV/torch segfaults | ⬜ unfixable locally; CI is the only route |
-| **F-027** | A locked document is append-only after its last cited line, and nothing says so | ⬜ open · worked around, not fixed |
+| **F-027** | A locked document is append-only after its last cited line, and nothing says so | ✅ **closed** · citations are content-addressed; line numbers are derived, not identities |
 
 **Why F-010 closed, and it blocks nothing now.** The owner delegated the decision to
 engineering on 2026-08-06. Both halves are answered and neither needed him.

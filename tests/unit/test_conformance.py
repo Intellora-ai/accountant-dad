@@ -19,13 +19,23 @@ from accountant_dad.conformance import (
     Prohibition,
     Registry,
     attribute,
+    cite,
 )
 
-SOURCE = "docs/ENGINE_5_VALIDATION_ENGINE_RULES.md:467"
+#: A real citation, built the only way one may be built. The clause and heading
+#: are the live text of `ENGINE_5_VALIDATION_ENGINE_RULES.md`, so this fixture
+#: stays an example of the real thing rather than a plausible-looking string.
+SOURCE = cite(
+    "docs/ENGINE_5_VALIDATION_ENGINE_RULES.md",
+    "10. Sub-Engine Specifications > 10.6 `validation_decision` > Failure Behaviour",
+    "**Every blocking issue must appear inside the Validation Decision.** No approval "
+    "exists while a Critical finding remains. Every rejection names the **responsible "
+    "engine** and the recommended next step.",
+)
 
 
 def rule(
-    identifier: str = "ENGINE_5:467/no-approval-while-critical-stands",
+    identifier: str = "ENGINE_5/no-approval-while-critical-stands",
     *,
     enforcement: Enforcement = Enforcement.PREDICATE,
     expiry: str | None = None,
@@ -52,7 +62,7 @@ def fine() -> object:
 # ── a prohibition must be re-checkable ────────────────────────────────────
 
 
-def test_a_prohibition_records_the_line_it_came_from() -> None:
+def test_a_prohibition_records_the_clause_it_came_from() -> None:
     assert rule().source == SOURCE
 
 
@@ -75,15 +85,50 @@ def test_a_prohibition_with_a_blank_field_is_refused(field: str) -> None:
     ["docs/SYSTEM_INVARIANTS.md", "SYSTEM_BOUNDARIES", "a whole document"],
 )
 def test_a_prohibition_attributed_to_a_whole_document_is_refused(source: str) -> None:
-    """A rule with no line cannot be re-checked when the document changes, and
+    """A rule with no clause cannot be re-checked when the document changes, and
     an inventory that cannot be re-checked stops describing the system the
     moment anyone edits a spec."""
-    with pytest.raises(ValueError, match="must name a line"):
+    with pytest.raises(ValueError, match="names no clause"):
         rule(source=source)
 
 
-def test_a_line_number_is_enough_to_be_re_checkable() -> None:
-    assert rule(source="docs/DATA_FLOW.md:693").source.endswith(":693")
+@pytest.mark.parametrize(
+    "source",
+    [
+        "docs/DATA_FLOW.md:693",
+        "docs/DATA_FLOW.md#a-clause@0123456789ab:12",
+        "docs/DATA_FLOW.md:693#a-clause@0123456789ab",
+    ],
+)
+def test_a_prohibition_pinned_to_a_line_number_is_refused(source: str) -> None:
+    """F-027, closed at the type. A line is a coordinate the cited sentence does
+    not own, so a rule built from one moves whenever anything above it moves —
+    which made every locked document append-only after its last cited line.
+
+    The old guard here demanded the OPPOSITE and this test asserted it:
+    `rule(source="docs/DATA_FLOW.md:693")` was the proof a citation was
+    re-checkable. It is now the proof it is not. All three shapes are refused,
+    including the two that bury the coordinate beside a valid anchor — a
+    citation is not half content-addressed.
+    """
+    with pytest.raises(ValueError, match="identifies a clause by its LINE NUMBER"):
+        rule(source=source)
+
+
+def test_a_prohibition_named_after_a_line_number_is_refused() -> None:
+    """The other half of the same defect. The identifier used to be
+    `DOC:LINE/slug`, and that line number was quoted in prose across `src/` and
+    four test files — so moving a cited sentence meant renaming a rule
+    everywhere, or not editing the document. It meant not editing the document.
+    """
+    with pytest.raises(ValueError, match="carries a line number"):
+        rule(identifier="ENGINE_5:467/no-approval-while-critical-stands")
+
+
+def test_a_content_anchor_is_what_makes_a_prohibition_re_checkable() -> None:
+    """The positive case, so the guard above is not merely 'refuse everything'."""
+    source = cite("docs/DATA_FLOW.md", "A section", "A clause that states a rule.")
+    assert rule(source=source).source == source
 
 
 # ── an exemption must have an end date ────────────────────────────────────

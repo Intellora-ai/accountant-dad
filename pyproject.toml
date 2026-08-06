@@ -140,7 +140,8 @@ paths_to_mutate = ["src"]
 # this they fail on a missing path rather than on a surviving mutant:
 #
 #   docs/                the conformance registry reads every cited document and
-#                        asserts each quote is still on the line it cites
+#                        resolves each citation by CONTENT, so the clause it
+#                        names has to still be in the file (F-027)
 #   .github/workflows/   the gate and step ratchets read the REAL workflows
 #   pyproject.toml       the packaging and coverage-config assertions read it
 #   requirements-ci.txt  pinned-version assertions read it
