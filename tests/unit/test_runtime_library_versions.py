@@ -72,6 +72,7 @@ import importlib.util
 import pathlib
 import re
 import sys
+import sysconfig
 from types import ModuleType
 
 import pytest
@@ -360,6 +361,96 @@ def test_no_checked_import_name_is_provided_by_two_installed_distributions() -> 
         f"an import name is claimed by more than one installed distribution: {shared}. "
         "Whichever was installed last is the one that answers `import`."
     )
+
+
+#: Where an installed distribution's code is allowed to live. Anything else on
+#: `sys.path` outranks these, and `sys.path` is not a fixed quantity: five CI
+#: jobs run with `PYTHONPATH=tools/ci:src`, so those two directories already
+#: shadow every installed package.
+INSTALLED_LOCATIONS = frozenset(
+    pathlib.Path(sysconfig.get_paths()[key]).resolve() for key in ("purelib", "platlib")
+)
+
+
+def loaded_from_an_installed_location(module: ModuleType) -> bool:
+    """Whether `module` came from where pip put it.
+
+    A module with no file at all — a namespace package, a built-in, a frozen
+    module — cannot be a file-shadow and is accepted. Refusing those would fire
+    on a correct environment, and a guard that does that gets switched off.
+    """
+    try:
+        origin = running_path(module)
+    except (TypeError, OSError):
+        return True
+    return any(root in origin.parents for root in INSTALLED_LOCATIONS)
+
+
+def test_every_checked_library_is_loaded_from_where_it_was_installed() -> None:
+    """MEASURED HOLE, not a hypothetical one.
+
+    Every other assertion in this file imports a module and then asks it what
+    version it is. None of them asked WHERE IT CAME FROM. So a file named
+    `cv2.py`, earlier on `sys.path` than site-packages, containing one line:
+
+        __version__ = "5.0.0"
+
+    satisfied all nine tests here. Measured: with that file planted and
+    `PYTHONPATH` pointing at it, this module reported `9 passed`, and
+    `assert_imports_match_pins.sh` reported "every pinned distribution is
+    installed, unshadowed, and imports at its pin". Both were reading a
+    twenty-byte stand-in that contains no computer vision whatsoever.
+
+    This is the same defect as the one this file was written for, one level
+    further out. `packages_distributions()` answers a question about what is
+    INSTALLED. `import` answers a question about what is on `sys.path`. Those
+    are the same only while nothing has been placed in front.
+    """
+    shadowed: list[str] = []
+    for root in sorted(PRESENT):
+        module = importlib.import_module(root)
+        if not loaded_from_an_installed_location(module):
+            shadowed.append(f"{root}: loaded from {running_path(module)}")
+    assert not shadowed, (
+        "a pinned library is being imported from outside its installed location:\n"
+        + "\n".join(shadowed)
+        + "\nWhatever is at that path answers `import`, and every version assertion "
+        "in this file would be answered by it rather than by the package."
+    )
+
+
+def test_a_library_loaded_from_outside_the_installed_locations_is_rejected(
+    tmp_path: pathlib.Path,
+) -> None:
+    """RED PROOF for the test above, in process.
+
+    Built from a real module object loaded off a real path rather than by
+    planting a file on `sys.path` — planting one would change what every other
+    test in this session imports, and a guard proved by corrupting its own
+    process is not proved.
+    """
+    impostor = tmp_path / "cv2.py"
+    impostor.write_text('__version__ = "5.0.0"\n', encoding="utf-8")
+    specification = importlib.util.spec_from_file_location("cv2_impostor", impostor)
+    assert specification is not None and specification.loader is not None
+    planted = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(planted)
+
+    assert reported_version(planted) == "5.0.0", (
+        "the impostor must satisfy the version check — that is what makes it "
+        "dangerous, and a version check alone cannot tell it from OpenCV"
+    )
+    assert not loaded_from_an_installed_location(planted), (
+        f"{impostor} is not an installed location and must be rejected"
+    )
+
+    #: The inverse. A predicate that rejected everything would make the test
+    #: above pass while guarding nothing.
+    assert PRESENT, "no pinned library is installed; the predicate is never exercised"
+    for root in sorted(PRESENT):
+        assert loaded_from_an_installed_location(importlib.import_module(root)), (
+            f"{root} is correctly installed and must not be reported as a shadow"
+        )
 
 
 def test_every_pinned_import_is_either_checked_or_named_absent() -> None:

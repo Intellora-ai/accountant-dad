@@ -87,16 +87,104 @@ done
 "$PYTHON" - "$@" <<'PY'
 import importlib
 import importlib.metadata as metadata
+import importlib.util
 import pathlib
 import re
 import sys
+import sysconfig
 
 PIN = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;#]+)")
+
+# ── what counts as a self-reported version ──────────────────────────────
+#
+# `__version__` is a CONVENTION, not a rule, and treating it as the rule left
+# real pins verified by nothing. Measured on this repository: `pypdfium2` — an
+# Engine 1 library that `parser.py` loads — exposes no `__version__` at all. It
+# exposes `PYPDFIUM_INFO`. Every one of its four top-level modules therefore
+# printed "(exposes no __version__)" and the run still ended in
+# "every pinned distribution ... imports at its pin", having verified NOTHING
+# about pypdfium2's version.
+#
+# The list is the same one `tests/unit/test_runtime_library_versions.py` already
+# uses, so the two guards agree about what a version is instead of each having
+# its own opinion (Law 19).
+VERSION_ATTRIBUTES = ("__version__", "VERSION", "VersionBind", "PYPDFIUM_INFO", "version")
+
+# Two or more dot-separated numbers at the START. Anchored so a module's repr
+# can never match, which is what stops `numpy.version` (a SUBMODULE) and
+# `pymupdf.version` (a TUPLE) being read as a version string.
+NUMERIC_PREFIX = re.compile(r"\d+(?:\.\d+)+")
+
+# ── where a module is allowed to come from ──────────────────────────────
+#
+# Every check in this file below asks the interpreter about a module it
+# imported, and then trusts that the module came from the distribution pip
+# recorded. Nothing verified that. A file named `cv2.py` earlier on `sys.path`
+# than site-packages answers `import cv2`, and if it sets `__version__` to the
+# pinned string it satisfies the version check, the provenance check and the
+# metadata check simultaneously — every one of which is asking about the
+# INSTALLED distribution while the interpreter is running something else.
+#
+# `PYTHONPATH` is set to `tools/ci:src` by five CI jobs, so this is not a
+# theoretical path: anything dropped into those directories outranks every
+# installed package.
+SITE_DIRECTORIES = {
+    pathlib.Path(sysconfig.get_paths()[key]).resolve() for key in ("purelib", "platlib")
+}
 
 
 def normalise(name: str) -> str:
     """PEP 503 normalisation. `opencv-python` and `opencv_python` are one name."""
     return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def self_reported(module) -> str | None:
+    """The version the module states about ITSELF, or None if it states none."""
+    for attribute in VERSION_ATTRIBUTES:
+        raw = getattr(module, attribute, None)
+        if raw is None:
+            continue
+        match = NUMERIC_PREFIX.match(str(raw))
+        if match is not None:
+            return match.group()
+    return None
+
+
+def agrees(reported: str, pinned: str) -> bool:
+    """Whether a self-reported version and a pin name the same release.
+
+    PEP 440: everything after "+" is a LOCAL VERSION IDENTIFIER — the build
+    variant, not the version. On a Linux runner `pip install torch==2.13.0`
+    resolves to the CUDA wheel, which reports `2.13.0+cu130`. That IS 2.13.0.
+    Comparing the raw strings called a correct environment wrong, and a guard
+    that fires on a correct environment gets switched off — after which it
+    catches nothing.
+
+    Only the local segment is stripped. The shadow this file exists to catch is
+    a PUBLIC version difference (`cv2.__version__` 4.10.0 against a 5.0.0.93
+    pin), and that is still caught exactly.
+    """
+    public = reported.split("+", 1)[0]
+    return pinned in (reported, public) or pinned.startswith(f"{public}.")
+
+
+def outside_site_packages(module_name: str) -> str | None:
+    """Where `module_name` resolves from, when that is NOT an installed location.
+
+    Returns None when the module is where pip put it, or when it has no file at
+    all (namespace packages, built-ins, frozen modules) — those cannot be a
+    file-shadow and refusing them would fire on a correct environment.
+    """
+    try:
+        spec = importlib.util.find_spec(module_name)
+    except (ImportError, ValueError):
+        return None
+    if spec is None or spec.origin in (None, "built-in", "frozen"):
+        return None
+    origin = pathlib.Path(spec.origin).resolve()
+    if any(root in origin.parents for root in SITE_DIRECTORIES):
+        return None
+    return str(origin)
 
 
 def pins(manifest: pathlib.Path) -> list[tuple[str, str]]:
@@ -120,6 +208,62 @@ for module, dists in metadata.packages_distributions().items():
 problems: list[str] = []
 checked = 0
 found_pins = 0
+
+# Distributions for which at least one module SELF-REPORTED a version that
+# agreed with the pin. A distribution absent from this set passed on metadata
+# and provenance alone, which is exactly the evidence this file distrusts, so
+# it is printed by name at the end rather than left invisible.
+version_verified: set[str] = set()
+version_silent: dict[str, list[str]] = {}
+
+
+def inspect_module(module_name: str, raw_name: str, pinned: str, note: str = "") -> None:
+    """Import one module and check everything that can be checked about it."""
+    global checked
+    checked += 1
+    stray = outside_site_packages(module_name)
+    if stray is not None:
+        problems.append(
+            f"module '{module_name}' resolves from {stray}, which is not an installed "
+            f"location. '{raw_name}' is pinned at {pinned}, but `import {module_name}` "
+            "loads that file instead - every version, metadata and provenance check "
+            "below would be answered by the shadow rather than by the package."
+        )
+        return
+    try:
+        loaded = importlib.import_module(module_name)
+    except Exception as failure:
+        # A PRIVATE top-level name is not part of anyone's import surface.
+        # `paddlepaddle` ships `_foo`, a C-extension artifact with no
+        # `PyInit__foo`, which cannot be imported standalone and is never meant
+        # to be - it blocked this guard on an environment that was correctly
+        # built. Reported, not silently dropped, and the shadow defence is
+        # untouched: a shadow is only reachable through a name somebody writes
+        # in an `import` statement, and nobody writes `import _foo`.
+        if module_name.startswith("_"):
+            print(
+                f"  {module_name:24} from {raw_name}  "
+                f"(private, not an import surface: {type(failure).__name__})"
+            )
+            return
+        problems.append(f"module '{module_name}' from '{raw_name}' will not import: {failure}")
+        return
+
+    reported = self_reported(loaded)
+    if reported is None:
+        version_silent.setdefault(normalise(raw_name), []).append(module_name)
+        print(f"  {module_name:24} from {raw_name}=={pinned}  (reports no version){note}")
+        return
+    ok = agrees(reported, pinned)
+    print(f"  {module_name:24} version={reported:12} pin={pinned:12} "
+          f"{'ok' if ok else 'MISMATCH'}{note}")
+    if ok:
+        version_verified.add(normalise(raw_name))
+    else:
+        problems.append(
+            f"module '{module_name}' reports {reported} while '{raw_name}' is pinned at "
+            f"{pinned} - the assertion would pass against the wrong library"
+        )
 
 for argument in sys.argv[1:]:
     manifest = pathlib.Path(argument)
@@ -173,44 +317,7 @@ for argument in sys.argv[1:]:
             if not owners:
                 print(f"  {raw_name}=={installed}  (ships no top-level module)")
                 continue
-            checked += 1
-            try:
-                loaded = importlib.import_module(delegate)
-            except Exception as failure:
-                problems.append(
-                    f"module '{delegate}' is provided by {owners} on behalf of the "
-                    f"pinned '{raw_name}', and will not import: {failure}"
-                )
-                continue
-            reported = getattr(loaded, "__version__", None)
-            reported = reported if isinstance(reported, str) else None
-            if reported is None:
-                print(
-                    f"  {delegate:24} from {owners} on behalf of {raw_name}=={installed}"
-                    "  (exposes no __version__)"
-                )
-                continue
-            # PEP 440: everything after "+" is a LOCAL VERSION IDENTIFIER — the
-            # build variant, not the version. On a Linux runner
-            # `pip install torch==2.13.0` resolves to the CUDA wheel, which
-            # reports `2.13.0+cu130`. That IS 2.13.0; the suffix names the
-            # build. Comparing the raw strings called a correct environment
-            # wrong, and a guard that fires on a correct environment gets
-            # switched off — after which it catches nothing.
-            #
-            # Only the local segment is stripped. The shadow this guard exists
-            # to catch is a PUBLIC version difference (`cv2.__version__` 4.10.0
-            # against a 5.0.0.93 pin), and that is still caught exactly.
-            public = reported.split("+", 1)[0]
-            agrees = pinned in (reported, public) or pinned.startswith(f"{public}.")
-            print(f"  {delegate:24} __version__={reported:12} pin={pinned:12} "
-                  f"{'ok' if agrees else 'MISMATCH'}  (delegated to {owners})")
-            if not agrees:
-                problems.append(
-                    f"'{raw_name}' is pinned at {pinned} but ships no module of its "
-                    f"own; module '{delegate}' comes from {owners} and imported as "
-                    f"{reported}. The pin constrains a metapackage, not the library."
-                )
+            inspect_module(delegate, raw_name, pinned, note=f"  (delegated to {owners})")
             continue
 
         for module in modules:
@@ -224,58 +331,36 @@ for argument in sys.argv[1:]:
                     "import order alone decides which one wins"
                 )
                 continue
-            try:
-                loaded = importlib.import_module(module)
-            except Exception as failure:
-                # A PRIVATE top-level name is not part of anyone's import
-                # surface. `paddlepaddle` ships `_foo`, a C-extension artifact
-                # with no `PyInit__foo`, which cannot be imported standalone and
-                # is never meant to be — it blocked this guard on an environment
-                # that was correctly built.
-                #
-                # Reported, not silently dropped, and the shadow defence is
-                # untouched: a shadow is only reachable through a name somebody
-                # writes in an `import` statement, and nobody writes `import
-                # _foo`. Every PUBLIC module that will not import is still a
-                # hard failure — that is a genuinely broken install.
-                if module.startswith("_"):
-                    print(
-                        f"  {module:24} from {raw_name}  "
-                        f"(private, not an import surface: {type(failure).__name__})"
-                    )
-                    continue
-                problems.append(f"module '{module}' from '{raw_name}' will not import: {failure}")
-                continue
-            reported = getattr(loaded, "__version__", None)
-            reported = reported if isinstance(reported, str) else None
-            if reported is None:
-                print(f"  {module:24} from {raw_name}=={installed}  (exposes no __version__)")
-                continue
-            # PEP 440: everything after "+" is a LOCAL VERSION IDENTIFIER — the
-            # build variant, not the version. On a Linux runner
-            # `pip install torch==2.13.0` resolves to the CUDA wheel, which
-            # reports `2.13.0+cu130`. That IS 2.13.0; the suffix names the
-            # build. Comparing the raw strings called a correct environment
-            # wrong, and a guard that fires on a correct environment gets
-            # switched off — after which it catches nothing.
-            #
-            # Only the local segment is stripped. The shadow this guard exists
-            # to catch is a PUBLIC version difference (`cv2.__version__` 4.10.0
-            # against a 5.0.0.93 pin), and that is still caught exactly.
-            public = reported.split("+", 1)[0]
-            agrees = pinned in (reported, public) or pinned.startswith(f"{public}.")
-            print(f"  {module:24} __version__={reported:12} pin={pinned:12} "
-                  f"{'ok' if agrees else 'MISMATCH'}")
-            if not agrees:
-                problems.append(
-                    f"module '{module}' imported as {reported} while '{raw_name}' "
-                    f"is pinned at {pinned} - the assertion would pass against the "
-                    "wrong library"
-                )
+            inspect_module(module, raw_name, pinned)
 
 print()
 print(f"pins declared             : {found_pins}")
 print(f"top-level modules checked : {checked}")
+
+# ── how many pins were verified by the LIBRARY and not by metadata ──────
+#
+# The whole premise of this file is that metadata can be correct while the
+# import is wrong, so a pin whose agreement rests only on metadata is a pin this
+# file has not actually done its job on. That number used to be invisible: the
+# run printed "(exposes no __version__)" per module and then declared success.
+#
+# It is REPORTED rather than REFUSED, and the difference is deliberate. Measured
+# on requirements-ci.txt + requirements-engine1.txt, four pinned distributions
+# self-report nothing through any known attribute: mypy, pytest-randomly, ruff
+# and types-PyYAML. ruff's wheel ships a binary and a shim; types-PyYAML ships
+# stub files and no runtime module at all. There is no version for them to
+# report, so refusing them would fail a correct environment — and a guard that
+# does that gets switched off, after which it catches nothing.
+#
+# What IS refused: a pin with no runtime evidence AND no metadata evidence, and
+# any pin whose library disagrees. Both are handled above.
+silent_distributions = sorted(set(version_silent) - version_verified)
+print(f"pins verified by the library's own version : {len(version_verified)}")
+if silent_distributions:
+    print(f"pins resting on metadata alone            : {len(silent_distributions)}")
+    for distribution in silent_distributions:
+        print(f"    {distribution:24} modules={version_silent[distribution]}")
+
 if found_pins and not checked:
     # Every pin resolved to a distribution that imports nothing. Possible in
     # principle for a manifest of pure tooling, but it means this run proved
