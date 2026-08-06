@@ -367,6 +367,38 @@ class _Fixture:
         )
 
 
+@pytest.fixture(autouse=True, scope="module")
+def _the_recorded_reading(
+    recorded_docling_for_module: Callable[[tuple[str, ...]], None],
+) -> None:
+    """Docling's converter returns the reading it really returned for this
+    document, instead of loading its models again for every run in this file.
+
+    AUTOUSE IS DELIBERATE AND IS BOUNDED BY MEASUREMENT, not by convenience.
+    Every document this module hands Engine 1 is `an_invoice_pdf()`, drawn from
+    `INVOICE_LINES` — the only other intake in the file is `b""`, which cleaner
+    refuses long before the parser is reached. So one recording covers every
+    conversion this module can perform, and there is no test here it could
+    silently answer wrongly.
+
+    NOT ONE ASSERTION IN THIS FILE IS ABOUT HOW WELL A MODEL READS. This module
+    is the Application Layer's routing — states, audit entries, the
+    clarification bound, what is preserved on failure. Engine 1's reading is an
+    INPUT to that, and every text this file checks is
+    `structured_document.extracted_text`, which `reader` produces from the PDF's
+    own text layer and which still runs for real. What the real model reports is
+    measured where it belongs: the fourteen `@needs_the_real_tools` tests in
+    `test_input_engine_parser.py` and `tests/integration/test_engine1_end_to_
+    end.py`, both of which keep the real model.
+
+    MEASURED, LOCAL, at commit `00c6b8d`, back to back in one session: this file
+    ran in 92.47 s with the real converter and 7.81 s with the recording — 25
+    passed either way. `tests/conftest.py` carries the capture, the cost
+    breakdown, and the two mutations that were run against the recording itself.
+    """
+    recorded_docling_for_module(INVOICE_LINES)
+
+
 @pytest.fixture(scope="module")
 def one_run() -> _CanonicalRun:
     """One standard run, shared by the tests that only READ its outcome.
