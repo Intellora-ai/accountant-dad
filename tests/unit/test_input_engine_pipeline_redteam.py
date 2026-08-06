@@ -542,24 +542,70 @@ def test_the_temporary_file_carries_the_media_type_and_is_removed_afterwards(
 
 
 def test_the_temporary_file_is_removed_even_when_parser_refuses() -> None:
-    """The `finally` that matters. A blank source reference is real, caller-
-    supplied bad input that `parser.parse` refuses before touching Docling —
-    the cheapest way to make the stage raise after the file exists.
+    """The `finally` that matters: `_parse_document` writes the cleaned payload
+    to a temporary file BEFORE calling `parser.parse`, so a parser that raises
+    is exactly the case that could leak one.
+
+    CORRECTED TRIGGER, UNCHANGED SUBJECT. This used to pass a blank source
+    reference, relying on `parser.parse` refusing it. `DocumentIntake` now
+    refuses a blank reference at construction (the root-cause fix for the hole
+    red-teaming the business-failure path exposed), so the failure is injected
+    at the `parser.parse` seam instead — the same pattern this file already
+    uses for `confidence_report.record_confidence`. The temporary file is still
+    written by the real `_parse_document` before the seam is reached, so what
+    is under test is untouched.
     """
     before = set(Path(tempfile.gettempdir()).glob("*.pdf"))
+    injected = RuntimeError("parser refuses, after the temporary file exists")
+    seen: dict[str, object] = {}
     intake = pipeline.DocumentIntake(
         document=a_text_layer_pdf(INTAKE_LINES),
         media_type=reader.MediaType.PDF,
-        source_references=("",),
+        source_references=("upload:leak-check.pdf",),
     )
 
-    with pytest.raises(pipeline.PipelineStageError) as raised:
-        pipeline.run(
-            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
+    def refusing_parse(
+        source: Path,
+        *,
+        source_reference: str,
+        extracted_regions: tuple[parser.ExtractedRegion, ...] = (),
+        table_structure: parser.TableStructureSettings | None = None,
+    ) -> parser.ParsedStructure:
+        # Everything parser was handed is recorded and asserted below. The file
+        # must EXIST at the moment parser is called, or this test would pass
+        # without ever exercising the cleanup it is named for.
+        seen.update(
+            source=source,
+            existed=source.exists(),
+            source_reference=source_reference,
+            extracted_regions=extracted_regions,
+            table_structure=table_structure,
         )
+        raise injected
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(parser, "parse", refusing_parse)
+        with pytest.raises(pipeline.PipelineStageError) as raised:
+            pipeline.run(
+                intake,
+                identity=an_identity(),
+                settings=a_pipeline_settings(),
+                recorded_at=RECORDED_AT,
+            )
 
     assert raised.value.stage == "parser"
+    assert raised.value.cause is injected
+    # the temporary file really existed when parser saw it, and is gone now
+    handed = seen["source"]
+    assert isinstance(handed, Path)
+    assert handed.suffix == ".pdf"
+    assert seen["existed"] is True, "the file was already gone, so cleanup proves nothing"
+    assert not handed.exists()
     assert set(Path(tempfile.gettempdir()).glob("*.pdf")) - before == set()
+    # parser was entered with the real inputs, not a stripped-down call
+    assert seen["source_reference"] == "upload:leak-check.pdf"
+    assert seen["extracted_regions"] != ()
+    assert seen["table_structure"] is None
 
 
 # ── ATTACK 2: order, and side effects between stages ────────────────────
