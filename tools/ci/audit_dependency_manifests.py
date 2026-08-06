@@ -76,15 +76,26 @@ from collections.abc import Mapping, Sequence
 from importlib import metadata
 from pathlib import Path
 
+from authored_source import MUTATION_COPY_DIRECTORY
+
 #: `name==version`, ignoring comments, blanks, environment markers and anything
 #: that is not an exact pin. Only `==` counts: a range is not a pin.
 _PIN = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)\s*==\s*([^\s;#]+)")
 
-#: Directories that hold a COPY of the tree rather than the tree. `mutants/` is
-#: mutmut's working copy and carries duplicates of every manifest; auditing
-#: those would audit the same pins twice, under paths that do not exist on a
-#: clean checkout, and make the count disagree with reality.
-NOT_THE_TREE = frozenset({".git", ".venv", "venv", "mutants", "__pycache__", "node_modules"})
+#: Directories that hold a COPY of the tree rather than the tree. mutmut's
+#: working copy carries duplicates of every manifest; auditing those would audit
+#: the same pins twice, under paths that do not exist on a clean checkout, and
+#: make the count disagree with reality.
+#:
+#: Its NAME is imported rather than retyped. `authored_source` already owns the
+#: answer to *"what is the directory mutmut copies the tree into"* — it is the
+#: constant every authored-source redirect strips — and a second spelling of it
+#: here is a second place to edit if mutmut ever changes it, with nothing
+#: connecting the two (Law 19). The failure would be silent in the worst
+#: direction: this audit would walk into the copy and report doubled pins.
+NOT_THE_TREE = frozenset(
+    {".git", ".venv", "venv", MUTATION_COPY_DIRECTORY, "__pycache__", "node_modules"}
+)
 
 #: The one glob that defines "is a dependency manifest", so the question has a
 #: single answer rather than one per caller.

@@ -39,7 +39,7 @@ import re
 import audit_dependency_manifests as audit
 import pytest
 import yaml
-from authored_source import authored_path, authored_repo_root
+from authored_source import MUTATION_COPY_DIRECTORY, authored_path, authored_repo_root
 
 REPO = pathlib.Path(__file__).resolve()
 while not (REPO / "requirements-ci.txt").is_file():
@@ -194,19 +194,50 @@ def test_a_path_that_is_not_a_manifest_cannot_be_reported_as_audited(
 
 
 def test_a_copy_of_the_tree_is_not_mistaken_for_the_tree(tmp_path: pathlib.Path) -> None:
-    """`mutants/` is mutmut's working copy and carries a duplicate of every
-    manifest. Counting those would audit the same pins twice under paths that do
-    not exist on a clean checkout, and would make `--verify` demand files nobody
-    can produce."""
+    """mutmut's working copy carries a duplicate of every manifest. Counting
+    those would audit the same pins twice under paths that do not exist on a
+    clean checkout, and would make `--verify` demand files nobody can produce.
+
+    The directory name is IMPORTED, not typed. It used to be the literal
+    `"mutants/"` here and the literal `"mutants"` in the module under test —
+    two spellings of one fact, with nothing connecting them, so a rename would
+    have left this test proving that a directory nobody uses is skipped while
+    the real copy was walked into (Law 19).
+    """
     _tree(
         tmp_path,
         {
             "requirements-ci.txt": "ruff==0.14.5\n",
-            "mutants/requirements-ci.txt": "ruff==0.14.5\n",
+            f"{MUTATION_COPY_DIRECTORY}/requirements-ci.txt": "ruff==0.14.5\n",
             ".venv/requirements-ci.txt": "ruff==0.14.5\n",
         },
     )
     assert audit.manifests(tmp_path) == (pathlib.Path("requirements-ci.txt"),)
+
+
+def test_the_mutation_copy_directory_is_imported_rather_than_respelled() -> None:
+    """THE CLASS, not the instance. One fact, one owner (Law 19, INV-10).
+
+    `authored_source` owns the answer to *"which directory does mutmut copy the
+    tree into"* — it is the component every authored-source redirect strips.
+    Anything else needing it imports it. A second spelling anywhere is a second
+    place to edit, and the failure is silent in the worse direction: this audit
+    would walk into the copy and report every pin twice.
+
+    Checked against AUTHORED source (L-013), so the assertion is about what this
+    repository wrote and not about whatever mutmut is currently running.
+    """
+    assert MUTATION_COPY_DIRECTORY in audit.NOT_THE_TREE
+    source = authored_path(audit).read_text(encoding="utf-8")
+    respelled = [
+        f"{number}: {line.strip()}"
+        for number, line in enumerate(source.splitlines(), start=1)
+        if f'"{MUTATION_COPY_DIRECTORY}"' in line or f"'{MUTATION_COPY_DIRECTORY}'" in line
+    ]
+    assert respelled == [], (
+        "the mutation copy directory is spelled as a literal here as well as in "
+        "`authored_source`. Import MUTATION_COPY_DIRECTORY instead:\n  " + "\n  ".join(respelled)
+    )
 
 
 def test_a_manifest_in_a_subdirectory_is_still_found(tmp_path: pathlib.Path) -> None:
