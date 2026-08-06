@@ -1486,8 +1486,9 @@ def _document_on_disk(document: bytes, *, suffix: str) -> Iterator[Path]:
     inside the block. `semgrep`'s
     `python.lang.correctness.tempfile.tempfile-without-flush` marked it ERROR at
     `pipeline.py:1200`, which was a true statement about the SHAPE and not about
-    that day's behaviour. A `# nosemgrep` would have silenced the shape and kept
-    the fragility.
+    that day's behaviour. An inline suppression would have silenced the shape
+    and kept the fragility — and this repository counts those, so the only way
+    past that finding is to stop being that shape.
 
     The path is now yielded while the handle is still OPEN, which is what makes
     the flush and the fsync load-bearing instead of belt-and-braces — and

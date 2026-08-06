@@ -28,6 +28,7 @@ import importlib
 import inspect
 import math
 from decimal import Decimal
+from typing import cast
 
 import cv2
 import numpy as np
@@ -112,6 +113,11 @@ def _png_bytes(image: Image) -> bytes:
     assert ok, "the fixture image could not be encoded; the test would prove nothing"
     return bytes(buffer.tobytes())
 
+
+#: How many pages the page-order fixture carries. Three is the smallest count
+#: that can distinguish "in order" from "reversed" AND from "rotated by one",
+#: which two pages cannot.
+PAGES_IN_THE_ORDER_FIXTURE = 3
 
 #: The DPI `clean_artifact` is given wherever a test reaches the single entry
 #: point. Reused from this file's own existing artifact-path tests rather than
@@ -1223,4 +1229,364 @@ def test_reader_consumes_cleaner_output_and_the_text_layer_survives() -> None:
     assert "27AAECS1234F1Z5" in recovered, (
         "the text layer must survive cleaning; if this fails the cleaner has "
         "rasterised a document whose characters were already exact"
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# THE DOCUMENT CLEANER — one entry point, explicit dispatch, nothing bypassed
+#
+# F-017, approved by the owner 2026-08-06: *"Implement a media-agnostic Document
+# Cleaner as the single entry point for all supported document types. Internally
+# it may dispatch to Image Cleaner, PDF Cleaner, Excel Cleaner, Email Cleaner,
+# future cleaners... Remove every legacy bypass and duplicate path."*
+#
+# The tests below are about the DISPATCH and about what survives it. Everything
+# above is about the Image Cleaner's pixels, which is a different subject.
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def test_the_module_offers_exactly_one_public_way_to_clean_a_document() -> None:
+    """F-017's *"remove every legacy bypass"*, checked rather than asserted.
+
+    `clean` was public, took an `NDArray`, and returned a `CleanedDocument` with
+    NO `artifact` on it — an object `pipeline._payload_of` refuses and that
+    `reader` and `parser` cannot consume. It had zero callers in `src/` and 67
+    in `tests/`: a door held open by its own tests.
+
+    This reads the module's public surface for ANY callable whose name says it
+    cleans, so restoring the old door under a new name — `clean_image`,
+    `clean_page` — fails here too. A denylist of one name would not have.
+    """
+    public = {name for name in vars(cleaner) if not name.startswith("_")}
+    # FUNCTIONS, not everything callable. `CleanedDocument`, `CleanerSettings`
+    # and `MediaCleaner` are types whose names contain "clean" and are not doors
+    # into the module; a `callable()` test would have flagged all three and this
+    # assertion would have been widened until it caught nothing.
+    cleaning_entry_points = {
+        name
+        for name in public
+        if inspect.isfunction(getattr(cleaner, name)) and "clean" in name.lower()
+    }
+    assert cleaning_entry_points == {"clean_artifact"}, (
+        f"the module offers {sorted(cleaning_entry_points)} as ways to clean. "
+        "There is exactly one entry point, `clean_artifact`, and every media "
+        "kind reaches its implementation through `CLEANERS`. A second public "
+        "cleaner is the bypass F-017 removed, whatever it is called."
+    )
+    assert not hasattr(cleaner, "clean"), (
+        "`clean` came back as a public name. It is `_clean_image` — the IMAGE "
+        "CLEANER the registry dispatches to — and it is private because it "
+        "returns a `CleanedDocument` with no `artifact`, which the pipeline "
+        "refuses by design."
+    )
+
+
+def test_every_media_kind_has_an_implementation_registered_for_it() -> None:
+    """A member with no implementation is a document type that raises at the
+    moment a real user submits one, not at the moment somebody adds the member.
+
+    This is what makes "adding Excel is a member plus an implementation" a
+    checked statement: add the member alone and this goes red immediately.
+    """
+    unregistered = sorted(kind.value for kind in cleaner.MediaKind if kind not in cleaner.CLEANERS)
+    assert unregistered == [], (
+        f"MediaKind member(s) with no cleaner registered: {unregistered}. Add "
+        "the implementation to `CLEANERS` in the same change as the member."
+    )
+    assert set(cleaner.CLEANERS) == set(cleaner.MediaKind), (
+        "the registry names a kind that is not a MediaKind member, so a "
+        "document could be dispatched to a cleaner nothing can ask for."
+    )
+
+
+def test_a_kind_this_module_has_never_heard_of_dispatches_without_the_dispatcher_changing() -> None:
+    """THE EXTENSIBILITY PROOF. Registration is the whole cost of a new kind.
+
+    `"spreadsheet"` is not a `MediaKind` member and this file does not add one.
+    At runtime a `StrEnum` member IS its own string — measured:
+    `hash(MediaKind.PDF) == hash("pdf")` is `True` — so this string is exactly
+    what a future `MediaKind.SPREADSHEET = "spreadsheet"` would hash and compare
+    as. It is a faithful stand-in for a member, not a mock of one.
+
+    NOTHING IN `cleaner.py` KNOWS THIS KIND EXISTS. If `clean_artifact` still
+    branched on `kind is MediaKind.PDF`, an unknown kind could only fall into
+    the image branch or raise — and either way the implementation below would
+    never run. That it runs, and that its return value comes back untouched, is
+    what "adding Excel later is a member plus an implementation and nothing
+    else" means in code.
+
+    NEITHER EXCEL NOR EMAIL IS IMPLEMENTED HERE, deliberately: F-017 names them
+    as FUTURE cleaners and Law 16 forbids building outside the current mission.
+    What this change owed them was a seam, and this is the seam being proved.
+    """
+    spreadsheet = cast(cleaner.MediaKind, "spreadsheet")
+    seen: list[tuple[bytes, cleaner.CleanerSettings, int]] = []
+    answer = cleaner.CleanedDocument(
+        original=np.zeros((1, 1), dtype=np.uint8),
+        cleaned=np.zeros((1, 1), dtype=np.uint8),
+        quality_observations=(),
+        preservation_status=cleaner.PreservationStatus.CLEANED_IS_SAFER,
+        artifact=cleaner.CleanedArtifact(
+            kind=spreadsheet, payload=b"cleaned workbook", original=b"workbook"
+        ),
+    )
+
+    def a_spreadsheet_cleaner(
+        data: bytes, settings: cleaner.CleanerSettings, *, render_dpi: int
+    ) -> cleaner.CleanedDocument:
+        seen.append((data, settings, render_dpi))
+        return answer
+
+    settings = a_settings()
+    cleaned = cleaner.clean_artifact(
+        b"workbook",
+        spreadsheet,
+        settings,
+        render_dpi=RENDER_DPI,
+        cleaners={**cleaner.CLEANERS, spreadsheet: a_spreadsheet_cleaner},
+    )
+
+    assert seen == [(b"workbook", settings, RENDER_DPI)], (
+        "the registered cleaner was not reached with the caller's own bytes, settings and DPI"
+    )
+    assert cleaned is answer, "the dispatcher altered what the implementation returned"
+
+
+def test_the_registered_kinds_still_dispatch_when_a_new_one_is_added_beside_them() -> None:
+    """Adding a kind must not disturb the kinds already there — otherwise
+    "one member plus one implementation" costs a regression somewhere else.
+    """
+    spreadsheet = cast(cleaner.MediaKind, "spreadsheet")
+
+    def never_called(
+        data: bytes, settings: cleaner.CleanerSettings, *, render_dpi: int
+    ) -> cleaner.CleanedDocument:
+        # The full `MediaCleaner` signature, deliberately unused: this exists to
+        # prove it is NEVER reached, and a narrower signature could not be
+        # registered at all.
+        del data, settings, render_dpi
+        raise AssertionError("an image was dispatched to the spreadsheet cleaner")
+
+    cleaned = cleaner.clean_artifact(
+        an_image_page(),
+        cleaner.MediaKind.IMAGE,
+        a_settings(),
+        render_dpi=RENDER_DPI,
+        cleaners={**cleaner.CLEANERS, spreadsheet: never_called},
+    )
+
+    assert cleaned.artifact is not None
+    assert cleaned.artifact.kind is cleaner.MediaKind.IMAGE
+
+
+def test_a_kind_with_no_cleaner_is_refused_loudly_and_never_cleaned_as_something_else() -> None:
+    """The failure that must NOT be quiet, and must NOT be a document verdict.
+
+    Falling back to another kind's implementation would clean the document as
+    something it is not. Reporting *"this document could not be read"* would be
+    worse still: it asserts a fault in the user's file when the fault is a
+    missing implementation in this engine (`ENGINE_1:337`). So the error sits
+    outside `pipeline.BUSINESS_FAILURE` on purpose, and that is asserted here
+    rather than left to the reader.
+    """
+    with pytest.raises(cleaner.NoCleanerRegisteredError) as raised:
+        cleaner.clean_artifact(
+            b"workbook",
+            cast(cleaner.MediaKind, "spreadsheet"),
+            a_settings(),
+            render_dpi=RENDER_DPI,
+        )
+
+    assert "spreadsheet" in str(raised.value)
+    assert not isinstance(raised.value, cleaner.UnusableArtifactError), (
+        "a missing implementation was classified as a fault in the document"
+    )
+
+
+def test_the_registry_cannot_be_edited_through_the_module() -> None:
+    """A registry anything could mutate is a registry that can be changed from
+    under a running pipeline, and the change would be invisible to every test
+    that ran before it.
+    """
+    editable = cast(dict[cleaner.MediaKind, cleaner.MediaCleaner], cleaner.CLEANERS)
+    with pytest.raises(TypeError):
+        editable[cleaner.MediaKind.IMAGE] = cleaner.CLEANERS[cleaner.MediaKind.PDF]
+
+
+# ── a cleaned PDF is still a PDF (F-011, F-017's original defect) ──────────
+
+
+def text_layer_of(payload: bytes) -> str:
+    """Every page's embedded text, read with the backend directly.
+
+    Read with PyMuPDF rather than through `reader` on purpose: `reader` falls
+    back to OCR when it finds no text layer, so a rasterised PDF could still
+    come back carrying the right words and this test would pass on exactly the
+    document it exists to refuse.
+    """
+    document = importlib.import_module("pymupdf").open(stream=payload, filetype="pdf")
+    try:
+        return "\n".join(document[index].get_text("text") for index in range(document.page_count))
+    finally:
+        document.close()
+
+
+def test_a_cleaned_text_layer_pdf_still_carries_its_text_layer() -> None:
+    """F-011 AND F-017'S ORIGINAL DEFECT, TRAPPED PERMANENTLY.
+
+    `CleanedArtifact.payload` used to be a bitmap, so cleaning a text-layer PDF
+    replaced exact characters with pixels. Nothing downstream could tell: `reader`
+    would OCR the raster and return plausible text, at a confidence no recogniser
+    should ever have had to produce for a document whose characters were already
+    exact.
+
+    So this reads the TEXT LAYER, with the PDF library, and never through
+    `reader`. A rasterised page has no text layer at all, so this assertion is
+    zero on exactly the failure it guards and cannot be satisfied by an OCR
+    result that happens to be right.
+    """
+    original = a_text_layer_pdf()
+    cleaned = cleaner.clean_artifact(
+        original, cleaner.MediaKind.PDF, a_settings(), render_dpi=RENDER_DPI
+    )
+
+    assert cleaned.artifact is not None
+    recovered = text_layer_of(cleaned.artifact.payload)
+    assert "TAX INVOICE" in recovered, (
+        "the cleaned PDF carries no text layer. Cleaning rasterised a document "
+        "whose characters were already exact, which is F-011/F-017 exactly: it "
+        "destroys the one thing that lets the document be read with no "
+        "recognition and no confidence loss at all."
+    )
+    assert "27AAECS1234F1Z5" in recovered
+    assert text_layer_of(original) == recovered, (
+        "the text layer changed. `cleaner` alters presentation and nothing "
+        "else, and a digitally-generated PDF has no presentation defect to fix."
+    )
+
+
+def test_the_text_layer_guard_goes_red_on_a_cleaner_that_rasterises() -> None:
+    """FALSIFICATION. The guard above is only worth having if it FAILS on the
+    defect it names, and today's cleaner passes it by passing the PDF through —
+    so on this tree it can never have been observed failing.
+
+    A rasterising PDF cleaner is registered here, through the same public
+    `cleaners` seam the extensibility test uses, and the guard is run against
+    its output. This is what F-017's implementation actually did before it was
+    fixed, so the red below is the historical defect reproduced rather than an
+    imagined one.
+    """
+
+    def a_rasterising_pdf_cleaner(
+        data: bytes, settings: cleaner.CleanerSettings, *, render_dpi: int
+    ) -> cleaner.CleanedDocument:
+        """Render every page and rebuild — correct for a SCAN, destructive here."""
+        return cleaner._pdf_rebuilt_from_cleaned_pages(data, settings, render_dpi=render_dpi)
+
+    cleaned = cleaner.clean_artifact(
+        a_text_layer_pdf(),
+        cleaner.MediaKind.PDF,
+        a_settings(),
+        render_dpi=RENDER_DPI,
+        cleaners={**cleaner.CLEANERS, cleaner.MediaKind.PDF: a_rasterising_pdf_cleaner},
+    )
+
+    assert cleaned.artifact is not None
+    assert "TAX INVOICE" not in text_layer_of(cleaned.artifact.payload), (
+        "a PDF rebuilt from rendered pages still reported a text layer, so the "
+        "guard above cannot distinguish a preserved document from a destroyed "
+        "one and proves nothing"
+    )
+
+
+def test_a_cleaned_text_layer_pdf_keeps_its_page_count_and_page_order() -> None:
+    """Page structure and page ORDER are two of the four things F-017 requires
+    preserved, and neither is visible in a text-presence check: a cleaner that
+    kept every character while reversing the pages would pass that one.
+
+    Each page prints its own number, so the recovered text is an order
+    fingerprint that reads correctly only if the pages came back as they went in.
+    """
+    original = a_numbered_text_layer_pdf(pages=PAGES_IN_THE_ORDER_FIXTURE)
+    cleaned = cleaner.clean_artifact(
+        original, cleaner.MediaKind.PDF, a_settings(), render_dpi=RENDER_DPI
+    )
+
+    assert cleaned.artifact is not None
+    fitz = importlib.import_module("pymupdf")
+    before = fitz.open(stream=original, filetype="pdf")
+    after = fitz.open(stream=cleaned.artifact.payload, filetype="pdf")
+    try:
+        assert after.page_count == before.page_count == PAGES_IN_THE_ORDER_FIXTURE
+        for index in range(PAGES_IN_THE_ORDER_FIXTURE):
+            assert f"PAGE {index + 1}" in after[index].get_text("text"), (
+                f"page {index + 1} of the cleaned PDF is not page {index + 1} of "
+                "the original; cleaning reordered the document"
+            )
+    finally:
+        after.close()
+        before.close()
+
+
+def test_a_cleaned_text_layer_pdf_keeps_its_metadata() -> None:
+    """Metadata is the fourth thing F-017 names, and the easiest to lose without
+    noticing: a rebuild starts from an empty document and carries none of it.
+    """
+    fitz = importlib.import_module("pymupdf")
+    document = fitz.open()
+    try:
+        page = document.new_page(width=400, height=200)
+        page.insert_text((40, 60), "TAX INVOICE")
+        document.set_metadata({"title": "Invoice 2026-0041", "author": "Acme Traders"})
+        original = bytes(document.tobytes())
+    finally:
+        document.close()
+
+    cleaned = cleaner.clean_artifact(
+        original, cleaner.MediaKind.PDF, a_settings(), render_dpi=RENDER_DPI
+    )
+
+    assert cleaned.artifact is not None
+    opened = fitz.open(stream=cleaned.artifact.payload, filetype="pdf")
+    try:
+        assert opened.metadata["title"] == "Invoice 2026-0041"
+        assert opened.metadata["author"] == "Acme Traders"
+    finally:
+        opened.close()
+
+
+def a_numbered_text_layer_pdf(pages: int) -> bytes:
+    """A text-layer PDF whose every page says which page it is."""
+    fitz = importlib.import_module("pymupdf")
+    document = fitz.open()
+    try:
+        for number in range(1, pages + 1):
+            page = document.new_page(width=400, height=200)
+            page.insert_text((40, 60), f"TAX INVOICE PAGE {number}")
+        return bytes(document.tobytes())
+    finally:
+        document.close()
+
+
+def test_a_scanned_pdf_is_rasterised_because_there_was_never_a_text_layer_to_lose() -> None:
+    """The other half of the rule, and the reason it is not "never rasterise".
+
+    A scan has no text layer, so rendering its pages loses nothing — and it is
+    the ONLY way its pixels can be deskewed and denoised at all. Cleaning a
+    text-layer PDF and cleaning a scan are different answers to the same
+    question, decided by measuring the document rather than by the caller
+    declaring anything.
+    """
+    cleaned = cleaner.clean_artifact(
+        a_scanned_pdf(), cleaner.MediaKind.PDF, a_settings(), render_dpi=RENDER_DPI
+    )
+
+    assert cleaned.artifact is not None
+    assert cleaned.artifact.kind is cleaner.MediaKind.PDF
+    assert cleaned.artifact.payload != cleaned.artifact.original, (
+        "the scan came back byte-identical, so no cleaning happened to pixels "
+        "that had every physical defect cleaning exists to reduce"
+    )
+    assert cleaned.artifact.raster is not None, (
+        "a rasterised path produced no raster view, so OCR has nothing to read"
     )

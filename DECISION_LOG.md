@@ -958,3 +958,132 @@ every absence carries a reason.
 ### Approved
 
 The owner, 2026-08-06.
+## D-0xx · The PDF Engine is an interface of FUNCTIONS, not a passthrough of objects
+
+**Date:** 2026-08-06 · **Context:** F-001, the owner's ruling to abstract PyMuPDF.
+
+### Context
+
+`pymupdf==1.28.0` is AGPL-3.0-or-commercial and `docs/TECHNOLOGY_STACK.md` locks it.
+The owner ruled: keep it, buy no licence, and *"immediately abstract it behind a PDF
+Engine interface so Engine 1 never depends directly on PyMuPDF. The implementation must
+allow replacing the backend PDF library without changing Engine 1 architecture."*
+
+### Alternatives
+
+1. **Hand callers a live `Document` behind a Protocol.** The obvious shape, and it
+   abstracts nothing: every caller still speaks PyMuPDF's method names, its
+   `get_text("dict")` dictionary and its `get_pixmap(dpi=...)` keyword. Replacing the
+   library would still be a rewrite of every caller — the import would have moved and
+   the dependency would not.
+2. **Put the adapter under `engines/input_engine/`.** Rejected twice over. Amendment 3
+   released Engine 1's own modules and a library adapter is not one — it produces no
+   part of the Document Evidence Object, which is the same test `ENGINE_1_FACILITIES`
+   applies. And *"Engine 1 never depends directly on PyMuPDF"* is only true if the file
+   that does sits outside Engine 1.
+3. **Functions over an opaque handle.** Chosen.
+
+### Decision
+
+`accountant_dad/pdf_backend.py`. `PdfDocument` is a Protocol declaring `close()` and
+nothing else; every operation on a PDF — `page_count`, `plain_text`, `structured_text`,
+`render_page_png`, `pdf_of_page_images` — is a module-level function. One vendor
+exception is renamed: `pymupdf.FileDataError` becomes `BrokenPdfError`, carrying the
+backend's message verbatim and the original as `__cause__`, because it was the single
+PyMuPDF name Engine 1 depended on for BEHAVIOUR (`pipeline.BUSINESS_FAILURE`).
+
+### Reasoning
+
+The test of the design is stated so it can be checked rather than believed: **a
+different backend is a rewrite of this file and of nothing else.** That is only true
+while no caller names a backend type, method, keyword or exception — which is why the
+interface is operations rather than objects, and why the option strings `"pdf"`,
+`"dict"`, `"text"` and `"png"` live in this file and nowhere else.
+
+### Trade-offs
+
+**Gained:** the swap is one file. Engine 1's business/runtime taxonomy names its own
+error type. `cleaner.py`'s three-step open/convert/reopen dance is one call.
+`ENGINE_1_MAY_IMPORT` is strictly narrower in effect — three modules imported PyMuPDF,
+now one first-party module does.
+
+**Lost:** `ENGINE_1_MAY_IMPORT` gains a fifth entry, and a caller wanting a PDF
+operation the adapter does not expose must add it there rather than reaching for the
+library. That friction is the point.
+
+**Not fixed:** the licence. The dependency is still AGPL and still pinned.
+
+### Guarded by
+
+`tests/unit/test_pdf_backend.py::test_no_engine_1_module_imports_the_pdf_library_
+directly` — an AST sweep of every file under `engines/input_engine/`, covering
+statement imports, `importlib.import_module`, `require_module` and `__import__`, and
+matching `pymupdf` and `fitz` on the first dotted segment. It reads the DIRECTORY, not
+an allowlist. Proven to fail on the defect: injecting `import pymupdf` into `cleaner.py`
+turns it red naming the file.
+
+### Files
+
+`src/accountant_dad/pdf_backend.py` · `engines/input_engine/{cleaner,reader,pipeline}.py`
+· `tests/unit/test_pdf_backend.py` · `tests/unit/test_package.py`
+
+---
+
+## D-0xx · Engine 1's pipeline carries `ConfidenceParameters`, not a loose threshold
+
+**Date:** 2026-08-06 · **Context:** F-018 — `config` had no consumer.
+
+### Context
+
+`config.py` parsed and validated the sixteen parameters of
+`ENGINE_1_CONFIDENCE_PARAMETERS.md` and **nothing imported it.** Meanwhile
+`PipelineSettings.vision_fallback_threshold: Decimal` carried
+`ocr_vision_fallback` — the same parameter — unvalidated.
+
+### Alternatives
+
+1. **Import `config` somewhere and call nothing.** Satisfies the reachability detector
+   and is F-018 again, one level up. Rejected: gaming a detector.
+2. **A `settings_from_environment` factory nobody calls.** The same defect wearing a
+   function name.
+3. **Replace the loose field with the validated object.** Chosen.
+
+### Decision
+
+`PipelineSettings.vision_fallback_threshold` is deleted. `PipelineSettings.
+confidence_parameters: ConfidenceParameters` is required, and `run` hands
+`settings.confidence_parameters.ocr_vision_fallback` to `reader.read`.
+
+### Reasoning
+
+Two representations of one number is the drift Law 19 forbids, and the one in use had
+no range check at all. One representation, validated by the module written to validate
+it, is both the fix for F-018 and the correct architecture independently of it.
+
+### Trade-offs
+
+**Gained:** `config` is consumed on the real path. The number reaching `reader` is
+inside the range `config` enforces, by construction.
+
+**Lost:** every caller must now supply all sixteen parameters, because
+`ENGINE_1_CONFIDENCE_PARAMETERS.md` marks every one `UNSET` and §P forbids a default.
+Seven construction sites gained a sixteen-field factory. That cost is the amendment's
+own intent — *"Missing required confidence configuration fails fast at startup, never
+falls back"* — arriving where it was always going to.
+
+**Stated rather than implied:** fifteen of the sixteen are carried and unread.
+`MEASUREMENT_FRAMEWORK.md:258` — *"confidence gates nothing"* — and inventing a gate for
+the other fifteen would be building outside the mission (Law 16).
+
+### Guarded by
+
+`test_the_vision_fallback_threshold_reader_receives_is_the_configured_parameter` (an
+unmistakable `0.4242` reaches `reader.read`) ·
+`test_the_configured_parameters_went_through_config_and_not_around_it` (a value outside
+the scale cannot become a `ConfidenceParameters` at all) ·
+`test_pipeline_settings_required_fields_have_no_default`, which now also asserts the
+loose field has NOT come back.
+
+### Files
+
+`engines/input_engine/pipeline.py` · the seven `PipelineSettings` construction sites

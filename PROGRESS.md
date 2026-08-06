@@ -592,6 +592,32 @@ the mechanism working, not a defect.**
   appeared on a match and vanished on a mismatch — indistinguishable from no human note
   at all, and silent about the one case where a preservation guarantee had broken.
 - a **missing field** raised an uncertainty marker with no reliability entry beside it.
+## 2026-08-06 · Engine 1 — one cleaning entry point, one PDF backend, three modules that run
+
+**Base:** `a467bb2` (tip of `ci/mutation-runs`). Worktree branch, not pushed.
+
+### What completed
+
+**F-017, second half.** `cleaner.clean(image, settings)` stopped being public. It had
+**zero callers in `src/` outside `cleaner.py`** and **67 in `tests/`** — measured, not
+estimated — so it was a second entry point kept alive by its own tests. It is now
+`_clean_image`, the Image Cleaner that `CLEANERS` dispatches to, and `clean_artifact` is
+the single Document Cleaner with **no branch on `kind`** in it.
+
+**F-001, contained.** `accountant_dad/pdf_backend.py` is new and owns every PDF
+operation. `reader.py`, `cleaner.py` and `pipeline.py` name no PyMuPDF type, method,
+option string or exception; `pipeline.BUSINESS_FAILURE` names
+`pdf_backend.BrokenPdfError` where it named `pymupdf.FileDataError`. `pipeline.py`'s
+copy of reader's PyMuPDF facade was dead in all five of its names and is deleted. **The
+licence exposure is unchanged** — PyMuPDF is still pinned and still in use.
+
+**F-018, fixed.** `classification`, `config` and `measurement` have real consumers.
+`PipelineSettings.vision_fallback_threshold` was replaced by `confidence_parameters`, so
+`ocr_vision_fallback` has one validated representation instead of two.
+
+**semgrep's one ERROR, fixed at the cause.** `_parse_document`'s temporary file flushes
+and fsyncs before the path is handed over. No suppression: the count is **124 on the
+base commit and 124 here**.
 
 ### Files changed
 
@@ -652,3 +678,52 @@ CI. Every number above is local and therefore not a result.
 
 Still not measured against ground truth. By Law 52 no accuracy claim about this system is
 provable, so none is made here.
+new     src/accountant_dad/pdf_backend.py
+new     tests/unit/test_pdf_backend.py
+        src/accountant_dad/engines/input_engine/{cleaner,pipeline,reader}.py
+        tests/unit/{test_input_engine_cleaner,test_input_engine_cleaner_redteam}.py
+        tests/unit/{test_input_engine_pipeline,test_input_engine_pipeline_redteam}.py
+        tests/unit/{test_input_engine_reader,test_input_engine_ablation}.py
+        tests/unit/{test_package,test_module_wiring,test_pipeline}.py
+        tests/unit/test_conformance_registry.py
+        tests/integration/test_engine1_end_to_end.py
+```
+
+### Tests
+
+| | base `a467bb2` | here |
+|---|---|---|
+| passed | 3593 | **3639** |
+| failed | 1 (`test_module_wiring`, correctly red) | **0** |
+| skipped | 11 | 11 |
+
+`ruff check --no-fix` · `ruff format --check` · `mypy --no-incremental --cache-dir=/dev/null
+src tools/ci tests` all clean. Green in randomised order as well as `-p no:randomly`.
+
+`semgrep` at the pinned rule set (`40b8c63`), `--severity ERROR --error` over
+`src tools tests`: **exit 0, zero findings**. Proven to discriminate — removing the two
+flush lines brings the finding straight back at `pipeline.py:1510`.
+
+### Measurements
+
+```
+Suite      : 3639 passed · 0 failed · 11 skipped   Source: LOCAL ONLY - NOT AUTHORITATIVE
+semgrep    : 0 ERROR findings                      Source: LOCAL ONLY - NOT AUTHORITATIVE
+Suppressions: 124 (base 124, unchanged)            Source: LOCAL ONLY - NOT AUTHORITATIVE
+Coverage   : UNMEASURED
+Mutation   : UNMEASURED - source changed, every earlier score EXPIRED
+```
+
+**Previous mutation and coverage measurements expired because source changed after
+`a467bb2`.** ~1400 lines of Engine 1 source moved. No number is quoted (Law 56), and
+nothing here is authoritative until GitHub CI produces it (Law 44).
+
+### Blockers
+
+None new. **F-001's licence half is still the owner's** — the abstraction makes the swap
+a one-file rewrite, and the swap has not been made.
+
+### Next work
+
+Push, so CI produces a current coverage and mutation number for this tree. Both are
+UNMEASURED here and neither may be reported until it does.

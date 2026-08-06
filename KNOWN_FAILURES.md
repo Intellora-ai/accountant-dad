@@ -40,8 +40,32 @@ Previous measurements expired because source changed after commit `7e0efe2`.
 | | |
 |---|---|
 | **Severity** | HIGH — legal, not technical |
-| **Status** | ⬜ OPEN · needs an owner decision |
+| **Status** | 🟨 **CONTAINED, NOT CLOSED.** The owner ruled 2026-08-06: *"Do NOT purchase an Artifex licence. Keep PyMuPDF temporarily. Immediately abstract it behind a PDF Engine interface so Engine 1 never depends directly on PyMuPDF."* The interface exists. **The licence exposure is unchanged** — the AGPL dependency is still pinned and still in use, so this entry stays OPEN until the backend is actually replaced |
 | **Found** | 2026-08-05, landing Engine 1's `reader` |
+| **Contained** | 2026-08-06 · `src/accountant_dad/pdf_backend.py` |
+
+**WHAT THE ABSTRACTION CHANGED, AND WHAT IT DID NOT.** Before it, three Engine 1
+modules reached PyMuPDF independently — `reader.py` and `pipeline.py` by statement,
+`cleaner.py` twice through `importlib` — and `pipeline.BUSINESS_FAILURE` named
+`pymupdf.FileDataError` outright, so a vendor exception type was load-bearing in
+Engine 1's own business/runtime taxonomy. Replacing the library meant editing three
+files, one of which decided what counts as a document failure.
+
+`accountant_dad.pdf_backend` now owns every PDF operation, as FUNCTIONS over an
+opaque handle rather than as a passthrough of live backend objects — handing callers
+a `pymupdf.Document` would have moved the import and changed nothing. No Engine 1
+module names a PyMuPDF type, method, option string or exception.
+`pipeline.BUSINESS_FAILURE` names `pdf_backend.BrokenPdfError`.
+
+**Guarded by** `tests/unit/test_pdf_backend.py::test_no_engine_1_module_imports_the_
+pdf_library_directly` — an AST sweep of every file under `engines/input_engine/`,
+statement imports and `importlib` alike, reading the DIRECTORY rather than an
+allowlist. Proven to discriminate: injecting `import pymupdf` into `cleaner.py`
+turns it red naming the file, and removing it turns it green again.
+
+**The remaining work is still the owner's.** Swapping the backend is now a rewrite
+of one file, which is what the ruling asked for. It has not been done, and until it
+is, this repository still ships an AGPL dependency.
 
 **Description.** `pymupdf==1.28.0` reports its licence as *"Dual Licensed - GNU AFFERO
 GPL 3.0 or Artifex Commercial License"* — read from installed metadata, not recalled.
@@ -386,6 +410,36 @@ it still needs the deliberately-broken-code proof before promotion.
 | **Status** | 🔒 **BLOCKED · needs an owner decision (§M)** |
 | **Found** | 2026-08-05, tracing F-011 to its root instead of patching it |
 
+| **Second half closed** | 2026-08-06 · the Document Cleaner and its dispatch registry |
+
+**THE HALF THAT WAS STILL OPEN, AND IS NOW CLOSED.** `CleanedArtifact` fixed the
+TYPE. It did not remove the second door: `cleaner.clean(image, settings)` stayed
+public, took an `NDArray`, and returned a `CleanedDocument` with no `artifact` on
+it — an object `pipeline._payload_of` refuses and that `reader` and `parser` cannot
+consume. Measured before the change: **zero callers in `src/` outside `cleaner.py`
+itself, sixty-seven in `tests/`.** A door held open by its own tests.
+
+The owner's ruling (2026-08-06) is *"a media-agnostic Document Cleaner as the single
+entry point for all supported document types… Remove every legacy bypass and
+duplicate path."*
+
+- `clean` is now `_clean_image` — the Image Cleaner, one of the implementations
+  `CLEANERS` dispatches to.
+- `clean_artifact` is the single entry point and contains **no branch on `kind`**:
+  it looks the kind up in `CLEANERS` and calls what it finds. Adding Excel or email
+  later is a `MediaKind` member plus a registry entry and nothing else.
+- All sixty-seven tests still run: **66 retargeted** at the internal Image Cleaner,
+  **1 moved** to the single entry point and made stricter by the move.
+
+**Guarded by** `test_the_module_offers_exactly_one_public_way_to_clean_a_document`
+(reads the public surface for ANY function whose name says it cleans, so restoring
+the door as `clean_page` fails too), `test_a_kind_this_module_has_never_heard_of_
+dispatches_without_the_dispatcher_changing`, `test_every_media_kind_has_an_
+implementation_registered_for_it`, and
+`test_every_media_kind_travels_the_same_path_and_nothing_re_opens_the_intake` —
+which records what `reader` and `parser` were each handed on a real run and compares
+it byte for byte to that run's own cleaned payload, across an image, a text-layer
+PDF, a scan and a mixed document.
 **The single defect.** `cleaner` was implemented as an **image** cleaner. The
 architecture requires a **document** cleaner.
 
@@ -1041,7 +1095,7 @@ paraphrasing them.
 | | |
 |---|---|
 | **Severity** | HIGH — three sub-engines are built, tested, mutation-hardened, and never run |
-| **Status** | ⬜ **OPEN · UNCHANGED. Re-measured at `e921c3c` and nothing was wired** |
+| **Status** | ✅ **FIXED 2026-08-06.** All three have real consumers in `engines/input_engine/pipeline.py`, and `test_module_wiring.py::test_every_authorised_engine_1_module_is_reachable_from_the_application_layer` is green |
 | **Found** | 2026-08-06, while verifying F-010's residual |
 
 **RE-MEASURED 2026-08-06 at commit `e921c3c`.** This entry said *"agent wiring it."* No
@@ -1070,6 +1124,33 @@ measurement.py      22.7K   consumers: none
 
 `PipelineSettings` (`pipeline.py:263`) takes every setting from its caller and never
 loads `config.py`.
+
+**THE FIX, 2026-08-06 — a consumer each, not an import each.** Import reachability is
+the DETECTOR; it is satisfied by an `import` nothing calls, so each of the three was
+given work to do on the real path:
+
+| module | what consumes it |
+|---|---|
+| `config` | `PipelineSettings.vision_fallback_threshold` — a loose `Decimal` — was REPLACED by `confidence_parameters: ConfidenceParameters`, and `run` hands `ocr_vision_fallback` to `reader.read`. There were two representations of that one number and the one in use had never been range-checked; there is now one, validated (Law 19) |
+| `classification` | `run` classifies every document from the `reader.Reading` and `parser.ParsedStructure` it alone holds at the same moment |
+| `measurement` | `run` builds one calibration row per completed document — step 2 of `ENGINE_1_CONFIDENCE_PARAMETERS.md`'s "only route" — carrying per-region, per-field, classification and table signals with their instruments, and appends it when `measurement_store` names a destination |
+
+**Nothing entered the Document Evidence Object.** All three stay FACILITIES:
+`test_the_evidence_object_has_no_document_type_field` is the falsifier, and
+`ENGINE_1_INPUT_ENGINE_RULES.md:353` — *"exactly four"* sub-engines — is why it has
+to be.
+
+**Nothing was invented to make the wiring look busy.** `document_score` is `ABSENT`
+because #13 is UNDEFINED, `correctness` is `UNLABELLED` because ground truth is P1's
+and has not run, and every classification signal carries `None` because
+`classification` scores nothing by design. Three tests assert exactly those absences.
+
+**WHY NO GATE SAW IT, and what now would.** Every gate that existed asked a question
+about a module IN ISOLATION — `unit tests` imports it and proves it works, `coverage`
+counts the lines those tests ran, `mutation` kills the mutants those tests kill. All
+three go green on a module nothing calls. `test_module_wiring.py` is the general fix
+for that class and it now passes; the tests named above are the specific check that
+the modules are CONSUMED rather than merely imported.
 
 **What that means, if the architecture requires them in the pipeline.**
 
@@ -2089,3 +2170,39 @@ a key — it inherits this defect and needs its own entry.
 | **F-020** | `pip install accountant-dad` ships an unimportable Engine 1 | 2026-08-06 | `839645a` + `pyproject.toml` declarations | `tests/unit/test_declared_dependencies.py` — derives the set from the code |
 | **F-021** | The build freeze checks filenames, not code | 2026-08-06 | AST-based guard | `test_package.py` — three named AST tests |
 | **D1–D4** | The four `cleaner` content-destruction defects | 2026-08-06 | `1e0df65`, `590c6bb` and the recovered `wip` commits | `test_input_engine_cleaner_redteam.py` — 22 tests, all green |
+
+---
+
+## F-026 · A cleaned scan is not byte-reproducible — the PDF file identifier
+
+| | |
+|---|---|
+| **Severity** | LOW — no content is affected, and no reading changes |
+| **Status** | ⬜ OPEN · recorded, deliberately not fixed |
+| **Found** | 2026-08-06, by a byte comparison in the F-017 one-path test |
+
+**Description.** Cleaning the SAME scanned PDF twice does not produce the same bytes.
+
+**Measured**, on a 400x200 one-page scan at 150 dpi, commit `a967a46`: two payloads of
+identical length — 5465 bytes — differing in exactly **58** of them, every one inside
+`trailer <</ID[...]>>`. The rasters are `np.array_equal`. The cause is PyMuPDF writing
+a fresh random file identifier on every save.
+
+**Impact.** None on any reading: nothing in this repository reads `/ID`, and
+`CLAUDE.md`'s standing rule is explicit — *"IDENTITY ≠ INTELLIGENCE. IDs identify
+objects. They never influence reasoning."* The real cost is that a byte-for-byte
+determinism check over a cleaned PDF fails for a reason that has nothing to do with
+cleaning, which is how it was found: it cost one red test before it was diagnosed.
+
+**Workaround.** Compare rasters, or compare payloads only up to the trailer.
+
+**Permanent fix.** Making the identifier deterministic is a decision about PDF output
+nobody has asked for, and `docs/TECHNOLOGY_STACK.md` locks the backend. Recorded rather
+than fixed (`CLAUDE.md` §E.7): it was found while doing something else and is outside
+that change's mission.
+
+**Guarded by** `test_a_rebuilt_scan_differs_only_in_the_pdf_file_identifier_never_in_a_
+pixel`, which asserts the exact SHAPE of the difference — identical rasters, identical
+length, and every differing byte after the trailer — so the day a rebuild starts
+differing in a pixel, or before the trailer, it goes red instead of reading as the same
+known-harmless noise.
