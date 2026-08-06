@@ -81,7 +81,25 @@ jobs:
           # install, never during it. The package now declares a real runtime
           # dependency, and `--no-index` below cannot fetch one. Downloading it
           # into `dist` first keeps the install itself completely offline.
-          /tmp/fresh-legacy/bin/pip download --quiet --dest dist pydantic==2.12.3
+          #
+          # DERIVED FROM THE WHEEL, never restated. This line used to name
+          # `pydantic==2.12.3` — correct on the day it was written, when that
+          # was the package's only runtime dependency. `748bfb5` added four more
+          # (`opencv-python`, `numpy`, `pillow`, `pymupdf`) and this line was not
+          # updated, because nothing forces a hand-written list to follow the
+          # thing it describes. The step then failed on every commit for a
+          # reason that had nothing to do with the code:
+          #
+          #   ERROR: Could not find a version that satisfies the requirement
+          #          numpy==2.5.1 (from accountant-dad)
+          #
+          # Steps 1-12 passed; step 13 died. `quality.yml:45` was green on the
+          # same commit because it reads `Requires-Dist` off the built wheel
+          # instead of repeating it. Pointing pip at the wheel makes the
+          # dependency set follow `pyproject.toml` automatically, so a sixth
+          # dependency is covered the day it is declared. Two sources of truth
+          # became one (Law 19).
+          /tmp/fresh-legacy/bin/pip download --quiet --dest dist dist/accountant_dad-*.whl
           /tmp/fresh-legacy/bin/pip install --quiet --no-index --find-links dist accountant-dad
           /tmp/fresh-legacy/bin/python -c "import accountant_dad; print(accountant_dad.__version__)"
 
