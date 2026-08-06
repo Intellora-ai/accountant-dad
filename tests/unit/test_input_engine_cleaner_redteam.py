@@ -22,17 +22,30 @@ never from a threshold, so it agrees with a human squinting at the page and it
 does not agree with Otsu by construction. That single change of oracle is what
 makes the first defect below visible at all.
 
-EIGHT TESTS IN THIS FILE ARE RED, AND THEY ARE SUPPOSED TO BE.
+EIGHT TESTS IN THIS FILE WERE RED, AND WERE SUPPOSED TO BE. ALL ARE NOW GREEN.
     Two per defect, because each defect destroys something AND misreports it,
-    and those are separate failures with separate fixes. They are not
+    and those are separate failures with separate fixes. They were not
     aspirational, not future work and not a style preference. Each one names a
-    measured quantity of real document content that this module destroys or
-    fails to report, and each fails today for exactly that reason.
-    They were written before any fix and they are left visible on purpose:
-    `CLAUDE.md` Law 3 (every discovered bug gets a permanent regression test
-    BEFORE the fix is complete) and Law 12 (never ignore unexpected behaviour).
-    A quiet patch would have hidden four defects behind one commit; a red test
-    puts each one in front of whoever owns `cleaner.py`.
+    measured quantity of real document content that this module destroyed or
+    failed to report, and each failed for exactly that reason. They were written
+    before any fix and left visible on purpose: `CLAUDE.md` Law 3 (every
+    discovered bug gets a permanent regression test BEFORE the fix is complete)
+    and Law 12 (never ignore unexpected behaviour). A quiet patch would have
+    hidden four defects behind one commit; a red test put each one in front of
+    whoever owned `cleaner.py`.
+
+    THE FOUR DEFECTS ARE FIXED AND NO TEST HERE IS EXPECTED TO FAIL ANY MORE.
+    That sentence is the reason this paragraph was rewritten rather than left
+    standing: a file whose header says its reds are expected is a file where a
+    REAL red gets waved through, which is Law 12 failing by way of a stale
+    comment. Every test below is green, and a red one now means a regression.
+
+    Each attack was kept pointed at the defect rather than retired with it, and
+    where a fix made the original attack unconstructible the test was rewritten
+    to hold BOTH halves — the damage must not recur, AND the figure that would
+    report the damage must remain able to report it. See D1 below: a crop that
+    keeps the GSTIN and a retention figure hardwired to 1.0 look identical from
+    the GSTIN page alone, so that page alone can no longer be the whole test.
 
     D1  the crop discards every mark Otsu does not call ink. A faint GSTIN line
         at the foot of an invoice — 4080 pixels, 30 grey levels darker than the
@@ -148,6 +161,19 @@ MIN_ROTATED_INK_RETENTION = 0.995
 #: Measured: the faint GSTIN is 4080 pixels; the faint total is 1680.
 FAINT_GSTIN_PIXELS = 4080
 FAINT_TOTAL_PIXELS = 1680
+#: Measured: the faint-GSTIN page carries 50880 content pixels, and the same
+#: 50880 come through the cleaning. Nothing is discarded.
+GSTIN_PAGE_CONTENT_PIXELS = 50880
+#: `a_printed_body` paints six 10-row bands across 780 columns.
+PRINTED_BODY_INK_PIXELS = 6 * 10 * (PAGE_WIDTH - 120)
+#: A margin initial, three pixels square, 480 rows below the printed body.
+CORNER_MARK_SIDE = 3
+CORNER_MARK_ROW = 560
+CORNER_MARK_COLUMN = 860
+CORNER_MARK_PIXELS = CORNER_MARK_SIDE * CORNER_MARK_SIDE
+#: Measured: a crop keeping the body AND the mark spans rows 76..566, so any
+#: page delivered shorter than this cannot still be carrying the mark.
+HEIGHT_THAT_HOLDS_BODY_AND_MARK = 491
 #: Measured: a decimal point of 4 ink pixels, and 1094 ink pixels erased in all.
 TRUE_ERASED_FRACTION = 0.005
 #: Measured: 3 separate marks on the edge page, before and after.
@@ -260,6 +286,44 @@ def a_page_with_a_faint_gstin() -> Image:
     sheet = a_printed_body()
     sheet[560:572, 60:400] = FAINT_GSTIN
     return sheet
+
+
+def scanned(sheet: Image) -> Image:
+    """The same page as it comes off a scanner: seeded Gaussian sensor noise.
+
+    The noise is not decoration. `_lines_with_content` scales its allowance by
+    the page's noise, so on a NOISELESS page the allowance is zero and every
+    mark, however small, moves its line's mean past it. Sensor noise is what
+    gives the line profile a detection floor at all — and a floor is what lets
+    a mark be small enough to fall through the box while still being ink.
+    """
+    rng = np.random.default_rng(RNG_SEED)
+    noisy = sheet.astype(np.int16) + rng.normal(0, INJECTED_SIGMA, sheet.shape)
+    return np.asarray(np.clip(noisy, 0, 255), dtype=np.uint8)
+
+
+def a_scan_of_a_printed_body() -> Image:
+    """The CONTROL for the corner-mark page: identical, with nothing in the margin."""
+    return scanned(a_printed_body())
+
+
+def a_scan_with_an_isolated_corner_mark() -> Image:
+    """A scanned invoice initialled in the margin, far below the printed body.
+
+    A tick, a set of initials, a "PAID" stamp or a hand-written cheque number in
+    the bottom corner of an invoice is ordinary, and it is exactly the thing a
+    crop tightened around the printed body will throw away. Three pixels square
+    displaces its row's mean by 0.683 grey levels against the line profile's
+    3.338 allowance at this noise, so the box cannot see it; Otsu splits the
+    page at 85.0 and counts all nine of its pixels as ink. That gap between the
+    two rules is the whole reason `ink_kept_by_crop` is able to say anything.
+    """
+    sheet = a_printed_body()
+    sheet[
+        CORNER_MARK_ROW : CORNER_MARK_ROW + CORNER_MARK_SIDE,
+        CORNER_MARK_COLUMN : CORNER_MARK_COLUMN + CORNER_MARK_SIDE,
+    ] = INK
+    return scanned(sheet)
 
 
 def a_shaded_invoice() -> Image:
@@ -522,9 +586,9 @@ def test_a_deskewed_page_is_left_tight_around_its_content_and_not_around_the_fil
 
     margin = BASELINE.crop_margin_pixels
     marked: Image = np.asarray(
-        (
-            result.cleaned.astype(np.int16) < paper_mode(result.cleaned) - CONTENT_TOLERANCE
-        ).astype(np.uint8),
+        (result.cleaned.astype(np.int16) < paper_mode(result.cleaned) - CONTENT_TOLERANCE).astype(
+            np.uint8
+        ),
         dtype=np.uint8,
     )
     left, top, box_width, box_height = cv2.boundingRect(marked)
@@ -642,11 +706,11 @@ def test_a_faint_total_inside_the_printed_bodys_box_survives_every_stage() -> No
 
 
 # ══ PART TWO — D1: the crop discards content Otsu does not call ink ═══════
-# RED. Both tests below fail today, and the measurement in each is the defect.
+# Both tests below were RED; the measurement in each is the defect they guard.
 
 
 def test_a_faint_gstin_below_the_printed_body_is_not_cropped_off_the_page() -> None:
-    """D1 — RED. The registration number leaves the document silently.
+    """D1 — was RED.The registration number leaves the document silently.
 
     `_crop_to_ink` takes the bounding box of `_ink_mask`, and `_ink_mask` is
     Otsu. On this page Otsu splits at 30.0, so the only pixels it calls ink are
@@ -673,32 +737,92 @@ def test_a_faint_gstin_below_the_printed_body_is_not_cropped_off_the_page() -> N
 
 
 def test_content_the_crop_discarded_is_reported_instead_of_being_called_full_retention() -> None:
-    """D1 — RED. The retention figure is measured against the rule that drew the box.
+    """D1 — the crop keeps the GSTIN, AND the figure that would report losing it
+    is still able to report one.
 
-    `ink_kept_by_crop` counts the ink inside the crop and divides by the ink in
-    the whole page, using the SAME Otsu mask that chose the crop. The quotient
-    is therefore 1.0 by algebra, on every page, whatever the crop removed — the
-    module's own note concedes it is *"1.0 by construction."* A number that
-    cannot take any other value is not a measurement, and it is the only thing
-    standing between a discarded GSTIN and `preservation_status`.
+    THIS TEST HAS TWO HALVES AND NEITHER IS OPTIONAL. When D1 was live, this
+    attack showed the GSTIN leaving the page while `ink_kept_by_crop` said 1.0.
+    The crop was then fixed, and the attack stopped being constructible on that
+    page — the mark stays, so there is no discard left to misreport.
 
-    MEASURED on the page above: 4080 pixels of content removed, retention
-    reported as 1.0, preservation reported as `cleaned is safer`.
+    Asserting only the first half would be the trap. `ink_kept_by_crop` counted
+    the ink inside the crop and divided by the ink on the page using the SAME
+    Otsu mask that chose the crop, which made it 1.0 by algebra whatever the
+    crop removed; the module's own note conceded it was *"1.0 by construction."*
+    A page that merely keeps its GSTIN cannot tell that quotient apart from a
+    working measurement, so a test that checked only that would go green and
+    leave the guard hollow — exactly the defect, one layer up. This repository
+    has shipped that shape twice: a mutation gate that reported 0.0%
+    structurally, and a capture-fidelity check comparing an object to itself.
+
+    So the second half puts a mark somewhere the crop genuinely does discard it
+    and requires the figure to MOVE — by exactly the mark, not merely somewhere.
+    The two rules are what make that possible: the box is drawn from the line
+    profiles and the retention counted at Otsu's split, so the number marks work
+    it did not do. If either half of that separation is ever undone, this fails.
+
+    MEASURED, at the baseline settings:
+        the faint-GSTIN page      50880 content pixels in, 50880 out
+        the corner-mark scan      ink_kept_by_crop  0.9998077292828302
+                                  = 46800/46809 to the bit, the mark's nine
+                                    pixels and nothing else
+                                  preservation: the original is the safer basis
+                                  delivered 218 rows; 491 would be needed to
+                                    hold the printed body and the mark together
+        the same scan, no mark    ink_kept_by_crop  exactly 1.0
+                                  preservation: the cleaned page is safer
+
+    PROVEN BY BREAKING IT (§J.5). Four mutations of `cleaner.py`, this test run
+    against each: retention hardwired to 1.0 -> RED (`assert 1.0 < 1.0`); the
+    box drawn from the Otsu mask that audits it, which is D1 itself -> RED
+    (`46800 == 50880`); `preservation_status` stops consulting the retention
+    figure -> RED. The fourth, dropping `kept_by_second_crop` from the product,
+    SURVIVES, and is recorded rather than papered over: across 28 pages spanning
+    0-12 degrees of skew and sigma 0-20 of noise the second crop's factor was
+    1.0 on every one, because rotation's interpolation smooths the page and so
+    LOWERS the line profile's allowance — the second box is never tighter than
+    the first. No page is known that would kill it, and none was invented to.
+
+    `ENGINE_1:450` — cleaner *"cannot remove important evidence."* A number that
+    cannot take any other value is not a measurement, and this one is the only
+    thing standing between a discarded mark and `preservation_status`.
     """
     page = a_page_with_a_faint_gstin()
 
     result = cleaner.clean(page, settings())
 
-    lost = content_pixels(page) - content_pixels(result.cleaned)
-    assert lost > 0, "the attack is void unless the crop actually removed content"
-    assert result.preservation_status is cleaner.PreservationStatus.ORIGINAL_IS_SAFER
+    assert content_pixels(page) == GSTIN_PAGE_CONTENT_PIXELS
+    assert content_pixels(result.cleaned) == GSTIN_PAGE_CONTENT_PIXELS
+
+    # The retention figure can still fall, and falls by exactly what was thrown
+    # away. Without this the assertion above passes on a constant.
+    marked = a_scan_with_an_isolated_corner_mark()
+
+    discarded = cleaner.clean(marked, settings())
+
+    assert discarded.cleaned.shape[0] < HEIGHT_THAT_HOLDS_BODY_AND_MARK, (
+        "the attack is void unless the crop actually discarded the mark"
+    )
+    retention = discarded.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED).value
+    assert retention is not None
+    assert retention < FULL_RETENTION
+    assert retention == PRINTED_BODY_INK_PIXELS / (PRINTED_BODY_INK_PIXELS + CORNER_MARK_PIXELS)
+    assert discarded.preservation_status is cleaner.PreservationStatus.ORIGINAL_IS_SAFER
+
+    # ...and does NOT fall on the identical scan with nothing to discard, so the
+    # figure is answering the crop rather than the sensor noise.
+    intact = cleaner.clean(a_scan_of_a_printed_body(), settings())
+
+    kept = intact.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED).value
+    assert kept == FULL_RETENTION
+    assert intact.preservation_status is cleaner.PreservationStatus.CLEANED_IS_SAFER
 
 
 # ══ PART TWO — D2: a net count cannot see a local erasure ════════════════
 
 
 def test_the_reported_ink_loss_is_never_smaller_than_the_ink_actually_erased() -> None:
-    """D2 — RED. Accretion in one region cancels destruction in another.
+    """D2 — was RED.Accretion in one region cancels destruction in another.
 
     `clean` computes `lost = (ink_before - ink_after) / ink_before` from two
     COUNTS. On a page carrying a shaded panel, denoising pulls the panel's
@@ -740,7 +864,7 @@ def test_the_reported_ink_loss_is_never_smaller_than_the_ink_actually_erased() -
 
 
 def test_a_decimal_point_erased_by_denoising_makes_the_original_the_safer_basis() -> None:
-    """D2 — RED. The strictest possible setting still calls the damage safe.
+    """D2 — was RED.The strictest possible setting still calls the damage safe.
 
     `max_ink_loss_fraction = 0.0` says: tolerate no loss of ink whatsoever. The
     denoise then erases 1094 ink pixels including an entire isolated decimal
@@ -783,7 +907,7 @@ def test_a_decimal_point_erased_by_denoising_makes_the_original_the_safer_basis(
 
 
 def test_the_preservation_status_of_a_scan_does_not_depend_on_the_page_order() -> None:
-    """D3 — RED. The same two pages, reordered, get the opposite answer.
+    """D3 — was RED.The same two pages, reordered, get the opposite answer.
 
     `_pdf_rebuilt_from_cleaned_pages` cleans every page but keeps only `first`,
     so the returned `preservation_status` and every quality observation belong
@@ -815,7 +939,7 @@ def test_the_preservation_status_of_a_scan_does_not_depend_on_the_page_order() -
 
 
 def test_every_page_of_a_scanned_pdf_contributes_quality_evidence() -> None:
-    """D3 — RED. Pages two onward are cleaned and then measured by nobody.
+    """D3 — was RED.Pages two onward are cleaned and then measured by nobody.
 
     `confidence` is the only component allowed to turn cleaner's signals into a
     score (`ENGINE_1:109`). If a page produces no signal, `confidence` cannot
@@ -843,7 +967,7 @@ def test_every_page_of_a_scanned_pdf_contributes_quality_evidence() -> None:
 
 
 def test_two_rgba_documents_with_different_content_do_not_clean_to_the_same_page() -> None:
-    """D4 — RED. A stamp and a blank canvas produce identical output.
+    """D4 — was RED.A stamp and a blank canvas produce identical output.
 
     `_to_grey` sends a four-channel image through `cv2.COLOR_BGRA2GRAY`, which
     computes a luma from B, G and R and drops A. When a mark's shape lives in
@@ -866,7 +990,7 @@ def test_two_rgba_documents_with_different_content_do_not_clean_to_the_same_page
 
 
 def test_a_document_whose_content_lives_in_alpha_is_not_flattened_to_one_grey() -> None:
-    """D4 — RED. 40320 visible pixels become a page with zero variance.
+    """D4 — was RED.40320 visible pixels become a page with zero variance.
 
     Stated as variance rather than as a comparison so it holds regardless of
     which grey the flattening happens to land on, and so it fails for the right
