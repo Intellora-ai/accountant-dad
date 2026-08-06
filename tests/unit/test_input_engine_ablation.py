@@ -512,11 +512,19 @@ def test_the_filename_the_parser_actually_sees_differs_every_run_and_changes_not
         source: Path,
         *,
         source_reference: str,
+        extracted_regions: tuple[parser.ExtractedRegion, ...] = (),
         table_structure: parser.TableStructureSettings | None = None,
     ) -> parser.ParsedStructure:
         seen.append(source)
+        # `extracted_regions` is forwarded, never swallowed: this spy exists to
+        # watch the FILENAME, and a spy that quietly dropped reader's regions
+        # would change what the real parser produces and make this test measure
+        # a pipeline nobody ships.
         return real_parse(
-            source, source_reference=source_reference, table_structure=table_structure
+            source,
+            source_reference=source_reference,
+            extracted_regions=extracted_regions,
+            table_structure=table_structure,
         )
 
     # Patched on the `parser` MODULE, which is the same object `pipeline`

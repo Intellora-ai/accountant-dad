@@ -476,14 +476,28 @@ def test_the_human_note_reaches_engine_1_verbatim() -> None:
     assert note.original_user_text not in evidence.structured_document.extracted_text
 
 
-def test_a_document_engine_1_cannot_read_stops_the_run_loudly() -> None:
-    """Law 11 — fail loudly, never silently. §12 — an exception is *"Never
-    swallowed."*
+def test_a_document_engine_1_cannot_read_crosses_as_evidence_not_as_an_exception() -> None:
+    """A CORRECTED EXPECTATION, AND THE PIN THAT ASKED FOR IT IS NOW RESOLVED.
 
-    Zero bytes is real hostile input, not a mock of one, and it is refused by
-    the real `cleaner`. The transaction stays in `Input`: `Failed` is for *"a
-    runtime failure that exhausted retries"* (`:229`), and the retry policy §8
-    requires does not exist yet, so nothing has exhausted anything.
+    This test used to require `PipelineStageError` for zero bytes and was
+    deliberately left pinning the behaviour as it stood, because the fix
+    belonged in `engines/input_engine/pipeline.py`. That fix has landed.
+
+    `APPLICATION_LAYER_CONTRACTS.md:30` — *"**Business** — unreadable, corrupt,
+    zero-byte: an object is produced recording the failure. **Runtime** —
+    engine crash: nothing produced, Application Layer restarts."* Zero bytes is
+    the third word in that list.
+
+    LAW 11 IS NOT WEAKENED BY THIS, WHICH IS THE POINT WORTH STATING. Nothing
+    is swallowed: the failure is louder than before, because it now arrives as
+    a durable, routable artifact naming the stage and the cause instead of a
+    stack trace that only a log sees. What Law 11 forbids is silence, and an
+    artifact carrying a named uncertainty marker is the opposite of silence.
+
+    The transaction still stays in `Input` — unchanged, and for the reason the
+    old docstring gave: `Failed` is for *"a runtime failure that exhausted
+    retries"* (`:229`), the retry policy §8 requires does not exist, and a
+    business outcome was never a candidate for `Failed` in the first place.
     """
     fixture = _Fixture()
 
@@ -529,6 +543,16 @@ def test_a_document_engine_1_cannot_read_stops_the_run_loudly() -> None:
     reached = {entry.to_state for entry in fixture.audit.history(fixture.transaction_id)}
     assert TransactionState.UNDERSTANDING in reached
     assert fixture.store.state_of(fixture.transaction_id) is TransactionState.ACCOUNTING
+
+    # From the other resolution of this same pin, kept because each is a claim
+    # mine did not make: no field was invented, no score was invented, and a
+    # BUSINESS outcome never moves the transaction to `Failed` — that state is
+    # for an exhausted retry policy (`APPLICATION_LAYER.md:229`) which does not
+    # exist yet, so landing there would assert a runtime failure that never
+    # happened.
+    assert evidence.structured_document.detected_fields == ()
+    assert report.confidence_scores == ()
+    assert fixture.store.state_of(fixture.transaction_id) is not TransactionState.FAILED
 
 
 # ── the Transaction ID is intact ──────────────────────────────────────────
