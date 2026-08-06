@@ -358,13 +358,10 @@ class CleanedArtifact:
     original: bytes
     #: A rendered view, when one was produced. `None` when nothing was
     #: rasterised — which is NOT "a blank page" and must never be read as one.
+    #: Set at construction by every path that produces one; there is deliberately
+    #: no `with_raster` copier, because a second way to populate a field is a
+    #: second thing to keep honest and nothing ever called it (Law 49).
     raster: Image | None = None
-
-    def with_raster(self, raster: Image) -> CleanedArtifact:
-        """A copy carrying a rendered view. The payload is never touched."""
-        return CleanedArtifact(
-            kind=self.kind, payload=self.payload, original=self.original, raster=raster
-        )
 
 
 @dataclass(frozen=True, slots=True, eq=False)
