@@ -19,6 +19,7 @@ import json
 import numbers
 import operator
 from decimal import Decimal
+from typing import cast
 
 import pytest
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
@@ -58,7 +59,7 @@ NOT_APPLICABLE = NotApplicableType(basis="the grid position holds no text to sco
 FAILED = MeasurementFailedType(basis="the recogniser could not read this region at all")
 
 
-class Holder(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel's own signature carries Any
+class Holder(BaseModel):  # type: ignore[explicit-any]  # pydantic's own signature carries Any
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     score: Confidence
@@ -249,6 +250,16 @@ def test_it_works_as_a_model_field_and_stays_frozen() -> None:
     assert held.score == Decimal("0.9800")
     with pytest.raises(ValidationError):
         held.score = Decimal("0.1000")
+
+
+def _state_of(value: object) -> MeasurementState:
+    """`measurement_state` reached through an `object` parameter.
+
+    Callers below hand it values its signature forbids — that IS the
+    assertion, not an accident. Widening here states the wrongness in the
+    type system instead of silencing the checker at each call site.
+    """
+    return measurement_state(cast("ConfidenceOrUnmeasured", value))
 
 
 def test_a_model_field_rejects_a_float_too() -> None:
@@ -653,17 +664,18 @@ def test_every_state_describes_itself_in_words_a_reader_can_act_on(
 # cannot be audited (Law 43), and this artifact is the one an auditor reads.
 
 
-class Dumped(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel's own signature carries Any
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    confidence: ConfidenceOrUnmeasured
+# Not a second BaseModel. `Provenance` — the PRODUCTION model that carries
+# this type — is asserted in `tests/unit/test_evidence.py`; a local double
+# here would prove the double (§J.6). A TypeAdapter exercises the type's own
+# serialisation directly, which is the thing that raised.
+DUMPED: TypeAdapter[ConfidenceOrUnmeasured] = TypeAdapter(ConfidenceOrUnmeasured)
 
 
 @pytest.mark.parametrize("state", list(MeasurementState))
 def test_every_state_can_be_written_to_json(state: MeasurementState) -> None:
     # The regression, for all four. A state added later that forgot a
     # serialisation rule would raise here rather than at the first audit.
-    assert Dumped(confidence=BY_STATE[state]).model_dump_json()
+    assert DUMPED.dump_json(BY_STATE[state])
 
 
 @pytest.mark.parametrize("state", [s for s in MeasurementState if s is not s.MEASURED])
@@ -679,7 +691,7 @@ def test_an_absence_is_written_as_a_named_state_and_never_as_a_number(
     """
     value = BY_STATE[state]
     assert isinstance(value, UnmeasuredType)
-    written = json.loads(Dumped(confidence=value).model_dump_json())["confidence"]
+    written = json.loads(DUMPED.dump_json(value))
 
     assert written == {"measurement_state": state.value, "basis": value.basis}
     assert not isinstance(written, int | float | str), (
@@ -691,7 +703,7 @@ def test_an_absence_is_written_as_a_named_state_and_never_as_a_number(
 def test_a_measured_score_is_still_written_as_its_own_digits() -> None:
     # Adding a state must not cost the state that already worked, and the
     # digits must be the producer's own — verbatim, not padded to four places.
-    written = json.loads(Dumped(confidence=Decimal("0.31")).model_dump_json())["confidence"]
+    written = json.loads(DUMPED.dump_json(Decimal("0.31")))
     assert written == "0.31"
 
 
@@ -702,7 +714,7 @@ def test_a_python_mode_dump_still_hands_back_the_value_itself(state: Measurement
     # fired in Python mode too would turn every artifact comparison into a
     # comparison of dictionaries that happen to look alike.
     value = BY_STATE[state]
-    assert Dumped(confidence=value).model_dump()["confidence"] is value
+    assert DUMPED.dump_python(value) is value
 
 
 @pytest.mark.parametrize("impostor", [1.0, 0, True, "0.98", None, ABSENT])
@@ -720,7 +732,7 @@ def test_nothing_that_merely_looks_like_a_score_is_reported_as_measured(
     "nothing here" — and it means a different thing.
     """
     with pytest.raises(TypeError, match="neither a Decimal measurement nor a stated absence"):
-        measurement_state(impostor)  # type: ignore[arg-type]
+        _state_of(impostor)
 
 
 # The sentinel's behaviour as a field on a real frozen model is asserted in

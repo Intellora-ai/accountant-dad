@@ -585,14 +585,15 @@ def test_a_grid_position_with_no_text_produces_no_mapping_and_is_not_lost() -> N
     The position itself must still be visible, so the disconfirming half is
     asserted too: the `Cell` is still on the table with its row, column and box.
     """
-    empty = _a_cell(None, row=2, column=1)
+    empty_row = 2
+    empty = _a_cell(None, row=empty_row, column=1)
     table = _a_table(_a_cell("USB cable", row=2, column=0), empty)
 
     mapped = parser.map_cells((table,))
 
     assert [field.value for field in mapped] == ["USB cable"]
     assert empty in table.cells, "the empty position must survive on the table itself"
-    assert empty.row_start == 2  # noqa: PLR2004  — the fixture's own coordinate
+    assert empty.row_start == empty_row
     assert empty.box is not None
 
 
