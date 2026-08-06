@@ -581,6 +581,174 @@ def test_a_corrupt_pdf_crosses_as_an_artifact_too_naming_its_own_cause() -> None
     assert "cleaner" in marker.reason
 
 
+#: The business verdict injected at the `parser.parse` seam below. A REAL
+#: `parser.DocumentUnreadableError`, built through its own constructor with its
+#: own two arguments, so `str(exc)` is the sentence `parser` would really have
+#: produced rather than a string this file invented.
+REFUSED_BY_PARSER = parser.DocumentUnreadableError(
+    "upload:refused.pdf", ("Docling reported no usable layout",)
+)
+PARSER_REFUSAL_TEXT = "upload:refused.pdf could not be parsed: Docling reported no usable layout"
+
+
+def test_a_business_failure_after_two_stages_names_both_and_keeps_what_reader_read() -> None:
+    """THE BUSINESS-FAILURE PATH, ENTERED WITH WORK ALREADY DONE.
+
+    Every other test of this path fails at `cleaner` — the FIRST stage — so
+    `_failure_artifact` has only ever been observed with nothing completed,
+    nothing read and no human note. Three of its four honest-emptiness claims
+    were therefore unread by any test, and emptiness is exactly what a bug here
+    looks like.
+
+    Measured at `d7a8ed9`, before this test existed: twelve mutants of
+    `_failure_artifact` survived the whole suite, all of them reachable only
+    with an earlier stage completed —
+    `completed` deleted outright (`__mutmut_1`), each of the three stage names
+    rewritten (`_3` … `_8`), `reader`'s real text replaced by `None`
+    (`_13`), the human note dropped (`_18`, `_24`), and the separator that
+    joins the completed names rewritten (`_59`, `_60`).
+
+    `cleaner` and `reader` are genuinely run here, on a real PDF with a real
+    text layer. The refusal is injected at the `parser.parse` seam for the
+    reason `test_parser_failing_after_cleaner_and_reader_preserves_both_and_
+    names_parser` already states: no document this environment can process
+    makes `parser` return a BUSINESS verdict after the first two stages
+    succeed, and §J.7 permits faking exactly at that boundary. The verdict
+    itself is a real `parser.DocumentUnreadableError`, which is why `_stopped`
+    routes it to an artifact rather than raising.
+    """
+    note = a_human_business_context("Advance paid to supplier, invoice to follow.")
+    intake = pipeline.DocumentIntake(
+        document=an_invoice_pdf(),
+        media_type=reader.MediaType.PDF,
+        source_references=("upload:refused.pdf", "email:thread-9"),
+    )
+
+    seen: dict[str, object] = {}
+
+    def refusing_parse(
+        source: pathlib.Path,
+        *,
+        source_reference: str,
+        extracted_regions: tuple[parser.ExtractedRegion, ...] = (),
+        table_structure: parser.TableStructureSettings | None = None,
+    ) -> parser.ParsedStructure:
+        # Recorded, not discarded, for the same reason
+        # `test_parser_failing_after_cleaner_and_reader...` records it: this
+        # proves the third stage was really ENTERED, with `reader`'s real
+        # regions, rather than merely that something raised.
+        seen.update(
+            source=source,
+            source_reference=source_reference,
+            extracted_regions=extracted_regions,
+            table_structure=table_structure,
+        )
+        raise REFUSED_BY_PARSER
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(parser, "parse", refusing_parse)
+        evidence = pipeline.run(
+            intake,
+            identity=an_identity(),
+            settings=a_pipeline_settings(),
+            recorded_at=RECORDED_AT,
+            human_business_context=note,
+        )
+
+    # the third stage really ran, on the first source reference, carrying
+    # `reader`'s real regions — the F-019 arrow holds on this path too
+    assert seen["source_reference"] == "upload:refused.pdf"
+    assert seen["extracted_regions"] != ()
+
+    # `reader` really completed, so its real text is carried rather than
+    # discarded because the run ended badly. Checked against this file's own
+    # ground truth, not against whatever the run produced.
+    extracted = evidence.structured_document.extracted_text
+    assert extracted != ""
+    for line in INVOICE_LINES:
+        assert line in extracted
+
+    # the caller's note travels the failing path untouched, exactly as it
+    # travels the successful one
+    assert evidence.human_business_context is note
+
+    # nothing is invented for the stages that never ran
+    assert evidence.structured_document.detected_fields == ()
+    assert evidence.structured_document.detected_tables == ()
+    assert evidence.confidence_report.confidence_scores == ()
+    assert evidence.confidence_report.risky_fields == ()
+
+    # and the two stages that DID complete are named, in order, by their own
+    # lowercase names — "none" here would be a false statement about a run in
+    # which two sub-engines really did produce something
+    assert evidence.confidence_report.reliability_information == (
+        f"no field was extracted: Engine 1 stopped at the 'parser' stage "
+        f"because the document could not be read ({PARSER_REFUSAL_TEXT}). "
+        "Stages that completed first: cleaner, reader. "
+        "No confidence score is reported because nothing was measured; "
+        "the absence is recorded rather than filled in."
+    )
+
+    # the marker names the FIRST source reference, carries the sub-engine's own
+    # words verbatim, and states — word for word — why an artifact exists at all
+    (marker,) = evidence.confidence_report.uncertainty_markers
+    assert marker.subject == "upload:refused.pdf"
+    assert marker.reason == (
+        f"this document could not be read at the 'parser' stage: "
+        f"{PARSER_REFUSAL_TEXT} No value was extracted from it and none is "
+        "invented in its place; this artifact records the "
+        "failure so the transaction can be routed rather than "
+        "crashing (APPLICATION_LAYER_CONTRACTS.md:30, "
+        "COMMUNICATION_RULES_INPUT_ENGINE.md:159)."
+    )
+
+    # `document_structure` says NOT PARSED and says which stage stopped it,
+    # rather than carrying an empty string a reader would take for "no structure"
+    assert evidence.structured_document.document_structure == (
+        "not parsed: Engine 1 stopped at the 'parser' stage because the document could not be read."
+    )
+
+
+def test_the_failure_artifact_names_every_stage_that_completed_including_parser() -> None:
+    """`run` cannot reach `_failure_artifact` with `parser` completed — the
+    parser stage is the last one routed through `_stopped`, and at that point
+    `preserved.parsed` is still `None`. So the `'parser'` entry in the
+    completed-stages tuple is unobservable through `run`, and its two mutants
+    (`_7`, `_8`) survived the whole suite at `d7a8ed9` for that reason.
+
+    It is not dead code and it is not unkillable: `_failure_artifact` states
+    what it does with `preserved`, and this calls it directly with all three
+    stages recorded to hold it to that. Every input is a real object built by
+    the module that owns it — a real `CleanedDocument`, a real `Reading` from
+    `reader.read_pdf_text_layer` on a real PDF, and a real `ParsedStructure` —
+    so what is asserted is the function's own behaviour, not a stand-in's.
+    """
+    reading = reader.read_pdf_text_layer(an_invoice_pdf())
+    assert reading.regions != ()
+    parsed = parser.ParsedStructure(
+        source_reference="upload:late.pdf", page_count=1, regions=(), tables=()
+    )
+    preserved = pipeline.PipelinePartialResult(
+        cleaned=a_cleaned_document(), reading=reading, parsed=parsed
+    )
+    intake = pipeline.DocumentIntake(
+        document=an_invoice_pdf(),
+        media_type=reader.MediaType.PDF,
+        source_references=("upload:late.pdf",),
+    )
+    given = pipeline._RunInputs(intake=intake, identity=an_identity(), human_business_context=None)
+
+    evidence = pipeline._failure_artifact("confidence", REFUSED_BY_PARSER, preserved, given)
+
+    assert "Stages that completed first: cleaner, reader, parser. " in (
+        evidence.confidence_report.reliability_information
+    )
+    # and reader's real text is still what reaches the artifact on this path
+    assert evidence.structured_document.extracted_text == (
+        pipeline.reader_output(reading).raw_extracted_text
+    )
+
+
 def test_a_blank_source_reference_is_refused_at_construction_not_deep_in_a_failure() -> None:
     """FOUND BY RED-TEAMING THE BUSINESS-FAILURE PATH, AND FIXED AT THE ROOT
     (§J.10, Law 13, §I.12 — fix the CLASS, not the instance).
@@ -1551,6 +1719,20 @@ def test_document_structure_text_renders_every_band_a_table_structure_detector_f
 
     assert "band label='table row'" in text
     assert "score=0.87" in text
+    # STRICTER, NOT DIFFERENT (§J.4): the two assertions above read fragments,
+    # and this is the only channel `parser`'s geometry has into the artifact —
+    # so the LINES and the separator between them are the contract, not
+    # decoration. `x_document_structure_text__mutmut_8` rewrites `"\n"` into
+    # `"XX\nXX"` and both fragment reads stay green; measured at `d7a8ed9`.
+    # The box repr is taken from the object rather than transcribed, so this
+    # asserts THIS function's format and never re-implements `BoundingBox`'s.
+    assert text == "\n".join(
+        (
+            "page_count=1",
+            f"table[0] detector='table-transformer:test' rows=1 columns=1 box={box!r}",
+            f"  band label='table row' score=0.87 box={box!r}",
+        )
+    )
 
 
 # ── defect 4, proven directly: no invented field name or confidence ───
@@ -1709,6 +1891,13 @@ def test_the_pipeline_reads_the_cleaned_document_not_the_original() -> None:
 def test_a_missing_artifact_fails_loudly_rather_than_falling_back() -> None:
     """A fallback to `intake.document` would reinstate the bypass while every
     behavioural test kept passing — the exact shape of a false green (§J.(a)).
+
+    STRICTER, NOT DIFFERENT (§J.4). `match=` reads four words of a four-sentence
+    refusal, and the other three sentences are the ones that say WHY the refusal
+    exists: that this pipeline reads the cleaned document, that continuing is
+    unsafe, and that the alternative would reinstate the bypass F-017 removed.
+    Ten mutants of `_payload_of` rewrite only those three at `d7a8ed9` — the
+    `match=` reads none of them — so the whole message is pinned instead.
     """
     without_artifact = cleaner.CleanedDocument(
         original=np.zeros((1, 1), dtype=np.uint8),
@@ -1718,8 +1907,15 @@ def test_a_missing_artifact_fails_loudly_rather_than_falling_back() -> None:
         artifact=None,
     )
 
-    with pytest.raises(pipeline.PipelineError, match="no media-aware artifact"):
+    with pytest.raises(pipeline.PipelineError, match="no media-aware artifact") as raised:
         pipeline._payload_of(without_artifact)
+
+    assert str(raised.value) == (
+        "cleaner returned no media-aware artifact. The pipeline reads the "
+        "CLEANED document, never the original, so there is nothing safe to "
+        "continue with. Refused rather than silently re-reading the intake, "
+        "which would reinstate the bypass that F-017 removed."
+    )
 
 
 def test_the_legacy_rasterisation_adapter_is_gone() -> None:
@@ -1940,6 +2136,35 @@ def test_pipeline_stage_error_message_names_the_stage_and_carries_the_cause() ->
     # a runtime failure is NOT quietly turned into an artifact: the type this
     # module chose to raise is the one that reaches the caller
     assert not isinstance(raised.value.cause, pipeline.BUSINESS_FAILURE)
+
+
+def test_the_stage_error_states_every_promise_it_makes_word_for_word() -> None:
+    """The message is a CONTRACT, and the test above can only read four
+    characters of it — `"'reader'" in str(...)` — because the rest interpolates
+    a `ModuleNotFoundError` whose wording belongs to CPython, not to this
+    repository. Constructed directly here with a cause this test owns, so the
+    whole sentence is pinned: which stage stopped, the cause verbatim, that
+    earlier work is on `preserved`, that nothing stands in for the failed
+    stage, and that no stage after it ran.
+
+    Measured at `d7a8ed9`: `xǁPipelineStageErrorǁ__init____mutmut_5` rewrites
+    the clause promising the preservation, and no test in the suite read it.
+    """
+    cause = RuntimeError("Docling refused the layout")
+    preserved = pipeline.PipelinePartialResult(cleaned=a_cleaned_document())
+
+    error = pipeline.PipelineStageError("parser", cause, preserved)
+
+    assert error.stage == "parser"
+    assert error.cause is cause
+    assert error.preserved is preserved
+    assert str(error) == (
+        "Engine 1's pipeline stopped at the 'parser' stage: "
+        "Docling refused the layout. "
+        "Whatever earlier stages already produced is preserved on this "
+        "exception's `preserved` attribute; nothing stands in for "
+        "'parser', and no stage after it ran."
+    )
 
 
 def test_pipeline_partial_result_defaults_to_nothing_completed() -> None:

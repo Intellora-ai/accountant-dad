@@ -264,6 +264,76 @@ def test_a_missing_confidence_output_fails_loudly_and_preserves_the_rest() -> No
     assert raised.value.parts.confidence is None
 
 
+@pytest.mark.parametrize(
+    ("missing", "parts"),
+    [
+        (
+            "cleaner",
+            SubEngineOutputs(
+                cleaner=None,
+                reader=a_reader_output(),
+                parser=a_parser_output(),
+                confidence=a_confidence_output(),
+            ),
+        ),
+        (
+            "reader",
+            SubEngineOutputs(
+                cleaner=a_cleaner_output(),
+                reader=None,
+                parser=a_parser_output(),
+                confidence=a_confidence_output(),
+            ),
+        ),
+        (
+            "parser",
+            SubEngineOutputs(
+                cleaner=a_cleaner_output(),
+                reader=a_reader_output(),
+                parser=None,
+                confidence=a_confidence_output(),
+            ),
+        ),
+        (
+            "confidence",
+            SubEngineOutputs(
+                cleaner=a_cleaner_output(),
+                reader=a_reader_output(),
+                parser=a_parser_output(),
+                confidence=None,
+            ),
+        ),
+    ],
+)
+def test_the_refusal_states_every_promise_it_makes_word_for_word(
+    missing: str, parts: SubEngineOutputs
+) -> None:
+    """The message is a CONTRACT, not decoration, so it is pinned whole.
+
+    `MissingSubEngineOutputError`'s own docstring makes three promises and the
+    message is where a caller reads all three: WHICH sub-engine produced
+    nothing, that the other parts are still reachable on `parts`, and that
+    nothing was discarded or invented to stand in for the missing one
+    (`ENGINE_1_INPUT_ENGINE_RULES.md:337`, the invention prohibition).
+
+    Asserting only `missing in str(exc)` reads one of those three and leaves
+    the other two unread — measured, not supposed: at `d7a8ed9` six mutants
+    rewrote the two unread clauses and every existing test stayed green
+    (`xǁMissingSubEngineOutputErrorǁ__init____mutmut_4` … `_9`). A promise no
+    test reads is a promise the code is free to stop keeping.
+    """
+    with pytest.raises(MissingSubEngineOutputError) as raised:
+        assemble(parts=parts, identity=an_identity(), source_references=("upload:x.pdf",))
+
+    assert str(raised.value) == (
+        f"Engine 1 assembly cannot build a Document Evidence Object: the "
+        f"{missing!r} sub-engine produced no output. The other parts "
+        "supplied are preserved on this exception's `parts` attribute; "
+        "none of them was discarded and nothing was invented to stand in "
+        "for the missing one."
+    )
+
+
 def test_multiple_missing_parts_report_only_the_first_in_fixed_order() -> None:
     # cleaner is checked before reader, parser and confidence (assemble()'s
     # own docstring states the order). Both cleaner and reader are absent
