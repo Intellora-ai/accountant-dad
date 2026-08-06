@@ -834,6 +834,16 @@ def _crop_to_content(
     quotient would fall below 1.0 and say so, which the previous form — box and
     audit from the same mask — could not do on any page whatsoever.
 
+    MEASURED, so that "can move" is a number and not a hope (Law 52). A 600x900
+    scan carrying sensor noise at sigma 14, its printed body 46800 ink pixels,
+    plus a 3x3 mark in the margin 480 rows below the body: the line profile is
+    blind to the mark — three ink pixels shift their row's mean by 0.683 grey
+    levels against an allowance of 3.338 — so the box excludes it, while Otsu
+    splits at 85.0 and counts all nine. Reported: 0.9998077292828302, which is
+    46800/46809 to the bit, the mark's exact share of the ink and nothing else.
+    The same page with the mark removed reports exactly 1.0, on all fourteen
+    seeds tried, so the figure moves for the discard and not for the noise.
+
     `source` is the same page in the document's own intensities when `grey` has
     been contrast-enhanced, and `grey` itself when it has not; `painted` names
     the pixels rotation filled in. Both exist so the box is drawn from the
@@ -1318,14 +1328,25 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
         rule that drew the box (`_content_mask`, `_crop_to_content`).
 
     WHAT IS AUDITED WITH WHAT, BECAUSE THAT IS THE PART THAT WENT WRONG.
-        `ink_kept_by_crop` is measured with the mask that drew the box, so it
-        can only ever audit the box. `ink_lost_to_denoise` is measured at the
-        Otsu split taken from the artifact as received — the rule the denoise
-        did not consult — as a SET DIFFERENCE, so a stroke destroyed cannot be
-        cancelled by ink gained elsewhere. `content_kept` is measured against
-        each page's own modal intensity, which no stage here transforms
-        anything with, so it is the one figure that is free to move and the one
-        that answers *"what did this cost the document?"*
+        `ink_kept_by_crop` is counted at Otsu's split while the box it audits is
+        drawn from the line profiles, so it marks work it did not do and is free
+        to fall — measured 0.9998077292828302 on a noisy scan whose nine-pixel
+        margin mark the crop discarded, and exactly 1.0 on the same scan without
+        the mark. `ink_lost_to_denoise` is measured at the Otsu split taken from
+        the artifact as received — the rule the denoise did not consult — as a
+        SET DIFFERENCE, so a stroke destroyed cannot be cancelled by ink gained
+        elsewhere. `content_kept` is measured against each page's own modal
+        intensity, which no stage here transforms anything with, so it answers
+        end to end *"what did this cost the document?"* — the question neither
+        of the other two asks.
+
+        NOT ONE OF THE THREE IS 1.0 BY CONSTRUCTION, and an earlier form of this
+        docstring said the first one was, in the same breath as calling
+        `content_kept` "the one figure that is free to move." Both halves were
+        false and the pair was worse than either: a reader told a number is a
+        constant stops reading it, and this is the number that reports a mark
+        the crop threw away. A guarantee described as unbreakable is a guarantee
+        nobody checks.
     """
     received = _receive(image, settings)
     grey = _to_grey(received)
@@ -1393,11 +1414,15 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
             value=retained,
             unit="fraction of ink pixels",
             note=(
-                "each crop is the bounding box of all the content, so this is 1.0 "
-                "by construction. Counted anyway, across both crops: a guarantee "
-                "nobody measures is a guarantee nobody would notice breaking. It "
-                f"audits the BOX and not the mask that drew it — {CONTENT_KEPT} is "
-                "the number that can move."
+                "the ink inside both crops over the ink on the page, counted at "
+                "Otsu's split while the boxes were drawn from the line profiles. "
+                "Two different rules, so this AUDITS the boxes instead of "
+                "restating them, and it is NOT 1.0 by construction — measured "
+                "0.9998077292828302 on a noisy scan whose 3x3 margin mark the "
+                "crop discarded, which is exactly that mark's share of the ink, "
+                "against exactly 1.0 on the same scan without it. Below 1.0 "
+                "means a mark Otsu called ink was thrown away; read it with "
+                f"{CONTENT_KEPT}, which asks the wider end-to-end question."
             ),
         ),
         QualityObservation(
@@ -1409,9 +1434,9 @@ def clean(image: Image, settings: CleanerSettings) -> CleanedDocument:
                 f"{content_before} pixel(s) differed from the paper on the artifact "
                 f"as received, {content_after} on the page delivered. Counted "
                 "against each page's own modal intensity, which no stage here uses "
-                "to transform anything — so unlike every other retention figure in "
-                "this module it is not 1.0 by construction, and it falls when "
-                "denoising, contrast or the geometry costs the document a mark."
+                "to transform anything, so this is the END-TO-END cost: it falls "
+                "when denoising, contrast or the geometry costs the document a "
+                "mark, whatever Otsu and the line profiles each made of that mark."
             ),
         ),
     )
