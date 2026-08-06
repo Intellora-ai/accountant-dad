@@ -26,7 +26,7 @@ WHY EACH PROHIBITION CARRIES A LINE AND NOT A DOCUMENT.
     edits a spec, and no comment catches that.
 
 WHAT IS DELIBERATELY LISTED AND NOT TESTED.
-    Seven prohibitions are `REVIEW_ONLY`. Each constrains a CALLER's reasoning
+    Eight prohibitions are `REVIEW_ONLY`. Each constrains a CALLER's reasoning
     or needs a judgement no artifact carries — *"confidence never changes
     because an engine reasoned harder"* has no payload that could witness it,
     because the artifact looks identical either way. Faking a predicate for one
@@ -40,11 +40,31 @@ WHAT IS NOT HERE, AND WHY THAT IS A FINDING NOT AN OMISSION.
     quietly given a control that passes for some other reason. Nothing in this
     module edits, weakens or works around a schema.
 
+    Until `EXCLUSIONS` existed, that paragraph was true and unverifiable: 45
+    hand-listed rules against 143 prohibition clauses in `docs/`, with nothing
+    anywhere comparing the two. "What is not here" was whatever nobody had
+    thought of, and the suite was green about it. Every clause is now either
+    cited above or listed at the bottom of this file with a reason.
+
+WHAT THIS FILE STILL DOES NOT MEASURE.
+    Whether any ENGINE emits a conformant artifact. Every control here hands a
+    hand-written payload to a schema; not one of them runs Engine 1. The real
+    pipeline emits zero detected fields, zero confidence scores and zero
+    `Provenance` objects for a PDF it reads successfully, and nothing in this
+    module notices — because this module is about schemas, and that is a
+    different subject. The against-the-real-artifact predicates are in
+    `tests/unit/test_conformance_registry.py`, where Engine 1 can be imported.
+
 NO CLOCK, NO RANDOMNESS, NO I/O.
     Identifiers are fixed UUIDs and timestamps are fixed moments, so two runs
     build byte-identical payloads. A control that depended on `uuid4()` or
     `now()` could pass on one run and fail on the next, and a conformance
     result that is not reproducible is not a result.
+
+    NO I/O is load-bearing beyond determinism: the `conformance` CI job installs
+    `requirements-ci.txt` alone, so this module may import nothing from
+    `engines/` — Engine 1 needs OpenCV, PyMuPDF and Docling, and importing it
+    here would break that job on a dependency rather than on a finding.
 """
 
 from __future__ import annotations
@@ -1177,8 +1197,604 @@ CONTROLS: tuple[NegativeControl, ...] = (
     ),
 )
 
+# ── what the inventory does NOT cover, and why ────────────────────────────
+#
+# `tests/unit/test_conformance_registry.py` reads every `must never` clause out
+# of `docs/` and demands that each one is either cited by a rule above or listed
+# here. Neither side is a hardcoded number: the clauses come off disk and the
+# coverage comes off `REGISTRY`, so adding a prohibition to a specification is a
+# RED test until somebody says, in writing, what happens to it.
+#
+# THIS LIST IS NOT PERMISSION. Forty of the entries below are `NOT_YET_A_PREDICATE`
+# — witnessable rules with nothing enforcing them, each carrying the phase by
+# which that stops being true. They are debts with due dates, printed by the
+# suite, and they are the honest answer to "what does conformance not cover?"
+#
+# WHAT THE SCANNER CANNOT SEE, STATED SO IT IS NOT MISTAKEN FOR NOTHING.
+#   - Only the phrase `must never` is scanned. `may never`, `never`, `cannot`
+#     and `MUST NOT` are not, so this is a lower bound on the specifications'
+#     prohibitions and never an upper one.
+#   - A `must never` heading is expanded into the list beneath it, so the
+#     numbered items are the units. A heading followed by a fenced block or a
+#     table is NOT expanded, and each such heading is listed below naming the
+#     clauses it hides.
+
+
+def _not_a_prohibition(source: str, reason: str) -> Exclusion:
+    return Exclusion(source=source, kind=Uncovered.NOT_A_PROHIBITION, reason=reason)
+
+
+def _restates(source: str, identifier: str, reason: str) -> Exclusion:
+    return Exclusion(source=source, kind=Uncovered.RESTATEMENT, reason=reason, restates=identifier)
+
+
+def _unwitnessable(source: str, reason: str) -> Exclusion:
+    return Exclusion(source=source, kind=Uncovered.UNWITNESSABLE, reason=reason)
+
+
+def _not_yet(source: str, reason: str, expiry: str) -> Exclusion:
+    return Exclusion(
+        source=source, kind=Uncovered.NOT_YET_A_PREDICATE, reason=reason, expiry=expiry
+    )
+
+
+#: Reasons that are genuinely the same sentence for several clauses. Written
+#: once so two copies cannot drift into saying different things about one rule
+#: (Law 14); every clause still appears on its own line with its own citation.
+_AN_INTERNAL_DECISION = (
+    "an act inside an engine, not a value in an artifact. What a component "
+    "decided and did not emit leaves no trace, so no payload can witness it. The "
+    "emitted half — a conclusion of this kind appearing in the Document Evidence "
+    "Object — is INPUT_ENGINE:57, which is enforced."
+)
+_AN_ABSENCE = (
+    "hiding and removing are ABSENCES. An artifact shows what is in it; it "
+    "cannot show what was taken out before it was built, and a payload with the "
+    "thing removed is byte-identical to one that never had it."
+)
+_AN_INVENTION = (
+    "ENGINE_1_INPUT_ENGINE_RULES.md:337 states the reason itself — an invented "
+    "value is indistinguishable downstream from an observed one. That is what "
+    "makes the rule matter and what makes it unwitnessable in one payload."
+)
+_NO_FIELD_FOR_IT_YET = (
+    "witnessable and unwritten. The artifact has no field this could sit in, so "
+    '`extra="forbid"` would refuse it and a control needs only the schemas, '
+    "which exist. Nothing asserts it today."
+)
+_INV_8 = (
+    "the check is that no Execution Result exists for a decision whose Validation "
+    "Decision never considered the period — two artifacts and a company calendar. "
+    "The calendar is Company Knowledge, and no Knowledge Brain answers before P4."
+)
+_POSTING_NEVER_REWRITES = (
+    "the check is a lineage one: no Accounting Decision version may descend from "
+    "an execution failure. It needs a real posting attempt against a real "
+    "destination, which BLUEPRINT:137 first requires at P4."
+)
+_TRANSACTION_ID_NOT_A_KEY = (
+    "whether Transaction ID is part of the duplicate-protection key is a property "
+    "of posting_manager, not of any artifact: two Execution Results look the same "
+    "whichever key admitted them. BLUEPRINT:137 posts three submissions at P4."
+)
+
+EXCLUSIONS: tuple[Exclusion, ...] = (
+    # ── the Application Layer owns no canonical artifact ──────────────────
+    _not_a_prohibition(
+        "docs/APPLICATION_LAYER.md:379",
+        "a section heading. The eleven clauses under it sit in a fenced code "
+        "block, which the scanner does not read — so those eleven are invisible "
+        "to this check. Named here because a blind spot nobody wrote down is the "
+        "same as no blind spot at all.",
+    ),
+    _unwitnessable(
+        "docs/APPLICATION_LAYER_FAILURE_MATRIX.md:68",
+        "the Application Layer creates none of the six canonical artifacts "
+        "(DATA_FLOW.md §2 gives every one an engine owner), so nothing it does "
+        "appears in a payload. Repairing anything that IS an artifact is already "
+        "refused by SYSTEM_INVARIANTS:142.",
+    ),
+    _not_a_prohibition(
+        "docs/APPLICATION_LAYER_FAILURE_MATRIX.md:107",
+        "a section heading over a table; the rows beneath it are the claims, and "
+        "each names the invariant that prevents it rather than stating a new one.",
+    ),
+    _not_a_prohibition(
+        "docs/APPLICATION_LAYER_FAILURE_MATRIX.md:109",
+        "the header row of that table — two column names, no rule.",
+    ),
+    _not_a_prohibition(
+        "docs/APPLICATION_LAYER_RESPONSIBILITY_MATRIX.md:31",
+        "the header row of the responsibility matrix — three column names, no rule.",
+    ),
+    # ── receiver responsibilities, three boundaries ───────────────────────
+    _unwitnessable(
+        "docs/COMMUNICATION_RULES_ACCOUNTING_ENGINE.md:51",
+        "the 'modify' half is SYSTEM_INVARIANTS:142, proven for all six "
+        "artifacts. The rest — hiding a conflict, removing an assumption, "
+        "raising confidence without new evidence — are absences and comparisons "
+        "against an upstream artifact the receiving payload does not carry.",
+    ),
+    _unwitnessable(
+        "docs/COMMUNICATION_RULES_CLARIFICATION_ENGINE.md:49",
+        "same shape as the Accounting boundary above: 'modify' is "
+        "SYSTEM_INVARIANTS:142; resolving, hiding and approving-while-blocked "
+        "are properties of what Validation did, not of what it emitted.",
+    ),
+    _unwitnessable(
+        "docs/COMMUNICATION_RULES_VALIDATION_ENGINE.md:50",
+        "'must never modify any upstream artifact' is SYSTEM_INVARIANTS:142. "
+        "'Must preserve' is the other direction — a claim about two artifacts, "
+        "and an Execution Result carries none of the upstream values to compare.",
+    ),
+    _not_yet("docs/COMMUNICATION_RULES_VALIDATION_ENGINE.md:81", _POSTING_NEVER_REWRITES, "P4"),
+    # ── the human note, and what it may not do ────────────────────────────
+    _restates(
+        "docs/CONFIDENCE_SPECIFICATION.md:51",
+        NOTE_RAISES_NOTHING,
+        "a confidence-table row quoting ENGINE_1_INPUT_ENGINE_RULES.md:289 "
+        "verbatim. Carried as a review-only entry with expiry P3 — accounted "
+        "for, and NOT enforced.",
+    ),
+    _not_a_prohibition(
+        "docs/CONFIDENCE_SPECIFICATION.md:445",
+        "a hazard-table row that quotes INV-8 as its authority. The rule is at "
+        "SYSTEM_INVARIANTS.md:209 and is listed there; this row cites it.",
+    ),
+    _restates(
+        "docs/DATA_FLOW.md:565",
+        NOTE_RAISES_NOTHING,
+        "the same sentence as ENGINE_1_INPUT_ENGINE_RULES.md:289, repeated at the "
+        "provenance section of the data-flow document.",
+    ),
+    _restates(
+        "docs/SUB_ENGINE_RESPONSIBILITIES.md:836",
+        NOTE_RAISES_NOTHING,
+        "the same sentence again, in the confidence sub-engine's entry.",
+    ),
+    # ── IDENTITY != INTELLIGENCE, restated in seven documents ─────────────
+    _restates(
+        "docs/DATA_FLOW.md:67",
+        NO_IDENTIFIER,
+        "the Document ID form of INV-9. The controls under SYSTEM_INVARIANTS:215 "
+        "refuse a UUID inside supporting reasoning and inside a ledger name, "
+        "which is the artifact half of 'must never influence'.",
+    ),
+    _restates(
+        "docs/ENGINE_1_INPUT_ENGINE_RULES.md:251",
+        NO_IDENTIFIER,
+        "the same Document ID clause, in the Input Engine's own document.",
+    ),
+    _restates(
+        "docs/ENGINE_RESPONSIBILITIES.md:54",
+        NO_IDENTIFIER,
+        "the same Document ID clause, in the per-engine summary.",
+    ),
+    _restates(
+        "docs/SYSTEM_BOUNDARIES.md:58",
+        NO_IDENTIFIER,
+        "the same Document ID clause, closing the assembly-ownership paragraph.",
+    ),
+    _restates(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:202",
+        NO_IDENTIFIER,
+        "the Clarification ID form of INV-9, and the paragraph says so — 'the "
+        "system-wide IDENTITY != INTELLIGENCE rule'.",
+    ),
+    _restates(
+        "docs/ENGINE_5_VALIDATION_ENGINE_RULES.md:171",
+        NO_IDENTIFIER,
+        "the Validation ID form of the same rule, cross-referenced to INV-9 in the line itself.",
+    ),
+    _restates(
+        "docs/SYSTEM_INVARIANTS.md:219",
+        NO_IDENTIFIER,
+        "INV-9's own elaboration, four lines below the sentence SYSTEM_INVARIANTS:215 quotes.",
+    ),
+    # ── observation vs reasoning, restated in four documents ──────────────
+    _restates(
+        "docs/COMMUNICATION_RULES_INPUT_ENGINE.md:185",
+        NO_CONCLUSIONS,
+        "section 5 restating Rule 1 as an absolute. The rule itself is cited at "
+        "line 57 of this same document.",
+    ),
+    _restates(
+        "docs/ENGINE_1_INPUT_ENGINE_RULES.md:345",
+        NO_CONCLUSIONS,
+        "the same sentence in the Input Engine's own document.",
+    ),
+    _restates(
+        "docs/ENGINE_RESPONSIBILITIES.md:70",
+        NO_CONCLUSIONS,
+        "the same sentence in the per-engine summary.",
+    ),
+    _restates(
+        "docs/SYSTEM_BOUNDARIES.md:62",
+        NO_CONCLUSIONS,
+        "the same sentence in the system-wide boundaries document.",
+    ),
+    # ── the request that must not be answered against a rebuilt decision ──
+    _not_yet(
+        "docs/DATA_FLOW.md:142",
+        "the check compares a request's related_artifact_version against the "
+        "decision's live version. Both values exist and both are typed; no "
+        "single payload carries both, and BLUEPRINT:136 is where one run first "
+        "holds a request and a decision together.",
+        "P3",
+    ),
+    # ── Transaction ID is never part of the duplicate key ─────────────────
+    _not_yet("docs/DATA_FLOW.md:290", _TRANSACTION_ID_NOT_A_KEY, "P4"),
+    _not_yet("docs/ENGINE_6_EXECUTION_ENGINE_RULES.md:410", _TRANSACTION_ID_NOT_A_KEY, "P4"),
+    _not_yet("docs/SUB_ENGINE_RESPONSIBILITIES.md:672", _TRANSACTION_ID_NOT_A_KEY, "P4"),
+    # ── Engine 1's nine absolute boundaries, stated in two documents ──────
+    _unwitnessable("docs/ENGINE_1_INPUT_ENGINE_RULES.md:314", _AN_INTERNAL_DECISION),
+    _unwitnessable("docs/ENGINE_1_INPUT_ENGINE_RULES.md:315", _AN_INTERNAL_DECISION),
+    _unwitnessable("docs/ENGINE_1_INPUT_ENGINE_RULES.md:316", _AN_INTERNAL_DECISION),
+    _unwitnessable("docs/ENGINE_1_INPUT_ENGINE_RULES.md:317", _AN_INTERNAL_DECISION),
+    _unwitnessable("docs/ENGINE_1_INPUT_ENGINE_RULES.md:318", _AN_INTERNAL_DECISION),
+    _unwitnessable("docs/ENGINE_1_INPUT_ENGINE_RULES.md:319", _AN_INTERNAL_DECISION),
+    _unwitnessable(
+        "docs/ENGINE_1_INPUT_ENGINE_RULES.md:320",
+        "asking happens outside every artifact. The Document Evidence Object has "
+        "no channel to a user and no field a question could sit in, so a run that "
+        "asked and a run that did not emit the same payload.",
+    ),
+    _unwitnessable("docs/ENGINE_1_INPUT_ENGINE_RULES.md:321", _AN_INVENTION),
+    _unwitnessable(
+        "docs/ENGINE_1_INPUT_ENGINE_RULES.md:322",
+        "a modified value can only be seen against the unmodified one, and the "
+        "artifact carries the emitted reading alone. Nothing in it is the before.",
+    ),
+    _unwitnessable("docs/SYSTEM_BOUNDARIES.md:35", _AN_INTERNAL_DECISION),
+    _unwitnessable("docs/SYSTEM_BOUNDARIES.md:36", _AN_INTERNAL_DECISION),
+    _unwitnessable("docs/SYSTEM_BOUNDARIES.md:37", _AN_INTERNAL_DECISION),
+    _unwitnessable("docs/SYSTEM_BOUNDARIES.md:38", _AN_INTERNAL_DECISION),
+    _unwitnessable("docs/SYSTEM_BOUNDARIES.md:39", _AN_INTERNAL_DECISION),
+    _unwitnessable("docs/SYSTEM_BOUNDARIES.md:40", _AN_INTERNAL_DECISION),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:41",
+        "the same clause as ENGINE_1_INPUT_ENGINE_RULES.md:320 — asking leaves no "
+        "mark on the artifact either way.",
+    ),
+    _unwitnessable("docs/SYSTEM_BOUNDARIES.md:42", _AN_INVENTION),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:43",
+        "the same clause as ENGINE_1_INPUT_ENGINE_RULES.md:322 — the artifact "
+        "carries no before to compare the after against.",
+    ),
+    # ── the optional Human Business Description ───────────────────────────
+    _restates(
+        "docs/ENGINE_1_INPUT_ENGINE_RULES.md:326",
+        EXTRACTED_NOT_HUMAN,
+        "converting the description into fact IS filing a human claim as an "
+        "extracted reading, and the control under ENGINE_1:233 refuses exactly "
+        "that: a detected field carrying a Human provenance.",
+    ),
+    _unwitnessable(
+        "docs/ENGINE_1_INPUT_ENGINE_RULES.md:327",
+        "overriding needs the reading as it stood before the note arrived, and "
+        "the artifact holds one reading, not two.",
+    ),
+    _unwitnessable("docs/ENGINE_1_INPUT_ENGINE_RULES.md:328", _AN_ABSENCE),
+    _unwitnessable("docs/ENGINE_1_INPUT_ENGINE_RULES.md:329", _AN_ABSENCE),
+    _restates(
+        "docs/ENGINE_1_INPUT_ENGINE_RULES.md:330",
+        NOTE_RAISES_NOTHING,
+        "the numbered form of ENGINE_1_INPUT_ENGINE_RULES.md:289. Review-only "
+        "with expiry P3 — listed, and NOT enforced.",
+    ),
+    _restates(
+        "docs/ENGINE_1_INPUT_ENGINE_RULES.md:331",
+        "SYSTEM_INVARIANTS:258/a-human-note-is-never-rewritten",
+        "the numbered form of INV-11's verbatim-capture clause. Review-only with "
+        "expiry P4 — listed, and NOT enforced.",
+    ),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:54",
+        "the six clauses on this one line split three ways: converting to fact is "
+        "ENGINE_1:233, raising confidence is ENGINE_1:289 and rewriting is "
+        "SYSTEM_INVARIANTS:258, all listed; overriding, removing and hiding are "
+        "absences no single payload can show.",
+    ),
+    _unwitnessable("docs/ENGINE_1_INPUT_ENGINE_RULES.md:337", _AN_INVENTION),
+    # ── Engine 2's seven boundaries, stated in two documents ──────────────
+    _not_yet("docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:268", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:269", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:270", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:271", _NO_FIELD_FOR_IT_YET, "P3"),
+    _unwitnessable(
+        "docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:272",
+        "posting is an action against Tally, and no Business Understanding Object "
+        "records whether one happened.",
+    ),
+    _restates(
+        "docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:273",
+        IMMUTABLE,
+        "the Document Evidence Object is frozen, and INV-5 is proven once per "
+        "artifact including that one.",
+    ),
+    _restates(
+        "docs/ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:274",
+        UNKNOWNS_INTACT,
+        "converting uncertainty into certainty IS dropping an unknown, and the "
+        "control under ENGINE_2:645 refuses a Business Understanding Object whose "
+        "Result raised one and whose Identified Unknowns are empty.",
+    ),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:76", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:77", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:78", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:79", _NO_FIELD_FOR_IT_YET, "P3"),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:80",
+        "the same clause as ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:272 — posting "
+        "is an action, and no artifact records that it happened.",
+    ),
+    _restates(
+        "docs/SYSTEM_BOUNDARIES.md:81",
+        IMMUTABLE,
+        "the same clause as ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:273.",
+    ),
+    _restates(
+        "docs/SYSTEM_BOUNDARIES.md:82",
+        UNKNOWNS_INTACT,
+        "the same clause as ENGINE_2_UNDERSTANDING_ENGINE_RULES.md:274.",
+    ),
+    # ── Engine 3's nine boundaries, stated in two documents ───────────────
+    _restates(
+        "docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md:257",
+        IMMUTABLE,
+        "modifying the Document Evidence Object is refused by frozen=True, proven "
+        "against that artifact by its own INV-5 control.",
+    ),
+    _restates(
+        "docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md:258",
+        IMMUTABLE,
+        "same, against the Business Understanding Object.",
+    ),
+    _unwitnessable("docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md:259", _AN_INVENTION),
+    _unwitnessable("docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md:260", _AN_ABSENCE),
+    _unwitnessable(
+        "docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md:261",
+        "asking a user is an action outside every artifact; ENGINE_3:196 requires "
+        "a stopped decision to NAME its clarification, which is the emitted half "
+        "and a different claim.",
+    ),
+    _unwitnessable(
+        "docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md:262",
+        "posting is an action against Tally and no Accounting Decision records "
+        "whether one happened.",
+    ),
+    _unwitnessable(
+        "docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md:263",
+        "overriding by EDITING a Validation Decision is refused — that artifact "
+        "is frozen under SYSTEM_INVARIANTS:142. Overriding by ignoring it and "
+        "emitting a decision anyway is not: the Accounting Decision that results "
+        "is well formed, and which Validation Decision preceded it is not in it.",
+    ),
+    _restates(
+        "docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md:264",
+        IMMUTABLE,
+        "the same clause as line 257, worded as evidence rather than as the artifact's name.",
+    ),
+    _unwitnessable(
+        "docs/ENGINE_3_ACCOUNTING_ENGINE_RULES.md:265",
+        "the Accounting Decision has an accounting_assumptions field; whether "
+        "something that belonged in it was written as a fact instead is a "
+        "judgement about the reasoning, and both payloads are well formed.",
+    ),
+    _restates("docs/SYSTEM_BOUNDARIES.md:115", IMMUTABLE, "the same clause as ENGINE_3:257."),
+    _restates("docs/SYSTEM_BOUNDARIES.md:116", IMMUTABLE, "the same clause as ENGINE_3:258."),
+    _unwitnessable("docs/SYSTEM_BOUNDARIES.md:117", _AN_INVENTION),
+    _unwitnessable("docs/SYSTEM_BOUNDARIES.md:118", _AN_ABSENCE),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:119",
+        "the same clause as ENGINE_3_ACCOUNTING_ENGINE_RULES.md:261 — asking is "
+        "an action outside every artifact.",
+    ),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:120",
+        "the same clause as ENGINE_3_ACCOUNTING_ENGINE_RULES.md:262 — posting is "
+        "an action no artifact records.",
+    ),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:121",
+        "the same clause as ENGINE_3_ACCOUNTING_ENGINE_RULES.md:263 — editing a "
+        "Validation Decision is refused, ignoring one is not visible in what the "
+        "Accounting Engine emits.",
+    ),
+    _restates("docs/SYSTEM_BOUNDARIES.md:122", IMMUTABLE, "the same clause as ENGINE_3:264."),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:123",
+        "the same clause as ENGINE_3_ACCOUNTING_ENGINE_RULES.md:265 — an "
+        "assumption dressed as a fact is a well-formed payload.",
+    ),
+    # ── Engine 4's five receiver duties ───────────────────────────────────
+    _restates(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:160",
+        IMMUTABLE,
+        "every previous artifact is frozen, and INV-5 is proven once per artifact.",
+    ),
+    _unwitnessable("docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:161", _AN_ABSENCE),
+    _unwitnessable("docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:162", _AN_ABSENCE),
+    _restates(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:163",
+        "CLARIFICATION_INTERNAL:89/clarification-confidence-never-exceeds-upstream",
+        "the same comparison, against the same artifact. Review-only with expiry "
+        "P4, because a Clarification Request carries no upstream confidence to "
+        "compare against — listed, and NOT enforced.",
+    ),
+    _not_yet("docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:164", _NO_FIELD_FOR_IT_YET, "P3"),
+    # ── Engine 4's fifteen boundaries, stated in two documents ────────────
+    _not_yet("docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:222", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:223", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:224", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:225", _NO_FIELD_FOR_IT_YET, "P3"),
+    _restates(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:226",
+        IMMUTABLE,
+        "the Document Evidence Object is frozen.",
+    ),
+    _restates(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:227",
+        IMMUTABLE,
+        "the Business Understanding Object is frozen.",
+    ),
+    _restates(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:228",
+        IMMUTABLE,
+        "the Accounting Decision is frozen.",
+    ),
+    _not_yet("docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:229", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:230", _NO_FIELD_FOR_IT_YET, "P3"),
+    _unwitnessable("docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:231", _AN_INVENTION),
+    _restates(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:232",
+        NO_RESOLUTION,
+        "the Conflict object is the same carrier whoever writes it, and the "
+        "control under SYSTEM_BOUNDARIES:95 refuses one that names a resolution.",
+    ),
+    _unwitnessable(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:233",
+        "an assumption written as a fact is a well-formed Clarification Request; "
+        "which of the two the author meant is not in the payload.",
+    ),
+    _unwitnessable(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:234",
+        "for this engine the conversion shows up as a request that was never "
+        "raised, and a run that raised nothing emits nothing to inspect.",
+    ),
+    _unwitnessable(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:235",
+        "asking is an action outside every artifact.",
+    ),
+    _unwitnessable(
+        "docs/ENGINE_4_CLARIFICATION_ENGINE_RULES.md:236",
+        "bypassing is a routing property of the Application Layer's state "
+        "machine; the artifacts a bypassed run produces are individually valid.",
+    ),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:164", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:165", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:166", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:167", _NO_FIELD_FOR_IT_YET, "P3"),
+    _restates("docs/SYSTEM_BOUNDARIES.md:168", IMMUTABLE, "the same clause as ENGINE_4:226."),
+    _restates("docs/SYSTEM_BOUNDARIES.md:169", IMMUTABLE, "the same clause as ENGINE_4:227."),
+    _restates("docs/SYSTEM_BOUNDARIES.md:170", IMMUTABLE, "the same clause as ENGINE_4:228."),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:171", _NO_FIELD_FOR_IT_YET, "P3"),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:172", _NO_FIELD_FOR_IT_YET, "P3"),
+    _unwitnessable("docs/SYSTEM_BOUNDARIES.md:173", _AN_INVENTION),
+    _restates(
+        "docs/SYSTEM_BOUNDARIES.md:174",
+        NO_RESOLUTION,
+        "the same clause as ENGINE_4_CLARIFICATION_ENGINE_RULES.md:232.",
+    ),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:175",
+        "the same clause as ENGINE_4_CLARIFICATION_ENGINE_RULES.md:233.",
+    ),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:176",
+        "the same clause as ENGINE_4_CLARIFICATION_ENGINE_RULES.md:234.",
+    ),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:177",
+        "the same clause as ENGINE_4_CLARIFICATION_ENGINE_RULES.md:235.",
+    ),
+    _unwitnessable(
+        "docs/SYSTEM_BOUNDARIES.md:178",
+        "the same clause as ENGINE_4_CLARIFICATION_ENGINE_RULES.md:236.",
+    ),
+    # ── Engine 5 ──────────────────────────────────────────────────────────
+    _unwitnessable(
+        "docs/ENGINE_5_VALIDATION_ENGINE_RULES.md:161",
+        "a downgrade can only be seen against the severity the finding started "
+        "with, and a Validation Finding carries one Severity and no history of it.",
+    ),
+    _not_yet("docs/ENGINE_5_VALIDATION_ENGINE_RULES.md:201", _INV_8, "P4"),
+    _unwitnessable(
+        "docs/ENGINE_5_VALIDATION_ENGINE_RULES.md:209",
+        "eighteen clauses on one line. 'Repair accounting mistakes' is "
+        "ENGINE_5:215 and every 'modify' is SYSTEM_INVARIANTS:142, both enforced; "
+        "the remainder — inventing facts, inventing confidence, asking users, "
+        "bypassing an engine — are inventions, absences and actions, none of "
+        "which a single well-formed payload distinguishes.",
+    ),
+    # ── Engine 6 ──────────────────────────────────────────────────────────
+    _not_a_prohibition(
+        "docs/ENGINE_6_EXECUTION_ENGINE_RULES.md:73",
+        "the header row of the may/must-never table — two column names, no rule. "
+        "The rows beneath it are prose pairs, not list items, so they are not "
+        "scanned; the same clauses are stated as a list at line 241.",
+    ),
+    _not_yet("docs/ENGINE_6_EXECUTION_ENGINE_RULES.md:82", _POSTING_NEVER_REWRITES, "P4"),
+    _restates(
+        "docs/ENGINE_6_EXECUTION_ENGINE_RULES.md:138",
+        IMMUTABLE,
+        "every upstream artifact is frozen, and INV-5 is proven once per artifact.",
+    ),
+    _unwitnessable(
+        "docs/ENGINE_6_EXECUTION_ENGINE_RULES.md:241",
+        "sixteen clauses on one line. Accounting reasoning inside an Execution "
+        "Result is SYSTEM_BOUNDARIES:279, correcting itself is ENGINE_6:210 and "
+        "every 'modify' is SYSTEM_INVARIANTS:142, all enforced; suppressing a "
+        "failure, deleting history and bypassing Validation are absences and "
+        "actions that leave the emitted artifact well formed.",
+    ),
+    _not_yet(
+        "docs/ENGINE_6_EXECUTION_ENGINE_RULES.md:541",
+        "the mechanism is the Execution Queue (EXECUTION_QUEUE.md), and the check "
+        "is that a failed posting leaves a queued item rather than nothing. It "
+        "needs a real destination that can fail, which BLUEPRINT:137 first "
+        "provides at P4.",
+        "P4",
+    ),
+    _not_yet("docs/ENGINE_RESPONSIBILITIES.md:320", _POSTING_NEVER_REWRITES, "P4"),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:248", _POSTING_NEVER_REWRITES, "P4"),
+    # ── INV-8, permission decided before execution ────────────────────────
+    _not_yet("docs/SYSTEM_INVARIANTS.md:209", _INV_8, "P4"),
+    _not_yet("docs/SUB_ENGINE_RESPONSIBILITIES.md:612", _INV_8, "P4"),
+    _not_yet("docs/SYSTEM_BOUNDARIES.md:280", _INV_8, "P4"),
+    _not_a_prohibition(
+        "docs/FORWARD_DEPENDENCY_INVENTORY.md:34",
+        "a row in the forward-dependency ledger recording that INV-8's promise "
+        "was honoured and who owns it. The rule is at SYSTEM_INVARIANTS.md:209.",
+    ),
+    # ── the rest ──────────────────────────────────────────────────────────
+    _not_yet(
+        "docs/EVIDENCE_ARCHITECTURE.md:84",
+        "witnessable today: parse the same bytes under two file names and compare "
+        "the two Document Evidence Objects. Engine 1 exists, so this needs no new "
+        "engine — only the test, which nobody has written.",
+        "P3",
+    ),
+    _not_yet(
+        "docs/EXECUTION_QUEUE.md:130",
+        "'incorrect' is defined in ACCOUNTING_DEFINITIONS.md against a human "
+        "ceiling, and no ceiling exists yet (CLAUDE.md section P). The measurement "
+        "is the held-out evaluation BLUEPRINT:138 runs at P5.",
+        "P5",
+    ),
+    _unwitnessable(
+        "docs/MVP_ARCHITECTURE.md:49",
+        "the artifact half — an Execution Result that records accounting — is "
+        "SYSTEM_BOUNDARIES:279, enforced. Whether a reader CONFUSED a transport "
+        "failure with an accounting error is a property of the reader.",
+    ),
+    _not_a_prohibition(
+        "docs/MVP_BUILD_VERIFY_FIX.md:82",
+        "the requirement this module exists to satisfy, not a rule about an "
+        "artifact. Citing it as a prohibition would have the inventory list itself.",
+    ),
+    _not_a_prohibition(
+        "docs/MVP_IMPLEMENTATION_BLUEPRINT.md:135",
+        "P2's definition of done, which names this inventory. Same reason as "
+        "MVP_BUILD_VERIFY_FIX.md:82 — a requirement on the check, not a rule for "
+        "it to check.",
+    ),
+)
+
 #: The inventory and its proof, built at import. `Registry` refuses a duplicate
-#: identifier, a control for an unlisted rule, and a control against a
-#: review-only rule — so an inconsistent inventory fails on import rather than
-#: reporting a comfortable number.
-REGISTRY = Registry(PROHIBITIONS, CONTROLS)
+#: identifier, a control for an unlisted rule, a control against a review-only
+#: rule, a line that is both cited and excluded, and an exclusion that claims to
+#: be restating a rule nobody wrote down — so an inconsistent inventory fails on
+#: import rather than reporting a comfortable number.
+REGISTRY = Registry(PROHIBITIONS, CONTROLS, EXCLUSIONS)

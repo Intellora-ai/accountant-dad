@@ -50,6 +50,58 @@ WHAT THIS LAYER DELIBERATELY CANNOT DO.
     which it stops being review-only. A review-only entry with no expiry is
     refused by `Registry`, because an exemption with no end date is a deletion
     written politely.
+
+A REFUSAL AND A CRASH ARE NOT THE SAME EVENT.
+    `attribute` used to treat ANY exception out of the violating payload as
+    proof of enforcement. Measured, not argued: deleting the missing-score
+    branch of `evidence.py` left the next line reaching into a dict that no
+    longer had the key, and the conformance suite reported
+
+        ENGINE_1:245/every-reading-carries-its-confidence -> enforced
+        :: refused by KeyError                                  GATE: GREEN
+
+    The enforcement was gone and the gate applauded. A crash inside a validator
+    and a deliberate refusal are different events with opposite meanings, and
+    reading one as the other is the false green in its purest form.
+
+    So a control DECLARES what a refusal of its payload looks like — `refusal`,
+    a tuple of exception types. Anything outside that set is `CONTROL_CRASHED`,
+    which is not a pass. `conformance_registry` declares `ValidationError` for
+    every one of its controls, so the deletion above now goes RED.
+
+WHAT `refusal` DOES NOT CLOSE, MEASURED AND WRITTEN DOWN RATHER THAN IMPLIED.
+    It separates a CRASH from a refusal. It does not separate a refusal for the
+    RIGHT reason from a refusal for the wrong one. A violating builder with a
+    typo'd override key is refused by `extra="forbid"` and still reports
+
+        invented -> enforced :: refused by ValidationError
+
+    because a mistyped key and a deliberately forbidden field are the same event
+    to an exception type. Distinguishing them needs each control to declare the
+    validation error it expects — pydantic's `errors()[i]["type"]`, which is an
+    API constant and not prose, so it does not reintroduce the error-text
+    coupling this module rejects above. Across the 47 live controls those types
+    are 30 `value_error`, 6 `frozen_instance`, 5 `extra_forbidden`, 2
+    `string_too_short`, 2 `missing`, 1 `too_short`, 1 `enum` — measured, not
+    estimated. Not built here: it is a per-control declaration across all 47 and
+    a wider change than the crash defect this fix was scoped to.
+
+WHY `refusal` STILL DEFAULTS TO `(Exception,)`.
+    Because narrowing it by fiat would silently reclassify every control anyone
+    ever wrote against this harness, including ones outside this repository, and
+    a harness that changes the meaning of existing results on upgrade is worse
+    than the defect it fixes (Law 33). The default is the OLD behaviour, stated
+    out loud; the real inventory opts into the narrow one, and a test asserts
+    that every control in it did — so forgetting is red, not quiet.
+
+WHAT THE INVENTORY DOES NOT COVER IS ALSO INVENTORY.
+    A rule absent from `PROHIBITIONS` is indistinguishable from a rule nobody
+    ever wrote, and that is the most dangerous shape a registry can have: the
+    omission is silent and the suite is green. `Exclusion` is the fix — every
+    prohibition clause in `docs/` that carries no rule must be listed here with
+    a reason, so a gap is a written sentence somebody can argue with rather than
+    an empty space nobody can see. `NOT_YET_A_PREDICATE` exclusions carry an
+    expiry for the same reason review-only entries do.
 """
 
 from __future__ import annotations
@@ -85,6 +137,52 @@ class Attribution(StrEnum):
     #: The clean payload was ALSO refused, so the violating payload's rejection
     #: cannot be attributed to this rule. The control is wrong, not the code.
     CONTROL_INVALID = "control invalid"
+    #: Something raised that is NOT how this payload gets refused — a validator
+    #: reaching into a missing key, a builder calling a name that moved, a
+    #: helper renamed under it. The rule was never reached, so nothing was
+    #: established either way. See "A REFUSAL AND A CRASH" in the module
+    #: docstring: this state exists because its absence read as `ENFORCED`.
+    CONTROL_CRASHED = "control crashed"
+
+
+class Uncovered(StrEnum):
+    """Why a prohibition clause in `docs/` carries no rule of its own.
+
+    Four reasons, and the difference between them decides whether anybody owes
+    work. Anything that is none of them is not an exclusion — it is an omission,
+    and an omission is what this whole mechanism exists to make impossible.
+    """
+
+    #: The line states no prohibition: a section heading, a table header row, or
+    #: a sentence about the rules rather than a rule. The marker matched a
+    #: label. The reason must say which, and must name anything the label hides.
+    NOT_A_PROHIBITION = "not a prohibition"
+    #: The same thing, about the same artifact, as a rule already in the
+    #: inventory — written again at a second line. `restates` names that rule,
+    #: and `Registry` refuses an identifier that is not in the inventory, so
+    #: this claim is checked rather than believed.
+    RESTATEMENT = "restatement"
+    #: A real rule that no artifact could carry the difference for. The payload
+    #: looks identical whether or not it was obeyed, so no pure function decides
+    #: it and no control could be written. Permanent; carries no expiry.
+    UNWITNESSABLE = "unwitnessable"
+    #: A real rule, witnessable, and nothing enforces it. A named, dated debt —
+    #: never a pass — and it MUST name the phase by which it stops being one.
+    NOT_YET_A_PREDICATE = "not yet a predicate"
+
+
+def _must_name_a_line(source: str, what: str) -> None:
+    """`docs/ENGINE_5_VALIDATION_ENGINE_RULES.md:467`, not a bare file.
+
+    Shared by `Prohibition` and `Exclusion` rather than written twice (Law 14):
+    a citation that cannot be re-checked is the same defect in both, and two
+    copies of the rule would eventually disagree about what a citation is.
+    """
+    if ":" not in source:
+        raise ValueError(
+            f"source {source!r} must name a line, as `path:line`; a "
+            f"{what} attributed to a whole document cannot be re-checked"
+        )
 
 
 @dataclass(frozen=True, slots=True)

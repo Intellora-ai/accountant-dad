@@ -5,7 +5,7 @@ This file asks the next question: is the inventory the harness runs actually
 about the documents it claims to be about, and does every control really reach
 the rule it names?
 
-Three things are checked here that nothing else in the repository checks:
+Five things are checked here that nothing else in the repository checks:
 
   THE CLEAN HALF RUNS. Every control's clean payload is constructed against the
   real frozen schema. A control whose clean half fails is `CONTROL_INVALID` and
@@ -18,46 +18,78 @@ Three things are checked here that nothing else in the repository checks:
   reading the file can. The check is itself mutation-proven below — a citation
   moved by one line must be rejected, or the check is decoration.
 
-  THE COUNTS ARE WRITTEN DOWN. Predicates, review-only entries and controls are
-  asserted as explicit numbers. Deleting a control is otherwise the cheapest
-  way to make this suite green, and it would leave no trace at all.
+  THE COUNTS ARE WRITTEN DOWN. Predicates, review-only entries, controls and
+  exclusions are asserted as explicit numbers. Deleting a control is otherwise
+  the cheapest way to make this suite green, and it would leave no trace at all.
 
-These tests may read files. `conformance_registry` itself may not — see its
-module docstring on why the payloads carry no clock and no randomness.
+  EVERY PROHIBITION CLAUSE IN `docs/` IS ACCOUNTED FOR. Both sides are derived
+  at run time — the clauses are read off disk, the coverage off `REGISTRY` — so
+  neither is a number anyone can edit. A rule added to a specification is RED
+  until somebody writes down what happens to it. Before this existed, the
+  inventory carried 40 hand-listed rules against 62 `must never` lines and
+  nothing anywhere compared the two: the omission was silent and green, which
+  is the most dangerous shape a registry can have.
+
+  WHAT THE ENGINE ACTUALLY EMITS. Everything above tests SCHEMAS — whether six
+  pydantic models refuse a hand-written payload. That is a different subject
+  from whether any engine emits a conformant one, and a suite that only tests
+  the first while sounding like it tests the second is worse than no suite. The
+  last section runs the REAL Engine 1 pipeline on a REAL PDF and reads the
+  artifact it produces. Those tests are RED. They are supposed to be.
+
+These tests may read files and import Engine 1. `conformance_registry` itself
+may do neither: it runs in the `conformance` job, which installs
+`requirements-ci.txt` only, so an Engine 1 import there would break that job on
+a missing OpenCV. This module runs under `unit tests`, where the dependencies
+exist — which is why the against-the-real-artifact predicates live here.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import pathlib
+import re
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Protocol, cast
 
+import pymupdf
 import pytest
 from pydantic import BaseModel, ValidationError, create_model
 
 import accountant_dad
 from accountant_dad.artifacts.decision import DecisionStatus
-from accountant_dad.artifacts.evidence import Corroborated, DocumentId, SourceType
+from accountant_dad.artifacts.evidence import (
+    Corroborated,
+    DocumentEvidenceObject,
+    DocumentId,
+    SourceType,
+)
 from accountant_dad.artifacts.execution import ExecutionAttemptId, ExecutionId
 from accountant_dad.conformance import (
     PHASES,
     Attribution,
     Enforcement,
+    Exclusion,
     NegativeControl,
     Prohibition,
     Registry,
+    Uncovered,
     attribute,
 )
 from accountant_dad.conformance_registry import (
+    _CONFIDENCE,
+    _UNSURE,
     CONTROLS,
+    EXCLUSIONS,
     IMMUTABLE,
     PROHIBITIONS,
     REGISTRY,
     _clarification,
     _confidence_report,
     _conflict,
+    _control,
     _decision,
     _detected_field,
     _doubt,
@@ -69,8 +101,11 @@ from accountant_dad.conformance_registry import (
     _incomplete_decision,
     _journal_line,
     _mutate,
+    _not_a_prohibition,
+    _not_yet,
     _predicate,
     _provenance,
+    _restates,
     _results,
     _results_raising_an_unknown,
     _results_with_a_less_certain_one,
@@ -78,17 +113,20 @@ from accountant_dad.conformance_registry import (
     _structured_document,
     _understanding,
     _unknown,
+    _unwitnessable,
     _uuid,
     _validation,
 )
-from accountant_dad.identity import ArtifactId, TransactionId
+from accountant_dad.engines.input_engine import cleaner, parser, pipeline, reader
+from accountant_dad.identity import ArtifactId, IdentityEnvelope, ParentVersion, TransactionId
 
 #: Explicit, so a silent deletion is a red test rather than a smaller number
 #: nobody notices. Raising these is normal; lowering one is a claim that a rule
 #: stopped needing proof, and that claim has to be made out loud.
-PREDICATE_COUNT = 33
-REVIEW_ONLY_COUNT = 7
-CONTROL_COUNT = 43
+PREDICATE_COUNT = 37
+REVIEW_ONLY_COUNT = 8
+CONTROL_COUNT = 47
+EXCLUSION_COUNT = 140
 
 #: `DATA_FLOW.md` §2 — six canonical artifacts, six proofs of immutability.
 CANONICAL_ARTIFACTS = frozenset(
@@ -110,11 +148,74 @@ SHORTEST_USEFUL_QUOTE = 20
 _REPO_ROOT = pathlib.Path(str(accountant_dad.__file__)).parent.parent.parent
 
 
+#: The phrase the specifications use for an absolute prohibition. Deliberately
+#: ONE phrase and not a clever pattern: `never`, `cannot` and `may never` also
+#: appear, so what this scanner finds is a LOWER BOUND on what `docs/` forbids
+#: and never an upper one. Widening it is a one-line change and will turn the
+#: completeness test red until the new clauses are triaged, which is correct.
+_PROHIBITION_MARKER = re.compile(r"must never", re.IGNORECASE)
+
+#: A markdown list item — `- x`, `* x`, `1. x`. Used to expand a `must never`
+#: HEADER into the clauses beneath it, because "The Input Engine MUST NEVER:"
+#: is a label and the nine numbered lines under it are the rules. Without the
+#: expansion this check would triage headings and miss every actual clause.
+_LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+\.)\s+\S")
+
+
 def _line(source: str) -> str:
     """The one line `source` names, read off disk. `path:line`, 1-based."""
     path, _, number = source.rpartition(":")
     body = (_REPO_ROOT / path).read_text(encoding="utf-8").splitlines()
     return body[int(number) - 1]
+
+
+def _prohibition_clauses(root: pathlib.Path) -> tuple[tuple[str, str], ...]:
+    """Every prohibition clause in `root/docs`, as `(path:line, text)`.
+
+    Derived, never listed. A count written down here would be a second source
+    of truth about the specifications, and the moment somebody edited a
+    document the two would disagree with no test able to say which was right.
+
+    Three shapes, in order of precedence:
+
+      HEADER + LIST   `It **MUST NEVER**:` followed by numbered or bulleted
+                      items — every item is its own clause, at its own line.
+      HEADER + PROSE  the same header followed by a `·`-separated sentence —
+                      that sentence is the clause, so the citation lands on the
+                      words rather than on the label.
+      PLAIN           any other line carrying the marker.
+
+    A `#` heading is expanded only when a list follows it. `## 12. What the
+    Application Layer must never do` is followed by a fenced block, so the
+    heading stays the clause — and the exclusion list says so out loud rather
+    than letting eleven clauses vanish.
+    """
+    found: list[tuple[str, str]] = []
+    for document in sorted(root.glob("docs/**/*.md")):
+        lines = document.read_text(encoding="utf-8").splitlines()
+        relative = document.relative_to(root).as_posix()
+        for number, line in enumerate(lines, 1):
+            if not _PROHIBITION_MARKER.search(line):
+                continue
+            stripped = line.rstrip()
+            introduces = stripped.endswith(":")
+            if not (introduces or stripped.startswith("#")):
+                found.append((f"{relative}:{number}", stripped.strip()))
+                continue
+            cursor = number
+            while cursor < len(lines) and not lines[cursor].strip():
+                cursor += 1
+            items: list[int] = []
+            while cursor < len(lines) and _LIST_ITEM.match(lines[cursor]):
+                items.append(cursor + 1)
+                cursor += 1
+            if items:
+                found.extend((f"{relative}:{at}", lines[at - 1].strip()) for at in items)
+            elif introduces and cursor < len(lines):
+                found.append((f"{relative}:{cursor + 1}", lines[cursor].strip()))
+            else:
+                found.append((f"{relative}:{number}", stripped.strip()))
+    return tuple(found)
 
 
 def _quotes_its_source(prohibition: Prohibition) -> bool:
@@ -156,6 +257,80 @@ def test_each_control_reaches_the_rule_it_names(control: NegativeControl) -> Non
     """Per control, so a failure names the rule instead of a count."""
     finding = attribute(control)
     assert finding.attribution is Attribution.ENFORCED, finding.detail
+
+
+# ── a crash is not an enforcement ─────────────────────────────────────────
+#
+# `attribute` used to read ANY exception out of a violating payload as proof
+# that a rule was enforced. Deleting the missing-score branch of `evidence.py`
+# left the next line reaching into a dict without the key, and the gate said
+#
+#     ENGINE_1:245/every-reading-carries-its-confidence -> enforced
+#     :: refused by KeyError                                  GATE: GREEN
+#
+# The enforcement was gone and the number went up. `NegativeControl.refusal`
+# closes it — but only for controls that DECLARE one, and the harness keeps the
+# old permissive default deliberately (see its module docstring). These two
+# tests are what make the declaration mandatory for the live inventory.
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=lambda control: control.prohibition)
+def test_every_control_declares_how_its_payload_is_refused(control: NegativeControl) -> None:
+    """`ValidationError`, and nothing broader. A control that kept the default
+    `(Exception,)` would still score a `KeyError` from inside a validator as
+    enforcement, which is the defect, not a milder version of it."""
+    assert control.refusal == (ValidationError,), (
+        f"{control.prohibition} does not declare its refusal type. Build it with "
+        "`_control(...)`, which declares ValidationError for the whole inventory."
+    )
+
+
+def _a_missing_key() -> object:
+    """What the deleted enforcement branch actually left behind: the next line
+    reached into `scores[field.name]` for a key that was no longer there."""
+    scores: dict[str, Decimal] = {}
+    return scores["Amount"]
+
+
+def _a_renamed_helper() -> object:
+    """The other shape of a broken control — a builder calling a name that
+    moved out from under it."""
+    raise AttributeError("module 'evidence' has no attribute 'moved'")
+
+
+def test_a_control_that_crashes_instead_of_being_refused_is_not_a_pass() -> None:
+    """The regression test for the defect itself, at the shape it had. Before
+    `refusal` existed this reported `enforced :: refused by KeyError`, so
+    DELETING an enforcement made the gate greener."""
+    finding = attribute(_control("invented", clean=_evidence, violating=_a_missing_key))
+    assert finding.attribution is Attribution.CONTROL_CRASHED
+    assert not finding.is_pass
+    assert "KeyError is not how this payload is refused (ValidationError)" in finding.detail
+
+
+def test_a_clean_payload_that_crashes_is_reported_as_broken_not_as_refused() -> None:
+    """The same distinction on the other half. `CONTROL_INVALID` accuses the
+    SCHEMA of refusing a legitimate payload; a crash accuses the control. Both
+    fail, and telling a maintainer the wrong one sends them to the wrong file."""
+    finding = attribute(_control("invented", clean=_a_renamed_helper, violating=_evidence))
+    assert finding.attribution is Attribution.CONTROL_CRASHED
+    assert "the clean payload did not fail, it BROKE" in finding.detail
+
+
+def test_a_genuine_refusal_still_reads_as_enforcement() -> None:
+    """The other side of the same coin, and the reason this fix is not simply
+    'catch less'. Narrowing the catch is only correct if a REAL refusal still
+    scores — otherwise every one of the 47 controls would go red together and
+    the change would be a deletion wearing a fix's name."""
+    finding = attribute(
+        _control(
+            "invented",
+            clean=_evidence,
+            violating=lambda: _evidence(confidence_report=_confidence_report(confidence_scores=())),
+        )
+    )
+    assert finding.attribution is Attribution.ENFORCED
+    assert finding.detail == "refused by ValidationError"
 
 
 # ── the citations, read off disk ──────────────────────────────────────────
@@ -226,6 +401,324 @@ def test_no_two_prohibitions_cite_the_same_line() -> None:
     counted twice, which inflates coverage without adding any."""
     sources = [item.source for item in PROHIBITIONS]
     assert sorted(sources) == sorted(set(sources))
+
+
+# ── every clause in docs/ is accounted for ────────────────────────────────
+#
+# WHY THIS IS THE MOST IMPORTANT TEST IN THE FILE.
+#     Everything above judges the inventory against ITSELF: are the citations
+#     real, do the controls reach their rules, are the counts what they were.
+#     None of it can see a rule that was never listed. The inventory held 40
+#     entries while `docs/` held 62 `must never` lines, and no test compared
+#     the two — so the answer to "what is missing?" was "nobody knows", and it
+#     was GREEN.
+#
+#     Both sides here are derived at run time. Neither 62 nor 40 appears
+#     anywhere: the clauses come off disk on every run and the coverage comes
+#     off `REGISTRY`. Add a prohibition to any specification and this goes red
+#     until somebody writes down, in the registry, what happens to it.
+
+
+def test_every_prohibition_clause_in_the_documents_is_covered_or_listed() -> None:
+    """No clause may be merely absent. Covered by a rule, or excluded with a
+    reason — those are the two legal states, and silence is not one of them."""
+    accounted = REGISTRY.accounted_for()
+    unaccounted = [
+        f"{source} — {text[:120]}"
+        for source, text in _prohibition_clauses(_REPO_ROOT)
+        if source not in accounted
+    ]
+    assert unaccounted == [], (
+        f"{len(unaccounted)} prohibition clause(s) in docs/ are neither cited by a "
+        "rule nor listed as excluded. Add a Prohibition, or add an Exclusion saying "
+        "why not — an omission is the one state this inventory may not be in."
+    )
+
+
+def test_no_exclusion_excuses_a_line_that_is_not_a_clause() -> None:
+    """The other direction, and it matters as much. An exclusion for a line
+    nobody prohibits inflates the accounted-for set with nothing, and it is
+    exactly what a stale entry looks like after somebody edits a document."""
+    clauses = {source for source, _ in _prohibition_clauses(_REPO_ROOT)}
+    stale = sorted(item.source for item in EXCLUSIONS if item.source not in clauses)
+    assert stale == [], (
+        "these exclusions name a line that no longer carries a prohibition; the "
+        "document moved and the exclusion did not"
+    )
+
+
+# ── an exclusion has to be a real admission ───────────────────────────────
+#
+# Every guard below refuses at CONSTRUCTION, so a malformed exclusion cannot
+# reach the list at all. That matters more here than for a prohibition: a
+# prohibition that is wrong makes a control fail, and a control failing is
+# loud. An exclusion that is wrong makes a clause LOOK accounted for, and
+# nothing downstream ever runs it.
+
+
+def test_an_exclusion_with_no_reason_is_refused() -> None:
+    """An unexplained exclusion is an omission with a nicer name."""
+    with pytest.raises(ValueError, match="needs a reason"):
+        _unwitnessable("docs/DATA_FLOW.md:1", "   ")
+
+
+def test_an_exclusion_with_no_source_is_refused() -> None:
+    with pytest.raises(ValueError, match="needs a source"):
+        _unwitnessable("   ", _A_REASON)
+
+
+def test_an_exclusion_attributed_to_a_whole_document_is_refused() -> None:
+    """Same rule a prohibition lives under: without a line it cannot be
+    re-checked when the document changes."""
+    with pytest.raises(ValueError, match="must name a line"):
+        _unwitnessable("docs/DATA_FLOW.md", _A_REASON)
+
+
+def test_a_restatement_that_names_no_rule_is_refused() -> None:
+    """'Covered somewhere else' is not a citation, and it is the single
+    easiest way to make a clause disappear while looking handled."""
+    with pytest.raises(ValueError, match="must name the rule"):
+        _restates("docs/DATA_FLOW.md:1", "   ", _A_REASON)
+
+
+def test_only_a_restatement_may_name_a_rule_that_carries_it() -> None:
+    """An `UNWITNESSABLE` clause pointing at a rule would be claiming coverage
+    and denying it in the same entry."""
+    with pytest.raises(ValueError, match="only a restatement"):
+        Exclusion(
+            source="docs/DATA_FLOW.md:1",
+            kind=Uncovered.UNWITNESSABLE,
+            reason=_A_REASON,
+            restates=IMMUTABLE,
+        )
+
+
+def test_a_debt_with_no_due_date_is_refused() -> None:
+    """A debt with no due date is a decision never to pay it — the same
+    reasoning that makes a review-only prohibition carry an expiry."""
+    with pytest.raises(ValueError, match="must name the phase"):
+        Exclusion(
+            source="docs/DATA_FLOW.md:1",
+            kind=Uncovered.NOT_YET_A_PREDICATE,
+            reason=_A_REASON,
+        )
+
+
+@pytest.mark.parametrize("bad", ["P1", "P7", "later", "soon", "", "p4"])
+def test_a_debt_due_at_something_that_is_not_a_phase_is_refused(bad: str) -> None:
+    with pytest.raises(ValueError, match="is not a phase"):
+        _not_yet("docs/DATA_FLOW.md:1", _A_REASON, bad)
+
+
+def test_a_clause_no_artifact_can_witness_cannot_come_due() -> None:
+    """`UNWITNESSABLE` is permanent by definition. An expiry on one is a
+    promise nobody can keep, quietly aging in a list."""
+    with pytest.raises(ValueError, match="only a clause that is 'not yet a predicate'"):
+        Exclusion(
+            source="docs/DATA_FLOW.md:1",
+            kind=Uncovered.UNWITNESSABLE,
+            reason=_A_REASON,
+            expiry="P4",
+        )
+
+
+def test_two_exclusions_may_not_name_the_same_line() -> None:
+    """The second is invisible, and a reason nobody reads is not a reason."""
+    with pytest.raises(ValueError, match="two exclusions name the line"):
+        Registry(
+            PROHIBITIONS,
+            CONTROLS,
+            (*EXCLUSIONS, EXCLUSIONS[0]),
+        )
+
+
+def test_a_line_may_not_be_both_cited_by_a_rule_and_excluded() -> None:
+    """One of the two is false — either the rule is enforced or it is not — and
+    a reader believing the wrong one is exactly the state this refuses."""
+    with pytest.raises(ValueError, match="both cited by a prohibition and listed"):
+        Registry(
+            PROHIBITIONS,
+            CONTROLS,
+            (*EXCLUSIONS, _unwitnessable(PROHIBITIONS[0].source, _A_REASON)),
+        )
+
+
+def test_an_exclusion_may_not_be_excused_by_a_rule_nobody_wrote_down() -> None:
+    """Built against the REAL inventory, so the guard is proven against 45 live
+    entries rather than a toy pair."""
+    with pytest.raises(ValueError, match="which is not in the inventory"):
+        Registry(
+            PROHIBITIONS,
+            CONTROLS,
+            (*EXCLUSIONS, _restates("docs/DATA_FLOW.md:1", "a rule nobody wrote", _A_REASON)),
+        )
+
+
+def test_the_accounted_for_set_is_every_cited_line_and_every_excluded_one() -> None:
+    """The set the completeness check reads. Built from both halves, so a
+    registry that quietly dropped its exclusions would report every excluded
+    clause as missing rather than as fine."""
+    assert REGISTRY.accounted_for() == frozenset(
+        {item.source for item in PROHIBITIONS} | {item.source for item in EXCLUSIONS}
+    )
+
+
+def test_an_inventory_with_no_exclusions_accounts_only_for_what_it_cites() -> None:
+    """The default. `Registry` must be constructible before any clause has been
+    triaged, or the list could never be built one entry at a time."""
+    registry = Registry(PROHIBITIONS, CONTROLS)
+    assert registry.exclusions == ()
+    assert registry.accounted_for() == {item.source for item in PROHIBITIONS}
+    for kind in Uncovered:
+        assert registry.by_uncovered(kind) == ()
+
+
+def test_the_registry_separates_the_four_reasons_a_clause_is_uncovered() -> None:
+    """`by_uncovered` is what publishes the shape of the gap. A version that
+    ignored its argument would report every clause under every heading and the
+    debt would read as forty times its real size."""
+    for kind in Uncovered:
+        assert all(item.kind is kind for item in REGISTRY.by_uncovered(kind))
+    assert {item.kind for item in EXCLUSIONS} == set(Uncovered)
+
+
+def test_the_clause_scanner_reads_the_documents_and_not_a_fixture() -> None:
+    """A scanner that returned `()` would make the completeness test pass
+    vacuously and prove nothing about any document. Pinned against two clauses
+    whose text is asserted verbatim — one plain, one expanded out of a header."""
+    found = dict(_prohibition_clauses(_REPO_ROOT))
+    assert found["docs/SYSTEM_INVARIANTS.md:209"] == (
+        "**Execution must never discover that posting was impossible.**"
+    )
+    # Line 314 carries no marker of its own. It is here only because line 312,
+    # `The Input Engine **MUST NEVER**:`, was expanded into its list.
+    assert found["docs/ENGINE_1_INPUT_ENGINE_RULES.md:314"] == "1. Decide transaction type."
+
+
+def test_the_clause_scanner_finds_a_prohibition_a_document_did_not_have_before(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Mutation proof for the completeness check. Without this, a scanner that
+    always returned the same fixed list would keep the suite green while a new
+    `MUST NEVER` entered the specifications unnoticed — the precise failure the
+    check exists to stop."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "INVENTED.md").write_text(
+        "# A document nobody wrote\n"
+        "\n"
+        "The Invented Engine **MUST NEVER**:\n"
+        "\n"
+        "1. Do the first forbidden thing.\n"
+        "2. Do the second forbidden thing.\n"
+        "\n"
+        "A closing line that must never be read as a list item.\n",
+        encoding="utf-8",
+    )
+    assert _prohibition_clauses(tmp_path) == (
+        ("docs/INVENTED.md:5", "1. Do the first forbidden thing."),
+        ("docs/INVENTED.md:6", "2. Do the second forbidden thing."),
+        (
+            "docs/INVENTED.md:8",
+            "A closing line that must never be read as a list item.",
+        ),
+    )
+
+
+def test_the_clause_scanner_takes_the_sentence_when_a_header_introduces_prose(
+    tmp_path: pathlib.Path,
+) -> None:
+    """`ENGINE_5_VALIDATION_ENGINE_RULES.md:207` is a header over a
+    `·`-separated sentence, not a list. The clause must land on the sentence:
+    citing the label would let the words beneath it be rewritten freely."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "PROSE.md").write_text(
+        "Validation **MUST NEVER**:\n\ninvent facts · ask users · post transactions.\n",
+        encoding="utf-8",
+    )
+    assert _prohibition_clauses(tmp_path) == (
+        ("docs/PROSE.md:3", "invent facts · ask users · post transactions."),
+    )
+
+
+def test_the_clause_scanner_keeps_a_heading_that_introduces_no_list(
+    tmp_path: pathlib.Path,
+) -> None:
+    """`APPLICATION_LAYER.md:379` is a heading over a fenced block. Nothing
+    beneath it is a list item, so the heading itself stays the clause and the
+    exclusion list is what records the eleven clauses inside the block."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "FENCED.md").write_text(
+        "## What it must never do\n\n```text\nSomething forbidden\n```\n",
+        encoding="utf-8",
+    )
+    assert _prohibition_clauses(tmp_path) == (("docs/FENCED.md:1", "## What it must never do"),)
+
+
+@pytest.mark.parametrize("exclusion", EXCLUSIONS, ids=lambda item: item.source)
+def test_every_exclusion_names_a_line_that_exists_in_the_document_it_cites(
+    exclusion: Exclusion,
+) -> None:
+    """The same re-checkability a prohibition owes. An exclusion citing a file
+    that moved, or a line past the end of one, excuses a clause nobody can find.
+
+    That the line is a real CLAUSE is the neighbouring test's job — some are
+    the prose sentence under a `MUST NEVER:` header and carry no marker of
+    their own, which is exactly why the scanner reaches for them."""
+    path, _, number = exclusion.source.rpartition(":")
+    assert path.startswith("docs/"), f"{exclusion.source} cites {path}, outside docs/"
+    assert (_REPO_ROOT / path).is_file(), f"{exclusion.source} cites a missing file"
+    assert int(number) >= 1
+    assert _line(exclusion.source).strip(), f"{exclusion.source} names a blank line"
+
+
+@pytest.mark.parametrize("exclusion", EXCLUSIONS, ids=lambda item: item.source)
+def test_every_exclusion_gives_a_reason_long_enough_to_argue_with(
+    exclusion: Exclusion,
+) -> None:
+    """ "Out of scope" is not a reason. The threshold is the same one a quote has
+    to clear to identify a sentence: below it, the text names nothing."""
+    assert len(exclusion.reason) >= SHORTEST_USEFUL_QUOTE, exclusion.source
+
+
+def test_every_restatement_names_a_rule_that_is_actually_in_the_inventory() -> None:
+    """`Registry` refuses this at construction; asserted here against the REAL
+    list so the guard is proven against 40 live entries rather than a toy one.
+    A clause excused by a rule nobody wrote down is excused by nothing."""
+    known = {item.identifier for item in PROHIBITIONS}
+    dangling = sorted(
+        f"{item.source} -> {item.restates}"
+        for item in REGISTRY.by_uncovered(Uncovered.RESTATEMENT)
+        if item.restates not in known
+    )
+    assert dangling == []
+
+
+def test_every_debt_names_the_phase_it_comes_due() -> None:
+    """A `NOT_YET_A_PREDICATE` exclusion is a promise to write a predicate. A
+    promise with no date is a decision never to keep it — the same reasoning
+    that makes a review-only entry carry an expiry."""
+    for item in REGISTRY.by_uncovered(Uncovered.NOT_YET_A_PREDICATE):
+        assert item.expiry in PHASES, item.source
+
+
+def test_nothing_but_a_debt_carries_an_expiry() -> None:
+    """An `UNWITNESSABLE` clause does not become witnessable at P5. An expiry on
+    one would be a promise nobody can keep, quietly aging in a list."""
+    for item in EXCLUSIONS:
+        if item.kind is not Uncovered.NOT_YET_A_PREDICATE:
+            assert item.expiry is None, item.source
+
+
+def test_the_inventory_lists_exactly_this_many_uncovered_clauses() -> None:
+    """Same reasoning as the counts above, in the other direction: quietly
+    DELETING an exclusion would make the completeness test red, but quietly
+    reclassifying a debt as unwitnessable would not, and this is where the
+    shape of the gap is written down."""
+    assert len(REGISTRY.exclusions) == EXCLUSION_COUNT
+    assert sum(len(REGISTRY.by_uncovered(kind)) for kind in Uncovered) == EXCLUSION_COUNT
 
 
 # ── the counts, written down ──────────────────────────────────────────────
@@ -414,6 +907,16 @@ def test_the_structured_document_quotes_the_text_it_was_read_from() -> None:
     assert document.document_structure == "header, one table, footer"
     assert document.detected_tables == ()
     assert tuple(item.name for item in document.detected_fields) == ("Amount",)
+
+
+def test_the_two_fixed_confidences_are_far_enough_apart_to_be_an_upgrade() -> None:
+    """`NO_UPGRADED_SCORE` contrasts a reading's own confidence with what the
+    Confidence Report claims about it, so the two numbers must differ — set
+    them equal and both halves of that control become the same payload, which
+    reports ENFORCED for nothing at all."""
+    assert Decimal("0.9000") == _CONFIDENCE
+    assert Decimal("0.4000") == _UNSURE
+    assert _UNSURE < _CONFIDENCE
 
 
 def test_the_confidence_report_says_why_the_reading_is_reliable() -> None:
@@ -707,6 +1210,7 @@ def test_mutate_still_refuses_to_write_a_frozen_artifact() -> None:
 #: to resemble the entries around it.
 _A_QUOTE = "a quote long enough to name the sentence it came from"
 _ANOTHER_QUOTE = "a different sentence, quoted from a different line"
+_A_REASON = "a reason no real exclusion gives, long enough to clear the floor"
 
 
 def test_the_predicate_builder_keeps_every_field_and_marks_it_enforced_now() -> None:
@@ -777,6 +1281,82 @@ def test_the_two_builders_disagree_about_exactly_one_field() -> None:
     assert exempt.enforcement is Enforcement.REVIEW_ONLY
 
 
+def test_the_control_builder_keeps_both_payloads_and_declares_the_refusal() -> None:
+    """`_control` runs 47 times at import and never again, so every mutation
+    inside it survives unless something calls it directly. `refusal` is the
+    field with no argument behind it — replace `(ValidationError,)` with
+    `(Exception,)` and every control silently goes back to scoring crashes as
+    enforcement while all 47 stay green."""
+    clean = _evidence
+    violating = _journal_line
+    built = _control("D:5/s", clean=clean, violating=violating)
+    assert built == NegativeControl(
+        "D:5/s", clean=clean, violating=violating, refusal=(ValidationError,)
+    )
+    assert built.clean is clean
+    assert built.violating is violating
+
+
+def test_the_four_exclusion_builders_each_produce_their_own_kind() -> None:
+    """Same import-time-only problem as the two prohibition builders. Each is
+    asserted whole, by equality: a builder that dropped `reason` or swapped a
+    kind would still produce a legal `Exclusion`, and 140 entries would quietly
+    change meaning without one test going red."""
+    assert _not_a_prohibition("docs/DATA_FLOW.md:6", _A_REASON) == Exclusion(
+        source="docs/DATA_FLOW.md:6",
+        kind=Uncovered.NOT_A_PROHIBITION,
+        reason=_A_REASON,
+        restates=None,
+        expiry=None,
+    )
+    assert _restates("docs/DATA_FLOW.md:7", IMMUTABLE, _A_REASON) == Exclusion(
+        source="docs/DATA_FLOW.md:7",
+        kind=Uncovered.RESTATEMENT,
+        reason=_A_REASON,
+        restates=IMMUTABLE,
+        expiry=None,
+    )
+    assert _unwitnessable("docs/DATA_FLOW.md:8", _A_REASON) == Exclusion(
+        source="docs/DATA_FLOW.md:8",
+        kind=Uncovered.UNWITNESSABLE,
+        reason=_A_REASON,
+        restates=None,
+        expiry=None,
+    )
+    assert _not_yet("docs/DATA_FLOW.md:9", _A_REASON, "P6") == Exclusion(
+        source="docs/DATA_FLOW.md:9",
+        kind=Uncovered.NOT_YET_A_PREDICATE,
+        reason=_A_REASON,
+        restates=None,
+        expiry="P6",
+    )
+
+
+@pytest.mark.parametrize("expiry", sorted(PHASES))
+def test_the_debt_builder_passes_each_phase_through_unchanged(expiry: str) -> None:
+    """Every declared phase, so no single hard-coded one can impersonate the
+    argument and make every debt come due at the same time."""
+    assert _not_yet("docs/DATA_FLOW.md:10", _A_REASON, expiry).expiry == expiry
+
+
+def test_every_exclusion_in_the_real_list_matches_what_its_builder_produces() -> None:
+    """Ties the direct tests above back to the live tuple, the same way the
+    prohibitions are tied to theirs — so a builder that started dropping a field
+    is caught against all 140 real entries, not only against the fixture."""
+    rebuild = {
+        Uncovered.NOT_A_PROHIBITION: lambda item: _not_a_prohibition(item.source, item.reason),
+        Uncovered.RESTATEMENT: lambda item: _restates(
+            item.source, item.restates or "", item.reason
+        ),
+        Uncovered.UNWITNESSABLE: lambda item: _unwitnessable(item.source, item.reason),
+        Uncovered.NOT_YET_A_PREDICATE: lambda item: _not_yet(
+            item.source, item.reason, item.expiry or ""
+        ),
+    }
+    for item in EXCLUSIONS:
+        assert rebuild[item.kind](item) == item, item.source
+
+
 def test_every_entry_in_the_real_inventory_matches_what_its_builder_produces() -> None:
     """Ties the direct tests above back to the live tuple. Rebuilding each entry
     from its own recorded fields must reproduce it exactly — so a builder that
@@ -797,3 +1377,195 @@ def test_every_entry_in_the_real_inventory_matches_what_its_builder_produces() -
             )
         )
         assert rebuilt == item, item.identifier
+
+
+# ── the subject the rest of this file does not test ───────────────────────
+#
+# WHAT EVERY TEST ABOVE ACTUALLY MEASURES.
+#     Whether six pydantic models refuse hand-written payloads. That is real —
+#     the controls break the schema rules and the schemas say no — and it is a
+#     DIFFERENT QUESTION from the one the gate's name implies. Nothing above
+#     ever runs an engine. `conformance` can be green while the only engine
+#     that exists emits an artifact that violates the contract governing it,
+#     and on this commit that is exactly what happens.
+#
+# MEASURED, ON `pipeline.run`, ON THE EXACT FIXTURE BELOW — a real one-page PDF
+# with a real text layer, run through cleaner, reader, parser, confidence and
+# assembly:
+#
+#     detected_fields    : 0     detected_tables    : 0
+#     confidence_scores  : 0     Provenance objects : 0
+#     uncertainty_markers: 1
+#     extracted_text     : 'TAX INVOICE\nVendor: Acme Traders\nTotal  1,180.00'
+#
+#     Three values reached the artifact. Not one carries where it came from or
+#     how reliable it is, which is what
+#     `COMMUNICATION_RULES_INPUT_ENGINE.md:113-119` requires of every extracted
+#     value, permanently and at every boundary. `conformance` is GREEN.
+#
+# THESE TESTS ARE RED, AND THAT IS THE POINT.
+#     The document wins (CLAUDE.md section M). The assertions state what the
+#     contract requires, not what the pipeline currently produces, and they stay
+#     that way until the emission side carries provenance. Weakening one to
+#     match the code would convert a visible defect into a green gate, which is
+#     the whole failure this file exists to prevent (Law 4, section J.4).
+#
+# WHY THEY LIVE HERE AND NOT IN THE REGISTRY.
+#     `conformance_registry` is imported by the `conformance` job, which
+#     installs `requirements-ci.txt` alone. Engine 1 needs OpenCV, PyMuPDF and
+#     Docling; importing it there would break that job on a missing dependency
+#     rather than on a real finding. This module runs under `unit tests`, where
+#     those dependencies are installed.
+
+
+class _AuthoringPage(Protocol):
+    def insert_text(
+        self, point: tuple[float, float], text: str, *, fontname: str, fontsize: int
+    ) -> int: ...
+
+
+class _AuthoringDocument(Protocol):
+    def new_page(self, *, width: float, height: float) -> _AuthoringPage: ...
+    def tobytes(self) -> bytes: ...
+    def close(self) -> None: ...
+
+
+class _NewDocument(Protocol):
+    def __call__(self) -> _AuthoringDocument: ...
+
+
+_open_pdf = cast(_NewDocument, pymupdf.open)
+
+#: The invoice is rendered FROM this list, so what reached the artifact can be
+#: checked against real ground truth rather than against whatever a run
+#: happened to produce.
+_INVOICE_LINES = (
+    "TAX INVOICE",
+    "Vendor: Acme Traders",
+    "Total  1,180.00",
+)
+
+#: `reader.read`'s own required threshold, at the value that means "never fall
+#: back to vision". Zero, not a number chosen to look reasonable: the point of
+#: this fixture is a PDF whose text layer is read directly, and any fallback
+#: would make the result a statement about OCR instead.
+_NO_VISION_FALLBACK = Decimal("0.0")
+
+#: Mirrors `test_input_engine_pipeline.py`'s `RENDER_DPI`, which is the value
+#: Engine 1's own end-to-end test renders at. Reusing an existing constant is
+#: not choosing a number (CLAUDE.md Law 52), and rendering at a different one
+#: would make this fixture a different experiment from that one.
+_RENDER_DPI = 150
+
+
+def _an_invoice_pdf() -> bytes:
+    document = _open_pdf()
+    page = document.new_page(width=595, height=842)
+    height = 90.0
+    for text in _INVOICE_LINES:
+        page.insert_text((60, height), text, fontname="helv", fontsize=13)
+        height += 34
+    payload = bytes(document.tobytes())
+    document.close()
+    return payload
+
+
+@pytest.fixture(scope="module")
+def emitted_evidence() -> DocumentEvidenceObject:
+    """One real run of Engine 1, shared by the tests below. Module-scoped
+    because Docling's model load is the expensive part and the tests only read
+    the result."""
+    return pipeline.run(
+        pipeline.DocumentIntake(
+            document=_an_invoice_pdf(),
+            media_type=reader.MediaType.PDF,
+            source_references=("upload:invoice-2026-0041.pdf",),
+        ),
+        identity=IdentityEnvelope(
+            artifact_id=ArtifactId(_uuid("1")),
+            version=1,
+            parent_versions=cast(tuple[ParentVersion, ...], ()),
+            transaction_id=TransactionId(_uuid("2")),
+        ),
+        settings=pipeline.PipelineSettings(
+            cleaner_settings=cleaner.CleanerSettings(
+                max_deskew_degrees=15.0,
+                denoise_strength=3.0,
+                denoise_template_window=7,
+                denoise_search_window=21,
+                contrast_clip_limit=2.0,
+                contrast_tile_grid=8,
+                crop_margin_pixels=10,
+                max_ink_loss_fraction=1.0,
+            ),
+            render_dpi=_RENDER_DPI,
+            vision_fallback_threshold=_NO_VISION_FALLBACK,
+            table_structure=cast(parser.TableStructureSettings | None, None),
+        ),
+    )
+
+
+def test_the_engine_reads_the_document_at_all(
+    emitted_evidence: DocumentEvidenceObject,
+) -> None:
+    """The precondition for everything below. If the engine read nothing, the
+    two red tests that follow would be red for the wrong reason and would keep
+    being red after the emission side was fixed."""
+    text = emitted_evidence.structured_document.extracted_text
+    for line in _INVOICE_LINES:
+        assert line in text, f"the engine did not read {line!r}; it read {text!r}"
+
+
+def test_every_value_the_engine_extracted_carries_where_it_came_from(
+    emitted_evidence: DocumentEvidenceObject,
+) -> None:
+    """`COMMUNICATION_RULES_INPUT_ENGINE.md:113-117` — every extracted value
+    maintains its Source, its Confidence and its Uncertainty, and :119 says
+    those travel with the value permanently.
+
+    RED. The engine reads the invoice and emits its text with no detected
+    field behind any of it, so there is no value carrying a source at all.
+    Fixing this means emitting provenance, never relaxing the assertion.
+    """
+    document = emitted_evidence.structured_document
+    assert document.extracted_text.strip(), "nothing was read, so nothing is being judged"
+    assert document.detected_fields, (
+        "the engine stated extracted text but emitted zero detected fields, so not "
+        "one extracted value carries a Source, a Confidence or an Uncertainty. "
+        f"COMMUNICATION_RULES_INPUT_ENGINE.md:113. Text emitted: "
+        f"{document.extracted_text[:120]!r}"
+    )
+    scored = {score.field_name for score in emitted_evidence.confidence_report.confidence_scores}
+    for field in document.detected_fields:
+        assert field.provenance.source_id.strip(), f"{field.name} names no source document"
+        assert field.provenance.evidence_reference.strip(), f"{field.name} names no location"
+        assert field.name in scored, f"{field.name} carries no confidence score"
+
+
+def test_the_artifact_carries_provenance_for_the_evidence_it_states(
+    emitted_evidence: DocumentEvidenceObject,
+) -> None:
+    """`COMMUNICATION_RULES_INPUT_ENGINE.md:158` item 8 — evidence provenance
+    crosses intact, with every fact.
+
+    RED. The emitted artifact contains zero `Provenance` objects when no human
+    note is supplied: there is nothing for the Understanding Engine to carry
+    intact, so the boundary contract's uncertainty-movement clause is vacuous
+    on this commit.
+    """
+    provenances = [
+        field.provenance for field in emitted_evidence.structured_document.detected_fields
+    ]
+    provenances += [
+        table.provenance for table in emitted_evidence.structured_document.detected_tables
+    ]
+    if emitted_evidence.human_business_context is not None:
+        provenances.append(emitted_evidence.human_business_context.provenance)
+    assert provenances, (
+        "the artifact carries no Provenance anywhere, so nothing crosses the "
+        "Input -> Understanding boundary with an origin attached. "
+        "COMMUNICATION_RULES_INPUT_ENGINE.md:158."
+    )
+    for provenance in provenances:
+        assert provenance.source_type is SourceType.DOCUMENT
+        assert provenance.corroborated is Corroborated.NOT_ASSESSED
