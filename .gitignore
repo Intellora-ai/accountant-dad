@@ -47,4 +47,25 @@ mutants/
 Accounting_Brain/Evidence_Library/sources/*.pdf
 
 # Agent worktrees and local session state. Never repository content.
-.claude/
+#
+# `.claude/*` and NOT `.claude/` — the trailing-slash form excludes the
+# DIRECTORY, and git cannot re-include a file whose parent directory is
+# excluded, so every negation below would have been silently dead. Measured:
+# `git add .claude/settings.json` refused with "ignored by one of your
+# .gitignore files" until this line lost its slash.
+.claude/*
+
+# EXCEPT the enforcement mechanism, which IS repository content.
+#
+# MEASURED 2026-08-06, and this line was the single point of failure: with
+# `.claude/` ignored wholesale, `git ls-files .claude/` returned NOTHING. Every
+# hook enforcing this project's engineering rules lived in `~/.claude/` on one
+# laptop. A fresh clone, a second machine or a wiped home directory got zero
+# enforcement, and the rules survived only because one person's home directory
+# happened to still exist.
+#
+# `settings.json` and `hooks/` are therefore un-ignored deliberately. Everything
+# else under `.claude/` — worktrees above all — stays ignored.
+!.claude/settings.json
+!.claude/hooks/
+!.claude/hooks/**

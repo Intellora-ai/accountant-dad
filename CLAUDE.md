@@ -1,5 +1,23 @@
 # CLAUDE.md — accountant dad Engineering Constitution
 
+> ## ⚠ READ `ENGINEERING_METHOD.md` FIRST — IT IS ENFORCED, THIS FILE IS NOT
+>
+> **This document is loaded only if a session chooses to read it.
+> `ENGINEERING_METHOD.md` is injected automatically at session start, before
+> every prompt, and before every tool call, by
+> `.claude/hooks/engineering_method.py` — which is tracked by git and therefore
+> survives a fresh clone.**
+>
+> **The measurement that forced it, 2026-08-06:** `.gitignore:50` ignored
+> `.claude/` wholesale, so `git ls-files .claude/` returned **nothing**. Every
+> hook enforcing this project's rules lived in one laptop's home directory. A
+> clone got zero enforcement.
+>
+> The single rule that made the difference, and the one this constitution could
+> not enforce on its own: **a document is a HYPOTHESIS, never evidence.** Read
+> the source. Two of three testable claims in `KNOWN_FAILURES.md` were measured
+> FALSE, and one was carried into a root-cause analysis as though verified.
+
 > **DIRECTIVE — RE-READ THIS ENTIRE FILE, EVERY TIME.** Read the WHOLE file — no skimming, no salience-picking, no compression — at the start of every phase, before every significant change, and before every DONE GATE. Then apply ALL of it, not just the salient parts. **Tokens and time are NOT a constraint — correctness and full application are.** A rule read once and left behind is the root failure (§N); re-reading in full is the fix. If you are about to declare anything "done" without having just re-read this file, stop and re-read it.
 
 ---
