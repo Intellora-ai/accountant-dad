@@ -178,6 +178,90 @@ mutation score of 65.7% against a floor of 93. Asking was the defect. A threshol
 can be discussed is not a threshold, and the asking itself implies an exception exists.
 It does not. This law removes the question, permanently.
 
+### 56. Commit-bound measurements — a number without its commit is an opinion
+
+**Every measurement MUST be bound to the exact Git commit that produced it. A
+measurement without its commit hash is invalid.**
+
+```
+✅  Mutation: 95.3% @ commit 7e0efe2
+❌  Mutation: 95.3%
+```
+
+#### Measurement lifetime
+
+A measurement is valid **only** for the commit on which it was produced. The instant
+any source code changes after that commit:
+
+- the measurement **expires**
+- it must **never** be reused
+- it must **never** be quoted as current
+- it must **never** be used for decision making
+
+Instead: **re-measure**, or explicitly state **UNMEASURED**.
+
+#### Expiration rule
+
+Whenever code changes after a measurement, immediately state:
+
+> Previous measurement expired because source changed after commit `<hash>`.
+
+**Proactively. Never wait to be asked.**
+
+#### Unknown > wrong
+
+**Never invent continuity between commits.** If the current commit has not been
+measured, write **UNMEASURED** · **NOT VERIFIED** · **PENDING GITHUB** · **PENDING CI**.
+
+Never write the previous number. **Unknown is correct. A stale number is incorrect.**
+
+#### GitHub is authority
+
+Only GitHub Actions measurements are authoritative (Law 44). Local measurements are for
+debugging only, and may be reported **only** when explicitly labelled
+**`LOCAL ONLY — NOT AUTHORITATIVE`**. They never replace GitHub results.
+
+#### Every number carries provenance
+
+Every metric includes **commit hash · source · timestamp** where available:
+
+```
+Coverage : 97.54%    Commit: 7e0efe2    Source: GitHub Actions    Status: VERIFIED
+Mutation : 93.41%    Commit: 7e0efe2    Source: GitHub Actions    Status: VERIFIED
+```
+
+#### Where this applies — everywhere, without exception
+
+`ROADMAP.md` · `PROGRESS.md` · `DECISION_LOG.md` · `KNOWN_FAILURES.md` · reports ·
+summaries · PR descriptions · status updates · final completion reports · chat. **No
+metric may appear in documentation without its originating commit.**
+
+#### Verification rule — run this BEFORE reporting any metric
+
+1. Verify the commit that produced it.
+2. Verify it matches the current codebase.
+3. If the current HEAD differs, the metric is **EXPIRED**.
+4. Re-measure, or report **UNMEASURED**.
+
+#### Self-audit, at the end of every task
+
+Ask: *"Does every reported metric include the commit that produced it?"* If not, correct
+it **before** responding.
+
+**A number without its commit is an opinion. A number tied to the wrong commit is false.
+Only a measurement tied to the exact commit that produced it is engineering evidence.**
+
+**Enforced in seven layers** so it cannot silently disappear: this law · the
+`Commit-Bound Measurements` section of `ENGINEERING_RULES.md` · a `PreToolUse` hook that
+rejects an uncited metric before the write lands · status-report format · the five
+progress documents · session memory · the end-of-task self-audit.
+
+**What forced it.** A mutation score of **95.3% @ `7e0efe2`** — real, CI-produced,
+correct — stayed in a report while ~3,000 lines of source changed under it across six
+modules. Nothing was wrong with the number. Everything was wrong with quoting it. The
+dangerous artifact is not a red metric; it is a **green metric attached to code that has
+since moved**, read by someone deciding to merge. Approved by the user, 2026-08-06.
+
 ---
 
 ## D. HOW TO THINK (apply, don't just name)
@@ -466,6 +550,7 @@ Then the 10 gates:
 9. **Red-teamed + falsified** (§J.10) — you actively tried to prove the change AND its tests WRONG, not just watched green. State which rules you verified.
 10. **Every number in the change is measured, not estimated** (Law 52). No "should be faster." Before and after, with units.
 11. **Every mandatory gate is AT or ABOVE its threshold** (Law 55). Not close to it. If one is below, this change is not done, merge is not discussable, and the only valid next action is fixing that gate.
+12. **Every metric carries the commit that produced it** (Law 56). Run the self-audit: does every number reported here name its commit, its source, and its status? A metric measured before the current HEAD is **EXPIRED** — re-measure or write **UNMEASURED**. Never quote the previous number.
 
 **If any line cannot be ticked, it is NOT done.**
 
