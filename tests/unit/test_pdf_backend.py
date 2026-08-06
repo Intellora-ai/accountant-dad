@@ -22,6 +22,8 @@ import ast
 import pathlib
 from typing import Protocol, cast
 
+import cv2
+import numpy as np
 import pymupdf
 import pytest
 from authored_source import authored_path, authored_tree
@@ -326,6 +328,85 @@ def test_the_error_is_a_pdf_backend_error_so_a_caller_can_catch_the_family() -> 
     assert issubclass(pdf_backend.BrokenPdfError, pdf_backend.PdfBackendError)
 
 
+@pytest.mark.parametrize("dpi", [72, 96, 150, 300, 600])
+def test_a_rebuilt_page_is_the_physical_size_its_pixels_represent_at_that_dpi(dpi: int) -> None:
+    """F-028, PERMANENTLY. A page rasterised at any DPI and rebuilt must come
+    back the SAME PHYSICAL SIZE, so a coordinate on it means the same thing.
+
+    ── THE DEFECT THIS TRAPS, MEASURED AT `3bd31e2` BEFORE THE FIX ──
+
+        render dpi      72       96      150       300
+        rebuilt page   459pt   612pt   956.25pt  1912.5pt
+        scale          0.7500  1.0000   1.5625    3.1250
+
+    `cleaner._encode_png` is `cv2.imencode(".png", ...)`, which writes no `pHYs`
+    chunk, so the backend inferred 96 dpi and every rebuilt page came back
+    `dpi / 96` times its true size. Coordinates on a cleaned scan therefore
+    described a page that did not exist, and — worse — the same document
+    measured DIFFERENTLY at two DPIs, which is a reproducibility failure in an
+    engine whose whole contract is a reproducible Document Evidence Object.
+
+    ── WHY IT IS PARAMETRIZED, AND WHY 96 IS IN THE LIST ──
+
+    96 is the value the OLD code got right BY ACCIDENT. A single-DPI test
+    written at 96 passes against the bug and proves nothing, so this asserts
+    across five, and the 96 case is kept deliberately as the control that must
+    stay green in both worlds. Falsified before it was trusted: reverting to
+    `convert_to_pdf()` reddens 72, 150, 300 and 600 and leaves 96 green.
+    """
+    source_width, source_height = 612.0, 792.0  # US Letter, in points
+    blank = new_pdf()
+    try:
+        blank.new_page(width=source_width, height=source_height)
+        source = bytes(blank.tobytes())
+    finally:
+        blank.close()
+
+    opened = pdf_backend.open_pdf(source)
+    try:
+        rendered = pdf_backend.render_page_png(opened, 0, dpi=dpi)
+    finally:
+        pdf_backend.close_pdf(opened)
+
+    # Through the encoder the cleaner actually uses — the one that drops the
+    # physical-size metadata. Rendering with the backend and rebuilding without
+    # this step would test a PNG that still carried its `pHYs` chunk, and so
+    # would pass while the real path failed.
+    decoded = cv2.imdecode(np.frombuffer(rendered, np.uint8), cv2.IMREAD_COLOR)
+    assert decoded is not None, "the backend's own PNG did not decode"
+    written, buffer = cv2.imencode(".png", decoded)
+    assert written, "the fixture's own PNG encode failed"
+    assert b"pHYs" not in buffer.tobytes(), (
+        "this encoder now writes physical-size metadata, so this test no longer "
+        "exercises the F-028 path. Re-derive the fixture before trusting it."
+    )
+
+    rebuilt = pdf_backend.open_pdf(pdf_backend.pdf_of_page_images([buffer.tobytes()], dpi=dpi))
+    try:
+        width, height = pdf_backend.page_size(rebuilt, 0)
+    finally:
+        pdf_backend.close_pdf(rebuilt)
+
+    assert (round(width, 4), round(height, 4)) == (source_width, source_height), (
+        f"a page rasterised at {dpi} dpi rebuilt as {width}x{height} pt instead "
+        f"of {source_width}x{source_height} pt — a scale of {width / source_width:.4f}. "
+        "Every coordinate reported against this page is wrong by that factor, "
+        "and the factor changes with a render setting (F-028)."
+    )
+
+
+def test_a_dpi_that_cannot_be_a_dpi_is_refused_rather_than_corrected() -> None:
+    """The guard moved down from `reader` when F-028 gave it a second caller.
+
+    Refused, never defaulted: substituting a workable DPI here would invent the
+    owner's number (Law 52) and would reintroduce exactly the silent assumption
+    F-028 was.
+    """
+    for impossible in (0, -1, -300):
+        with pytest.raises(ValueError, match="positive number of dots per inch"):
+            pdf_backend.pdf_of_page_images([b""], dpi=impossible)
+
+
 def test_pages_rebuilt_from_images_stay_in_the_order_they_were_given() -> None:
     """PAGE ORDER IS ONE OF THE FOUR THINGS F-017 REQUIRES CLEANING TO PRESERVE,
     and a rebuild is where it is most easily lost.
@@ -347,7 +428,7 @@ def test_pages_rebuilt_from_images_stay_in_the_order_they_were_given() -> None:
         finally:
             one.close()
 
-    rebuilt = pdf_backend.open_pdf(pdf_backend.pdf_of_page_images(images))
+    rebuilt = pdf_backend.open_pdf(pdf_backend.pdf_of_page_images(images, dpi=RENDER_DPI))
     try:
         assert pdf_backend.page_count(rebuilt) == len(sizes)
         widths = [
@@ -379,7 +460,7 @@ def test_rebuilding_from_no_pages_refuses_rather_than_producing_an_empty_documen
     would silently remove that second guard.
     """
     with pytest.raises(ValueError, match="zero pages"):
-        pdf_backend.pdf_of_page_images([])
+        pdf_backend.pdf_of_page_images([], dpi=RENDER_DPI)
 
 
 def test_the_interface_hands_back_no_backend_object_a_caller_could_call() -> None:

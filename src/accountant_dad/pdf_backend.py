@@ -135,12 +135,30 @@ class BrokenPdfError(PdfBackendError):
 
 
 class _Pixmap(Protocol):
+    #: In PIXELS, and read for exactly that reason — see `pdf_of_page_images`.
+    #: An image's pixel count is a fact about the bytes; its physical size is
+    #: metadata that an encoder is free not to write.
+    width: int
+    height: int
+
     def tobytes(self, output: str) -> bytes: ...
 
 
+class _Rect(Protocol):
+    """A rectangle in PDF user space. Opaque, like `PdfDocument`."""
+
+
+class _Rectangle(Protocol):
+    width: float
+    height: float
+
+
 class _Page(Protocol):
+    rect: _Rectangle
+
     def get_text(self, option: str) -> object: ...
     def get_pixmap(self, *, dpi: int) -> _Pixmap: ...
+    def insert_image(self, rectangle: _Rect, *, stream: bytes) -> None: ...
 
 
 class _Document(Protocol):
@@ -150,7 +168,7 @@ class _Document(Protocol):
     def close(self) -> None: ...
     def insert_pdf(self, source: _Document) -> None: ...
     def tobytes(self) -> bytes: ...
-    def convert_to_pdf(self) -> bytes: ...
+    def new_page(self, *, width: float, height: float) -> _Page: ...
 
 
 class _OpenStream(Protocol):
@@ -161,8 +179,24 @@ class _OpenEmpty(Protocol):
     def __call__(self) -> _Document: ...
 
 
+class _MakePixmap(Protocol):
+    def __call__(self, source: bytes, /) -> _Pixmap: ...
+
+
+class _MakeRect(Protocol):
+    def __call__(self, left: float, top: float, right: float, bottom: float, /) -> _Rect: ...
+
+
 _open_stream = cast(_OpenStream, pymupdf.open)
 _open_empty = cast(_OpenEmpty, pymupdf.open)
+_pixmap_of = cast(_MakePixmap, pymupdf.Pixmap)
+_rectangle = cast(_MakeRect, pymupdf.Rect)
+
+#: PDF user space is 1/72 inch, fixed by the PDF specification. This is a UNIT
+#: CONVERSION, not a tuning value and not a default: no threshold, policy or
+#: preference is expressed by it, and no other number would be arithmetically
+#: correct. Named once so no line below spells a bare 72.
+_POINTS_PER_INCH = 72
 
 #: What `get_text` is asked for. PyMuPDF's own option strings, named once here
 #: so no caller ever types one — a backend that spelled them differently would
@@ -175,6 +209,26 @@ _STRUCTURED = "dict"
 #: is the one thing cleaning may never do (`cleaner._encode_png` states the
 #: same rule for the same reason).
 _RENDER_FORMAT = "png"
+
+
+def require_positive_dpi(render_dpi: int) -> None:
+    """Refuse an impossible DPI rather than substituting a workable one.
+
+    Correcting it would mean choosing a number, which is the thing this module
+    does not do. Refusing names the caller's mistake instead of hiding it.
+
+    MOVED HERE FROM `reader._require_positive_dpi` WHEN F-028 ADDED A SECOND
+    CALLER (Law 14). `pdf_of_page_images` needs the same check and `reader`
+    imports this module, so keeping the original where it was would have meant
+    either an inverted dependency or two copies of one rule — and two copies is
+    how the two drift apart. `reader` now imports this one.
+    """
+    if render_dpi <= 0:
+        raise ValueError(
+            f"render_dpi must be a positive number of dots per inch, got {render_dpi}. "
+            "Refused rather than corrected: no document sets a render DPI, so "
+            "substituting one here would invent the owner's number (Law 52)."
+        )
 
 
 def _as_broken(failure: pymupdf.FileDataError) -> BrokenPdfError:
@@ -231,32 +285,87 @@ def render_page_png(document: PdfDocument, index: int, *, dpi: int) -> bytes:
     return bytes(cast(_Document, document)[index].get_pixmap(dpi=dpi).tobytes(_RENDER_FORMAT))
 
 
-def pdf_of_page_images(pages: list[bytes]) -> bytes:
-    """One PDF whose pages are these PNG images, in the order given.
+def page_size(document: PdfDocument, index: int) -> tuple[float, float]:
+    """The page's width and height in POINTS — its physical size, not its pixels.
+
+    A FUNCTION RATHER THAN A HANDED-OUT RECTANGLE, like everything else here. A
+    caller given the backend's rectangle object would be speaking PyMuPDF, and
+    the whole design of this module is that no caller does.
+
+    Added with the F-028 fix, which needed a way to assert that a rebuilt page
+    is the size its pixels represent. That assertion had no way to be written
+    without either this function or a caller reaching into the backend.
+    """
+    rectangle = cast(_Document, document)[index].rect
+    return float(rectangle.width), float(rectangle.height)
+
+
+def pdf_of_page_images(pages: list[bytes], *, dpi: int) -> bytes:
+    """One PDF whose pages are these PNG images, in the order given, each page
+    sized to the physical size those pixels represent AT `dpi`.
 
     THE ORDER IS THE CALLER'S AND IS NEVER SORTED. A rebuilt PDF whose pages
     came back in a different order is a different document, and page order is
     one of the four things F-017 requires cleaning to preserve.
 
-    The three-step dance inside is the backend's, not the caller's, and is
-    measured rather than assumed: `convert_to_pdf()` returns BYTES rather than
-    a document, so the result has to be reopened before `insert_pdf` will take
-    it — passing the bytes straight in raises `AttributeError: 'bytes' object
-    has no attribute '_graft_id'`. That fact is a property of PyMuPDF, so it
-    lives here, where replacing PyMuPDF replaces it.
+    ── WHY `dpi` IS REQUIRED, AND WHY IT HAS NO DEFAULT (`KNOWN_FAILURES.md`
+       F-028) ──
+
+    This function used to take pixels alone and let the backend decide what
+    they measured. `convert_to_pdf()` reads the physical size out of the PNG's
+    `pHYs` chunk, and `cleaner._encode_png` is `cv2.imencode(".png", ...)`,
+    which does not write one — OpenCV's PNG encoder has no parameter for it.
+    With no `pHYs`, MuPDF falls back to 96 dpi. Measured at `3bd31e2` on a
+    612x792 pt (US Letter) source page, rasterised and rebuilt:
+
+        render dpi      72       96      150       300
+        rebuilt page   459pt   612pt   956.25pt  1912.5pt
+        scale          0.7500  1.0000   1.5625    3.1250
+
+    Correct at exactly one DPI, by accident, and wrong everywhere else by
+    `dpi / 96`. Two consequences, and the second is the serious one:
+
+      1. Coordinates on a cleaned scan did not describe the source page.
+         `reader.SourceLocation` promises *"the backend's own pixel or point
+         space for the page"*, kept unnormalised precisely so *"a human can
+         find the region again"* — and at 300 dpi the region was 3.125x away
+         from where it is.
+      2. THE SAME DOCUMENT MEASURED DIFFERENTLY AT TWO DPIs. Engine 1 owes a
+         truthful, measurable and REPRODUCIBLE Document Evidence Object; a
+         page whose coordinate space is a function of a render setting is not
+         reproducible, and that failure needs no downstream engine to exist
+         before it is real.
+
+    THE FIX IS TO STOP INFERRING IT, NOT TO WRITE THE MISSING METADATA. A
+    `pHYs` chunk would restore correctness and leave the defect's SHAPE intact:
+    physical size would still travel as optional metadata inside an image, and
+    the next re-encode that dropped it would silently reintroduce 96 dpi. Here
+    the DPI travels as a required argument, so a caller that does not know it
+    fails to typecheck instead of quietly rendering at the wrong scale.
+
+    That also makes this function consistent with the module it lives in.
+    `render_page_png` above already refuses a default for exactly the stated
+    reason — *"no document in this repository states a render DPI, and choosing
+    one would answer a question put to the owner (Law 52)"* — as do
+    `reader.read` and `cleaner.clean_artifact`. This was the one place that
+    silently answered that question, and it answered it wrongly.
+
+    The old three-step open/convert/reopen dance is gone with it: pages are now
+    created at a known size and the image drawn into them, which is both
+    correct and fewer moving parts.
     """
+    require_positive_dpi(dpi)
     rebuilt = _open_empty()
     try:
         for page in pages:
-            image = _open_stream(stream=page, filetype=_RENDER_FORMAT)
-            try:
-                converted = _open_stream(stream=image.convert_to_pdf(), filetype="pdf")
-                try:
-                    rebuilt.insert_pdf(converted)
-                finally:
-                    converted.close()
-            finally:
-                image.close()
+            # PIXELS, read off the decoded image rather than off the page a
+            # backend would infer. This is the number that is a fact.
+            pixels = _pixmap_of(page)
+            width = pixels.width * _POINTS_PER_INCH / dpi
+            height = pixels.height * _POINTS_PER_INCH / dpi
+            rebuilt.new_page(width=width, height=height).insert_image(
+                _rectangle(0, 0, width, height), stream=page
+            )
         return bytes(rebuilt.tobytes())
     finally:
         rebuilt.close()

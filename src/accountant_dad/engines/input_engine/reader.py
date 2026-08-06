@@ -121,6 +121,7 @@ from accountant_dad.pdf_backend import (
     open_pdf,
     page_count,
     render_page_png,
+    require_positive_dpi,
     structured_text,
 )
 
@@ -294,20 +295,6 @@ class Reading:
     regions: tuple[TextRegion, ...]
     backend: Backend
     pages_read: int
-
-
-def _require_positive_dpi(render_dpi: int) -> None:
-    """Refuse an impossible DPI rather than substituting a workable one.
-
-    Correcting it would mean choosing a number, which is the thing this module
-    does not do. Refusing names the caller's mistake instead of hiding it.
-    """
-    if render_dpi <= 0:
-        raise ValueError(
-            f"render_dpi must be a positive number of dots per inch, got {render_dpi}. "
-            "Refused rather than corrected: no document sets a render DPI, so "
-            "substituting one here would invent the owner's number (Law 52)."
-        )
 
 
 def read_pdf_text_layer(document: bytes) -> Reading:
@@ -687,7 +674,7 @@ def read(
     raises `UnreadableDocumentError`. Those are different answers to different
     questions and this function never conflates them.
     """
-    _require_positive_dpi(render_dpi)
+    require_positive_dpi(render_dpi)
 
     if media_type is MediaType.PDF:
         from_text_layer = read_pdf_text_layer(document)

@@ -1194,7 +1194,11 @@ def _pdf_rebuilt_from_cleaned_pages(
     # is appended to inside the loop above, so page n of the rebuilt PDF is the
     # cleaned page n of the original — the property F-017 requires and the one a
     # rebuild is most likely to lose.
-    payload = pdf_of_page_images([_encode_png(page) for page in cleaned_pages])
+    # `dpi=render_dpi` IS THE F-028 FIX AT ITS CALL SITE. These pages were
+    # rasterised at `render_dpi` a few lines above; handing the pixels on
+    # without saying so let the backend infer 96 and resize every page by
+    # `render_dpi / 96`. The DPI was known here the whole time.
+    payload = pdf_of_page_images([_encode_png(page) for page in cleaned_pages], dpi=render_dpi)
 
     return replace_artifact(
         first,
