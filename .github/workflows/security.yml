@@ -148,6 +148,24 @@ jobs:
         # yesterday and vulnerable today SHOULD turn the build red. The database
         # is never cached for the same reason.
         run: pip-audit --strict --requirement requirements-ci.txt
+      - name: audit EVERY dependency manifest, not just the CI toolchain
+        # SCOPE HOLE, measured and now closed. The step above audits exactly one
+        # manifest. `requirements-engine1.txt` and `requirements-engine1-ocr.txt`
+        # were audited by NOTHING, while being INSTALLED by four other CI jobs —
+        # so six pinned distributions, `torch` among them, entered every CI
+        # environment with zero advisory scanning.
+        #
+        # ADDED rather than folded into the step above, deliberately. Renaming
+        # that step to widen it reads as a REMOVAL to
+        # `tools/ci/assert_steps_not_removed.py`, which identifies a step by its
+        # name — and it is right to: a step that disappears and a step that is
+        # renamed are indistinguishable from outside. The narrow assertion stays
+        # independently verifiable and the broad one is new.
+        #
+        # The manifest set is DERIVED from the tree, never restated, so a fourth
+        # manifest is covered the day it appears rather than the day someone
+        # remembers it.
+        run: tools/ci/audit_dependency_manifests.sh
       - name: audit the package's own dependencies
         run: |
           set -euo pipefail
