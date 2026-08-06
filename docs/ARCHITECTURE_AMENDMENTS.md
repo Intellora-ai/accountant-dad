@@ -553,3 +553,372 @@ Applied     : ✅ src/accountant_dad/confidence.py          — new sentinel, ne
               ⬜ SYSTEM_INVARIANTS.md INV-11               — DELIBERATELY UNTOUCHED, not weakened
               ⬜ src/accountant_dad/confidence.py `Confidence` — DELIBERATELY UNCHANGED
 ```
+
+> **Superseded in part by Amendment 7**, which found the successor condition this
+> amendment named in its own *"What would prove this wrong"* and acted on it. Amendment 6
+> is not reversed: every rule it states still holds, and the type it introduced is now the
+> BASE of three rather than a single class. **O11 above is half closed** — the annotation
+> is widened; the matching filter in `pipeline.parsed_fields` is not, and remains open.
+
+---
+
+# Amendment 7 — a measurement has four outcomes, not two
+
+| | |
+|---|---|
+| **Status** | ✅ **APPROVED 2026-08-06** |
+| **Affects** | `src/accountant_dad/confidence.py` · `src/accountant_dad/artifacts/evidence.py` · `src/accountant_dad/engines/input_engine/confidence_report.py` · `src/accountant_dad/engines/input_engine/parser.py` · `src/accountant_dad/engines/input_engine/assembly.py` |
+| **Does NOT affect** | `SYSTEM_INVARIANTS.md` INV-11 — **six provenance attributes, none optional, unchanged and not weakened** · the `Confidence` type itself — **still `Decimal` only, [0.0000, 1.0000], ≤ 4 places** · every existing caller written as `isinstance(x, UnmeasuredType)`, which keeps answering correctly |
+| **Raised** | 2026-08-06, by the owner, on F-019 |
+
+## What changed
+
+**Old rule** — Amendment 6. Two states: a `Confidence`, or the single `UNMEASURED`
+sentinel.
+
+**New rule** — four states, each distinct, each inspectable, none collapsible to a number:
+
+```
+MEASURED         a Decimal on the agreed scale. An instrument ran and produced a score
+NOT_MEASURED     the value was read, is real, travels into the artifact; nothing scored it
+NOT_APPLICABLE   there is no reading here for a score to be ABOUT
+FAILED           an instrument was asked and could not produce a reading or a score
+```
+
+`MeasurementState` names them. `measurement_state(value)` is the one inspector, total over
+the union and **hostile to everything else** — a `float`, an `int`, a `str` or `None`
+reaching a confidence slot is refused rather than reported as MEASURED.
+
+Every non-measured state carries a **required, non-blank `basis`** saying WHY. This is the
+half that turns "which of the three" into an answer somebody can act on:
+`ENGINE_1_INPUT_ENGINE_RULES.md:626` already settles the general form — *"Every uncertainty
+marker carries a reason. A bare score cannot become a good question downstream."* A bare
+absence is worse than a bare score.
+
+## Which doc / section
+
+| File | Change |
+|---|---|
+| `src/accountant_dad/confidence.py` | **Added** `MeasurementState`, `NotMeasuredType`, `NotApplicableType`, `MeasurementFailedType`, `measurement_state`, `describe_measurement`, a JSON serialiser. `UnmeasuredType` becomes the **abstract base** of the three; `UNMEASURED` is now a `NotMeasuredType` with its reason written at the definition site. `Confidence`, `MIN`, `MAX`, `CONFIDENCE_PLACES` and `_exactly_a_decimal_in_range` are **unchanged**. |
+| `src/accountant_dad/artifacts/evidence.py` | `ConfidenceOrUnmeasured` now admits all four. The disagreement message names both STATES and both reasons. No slot changed shape. |
+| `src/accountant_dad/engines/input_engine/confidence_report.py` | `ParsedField.extraction_confidence` widened to `ConfidenceOrUnmeasured` (**O11, annotation half**). A capture-fidelity mismatch records `CAPTURE_FIDELITY_ON_MISMATCH` (FAILED) instead of nothing. A missing field records NOT_APPLICABLE instead of nothing. |
+| `src/accountant_dad/engines/input_engine/parser.py` | **Added** `map_cells`. Every table cell carrying text becomes a `MappedField` with a unique locator name and its own box, so a cell's provenance is built by the same code path a text region's is. |
+| `src/accountant_dad/engines/input_engine/assembly.py` | Docstring only. The confidence-authority tension it reported is resolved and now says so. |
+
+## Why
+
+**The root cause was never the missing sentinel. It was that the architecture modelled the
+RESULT of measuring and never the ACT of it.**
+
+`confidence.py` defined the score. Everything else — did an instrument run? did it
+succeed? was scoring even a meaningful question here? — was carried by `None`. And `None`
+was already spoken for four ways in the same pipeline:
+
+```
+reader.TextRegion.extraction_confidence   no recogniser ran
+confidence_report.RegionReading.text      the region could not be read
+parser.Cell.text                          no text was reported at this grid position
+DocumentEvidenceObject.human_business_context   no note was supplied
+```
+
+So the absence of a measurement **had no name**, and a fact with no name cannot be
+carried, checked or refused. When a schema demands a number from a world that supplies one
+only sometimes, code has exactly three moves: **INVENT a number, DROP the value, or
+CRASH.** This repository has done the first two, in production paths, and each fix named
+one more special case rather than the class.
+
+**The transform (Law 53):** stop modelling the score, model what happened when we tried to
+measure. "Measured" becomes one of four outcomes rather than the only representable one,
+and the other three stop having to disguise themselves as numbers or as silence.
+
+**Why one base and not three siblings.** Every caller already written as
+`isinstance(x, UnmeasuredType)` keeps getting the right answer to *"is a measurement
+absent here?"* as states are added (Law 33). Sibling classes with no shared base would have
+made those call sites report a non-measured value as **measured** — silently, and in the
+reassuring direction, which is the failure mode this whole module exists to prevent
+(Law 11).
+
+## What failure forced it
+
+**F-019, and the fact that Amendment 6 predicted its own successor.** That amendment's
+*"What would prove this wrong"* section reads: *"A slot that needs a third measurement
+state ... If one is found, this amendment needs a successor, not a patch."*
+
+Two were found, both on real values in real paths:
+
+| State | The value that needed it |
+|---|---|
+| NOT_APPLICABLE | a field the document does not contain, and a grid position it left blank. There is no reading for a score to be about, and filing that under "nobody scored it" invents work on empty cells while hiding genuinely unscored values among them |
+| FAILED | a capture-fidelity comparison that ran and could not produce a score, because `cleaner` and `reader` had both broken the pass-through guarantee they are contractually held to. Filing a broken guarantee under the same heading as an ordinary unscored text-layer reading is the collapse the states exist to prevent |
+
+## The agreement rule is extended again, never exempted
+
+```
+same state, both measured, equal numbers   AGREE
+same state, both measured, different       DISAGREE
+same non-measured state                    AGREE
+different states                           DISAGREE   — including every measured-against-
+                                                        absent pair AND every pair of two
+                                                        DIFFERENT absences (NEW)
+```
+
+NOT_MEASURED against NOT_APPLICABLE is a **new refusal**: one side says a real value is
+carried with nothing behind it, the other says there is no value at all. Two components
+that disagree about whether the document was even read there have not "both declined to
+score."
+
+**The `basis` is deliberately NOT part of agreement.** Two components may say "nothing
+scored this" in different words and still state the same fact. Comparing explanations would
+turn a prose edit into a refused artifact.
+
+## The trade-off
+
+| Gained | Lost |
+|---|---|
+| Three genuinely different facts stop wearing one shape, and the agreement check gains two new ways to fail | Four states is more to hold in mind than two. Every reader of a confidence slot now asks `measurement_state(x)` rather than one `isinstance` |
+| Every absence states WHY, so the artifact answers *why* and not only *whether* | `basis` is free text. Nothing checks that it is a GOOD reason, only that it exists |
+| A stated absence can be written to JSON at all — a latent defect that pre-dated this amendment and made any artifact carrying one undumpable | JSON now carries a heterogeneous shape in one slot: a string for a score, an object for an absence. A reader must branch |
+| Table cell values reach the artifact with a name, a location and a state, through the same code path text regions already use | `parser.mapped_fields` now holds two kinds of mapping. They are the same KIND of fact — a named value with a source reference — but the collection is no longer "one per reader region" |
+| Two silent gaps closed in the Confidence Report: a capture-fidelity mismatch and a missing field each now state their reliability instead of being omitted | A document with missing fields or a mismatched note produces a longer report. Nothing that was there is removed |
+
+**Not chosen: an enum field on one class.** A single class with a `state` attribute would
+make `isinstance` useless for the question every existing call site asks, and would let a
+value be constructed in no state at all.
+
+**Not chosen: reusing `measurement.AbsentType`.** Amendment 6 settled this and the
+reasoning is unchanged — different fact, and a circular import.
+
+**Not chosen: giving `parser` the four states.** `parser` may not import
+`accountant_dad.confidence` — a pinned test refuses it — and that is correct:
+`ENGINE_1_INPUT_ENGINE_RULES.md:109` says `parser` emits SIGNALS and only `confidence`
+turns a signal into a state. `parser.MappedField.extraction_confidence` therefore stays
+`reader`'s raw `Decimal | None`, and `pipeline._recorded_confidence` remains the single
+place that decides what an absent signal means.
+
+## What would prove this wrong
+
+**A value whose measurement outcome is none of the four.** The obvious candidate is
+"scored, but on a scale not yet established to be this one" — a raw detector number before
+calibration. Today that is kept out of the artifact entirely and lives in
+`measurement.NamedSignal` as a plain `float`, deliberately. If it ever needs to reach a
+`Provenance`, this amendment needs a successor rather than a patch.
+
+**Or: a caller that branches on `isinstance(x, UnmeasuredType)` and MEANS "not measured
+specifically".** That call site would silently treat NOT_APPLICABLE and FAILED as
+NOT_MEASURED. Two exist today and are recorded as open item O12 below; neither can reach a
+non-NOT_MEASURED value on any current path, because `pipeline` produces only `UNMEASURED`.
+
+**Or: an absence reaching a caller that treats it as a number.** `__bool__`, `__lt__`,
+`__le__`, `__gt__` and `__ge__` all raise, and `measurement_state` refuses a `float`
+outright. Pinned in `tests/unit/test_confidence.py`.
+
+## What now guards it
+
+| Guard | Where |
+|---|---|
+| All **sixteen** state pairings agree exactly when the states match — generated, not listed | `tests/unit/test_confidence.py::test_every_pairing_of_states_agrees_exactly_when_the_states_match` |
+| A **fifth** member added to `MeasurementState` and not added to the matrix turns the suite red | `tests/unit/test_confidence.py::test_the_matrix_covers_every_state_the_enum_declares` |
+| The base cannot be instantiated — "an absence, unspecified" is unrepresentable | `tests/unit/test_confidence.py::test_the_base_state_cannot_be_constructed_and_says_why` |
+| No absence can be built without a non-blank reason, and a padded blank is a blank | `tests/unit/test_confidence.py::test_no_absence_may_be_constructed_without_a_stated_reason` |
+| No absence has a truth value, an ordering, a numeric conversion, or a `Decimal` in its ancestry | `tests/unit/test_confidence.py`, four tests, all three states parametrised |
+| Nothing that merely LOOKS like a score is reported as measured — `1.0`, `True`, `"0.98"`, `None`, `ABSENT` all refused | `tests/unit/test_confidence.py::test_nothing_that_merely_looks_like_a_score_is_reported_as_measured` |
+| Every state survives a JSON dump, and an absence is never written as a number or `null` | `tests/unit/test_confidence.py`, four serialisation tests |
+| Two DIFFERENT absences are refused by the real artifact, in both directions | `tests/unit/test_evidence.py::test_two_different_absences_are_a_disagreement_the_artifact_refuses` |
+| No confidence slot in the schema carries a default | `tests/unit/test_evidence.py::test_no_confidence_bearing_slot_in_this_schema_carries_a_default` |
+| **No module may write a literal into a `Provenance` or `FieldConfidence` confidence slot** — AST over authored source, with a second test proving the matcher would catch one | `tests/unit/test_evidence.py::test_no_module_writes_a_literal_into_a_confidence_slot` |
+| Every confidence in a real assembled artifact yields a state, and every non-measured one carries a reason | `tests/unit/test_evidence.py::test_every_confidence_in_a_real_artifact_names_its_state_and_its_reason` |
+| Every mapped cell carries a unique name and its own box; a blank grid position is not mapped and is not lost | `tests/unit/test_input_engine_parser.py`, nine `map_cells` tests |
+| A capture-fidelity mismatch records FAILED rather than silence; a document with no note gains no entry | `tests/unit/test_input_engine_confidence.py`, two tests |
+
+## Open items this creates
+
+| # | Finding | Owner | What unblocks it |
+|---|---|---|---|
+| **O11** *(carried, half closed)* | `ParsedField.extraction_confidence` is now `ConfidenceOrUnmeasured`. The matching filter in `pipeline.parsed_fields` still excludes unscored mappings, so `ConfidenceReport.confidence_scores` still has two producers. | The `pipeline.py` workstream. | Removing `if field.extraction_confidence is not None` from `pipeline.parsed_fields`, and the now-redundant `unmeasured_field_scores`. |
+| **O12** | **Two call sites ask `isinstance(x, UnmeasuredType)` and mean "not measured specifically"** — `pipeline.unmeasured_field_scores` and `tests/integration/test_engine1_end_to_end.py`, which classifies anything failing that test as *measured*. Neither can be reached by a non-NOT_MEASURED value today, because `pipeline` produces only `UNMEASURED`. | The `pipeline.py` workstream. | Replacing both with `measurement_state(x)`. |
+| **O13** | **NOT_APPLICABLE and FAILED have limited live producers.** FAILED fires today only on a capture-fidelity mismatch; NOT_APPLICABLE fires only when `parser` is given an expected-field list, and it is given none. **Stated rather than manufactured** — inventing a producer to make the state look exercised is the fabrication these types exist to refuse. | — | `reader` reporting a per-region recognition failure as a STATE rather than raising for the whole reading, and `parser` receiving an expected-field list. |
+| **O14** | **A cell's per-cell provenance reaches the artifact through `detected_fields`, not through `DetectedTable`**, which carries one `Provenance` per table. That is a limit of the frozen schema, not a choice. | **The owner.** | A schema change giving `DetectedTable` per-cell provenance — or a decision that the `detected_fields` route is the intended one, in which case this is closed as designed. |
+
+## Approval
+
+```
+Proposed by : Claude, 2026-08-06
+Approved by : The owner, 2026-08-06 — F-019, verbatim:
+              "Introduce an explicit 'measurement unavailable' state. Do NOT
+               use 1.0, 0.0, fake confidence, or placeholder confidence.
+               Confidence must distinguish between: measured, not measured,
+               not applicable, failed. Propagate this state throughout
+               Engine 1. Apply the same architecture to table extraction and
+               every extracted value."
+Applied     : ✅ src/accountant_dad/confidence.py
+              ✅ src/accountant_dad/artifacts/evidence.py
+              ✅ src/accountant_dad/engines/input_engine/confidence_report.py
+              ✅ src/accountant_dad/engines/input_engine/parser.py
+              ✅ src/accountant_dad/engines/input_engine/assembly.py
+              ✅ tests — confidence, evidence, parser, confidence_report, redteam
+              ⬜ SYSTEM_INVARIANTS.md INV-11        — DELIBERATELY UNTOUCHED, not weakened
+              ⬜ src/accountant_dad/confidence.py `Confidence` — DELIBERATELY UNCHANGED
+              ⬜ src/accountant_dad/engines/input_engine/pipeline.py — NOT OWNED by this
+                 change; O11 and O12 record exactly what it needs
+```
+
+---
+
+# Amendment 8 — Decision A7 is authoritative: confidence gates NOTHING
+
+| | |
+|---|---|
+| **Status** | ✅ **APPROVED 2026-08-06** |
+| **Affects** | `docs/ADVERSARIAL_TESTING.md` · `docs/EXECUTION_QUEUE.md` · `docs/TECHNOLOGY_STACK.md` · `docs/ACCOUNTING_DEFINITIONS.md` · `docs/APPLICATION_LAYER.md` |
+| **Does NOT affect** | the separation gate itself (`MEASUREMENT_FRAMEWORK.md` §10 — a gate on whether confidence may be USED, not a confidence gate) · build acceptance thresholds such as *margin ≥ 0.30* · the propagation BOUND `Understanding Confidence ≤ Evidence Reliability`, which constrains a value and routes nothing |
+| **Raised** | F-004, open since 2026-08-05 |
+
+## What changed
+
+**Old rule** — five locked or live documents specified behaviour triggered by a confidence
+value crossing a threshold.
+
+**New rule** — **no document specifies confidence gating.** Every one of the five states
+the same outcome through a mechanism that needs no number, and each says so in place.
+
+| Document | Old | New |
+|---|---|---|
+| `ADVERSARIAL_TESTING.md` attack 8 | *"Low confidence → **Clarification**"* | *"Unread regions → **missing information** → **Clarification**"* |
+| `EXECUTION_QUEUE.md` | *"**Insufficient confidence** produces `I don't know` or a Clarification Request"* | **Applied by SUPERSESSION, not by revision** — the same replacement wording, stated in a block directly beneath the clause, which is left byte-identical. See "The one that could not be edited in place" below |
+| `TECHNOLOGY_STACK.md` stack table | Gemini Vision *"**fallback only**, when OCR confidence is below threshold"* | *"**fallback only** — and it has **no trigger**"* |
+| `TECHNOLOGY_STACK.md` blockers | *"OCR confidence threshold \| **a number nobody has set**"* | *"Gemini fallback trigger \| **undecided** — a routing decision, not a number"* |
+| `ACCOUNTING_DEFINITIONS.md` §6 Uncertainty | *"the set of open doubts, **plus any confidence below the threshold at which the system may act unattended**"* | *"the set of open doubts."* The second term is **struck** |
+| `APPLICATION_LAYER.md` failure classes | *"**Confidence below threshold** \| Engine 3/4"* | *"**Unresolved doubt or unestablished fact** \| Engine 3/4"* |
+
+**Two of these were not on F-004's list.** F-004 named three documents;
+`ACCOUNTING_DEFINITIONS.md` and `APPLICATION_LAYER.md` were found by sweeping every
+markdown file in the repository for gating language rather than by trusting the list. The
+inventory the sweep produced is in the commit that carries this amendment.
+
+### The one that could not be edited in place
+
+`EXECUTION_QUEUE.md`'s clause is cited by a **content digest** —
+`conformance_registry.py:2119` holds
+`docs/EXECUTION_QUEUE.md#an-incorrect-entry-must@b50bd021b31e`, and the digest covers the
+LINE. Editing the words breaks the citation, and `conformance_registry.py` belongs to
+another workstream. **Discovered by the suite going red, not by reading**, which is the
+system working: a content-addressed citation is supposed to notice exactly this.
+
+So the amendment is applied there by **supersession**: the clause line is byte-identical,
+and a block directly beneath it states what the sentence must be read as, and why the
+words themselves still stand. **The two changes must land together**, and the exact pair
+is:
+
+```
+docs/EXECUTION_QUEUE.md  lines 130-131 — the clause under "So the floor is set on
+                                          autonomy", currently two lines
+  KEEP    the opening sentence, verbatim, up to and including "silently accepted."
+  REPLACE everything after it — the "Insufficient confidence produces ..." half —
+          with the wording quoted in the block beneath the clause in that file,
+          beginning "a fact the system could not establish"
+  DELETE  the superseding block, which exists only because the edit is blocked
+
+src/accountant_dad/conformance_registry.py  line 2119
+  before  "docs/EXECUTION_QUEUE.md#an-incorrect-entry-must@b50bd021b31e",
+  after   the same citation with the digest recomputed over the new line
+```
+
+> **The clause is described here rather than quoted.** The conformance scanner treats any
+> line in `docs/**` carrying its marker phrase as a NEW prohibition clause needing its own
+> rule or exclusion — so pasting the sentence into this file would manufacture two
+> prohibitions that no artifact can witness. Measured, not assumed: it did, and the suite
+> said so. The replacement wording is quoted in `EXECUTION_QUEUE.md` itself, beneath the
+> clause it replaces, which is where a reader needs it anyway.
+
+**This is the weakest of the five in precedence and the loudest about it.**
+`EXECUTION_QUEUE.md:3` declares *"Precedence: none. This document has no authority."*
+A reader who lands on the clause now finds the correction attached to it.
+
+## Why
+
+**Decision A7 is binding and the documents outranked nothing.** `MEASUREMENT_FRAMEWORK.md`
+§10 states it outright: until
+
+```
+accuracy(top confidence tercile) − accuracy(bottom tercile)  ≥  0.30
+```
+
+is measured and passes, **confidence is an ordinal ranking, not a probability, and it may
+gate NOTHING.** Every one of Engine 1's sixteen parameters is `UNSET` by design.
+
+`ADVERSARIAL_TESTING.md` sits at the **same precedence level** as the rule forbidding it,
+so precedence alone never settled it. That is why this had to be an amendment and not a
+correction.
+
+## What failure forced it
+
+**Nothing has failed yet, and that is the point at which this is cheapest to fix.** The
+failure it prevents is precise: *whoever implements one of these next builds a threshold,
+believing a locked document told them to* — and then has to invent the number, because none
+exists. That is Law 52 and Law 54 broken at the same keystroke, with a locked document as
+the defence.
+
+The near miss is on the record. `TECHNOLOGY_STACK.md` recorded the Gemini trigger as
+*"UNKNOWN — REQUIRES A NUMBER FROM THE OWNER"*, which frames the blocker as a **missing
+number**. Supplying it would not have unblocked anything: A7 forbids the mechanism, so the
+number would have been forbidden the moment it arrived.
+
+## The trade-off
+
+| Gained | Lost |
+|---|---|
+| No locked document instructs anyone to build a confidence gate | Five documents are no longer byte-identical to their lock |
+| Attack 8, the Clarification path and the Uncertainty definition all work **today**, with no calibration and no number | Attack 8's mechanism is now specific to how `reader` reports unread regions, so it is coupled to Engine 1's shape in a way *"low confidence"* was not |
+| The Gemini fallback blocker is stated honestly: the trigger is **undecided**, not merely unset | The fallback is further from implementable than the old wording implied — an honest loss of apparent progress |
+| `Uncertainty` becomes measurable as written: `count(open doubts)`, with nothing undefined in it | The definition is narrower than the owner originally wrote. **Nothing measurable is lost** — the same document's next sentence already said the second term was undefined — but a term the owner wrote is gone, and restoring it needs them |
+
+**Not chosen: deleting attack 8, the Clarification row, or the fallback.** §E.8 — adding
+rigour is in scope, subtracting what the owner specified is not. Every purpose survives;
+only the stated mechanism changed.
+
+**Not chosen: leaving the wording and adding a footnote.** A document that says one thing
+and footnotes the opposite is exactly the state F-004 describes, with a warning attached.
+
+## What now guards it
+
+| Guard | Where |
+|---|---|
+| Every revised line says *"Revised by Amendment 8"* in place, so a reader who lands on it without reading this file still learns the rule | the five documents |
+| The separation gate itself is untouched and still the only thing that could ever unblock confidence gating | `MEASUREMENT_FRAMEWORK.md` §10 |
+| Engine 1 asserts in code that it compares no confidence against any number | `docs/ENGINE_1_CONFIDENCE_PARAMETERS.md` — no numeric literal used as a threshold anywhere in `engines/input_engine/`, two tests |
+| A confidence written as a literal into an artifact slot fails the suite | `tests/unit/test_evidence.py::test_no_module_writes_a_literal_into_a_confidence_slot` |
+| No absence has an ordering, so `confidence < threshold` against one is a `TypeError` rather than a branch | `confidence.py` — `__lt__`/`__le__`/`__gt__`/`__ge__` refuse, pinned in `tests/unit/test_confidence.py` |
+
+## What would prove this wrong
+
+**A sixth document specifying confidence gating that the sweep missed.** The sweep matched
+eight regular-expression patterns over every `.md` file in `docs/` and the repository root.
+It cannot catch gating described without any of those words — *"when the reading is weak,
+route to review"* would pass it. **A future reader finding one should treat this amendment
+as incomplete rather than as wrong**, and revise the document the same way.
+
+**Or: the separation test passing, and a threshold then being correct after all.** That
+does not reverse this amendment. It unblocks a NEW one, per `MEASUREMENT_FRAMEWORK.md`, and
+the number would still have to come from the owner.
+
+## Approval
+
+```
+Proposed by : Claude, 2026-08-06
+Approved by : The owner, 2026-08-06 — F-004, verbatim:
+              "Decision A7 is authoritative. Update every conflicting
+               document. Remove all threshold-based confidence gating
+               language. Standardise the repository around measurement-first
+               architecture."
+Applied     : ✅ docs/ADVERSARIAL_TESTING.md      — attack 8 + a paragraph naming the change
+              🔄 docs/EXECUTION_QUEUE.md          — by SUPERSESSION. The clause line is
+                 byte-identical because conformance_registry.py:2119 cites it by content
+                 digest and that file is another workstream's. Exact paired change above
+              ✅ docs/TECHNOLOGY_STACK.md         — stack row, blocker row, the note
+              ✅ docs/ACCOUNTING_DEFINITIONS.md   — §6 Uncertainty, second term struck
+              ✅ docs/APPLICATION_LAYER.md        — failure class renamed
+              ✅ docs/CONFIDENCE_SPECIFICATION.md — open items O6 and O10 closed
+              ✅ KNOWN_FAILURES.md F-004          — closed
+              ⬜ MEASUREMENT_FRAMEWORK.md §10     — DELIBERATELY UNTOUCHED. It is the rule
+                 the other five now obey, not a document that needed changing
+```

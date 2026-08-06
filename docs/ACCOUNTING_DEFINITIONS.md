@@ -212,11 +212,27 @@ This is what stops *"unresolved doubts"* becoming a list of vague anxieties that
 
 ## 6. Uncertainty
 
-The **set of open doubts**, plus **any confidence below the threshold at which the system may act unattended.**
+The **set of open doubts**.
 
-**Measurement.** `count(open doubts) + count(sub-threshold confidences)`. Zero iff both are zero.
+**Measurement.** `count(open doubts)`. Zero iff there are no open doubts.
 
-**Until confidence passes the separation test in [`MEASUREMENT_FRAMEWORK.md`](MEASUREMENT_FRAMEWORK.md) §10, the second term is undefined and uncertainty is the doubt count alone.** A threshold on a number that does not separate right from wrong is a threshold on noise.
+> **Revised by Amendment 8.** A second term used to sit here — *"plus any confidence below
+> **the threshold** at which the system may act unattended"*, measured as
+> `count(sub-threshold confidences)`. It is **struck**, for two reasons and not one:
+>
+> 1. **No such threshold exists and none may be invented** (Law 52, Law 54). All sixteen
+>    of Engine 1's parameters are `UNSET` by design.
+> 2. **Even given one, Decision A7 forbids it.** Confidence gates NOTHING until the
+>    separation test in [`MEASUREMENT_FRAMEWORK.md`](MEASUREMENT_FRAMEWORK.md) §10 passes,
+>    so *"the threshold at which the system may act unattended"* names a mechanism this
+>    architecture does not permit to exist yet.
+>
+> **Nothing measurable is lost.** The paragraph below already said the second term was
+> undefined and that uncertainty was the doubt count alone — so the definition and its own
+> next sentence disagreed, and the definition was the one that was wrong. Restoring a
+> second term is an amendment and needs the owner.
+
+**No second term may be added until confidence passes the separation test in [`MEASUREMENT_FRAMEWORK.md`](MEASUREMENT_FRAMEWORK.md) §10 — and adding one then is an amendment, not an automatic consequence.** A threshold on a number that does not separate right from wrong is a threshold on noise.
 
 **Owner:** Engine 4 triages across the whole case.
 

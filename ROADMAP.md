@@ -173,7 +173,8 @@ pytest tests/ minus that one file   17 failed · 2565 passed · 11 skipped · 23
 |---|---|
 | **F-012** the pipeline was not a pipe | ✅ **closed** — `412eed6`, then `6b32425`/`41b23e6`/`d29985a` |
 | **F-013** no per-field confidence possible | 🔄 **half** — a named, scored field now exists for the OCR path |
-| **F-019** Engine 1 emits a confident, empty, valid lie | 🔄 **three of four mechanisms fixed.** The text-layer half is BLOCKED on the owner |
+| **F-019** Engine 1 emits a confident, empty, valid lie | ✅ **closed 2026-08-06** — Amendment 7. Four measurement states; table cells wired. Residue O11–O14, none of which lets a value cross without provenance |
+| **F-004** three locked docs specify confidence gating A7 forbids | ✅ **closed 2026-08-06** — Amendment 8. **Five** documents, not three |
 | **F-011** `cleaner.decode` cannot decode a PDF | ⬜ open — worked around in `pipeline.py`, not fixed at source |
 | **F-017** `cleaner` collapses every document to a raster | 🔒 open — the root cause of F-011, and a §M question |
 | **F-018** three modules wired to nothing | ⬜ open, **unchanged**, re-measured at `e921c3c` |

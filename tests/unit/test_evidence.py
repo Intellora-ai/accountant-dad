@@ -1079,6 +1079,13 @@ def test_no_module_writes_a_literal_into_a_confidence_slot() -> None:
     Read through `authored_source`, never `inspect.getsource`: a test that
     reads what the interpreter happens to be running is reading a rewritten
     file, not the one under review (L-013).
+
+    WHAT THIS DOES NOT CATCH, STATED SO NOBODY MISTAKES IT FOR TOTAL. It sees
+    KEYWORD ARGUMENTS to the two constructors, so `Provenance.model_validate({
+    "confidence": 1.0, ...})` passes it. That path is not a hole — the
+    validator refuses a `float` outright — but it is refused by the TYPE and
+    not by this test, and the two guards are worth keeping separate in a
+    reader's mind.
     """
     modules = [
         accountant_dad.artifacts.evidence,

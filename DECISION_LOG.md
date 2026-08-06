@@ -861,3 +861,100 @@ computed, so no invalid number can reach a reader.
 ### Approved
 
 The owner, 2026-08-06.
+
+---
+
+## D-020 · Confidence models what happened when we tried to measure, not just the score
+
+**Approved by the owner, 2026-08-06. F-019 and F-004, both verbatim.**
+Amendments 7 and 8 in `docs/ARCHITECTURE_AMENDMENTS.md`.
+
+### Context
+
+`confidence.py` defined a score: a `Decimal` in `[0.0000, 1.0000]`. Everything
+else a measurement attempt can produce — no instrument ran, nothing to measure,
+the instrument failed — had no representation at all, and travelled as `None`.
+
+`None` was already spoken for four ways in the same pipeline:
+`reader.TextRegion.extraction_confidence`, `confidence_report.RegionReading.text`,
+`parser.Cell.text`, and an absent `HumanBusinessContext`.
+
+### Alternatives
+
+1. **`Confidence | None`.** Rejected: a fifth meaning on a fourth slot. That is how
+   the existing four became indistinguishable in the first place.
+2. **One sentinel.** That was Amendment 5/6, and it worked for exactly one of the
+   three absences. Its own falsifier said a third state would need a **successor,
+   not a patch**.
+3. **One class with a `state` attribute.** Rejected: `isinstance` stops answering
+   the question every existing call site asks, and a value can be built in no state.
+4. **Three sibling classes, no shared base.** Rejected on Law 11. Every existing
+   `isinstance(x, UnmeasuredType)` would start reporting a non-measured value as
+   **measured** — silently, in the reassuring direction.
+
+### Decision
+
+**Model the ACT of measurement, not its result.** Four states —
+`MEASURED · NOT_MEASURED · NOT_APPLICABLE · FAILED` — with the three absences as
+concrete subclasses of one abstract base, each carrying a required non-blank
+`basis` saying why. `measurement_state()` is the one inspector and refuses
+anything that is neither a `Decimal` nor a stated absence.
+
+And, separately: **Decision A7 is authoritative.** Confidence gates nothing until
+the separation test passes, and five documents that said otherwise now say what
+they mean without a number.
+
+### Reasoning
+
+This is Law 53 applied to a type. The hard problem — *what number goes here when
+there is no number?* — has no honest answer, and three fixes had each answered it
+with one more special case. The easier equivalent problem is *what happened when
+we tried to measure?*, which always has an answer, and "measured" becomes one of
+four rather than the only representable one.
+
+The same transform settles F-004. *"Low confidence → Clarification"* asks for a
+threshold nobody can supply. *"Unread regions → missing information →
+Clarification"* is the same outcome from a categorical fact the pipeline already
+reports, and it works today.
+
+### Trade-offs
+
+**Gained:** three different facts stop wearing one shape; every absence states why;
+the agreement check gains two new ways to fail; table cell values reach the
+artifact with a name, a location and a state; no locked document instructs anyone
+to build a confidence gate.
+
+**Lost:** four states is more to hold in mind than two, and every reader of a
+confidence slot now asks `measurement_state(x)` rather than one `isinstance`.
+`basis` is free text — nothing checks it is a GOOD reason, only that it exists.
+JSON carries two shapes in one slot. Five documents are no longer byte-identical
+to their lock, and `Uncertainty` is narrower than the owner first wrote it,
+though its own next sentence already said so.
+
+### Impact
+
+`confidence.py` · `artifacts/evidence.py` · `engines/input_engine/confidence_report.py` ·
+`engines/input_engine/parser.py` · `engines/input_engine/assembly.py` ·
+`docs/ADVERSARIAL_TESTING.md` · `docs/EXECUTION_QUEUE.md` · `docs/TECHNOLOGY_STACK.md` ·
+`docs/ACCOUNTING_DEFINITIONS.md` · `docs/APPLICATION_LAYER.md` ·
+`docs/CONFIDENCE_SPECIFICATION.md` · `docs/ARCHITECTURE_AMENDMENTS.md` ·
+`KNOWN_FAILURES.md`.
+
+**Not touched, deliberately:** `SYSTEM_INVARIANTS.md` INV-11 (not weakened — six
+attributes, none optional), the `Confidence` type itself, `MEASUREMENT_FRAMEWORK.md`
+§10 (it is the rule the five documents now obey), and
+`engines/input_engine/pipeline.py` (owned by another workstream; O11 and O12 record
+exactly what it needs).
+
+### Guarded by
+
+All sixteen state pairings in a **generated** matrix, plus a test that goes red if a
+fifth state is added to the enum without being added to the matrix. An AST invariant
+refusing a literal in any `Provenance` or `FieldConfidence` confidence slot —
+red-teamed by putting `confidence=1.0` into real source, which named the exact line.
+A runtime walk over a real artifact asserting every confidence yields a state and
+every absence carries a reason.
+
+### Approved
+
+The owner, 2026-08-06.

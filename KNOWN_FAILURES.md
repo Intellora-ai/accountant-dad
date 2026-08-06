@@ -177,12 +177,12 @@ the true worst case, and `k=1` IS the minimum.**
 | | |
 |---|---|
 | **Severity** | HIGH — a precedence conflict, not a typo |
-| **Status** | ⬜ OPEN · needs Amendment 4 |
+| **Status** | ✅ **CLOSED 2026-08-06** — Amendment 8, and the count was wrong: **five** documents, not three |
 | **Found** | 2026-08-05, writing the confidence specification |
 
 **Description.** The owner's decision A7 is binding: **confidence gates NOTHING until
 calibration is proven.** `docs/MEASUREMENT_FRAMEWORK.md` §10 states it outright. These
-three specify gating anyway:
+three were named when this entry was written:
 
 ```
 docs/ADVERSARIAL_TESTING.md:41       attack 8, "Low confidence → Clarification"
@@ -190,17 +190,49 @@ docs/EXECUTION_QUEUE.md:129-130
 docs/TECHNOLOGY_STACK.md:30,130      the Gemini vision fallback trigger
 ```
 
+**Two more were found by sweeping rather than by trusting the list**, and both are
+higher-precedence than two of the original three:
+
+```
+docs/ACCOUNTING_DEFINITIONS.md:215   Uncertainty defined partly as "any confidence below
+                                     the threshold at which the system may act unattended"
+docs/APPLICATION_LAYER.md:288        failure class "Confidence below threshold"
+```
+
 **Root cause.** They were written before the decision existed. `ADVERSARIAL_TESTING.md`
 sits at the **same precedence level** as the rule forbidding it, so precedence alone
-does not settle it.
+does not settle it — which is why the fix had to be an amendment and not a correction.
 
 **Impact.** Whoever implements one of these next will build a threshold, believing a
-locked document told them to.
+locked document told them to — and will then have to invent the number, because none
+exists. Law 52 and Law 54 broken at the same keystroke, with a locked document as the
+defence.
 
-**Permanent fix.** Amendment 4 under §M — eight required items including the owner's
-approval and date. **The purpose of each document survives without a threshold**:
-attack 8's intent is reachable as `unread region → missing information → Clarification`,
-with no number anywhere. Only the stated *mechanism* is wrong.
+**Permanent fix — LANDED.** `docs/ARCHITECTURE_AMENDMENTS.md` **Amendment 8**, all eight
+§M items, approved by the owner 2026-08-06. **Every purpose survives without a
+threshold**; only the stated *mechanism* changed in each case:
+
+| Document | Now reads |
+|---|---|
+| `ADVERSARIAL_TESTING.md` attack 8 | unread regions → missing information → **Clarification** |
+| `EXECUTION_QUEUE.md` | 🔄 **by supersession** — the clause line is byte-identical and a block beneath it states what it must be read as. See below |
+| `TECHNOLOGY_STACK.md` | the Gemini fallback has **no trigger**; the blocker is a routing decision, not a number |
+| `ACCOUNTING_DEFINITIONS.md` §6 | `Uncertainty` = the set of open doubts. Second term **struck** |
+| `APPLICATION_LAYER.md` | failure class renamed **Unresolved doubt or unestablished fact** |
+
+**One line remains to be edited, and it is blocked on file ownership, not on a decision.**
+`EXECUTION_QUEUE.md`'s clause is cited by CONTENT digest from
+`conformance_registry.py:2119` — `#an-incorrect-entry-must@b50bd021b31e` — so editing the
+words breaks the citation, and that file belongs to another workstream. **The suite found
+it, which is the content-addressed citation doing exactly its job.** The amendment is
+applied there by supersession instead: the clause is byte-identical and a block directly
+beneath it states what it must be read as and why. The two changes must land together, and
+the exact pair is in `docs/ARCHITECTURE_AMENDMENTS.md` Amendment 8, "The one that could not
+be edited in place".
+
+**What would prove the fix incomplete.** A sixth document gating on confidence in words
+the sweep's eight patterns do not match — *"when the reading is weak, route to review"*
+would pass it. Treat that as this entry reopening, not as the amendment being wrong.
 
 ---
 
@@ -1100,8 +1132,54 @@ discriminates, not one that is red about everything.
 | | |
 |---|---|
 | **Severity** | **CRITICAL** — this is the *"never post a wrong entry"* non-goal failing at the source |
-| **Status** | 🔄 **THREE OF FOUR MECHANISMS FIXED · the text-layer half is 🔒 BLOCKED on the owner (§M)** |
+| **Status** | ✅ **CLOSED 2026-08-06** — Amendments 6 and 7. Residue tracked as O11–O14, none of which lets a value cross without provenance |
 | **Found** | 2026-08-06, by two agents investigating different questions who converged on the same three lines |
+
+### What closed the last of it, 2026-08-06 — Amendment 7
+
+The text-layer half was **blocked on the owner**, correctly: it needed an absent-measurement
+state on a frozen P2 schema. The owner ruled, and ruled wider than the block —
+**four states, not two**:
+
+```
+MEASURED . NOT_MEASURED . NOT_APPLICABLE . FAILED
+```
+
+**The root cause was not the missing sentinel.** It was that the architecture modelled the
+RESULT of measuring — a number — and used `None` for everything else, while `None` already
+meant four other things in the same pipeline. The absence of a measurement had no name, and
+a fact with no name cannot be carried, checked or refused. A schema demanding a number from
+a world that supplies one only sometimes leaves three moves: **invent, drop, or crash.**
+This repository had done the first two.
+
+**Tables, the half this entry recorded as "unchanged and unclaimed", are closed too**, and
+the diagnosis in this entry was one layer off. A `parser.Cell` always carried its `box`, so
+the LOCATION was never missing — what was missing is a **NAME**, because every route that
+attaches a provenance is keyed by name. `parser.map_cells` supplies it, and each cell then
+travels the same road a text region already does.
+
+Measured on the hand-drawn invoice fixture with real Docling: **15 cells reported, 0
+mapped before, 15 mapped after**, each with a unique locator name and its own bounding box.
+The one blank grid position is deliberately NOT mapped — no value crosses from it — and
+stays visible as a `Cell` on the table.
+
+**Two silent gaps found while closing it, both now stated rather than omitted:** a
+capture-fidelity mismatch recorded nothing in `confidence_scores` (so the name appeared on a
+match and vanished on a mismatch, indistinguishable from no human note at all), and a
+missing field raised a marker with no reliability entry beside it.
+
+**A latent defect found by a red test:** `model_dump_json()` on any artifact carrying a
+stated absence raised `PydanticSerializationError`. It **pre-dated** the four states —
+Amendment 6's single sentinel had it too — and stayed invisible because no artifact carrying
+one had ever been dumped. An artifact that can be built and not written down cannot be
+audited (Law 43).
+
+**What remains, and none of it lets a value cross without provenance:** O11 (the filter in
+`pipeline.parsed_fields`), O12 (two `isinstance` call sites that should ask
+`measurement_state`), O13 (NOT_APPLICABLE and FAILED have limited live producers — stated
+rather than manufactured), O14 (per-cell provenance reaches the artifact through
+`detected_fields`, not through `DetectedTable`). All four are in
+`docs/ARCHITECTURE_AMENDMENTS.md` Amendment 7.
 
 ### What closed, 2026-08-06 — each with its commit and its guarding test
 
@@ -1125,7 +1203,13 @@ had never reached the artifact. That is `ENGINE_1_ARCHITECTURE.md` P-F3, conceal
 uncertainty, and Law 24, a fabricated denominator. Both are now carried. **No score is
 invented** — `extraction_confidence` stays exactly `reader`'s `None`.
 
-### What is still OPEN, and it is the MVP's primary input
+### What WAS still open — the record as it stood before Amendment 7
+
+> **Everything from here to the end of this entry is the diagnosis as written on
+> 2026-08-06 BEFORE the owner ruled.** It is kept because the mechanism it names is what
+> the fix had to satisfy, and because the *"Tables are unchanged and unclaimed"* paragraph
+> below is one layer off the real cause — see "What closed the last of it" above, which
+> corrects it. **Nothing below is current status.**
 
 **The text-layer path still emits values with no per-field confidence.** Measured at HEAD
 `e921c3c`, by the test written to catch exactly this, which is **RED**:

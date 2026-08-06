@@ -621,6 +621,32 @@ def test_cells_from_two_tables_never_collide_and_say_which_table_they_came_from(
     ]
 
 
+def test_a_cell_is_named_by_its_own_page_not_by_the_table_s() -> None:
+    """FOUND BY RED-TEAM, and silent exactly when it bites.
+
+    A table crossing a page break has cells on two pages while its own outline
+    reports one. Named by the table's page, every cell after the break would
+    carry a name saying page 1 beside a `source_location` saying page 2 — and
+    the name is the one a human reads first, so the wrong one would win.
+
+    The mapping is still ordered and numbered by the TABLE, because the ordinal
+    is what makes names unique; only the page comes from the cell.
+    """
+    overleaf = parser.BoundingBox(page=2, left=10.0, top=10.0, right=90.0, bottom=30.0)
+    table = _a_table(
+        _a_cell("first page row", row=0, column=0),
+        _a_cell("second page row", row=1, column=0, box=overleaf),
+        page=1,
+    )
+
+    first, second = parser.map_cells((table,))
+
+    assert first.name.startswith("page 1 "), first.name
+    assert second.name.startswith("page 2 "), second.name
+    assert second.name == "page 2 table 1 cell 2 (row 1, column 0)"
+    assert second.source_location == repr(overleaf)
+
+
 def test_a_mapped_cell_name_names_no_business_concept() -> None:
     """§1.3's boundary: *"it may identify a field labelled 'Supplier', it may
     not conclude that party is a supplier for accounting purposes."*

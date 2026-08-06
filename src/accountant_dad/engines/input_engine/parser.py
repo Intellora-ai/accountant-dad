@@ -536,6 +536,13 @@ def _cell_name(page: int, table_ordinal: int, cell_ordinal: int, cell: Cell) -> 
     The full span survives on the `Cell` itself, which is also where a spanning
     cell's `row_end` and `column_end` are, so nothing is lost by not repeating
     them in a locator.
+
+    `page` IS THE CELL'S OWN PAGE, NEVER THE TABLE'S — found by red-team, and
+    the difference is silent exactly when it matters. A table crossing a page
+    break has cells on two pages while its own outline reports one, so naming
+    them by the table's page would make the name and the `source_location`
+    beside it point at different pages, and the name is the one a human reads
+    first.
     """
     return (
         f"page {page} table {table_ordinal} cell {cell_ordinal} "
@@ -566,7 +573,7 @@ def map_cells(tables: tuple[Table, ...]) -> tuple[MappedField, ...]:
                 continue
             mapped.append(
                 MappedField(
-                    name=_cell_name(table.box.page, table_index, cell_index, cell),
+                    name=_cell_name(cell.box.page, table_index, cell_index, cell),
                     value=cell.text,
                     source_location=repr(cell.box),
                     extraction_confidence=None,

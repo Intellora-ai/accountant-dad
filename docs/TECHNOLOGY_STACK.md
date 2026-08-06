@@ -27,15 +27,22 @@ confidence estimation.
 | Docling | document parsing and structure |
 | PyMuPDF | PDF text layer — no OCR needed when a PDF carries real text |
 | Microsoft Table Transformer | table structure detection |
-| Gemini 2.5 Flash Vision | **fallback only**, when OCR confidence is below threshold |
+| Gemini 2.5 Flash Vision | **fallback only** — and it has **no trigger**. See the note below |
 
 **Explicitly NOT approved** — do not install without a later, explicit approval:
 `Tesseract · EasyOCR · Camelot · Tabula · ImageMagick · Unstructured`
 
-> **The threshold that triggers the Gemini fallback is not set.** It is a number nobody
-> has given, and Law 52 and rule 10 both forbid inventing one. Recorded as
-> `UNKNOWN — REQUIRES A NUMBER FROM THE OWNER`. Until it exists, the fallback path
-> cannot be implemented, only stubbed.
+> **The Gemini fallback has no trigger, and a confidence threshold may not become one.**
+> Revised by Amendment 8. This previously read *"the threshold that triggers the Gemini
+> fallback is not set ... a number nobody has given"*, which framed the blocker as a
+> missing NUMBER. It is not: Decision **A7** and `MEASUREMENT_FRAMEWORK.md` §10 hold that
+> confidence gates NOTHING until the separation test passes, so setting that number would
+> be forbidden even if the owner supplied one today.
+>
+> What the trigger should be instead is **undecided and needs the owner** — it is a
+> routing decision, not a measurement. Until it exists the fallback path cannot be
+> implemented, only stubbed. **No number is recorded here, because no number is the
+> blocker.**
 
 ## Engine 2 — Understanding Engine
 
@@ -127,7 +134,7 @@ Protocols: Tally XML · HTTP · XML.
 |---|---|---|
 | Gemini API key | credential | Engines 1 (fallback), 2, 4 |
 | Qdrant instance | infrastructure — a server, not a pip install | Engine 4 |
-| OCR confidence threshold | **a number nobody has set** | Engine 1 fallback |
+| Gemini fallback trigger | **undecided** — a routing decision, not a number. The one proposed was a confidence threshold, which A7 forbids | Engine 1 fallback |
 | Tally instance | infrastructure — TallyPrime is Windows | Engine 6 |
 
 ## Integration — a tool is not integrated until all twelve pass

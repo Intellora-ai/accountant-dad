@@ -540,3 +540,115 @@ a value to compare against its threshold.
 
 Still not measured against ground truth. By Law 52 no accuracy claim about this system is
 provable, so none is made here.
+
+---
+
+## 2026-08-06 · F-019 and F-004 closed — a measurement has four outcomes
+
+Base: `a467bb2`, the tip of `ci/mutation-runs`. Two owner approvals, both verbatim,
+both acted on.
+
+### What completed
+
+**Amendment 7 — four measurement states.** `MEASURED · NOT_MEASURED · NOT_APPLICABLE ·
+FAILED`, three concrete classes under one abstract base, each carrying a required
+non-blank `basis`. No truth value, no ordering, no numeric conversion, no default at any
+slot, immutable after construction. `records_the_same_measurement` extended, never
+exempted: two DIFFERENT absences now disagree.
+
+**Root cause, and it was one layer above the missing sentinel.** The architecture
+modelled the RESULT of measuring — a number — and used `None` for everything else, while
+`None` already meant four other things in the same pipeline. The absence of a measurement
+had no name, and a fact with no name cannot be carried, checked or refused. A schema
+demanding a number from a world that supplies one only sometimes leaves three moves:
+invent, drop, or crash. This repository had done the first two.
+
+**Table cells, F-019's unclosed half — and the entry's own diagnosis was off by a layer.**
+A `parser.Cell` always carried its `box`, so the LOCATION was never missing. What was
+missing is a **NAME**: every route that attaches a provenance is keyed by name.
+`parser.map_cells` supplies it, and each cell then travels the same road a text region
+already does — no `pipeline.py` change at all.
+
+**Amendment 8 — Decision A7 is authoritative.** Five documents, not the three F-004
+listed: `ACCOUNTING_DEFINITIONS.md` §6 and `APPLICATION_LAYER.md` were found by sweeping
+every markdown file rather than trusting the list. Every purpose survives; only the stated
+mechanism changed in each case.
+
+**One of the five is applied by supersession, and the suite is what found it.**
+`EXECUTION_QUEUE.md`'s clause is cited by CONTENT digest from
+`conformance_registry.py:2119`, so editing the words breaks the citation — and that file
+belongs to another workstream. The clause line is left byte-identical with a block beneath
+it stating what it must be read as; the exact paired change for both files is recorded in
+Amendment 8 and F-004. **A content-addressed citation catching a cross-workstream edit is
+the mechanism working, not a defect.**
+
+**Three defects found while closing them, all fixed:**
+
+- `model_dump_json()` on any artifact carrying a stated absence raised
+  `PydanticSerializationError`. **Pre-dated** the four states — Amendment 6's single
+  sentinel had it too — and stayed invisible because no artifact carrying one had ever
+  been dumped. An artifact that can be built and not written down cannot be audited.
+- a capture-fidelity **mismatch** recorded nothing in `confidence_scores`, so that name
+  appeared on a match and vanished on a mismatch — indistinguishable from no human note
+  at all, and silent about the one case where a preservation guarantee had broken.
+- a **missing field** raised an uncertainty marker with no reliability entry beside it.
+
+### Files changed
+
+```
+src/accountant_dad/confidence.py
+src/accountant_dad/artifacts/evidence.py
+src/accountant_dad/engines/input_engine/confidence_report.py
+src/accountant_dad/engines/input_engine/parser.py
+src/accountant_dad/engines/input_engine/assembly.py
+tests/unit/test_confidence.py · test_evidence.py · test_input_engine_parser.py
+tests/unit/test_input_engine_confidence.py · test_input_engine_confidence_redteam.py
+docs/ARCHITECTURE_AMENDMENTS.md (Amendments 7, 8) · CONFIDENCE_SPECIFICATION.md
+docs/ADVERSARIAL_TESTING.md · EXECUTION_QUEUE.md · TECHNOLOGY_STACK.md
+docs/ACCOUNTING_DEFINITIONS.md · APPLICATION_LAYER.md
+KNOWN_FAILURES.md · DECISION_LOG.md (D-020) · ROADMAP.md · TODO.md
+```
+
+**Not touched, deliberately:** `pipeline.py`, `reader.py`, `cleaner.py`,
+`classification.py`, `config.py`, `conformance*.py`, `tools/ci/*`, `.github/**` — all
+owned by other workstreams. `SYSTEM_INVARIANTS.md` INV-11 is **not weakened**: six
+provenance attributes, none optional. The `Confidence` type is **unchanged**.
+
+### Measured
+
+```
+cells reaching the artifact with a name and a location      before: 0    after: 15
+  real Docling, the hand-drawn invoice in test_input_engine_parser.py
+  15 cells reported; the one blank grid position is deliberately NOT mapped
+```
+
+### Gates — LOCAL ONLY, NOT AUTHORITATIVE (Law 44/56)
+
+```
+ruff check --no-fix .    All checks passed
+ruff format --check .    126 files already formatted
+mypy src tools/ci tests  no issues in 113 source files
+full suite               3696 passed · 11 skipped · 1 failed
+```
+
+The one failure is **F-018** (`test_module_wiring`), red at the base commit and owned by
+another workstream. Baseline at `a467bb2` was 3593 passed, 1 failed — so +103 tests, same
+single pre-existing failure.
+
+**Mutation and coverage: UNMEASURED at this HEAD. PENDING GITHUB.** Source changed after
+the last run, so every previous number is EXPIRED and none is quoted here.
+
+### Blockers
+
+None introduced. Four open items recorded rather than worked around: **O11/T-052** (the
+filter in `pipeline.parsed_fields`), **O12/T-052** (two `isinstance` call sites that should
+ask `measurement_state`), **O13/T-053** (NOT_APPLICABLE and FAILED have limited live
+producers — stated rather than manufactured), **O14/T-054** (per-cell provenance reaches
+the artifact through `detected_fields`, not `DetectedTable`; needs the owner).
+
+### Next work
+
+CI. Every number above is local and therefore not a result.
+
+Still not measured against ground truth. By Law 52 no accuracy claim about this system is
+provable, so none is made here.
