@@ -325,6 +325,13 @@ jobs:
           for status, count in sorted(tally.items()):
               print(f"  {status:32} {count}")
 
+          # ── the two thresholds, each written EXACTLY ONCE ────────────────
+          # Owner decision, 2026-08-06. Previously `93` appeared twice — once
+          # in the message and once in the comparison — which is two places to
+          # change and one place to forget.
+          MUTATION_SCORE_FLOOR_PERCENT = 93
+          MAX_UNSCOREABLE_PERCENT = 2
+
           killed = tally["killed"]
           survived = tally["survived"]
           total = killed + survived
@@ -333,17 +340,50 @@ jobs:
           # segfault is not a surviving mutant; counting either as one would
           # manufacture a score out of a broken run.
           unscoreable = sum(c for s, c in tally.items() if s not in ("killed", "survived"))
-          if unscoreable:
-              print(f"NOT SCOREABLE    : {unscoreable} mutant(s) neither killed nor survived")
+          generated = total + unscoreable
+          if generated == 0:
+              print("BLOCKED - mutmut produced no mutants at all.")
+              sys.exit(1)
+          unscoreable_percent = 100.0 * unscoreable / generated
+          print(f"mutants generated: {generated}")
+          print(f"NOT SCOREABLE    : {unscoreable} ({unscoreable_percent:.2f}% of {generated})")
+          # ─────────────────────────────────────────────────────────────────
+          # A SCORE OVER PART OF THE TREE IS NOT A SCORE FOR THE TREE.
+          #
+          # Excluding unscoreable mutants from the denominator is correct — a
+          # timeout is not a surviving mutant. What was missing is any limit on
+          # how large that excluded bucket may grow. Push it toward 100% and the
+          # gate passes on an ever-smaller sample while the printed percentage
+          # goes UP.
+          #
+          # Measured, and this is why the rule exists: at `7e0efe2`, 919 of 3358
+          # mutants (27.4%) were unscoreable. The gate reported 95.3% and went
+          # green — having reached a verdict on 72.6% of the tree.
+          #
+          # The score is therefore INVALID above this line, not merely
+          # suspicious, and is deliberately NOT printed: a number that would be
+          # read as "95.3%" is worse than no number at all.
+          # ─────────────────────────────────────────────────────────────────
+          if unscoreable_percent > MAX_UNSCOREABLE_PERCENT:
+              print(
+                  f"BLOCKED - {unscoreable_percent:.2f}% of mutants are unscoreable, above "
+                  f"the {MAX_UNSCOREABLE_PERCENT}% maximum. THE MUTATION SCORE IS INVALID "
+                  "and is deliberately not reported. Every status below is a mutant on "
+                  "which this suite reached no verdict:"
+              )
+              for status, count in sorted(tally.items()):
+                  if status not in ("killed", "survived"):
+                      print(f"  no verdict: {status:30} {count}")
+              sys.exit(1)
           if total == 0:
               print("BLOCKED - mutmut produced no mutants to score.")
               sys.exit(1)
           score = 100.0 * killed / total
           print(f"mutants killed   : {killed}")
           print(f"mutants survived : {survived}")
-          print(f"mutation score   : {score:.1f}%  (floor 93%)")
-          if score < 93:
-              print("BLOCKED - mutation score below 93 percent.")
+          print(f"mutation score   : {score:.1f}%  (floor {MUTATION_SCORE_FLOOR_PERCENT}%)")
+          if score < MUTATION_SCORE_FLOOR_PERCENT:
+              print(f"BLOCKED - mutation score below {MUTATION_SCORE_FLOOR_PERCENT} percent.")
               sys.exit(1)
           PY
 

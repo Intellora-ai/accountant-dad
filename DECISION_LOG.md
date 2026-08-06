@@ -637,3 +637,152 @@ value that completes stably.
 
 **Authority.** Delegated by the owner, 2026-08-06, with the explicit instruction
 to measure real runs and justify the value here.
+
+---
+
+## D-018 · The merge gate's poll timeout was six times shorter than the gate it polls
+
+**Approved by the owner, 2026-08-06. Option A.**
+
+### Context
+
+`merge gate` is the only job that polls every other check and demands all of them
+succeed. It is therefore the single entry that would make all 23 gates binding —
+and `CLAUDE.md` §P says it *"goes required LAST, when it can actually pass."*
+
+It could never pass. Measured, GitHub Actions:
+
+| commit | `mutation` duration |
+|---|---|
+| `f31e3cd` | 185.2 min |
+| `7e0efe2` | 197.0 min |
+| `7e0efe2` | 201.0 min |
+| `f31e3cd` | 223.8 min |
+
+Against `MERGE_GATE_POLL_TIMEOUT_MINUTES: "30"`.
+
+`poll_checks.py:227-235` waits for every expected gate to reach `completed`.
+Placeholder status affects the *verdict*, never the *wait*. So on any commit
+where mutation runs to a real score, the poll hits its deadline and returns 1:
+
+```
+BLOCKED - timed out after 30.0 minutes
+  WAITING mutation (in_progress)
+```
+
+**Every `merge gate` run that has ever completed did so because `mutation`
+CRASHED.** Runs `31072240996` (11m29s) and `31071501908` (11m38s) — in both,
+mutation had already failed in under five minutes. On the two commits where
+mutation genuinely succeeded, the merge gate could not have observed it. Its red
+meant *"I stopped watching"*, never *"a gate failed"*.
+
+### Decision
+
+`.github/workflows/merge.yml:20` — `"30"` → `"240"`.
+`.github/workflows/merge.yml:27` — `timeout-minutes: 35` → `245`.
+
+240 is the owner's number. **245 is derived, not chosen:** `merge.yml:17-18`
+requires the job timeout to exceed the poll timeout, and the existing margin was
+exactly +5. The relationship is preserved rather than a new number invented.
+
+### Trade-off
+
+**Gained:** the merge gate can observe a completed mutation run, so the gate
+lifecycle in `CLAUDE.md` §P becomes reachable at all. Until now it was blocked on
+arithmetic, not on work — clearing every placeholder would not have helped.
+
+**Lost:** a genuinely hung pipeline is now declared in four hours instead of
+thirty minutes. That is the correct direction: a poll that gives up before its
+slowest subject finishes reports a timing artifact, and a timing artifact that
+looks like a gate failure is worse than a slow answer.
+
+### Guarded by
+
+`tools/ci/assert_poll_timeout_covers_gates.py` exists (inert until wired) and
+asserts the poll timeout covers the longest declared gate timeout — so the
+relationship is checked rather than remembered. `mutation`'s own
+`timeout-minutes: 500` is unchanged and remains the outer bound.
+
+---
+
+## D-019 · A mutation score computed over 72.6% of the tree was reported as a score for the tree
+
+**Approved by the owner, 2026-08-06. Option A. Maximum unscoreable = 2%.**
+
+### Context
+
+The gate scores `killed / (killed + survived)`. Everything else — timeout,
+suspicious, errored — is excluded from the denominator. That exclusion is
+**correct**: a timeout is not a surviving mutant, and folding it in either
+direction manufactures a number.
+
+What was missing was any limit on how large the excluded bucket may grow.
+Measured at `7e0efe2`: **919 of 3358 mutants (27.4%) were unscoreable.** The gate
+printed that count and blocked on nothing. It reported **95.3%** and went green,
+having reached a verdict on **72.6%** of the tree.
+
+The failure direction is the dangerous one. Push the unscoreable fraction toward
+100% and the printed percentage goes **UP**, because the survivors leave the
+denominator with everything else.
+
+### Root cause of the 27.4%, measured
+
+mutmut 3.3.1 stores `duration_by_test[nodeid] = call.duration` inside
+`pytest_runtest_makereport` — a hook pytest fires once per *phase*, so the stored
+value is the **teardown** duration. Over the same 2372 tests mutmut records
+**1.143 s** where setup+call+teardown is **80.103 s**: **70× too small**. Every
+per-mutant timeout budget therefore collapses to the `(0+1)*15 = 15 s` floor.
+
+Any function whose tests genuinely cost more times out on *every* mutant
+regardless of the mutation. `parser.x__bands_for` runs one test taking 19.6–26.0 s
+unmutated, and **148 of its 148 mutants timed out** — the cost being an 18.84 s
+session fixture (Table Transformer load) that each mutant child pays in full.
+
+### Decision
+
+Two changes, and the second is what makes the first satisfiable.
+
+**1. Enforcement.** `.github/workflows/testing.yml` — a new blocking check:
+unscoreable > 2% of all generated mutants fails the build, and the score is
+**not printed at all**. A number that would be read as "95.3%" is worse than no
+number. Every no-verdict status is listed by name instead. Both thresholds are
+now named constants written exactly once; `93` previously appeared twice.
+
+**2. `requirements-ci.txt:11` — `mutmut==3.3.1` → `mutmut==3.7.0`**, which fixes
+the duration hook (`+=` rather than `=`), makes the timeout budget configurable
+and adds result caching. Without it the 2% cap is red by construction on a
+perfectly healthy tree.
+
+**Falsified before trusting it.** The claim "3.7.0 generates the same mutants"
+came from an agent that measured at an older commit and reported 3358. Re-measured
+under control — same tree at `f83598c`, both versions, mutant names extracted from
+the generated trees:
+
+```
+3.3.1 : 3923 mutants
+3.7.0 : 3923 mutants
+DELTA : 0
+```
+
+Identical names, zero additions, zero removals. The 93% floor therefore carries
+across the upgrade unchanged.
+
+### Trade-off
+
+**Gained:** the score describes the tree it claims to describe. The gate can no
+longer go green by measuring less.
+
+**Lost, and expected:** those 919 mutants have **never been evaluated**. When they
+start running, some will survive and the score will fall — worst case 69.2%. That
+is not a regression. **A gate that goes red because it started measuring the other
+27.4% was never really green.** Law 55 applies: below the floor is FIX MODE, never
+a discussion.
+
+### Guarded by
+
+The check is in the gate itself, not in a document. It blocks before the score is
+computed, so no invalid number can reach a reader.
+
+### Approved
+
+The owner, 2026-08-06.

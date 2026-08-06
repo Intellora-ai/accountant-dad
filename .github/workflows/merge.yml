@@ -17,14 +17,14 @@ env:
   # The job's timeout-minutes below MUST stay greater than this, or the runner
   # kills the job before the poll can report its own timeout.
   # ─────────────────────────────────────────────────────────────────────────
-  MERGE_GATE_POLL_TIMEOUT_MINUTES: "30"
+  MERGE_GATE_POLL_TIMEOUT_MINUTES: "240"
   MERGE_GATE_POLL_INTERVAL_SECONDS: "30"
 
 jobs:
   merge-gate:
     name: merge gate
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 245
     permissions:
       contents: read
       checks: read
