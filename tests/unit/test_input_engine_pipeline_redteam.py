@@ -92,6 +92,12 @@ Image = npt.NDArray[np.uint8]
 
 WHEN = datetime(2026, 8, 5, 9, 0, tzinfo=UTC)
 
+#: The clock `pipeline.run` is GIVEN. Distinct from `WHEN`, which is the
+#: human note's own provenance timestamp -- `run` reads no clock of its own,
+#: so the caller must supply this, and a test asserting one while meaning the
+#: other would pass by coincidence.
+RECORDED_AT = datetime(2026, 8, 6, 11, 30, tzinfo=UTC)
+
 #: This file's own choice, not a product default — `PipelineSettings` requires
 #: the caller to supply it and `pipeline` invents no number of its own.
 RENDER_DPI = 150
@@ -353,7 +359,7 @@ def observed_run() -> StagesObserved:
             identity=an_identity(),
             settings=a_pipeline_settings(),
             human_business_context=a_human_business_context(),
-            recorded_at=WHEN,
+            recorded_at=RECORDED_AT,
         )
     return observed
 
@@ -401,10 +407,7 @@ def substituted_cleaning_run() -> StagesObserved:
         _install_spies(patch, observed)
         patch.setattr(cleaner, "clean_artifact", substituting_clean)
         observed.result = pipeline.run(
-            intake,
-            identity=an_identity(),
-            settings=a_pipeline_settings(),
-            recorded_at=WHEN,
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
         )
     return observed
 
@@ -431,7 +434,10 @@ def test_a_scanned_pdf_hands_reader_the_rebuilt_cleaned_bytes_not_the_intake() -
         _install_spies(patch, observed)
         with pytest.raises(pipeline.PipelineStageError) as raised:
             pipeline.run(
-                intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+                intake,
+                identity=an_identity(),
+                settings=a_pipeline_settings(),
+                recorded_at=RECORDED_AT,
             )
 
     assert raised.value.stage == "reader"
@@ -536,7 +542,7 @@ def test_the_temporary_file_is_removed_even_when_parser_refuses() -> None:
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
         pipeline.run(
-            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
         )
 
     assert raised.value.stage == "parser"
@@ -604,7 +610,7 @@ def test_the_conversion_functions_give_the_same_answer_in_any_order(
 
     reversed_order = (
         pipeline.confidence_output(report),
-        pipeline.parser_output(parsed, recorded_at=WHEN),
+        pipeline.parser_output(parsed, recorded_at=RECORDED_AT),
         pipeline.reader_output(reading),
         pipeline.region_readings(reading),
         pipeline.missing_fields(parsed),
@@ -615,7 +621,7 @@ def test_the_conversion_functions_give_the_same_answer_in_any_order(
         pipeline.missing_fields(parsed),
         pipeline.region_readings(reading),
         pipeline.reader_output(reading),
-        pipeline.parser_output(parsed, recorded_at=WHEN),
+        pipeline.parser_output(parsed, recorded_at=RECORDED_AT),
         pipeline.confidence_output(report),
     )
 
@@ -723,20 +729,16 @@ def test_the_confidence_stage_failing_names_itself_and_keeps_all_three_before_it
         missing_fields: tuple[confidence_report_module.MissingField, ...],
         human_capture: confidence_report_module.HumanCaptureEvidence | None = None,
     ) -> ConfidenceReport:
-        # The full parameter list is repeated deliberately, not shortened to
-        # `*args`: this stands in for the real `record_confidence`, and a
-        # substitute with a looser signature would keep passing after the real
-        # one changed shape — which is the substitution silently going stale.
-        # The arguments are then discarded explicitly, because the point of the
-        # test is the raise, not the inputs.
-        del cleaned, reader_regions, parsed_fields, missing_fields, human_capture
         raise injected
 
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(confidence_report_module, "record_confidence", refusing_record)
         with pytest.raises(pipeline.PipelineStageError) as raised:
             pipeline.run(
-                intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+                intake,
+                identity=an_identity(),
+                settings=a_pipeline_settings(),
+                recorded_at=RECORDED_AT,
             )
 
     assert raised.value.stage == "confidence"
@@ -766,7 +768,7 @@ def assembly_failure() -> pipeline.PipelineStageError:
     )
     with pytest.raises(pipeline.PipelineStageError) as raised:
         pipeline.run(
-            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
         )
     return raised.value
 
@@ -851,7 +853,7 @@ def test_a_degenerate_document_stops_at_the_named_stage_with_nothing_preserved(
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
         pipeline.run(
-            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
         )
 
     assert raised.value.stage == expected_stage
@@ -882,7 +884,7 @@ def test_a_valid_container_holding_nothing_is_cleaned_then_refused_not_returned_
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
         pipeline.run(
-            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
         )
 
     assert raised.value.stage == "reader"
@@ -907,7 +909,7 @@ def test_a_pdf_whose_only_text_is_whitespace_is_refused_rather_than_read_as_empt
 
     with pytest.raises(pipeline.PipelineStageError) as raised:
         pipeline.run(
-            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+            intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=RECORDED_AT
         )
 
     assert raised.value.stage == "reader"
@@ -967,7 +969,10 @@ def test_a_missing_cleaned_artifact_escapes_as_a_bare_pipeline_error_losing_the_
         patch.setattr(cleaner, "clean_artifact", clean_without_an_artifact)
         with pytest.raises(pipeline.PipelineError, match="no media-aware artifact") as raised:
             pipeline.run(
-                intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+                intake,
+                identity=an_identity(),
+                settings=a_pipeline_settings(),
+                recorded_at=RECORDED_AT,
             )
 
     # it refuses rather than falling back to the intake — the property that matters
@@ -1009,7 +1014,10 @@ def test_a_reader_failure_leaves_parser_uncalled_entirely() -> None:
         _install_spies(patch, observed)
         with pytest.raises(pipeline.PipelineStageError) as raised:
             pipeline.run(
-                intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+                intake,
+                identity=an_identity(),
+                settings=a_pipeline_settings(),
+                recorded_at=RECORDED_AT,
             )
 
     assert raised.value.stage == "reader"
@@ -1028,7 +1036,10 @@ def test_a_cleaner_failure_leaves_both_reader_and_parser_uncalled() -> None:
         _install_spies(patch, observed)
         with pytest.raises(pipeline.PipelineStageError) as raised:
             pipeline.run(
-                intake, identity=an_identity(), settings=a_pipeline_settings(), recorded_at=WHEN
+                intake,
+                identity=an_identity(),
+                settings=a_pipeline_settings(),
+                recorded_at=RECORDED_AT,
             )
 
     assert raised.value.stage == "cleaner"
@@ -1093,7 +1104,7 @@ def test_the_pipeline_returns_a_document_evidence_object_only_through_assembly(
         parts=assembly.SubEngineOutputs(
             cleaner=pipeline.cleaner_output(cleaned),
             reader=pipeline.reader_output(reading),
-            parser=pipeline.parser_output(parsed, recorded_at=WHEN),
+            parser=pipeline.parser_output(parsed, recorded_at=RECORDED_AT),
             confidence=pipeline.confidence_output(report),
         ),
         identity=an_identity(),

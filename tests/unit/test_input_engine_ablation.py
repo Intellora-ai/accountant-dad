@@ -136,6 +136,12 @@ OTHER_SOURCE_REFERENCES: tuple[str, ...] = ("upload:invoice-999.pdf",)
 
 WHEN = datetime(2026, 8, 6, 9, 0, tzinfo=UTC)
 
+#: The clock `pipeline.run` is GIVEN. Distinct from `WHEN`, which is the
+#: human note's own provenance timestamp -- `run` reads no clock of its own,
+#: so the caller must supply this, and a test asserting one while meaning the
+#: other would pass by coincidence.
+RECORDED_AT = datetime(2026, 8, 6, 11, 30, tzinfo=UTC)
+
 #: A test parameter, never a product default — `pipeline.PipelineSettings`
 #: still requires the caller to supply it. Mirrors the value
 #: `test_input_engine_pipeline.py` chose for the identical purpose.
@@ -314,7 +320,7 @@ def run_pipeline(
         identity=identity,
         settings=a_pipeline_settings(),
         human_business_context=a_human_business_context(),
-        recorded_at=WHEN,
+        recorded_at=RECORDED_AT,
     )
 
 
