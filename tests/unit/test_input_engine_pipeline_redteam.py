@@ -585,7 +585,9 @@ def test_the_temporary_file_carries_the_media_type_and_is_removed_afterwards(
     assert not path.exists()
 
 
-def test_the_temporary_file_is_removed_even_when_parser_refuses() -> None:
+def test_the_temporary_file_is_removed_even_when_parser_refuses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """The `finally` that matters: `_parse_document` writes the cleaned payload
     to a temporary file BEFORE calling `parser.parse`, so a parser that raises
     is exactly the case that could leak one.
@@ -599,7 +601,27 @@ def test_the_temporary_file_is_removed_even_when_parser_refuses() -> None:
     written by the real `_parse_document` before the seam is reached, so what
     is under test is untouched.
     """
-    before = set(Path(tempfile.gettempdir()).glob("*.pdf"))
+    # A PRIVATE TEMP DIRECTORY, NOT THE MACHINE'S.
+    #
+    # This used to glob `tempfile.gettempdir()` — an assertion about every
+    # other process on the host, not about this repository's code. MEASURED at
+    # `b4d163b`: it failed **8 times in 200 runs (4.00%)** with sibling agents
+    # running, and **1 in 150 (0.67%)** idle. Deterministically reproduced: the
+    # test passes alone and fails the moment one other process writes a `.pdf`
+    # into the shared directory.
+    #
+    # That is not a slow test or an unlucky one. Under the mutation gate's
+    # stats phase — `-x`, then `exit(1)` at `mutmut/__main__.py:761` — ONE such
+    # failure ends the phase and every mutant is reported unscored. A 4% flake
+    # in one test is a 4% chance of destroying the measurement for all 4402.
+    #
+    # `tempfile.tempdir` is what `gettempdir()` returns when set, and
+    # `NamedTemporaryFile` honours it, so pointing it at `tmp_path` isolates
+    # BOTH the pipeline's own temporary file and the sweep below. The check
+    # keeps its full strength — it still catches a leak of ANY file, not just
+    # the one handed to the parser — while no longer observing the machine.
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    before = set(tmp_path.glob("*.pdf"))
     injected = RuntimeError("parser refuses, after the temporary file exists")
     seen: dict[str, object] = {}
     intake = pipeline.DocumentIntake(
@@ -645,7 +667,7 @@ def test_the_temporary_file_is_removed_even_when_parser_refuses() -> None:
     assert handed.suffix == ".pdf"
     assert seen["existed"] is True, "the file was already gone, so cleanup proves nothing"
     assert not handed.exists()
-    assert set(Path(tempfile.gettempdir()).glob("*.pdf")) - before == set()
+    assert set(tmp_path.glob("*.pdf")) - before == set()
     # parser was entered with the real inputs, not a stripped-down call
     assert seen["source_reference"] == "upload:leak-check.pdf"
     assert seen["extracted_regions"] != ()

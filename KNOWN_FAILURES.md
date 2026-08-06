@@ -7,20 +7,28 @@ visible, not when a gate goes green for some other reason.
 Append-only in spirit: an entry changes only its **Status** line, and a closed entry
 keeps its history.
 
+**Every entry carries a machine-checkable predicate and a state a program can read.**
+`tools/ci/verify_tracker.py` evaluates every predicate against the working tree and
+`tests/unit/test_tracker_truth.py` fails when one of them is contradicted. How that
+works, what it cannot do, and how to write a new entry: *"How an entry is checked"*
+below. **An entry with no predicate does not parse, so it cannot be added.**
+
 Last updated: **2026-08-06**
 
 ---
 
 ## Measurement state of this file — Law 56
 
-**HEAD is `78e99d4`. Every metric below carries the commit that produced it, or says
+**HEAD is `564bb1d`. Every metric below carries the commit that produced it, or says
 UNMEASURED.**
 
-`origin/ci/mutation-runs` is at `78e99d4` — **0 commits ahead, everything pushed.** The
-unpushed-work condition recorded here previously (F-026) no longer holds.
+`origin/ci/mutation-runs` is at `564bb1d` — **0 commits ahead, 0 behind, everything
+pushed.** Measured at `564bb1d`: `git rev-list --left-right --count
+origin/ci/mutation-runs...564bb1d` reports `0	0`, and `git branch -r --contains
+564bb1d` reports `origin/ci/mutation-runs`.
 
-Source churn `7e0efe2` → `78e99d4`: `src/` 15 files **+5785 / −801**; `tests/` 40 files
-**+21688 / −375**. Every measurement taken at or before `f31e3cd` is therefore EXPIRED
+Source churn `78e99d4` → `564bb1d`: `src/` 4 files **+335 / −17**; `tests/` 12 files
+**+3447 / −42**. Every measurement taken at or before `78e99d4` is therefore EXPIRED
 for HEAD.
 
 | Metric | Value | Commit | Source | Status |
@@ -28,11 +36,14 @@ for HEAD.
 | Mutation | 95.3% — killed 2324, survived 115, 919 not scoreable | `7e0efe2` | GitHub Actions run 31041552213, job 92426852650 | **EXPIRED** — source moved |
 | Mutation runtime | 3h 21m 01s | `7e0efe2` | GitHub Actions, same job | **EXPIRED** |
 | Coverage | 97.64%, effective floor 97.46% | `f31e3cd` | GitHub Actions run 31047186940, job 92445466419 | **EXPIRED** — source moved |
-| Mutation at HEAD | — | `78e99d4` | — | **PENDING CI** |
-| Coverage at HEAD | — | `78e99d4` | — | **PENDING CI** |
-| Test suite | 3794 passed, 11 skipped | `78e99d4` | local `pytest -p randomly --randomly-seed=98765` | **LOCAL ONLY — NOT AUTHORITATIVE** (Law 44) |
+| Test suite | 3794 passed, 11 skipped | `78e99d4` | local `pytest -p randomly --randomly-seed=98765` | **EXPIRED** — `tests/` moved +3447 / −42 after it |
+| Mutation at HEAD | — | `564bb1d` | — | **PENDING CI** |
+| Coverage at HEAD | — | `564bb1d` | — | **PENDING CI** |
+| Test suite at HEAD | — | `564bb1d` | — | **UNMEASURED** |
+| Tracker predicates | 33 entries · 88 predicates · 0 contradicted · 2 carrying an UNVERIFIABLE admission | `564bb1d` | local `tools/ci/verify_tracker.py` | **LOCAL ONLY — NOT AUTHORITATIVE** (Law 44) |
 
-Previous measurements expired because source changed after commit `7e0efe2`.
+Previous measurements expired because source changed after commit `78e99d4`. Stated
+here rather than waited for (Law 56).
 
 **The mutation gate has never produced a valid score on any commit in this branch.** Its
 statistics phase collapsed — `NOT SCOREABLE : 4402 (100.00% of 4402)` — so the 2%
@@ -41,14 +52,121 @@ nothing. The cause is recorded as F-029.
 
 ---
 
+## How an entry is checked — the predicate vocabulary
+
+**Two of the three claims in this file that anybody bothered to measure on 2026-08-06
+were FALSE.** F-024 said the repository does not build while `Exclusion` imports fine;
+F-026 said 24 commits carried no CI evidence while the branch tip was pushed. Neither was
+careless — both were TRUE when written, and neither was re-read after the defect it
+described was fixed. **A tracker entry is a claim with no expiry date**, and one of these
+was carried into a root-cause analysis as though it were evidence.
+
+So every entry now names a predicate the repository can decide, and a program decides it.
+
+```totals
+entries=33 predicates=88 unverifiable=2
+```
+
+That line is machine-checked against the file it describes
+(`test_the_files_own_self_count_is_the_count`), so it cannot be the next thing here to go
+stale.
+
+### The state token
+
+Every entry's status cell opens with one of exactly four tokens, and the prose follows it:
+
+```
+| **Status** | `OPEN` · 🟨 CONTAINED, NOT CLOSED. The owner ruled … |
+```
+
+| Token | Means |
+|---|---|
+| `OPEN` | the defect is present and untouched |
+| `PARTIAL` | some of it is fixed and some is not, and the entry says which |
+| `BLOCKED` | it cannot proceed without a decision or an artifact somebody else owns |
+| `CLOSED` | the work landed |
+
+The token exists because **free prose was the whole failure**. F-024's status row read
+*"OPEN"* while its own body two paragraphs below read *"SYMPTOM RESOLVED"*, and nothing
+could see the contradiction. A token is readable by a program; a paragraph is not.
+
+**A `CLOSED` entry must carry at least one mechanical predicate.** Work that landed left a
+trace in the tree; if it left none there is nothing to close, and the escape hatch below
+may not be used to retire an entry.
+
+### The vocabulary
+
+Six verbs, all decidable by reading the repository — no imports executed, no subprocess,
+no network:
+
+| Verb | Holds when |
+|---|---|
+| `exists PATH` | the path is in the tree |
+| `absent PATH` | it is not |
+| `defines PATH NAME` | that Python file binds `NAME` at **module scope** — importable, not merely mentioned |
+| `not-defines PATH NAME` | it does not |
+| `contains PATH "TEXT"` | that file's text contains the literal |
+| `not-contains PATH "TEXT"` | it does not |
+
+and one escape hatch, which is an admission rather than a pass:
+
+```
+UNVERIFIABLE <reason, at least five words>
+```
+
+An entry carrying one is reported **UNVERIFIABLE**, never TRUE. Two entries carry one
+today: F-008, whose required-status-checks list lives in a GitHub ruleset, and F-026,
+whose remaining half is what CI has judged. Both are Law 44 by construction — GitHub is
+the authority, so the working tree cannot certify either one.
+
+### Writing a predicate: polarity is the point
+
+**A predicate must be written so that it stops holding when the status stops being true.**
+That is the whole mechanism, and getting it backwards is how F-024 survived its own fix.
+
+```
+OPEN     → assert the DEFECT is still there.  not-defines parser.py _table_structure_model
+CLOSED   → assert the FIX is still there.     defines conformance.py Exclusion
+```
+
+Written that way, fixing an `OPEN` entry turns its predicate red and forces the status to
+move. Written the other way round — an `OPEN` entry pointing at the guard that would
+eventually close it — the entry can be fixed and stay `OPEN` forever, which is exactly
+what happened.
+
+### What this cannot do — stated here, not discovered later
+
+1. **It cannot tell whether a predicate is the RIGHT predicate for the status beside it.**
+   `exists README.md` would pass under any status. What it does enforce is that a
+   predicate is not circular (a check may not name this file), not vacuous (a negative
+   verb over a file that is not there FAILS rather than passing over nothing), and that a
+   `CLOSED` entry has something mechanical to point at.
+
+2. **It does not RUN the tests an entry names.** `defines <test file> <test name>` proves
+   the guard exists; the suite proves it passes. The two compose — a deleted guard fails
+   here, a red guard fails there — but neither half is the other's evidence, and nothing
+   here ever claims a test passed.
+
+3. **It is a statement about the working tree, never about GitHub.** Anything whose truth
+   lives in a check run, a ruleset or a remote ref is `UNVERIFIABLE` here by construction.
+
+---
+
 ## F-001 · PyMuPDF is AGPL-3.0 and this is a commercial product
 
 | | |
 |---|---|
 | **Severity** | HIGH — legal, not technical |
-| **Status** | 🟨 **CONTAINED, NOT CLOSED.** The owner ruled 2026-08-06: *"Do NOT purchase an Artifex licence. Keep PyMuPDF temporarily. Immediately abstract it behind a PDF Engine interface so Engine 1 never depends directly on PyMuPDF."* The interface exists. **The licence exposure is unchanged** — the AGPL dependency is still pinned and still in use, so this entry stays OPEN until the backend is actually replaced |
+| **Status** | `OPEN` · 🟨 **CONTAINED, NOT CLOSED.** The owner ruled 2026-08-06: *"Do NOT purchase an Artifex licence. Keep PyMuPDF temporarily. Immediately abstract it behind a PDF Engine interface so Engine 1 never depends directly on PyMuPDF."* The interface exists. **The licence exposure is unchanged** — the AGPL dependency is still pinned and still in use, so this entry stays OPEN until the backend is actually replaced |
 | **Found** | 2026-08-05, landing Engine 1's `reader` |
 | **Contained** | 2026-08-06 · `src/accountant_dad/pdf_backend.py` |
+
+```check
+exists src/accountant_dad/pdf_backend.py
+defines tests/unit/test_pdf_backend.py test_no_engine_1_module_imports_the_pdf_library_directly
+contains requirements-engine1.txt "pymupdf==1.28.0"
+exists AMENDMENT_DRAFT_F001_PDF_BACKEND.md
+```
 
 **WHAT THE ABSTRACTION CHANGED, AND WHAT IT DID NOT.** Before it, three Engine 1
 modules reached PyMuPDF independently — `reader.py` and `pipeline.py` by statement,
@@ -109,8 +227,14 @@ it. **Nothing was changed: `docs/TECHNOLOGY_STACK.md`, the manifests and
 | | |
 |---|---|
 | **Severity** | HIGH — it was silently active, not latent |
-| **Status** | ⚠️ **PARTLY RESOLVED 2026-08-05** — see the correction below and F-023 |
+| **Status** | `PARTIAL` · ⚠️ **PARTLY RESOLVED 2026-08-05** — see the correction below and F-023 |
 | **Found** | 2026-08-05, installing PaddleOCR |
+
+```check
+exists requirements-engine1-ocr.txt
+exists tests/unit/test_runtime_library_versions.py
+exists tools/ci/assert_imports_match_pins.sh
+```
 
 > **STATUS CORRECTED 2026-08-06.** This entry read ✅ RESOLVED. F-023 then measured that
 > the *combined* resolve fails but the *sequential* install still silently downgrades
@@ -177,8 +301,13 @@ against. It would still pass, and it would no longer mean anything.
 | | |
 |---|---|
 | **Severity** | HIGH — would cause a wrong sign-off |
-| **Status** | ✅ **CLOSED 2026-08-05** · deleted after both safety checks passed |
+| **Status** | `CLOSED` · ✅ **CLOSED 2026-08-05** · deleted after both safety checks passed |
 | **Found** | 2026-08-05, writing the confidence specification |
+
+```check
+absent "docs/ENGINE_1_CONFIDENCE_PARAMETERS 2.md"
+contains docs/ENGINE_1_CONFIDENCE_PARAMETERS.md "worst_k"
+```
 
 **Description.** A macOS Finder duplicate (`" 2"` suffix, mode 600 against the real
 file's 644), **tracked in git**. Its line 49 still reads:
@@ -219,8 +348,13 @@ the true worst case, and `k=1` IS the minimum.**
 | | |
 |---|---|
 | **Severity** | HIGH — a precedence conflict, not a typo |
-| **Status** | ✅ **CLOSED 2026-08-06** — Amendment 8, and the count was wrong: **five** documents, not three |
+| **Status** | `CLOSED` · ✅ **CLOSED 2026-08-06** — Amendment 8, and the count was wrong: **five** documents, not three |
 | **Found** | 2026-08-05, writing the confidence specification |
+
+```check
+contains docs/ARCHITECTURE_AMENDMENTS.md "Amendment 8"
+contains docs/ADVERSARIAL_TESTING.md "Attack 8 no longer names a confidence threshold"
+```
 
 **Description.** The owner's decision A7 is binding: **confidence gates NOTHING until
 calibration is proven.** `docs/MEASUREMENT_FRAMEWORK.md` §10 states it outright. These
@@ -283,8 +417,13 @@ would pass it. Treat that as this entry reopening, not as the amendment being wr
 | | |
 |---|---|
 | **Severity** | MEDIUM |
-| **Status** | ✅ **CLOSED 2026-08-05** — `NamedSignal` now carries both fields |
+| **Status** | `CLOSED` · ✅ **CLOSED 2026-08-05** — `NamedSignal` now carries both fields |
 | **Found** | 2026-08-05 |
+
+```check
+defines src/accountant_dad/engines/input_engine/measurement.py NamedSignal
+contains src/accountant_dad/engines/input_engine/measurement.py "instrument: str"
+```
 
 **Description.** The owner's A8 requires the raw signal preserved per field, per region,
 **per instrument**, with its origin. `FieldConfidence` in
@@ -321,8 +460,13 @@ system: `FieldConfidence` has no slot for either field and `NamedSignal` had nei
 | | |
 |---|---|
 | **Severity** | MEDIUM — scope, and it is the owner's decision |
-| **Status** | ⬜ OPEN · the ~100 figure may itself be stale |
+| **Status** | `OPEN` · ⬜ the ~100 figure may itself be stale |
 | **Found** | 2026-08-05 |
+
+```check
+contains docs/GOLDEN_DATASET.md "~100 golden"
+contains docs/GOLDEN_DATASET.md "Twenty-five is enough to kill"
+```
 
 **Description.** `docs/GOLDEN_DATASET.md:166` puts calibration at roughly **100** golden
 documents. The planned set is **16**. Taken at face value, confidence gates nothing for
@@ -348,8 +492,13 @@ is a measurement, not a decision. The agent doing it was killed mid-run.
 | | |
 |---|---|
 | **Severity** | **MEDIUM, and rising fast** — re-rated 2026-08-06 on measurement |
-| **Status** | ⬜ OPEN · flagged, deliberately not changed |
+| **Status** | `OPEN` · ⬜ flagged, deliberately not changed |
 | **Found** | 2026-08-05, first completed mutation run |
+
+```check
+contains .github/workflows/testing.yml "killed + survived"
+contains .github/workflows/testing.yml "NOT SCOREABLE"
+```
 
 **Description.** `.github/workflows/testing.yml:300-311` computes
 `score = killed / (killed + survived)` and reports everything else as `NOT SCOREABLE`.
@@ -386,8 +535,14 @@ forbids inventing a gate rule. **Flagged only.**
 | | |
 |---|---|
 | **Severity** | HIGH — structural |
-| **Status** | ⬜ OPEN · by design, until each gate can pass |
+| **Status** | `OPEN` · ⬜ by design, until each gate can pass |
 | **Found** | pre-existing; recorded here 2026-08-05 |
+
+```check
+exists .github/workflows/merge.yml
+contains tools/ci/expected_checks.py "merge gate"
+UNVERIFIABLE the required-status-checks list lives in GitHub ruleset 20249495, not in this tree, so only the GitHub API can say which of the checks actually bind a merge
+```
 
 **Description.** Only six checks are on the required list: `build · typecheck · lint ·
 unit tests · coverage · dependency scan`. `mutation` now passes but **is not required**.
@@ -425,8 +580,16 @@ it still needs the deliberately-broken-code proof before promotion.
 | | |
 |---|---|
 | **Severity** | HIGH — architecture. Three recorded failures are symptoms of this one |
-| **Status** | 🔒 **BLOCKED · needs an owner decision (§M)** |
+| **Status** | `BLOCKED` · 🔒 **needs an owner decision (§M)** |
 | **Found** | 2026-08-05, tracing F-011 to its root instead of patching it |
+
+```check
+defines src/accountant_dad/engines/input_engine/cleaner.py clean_artifact
+defines src/accountant_dad/engines/input_engine/cleaner.py CLEANERS
+not-defines src/accountant_dad/engines/input_engine/cleaner.py clean
+defines tests/unit/test_input_engine_cleaner.py test_the_module_offers_exactly_one_public_way_to_clean_a_document
+contains src/accountant_dad/engines/input_engine/cleaner.py "cleaned: Image"
+```
 
 | **Second half closed** | 2026-08-06 · the Document Cleaner and its dispatch registry |
 
@@ -518,8 +681,13 @@ answer, and guessing it stacks a fifth wrong assumption on four.
 | | |
 |---|---|
 | **Severity** | MEDIUM — a workflow constraint, not a product defect |
-| **Status** | ✅ **RESOLVED 2026-08-06** — the cause was `setproctitle`, not `fork`, and `mutmut==3.7.0` already fixes it. Mutation runs on macOS today |
+| **Status** | `CLOSED` · ✅ **RESOLVED 2026-08-06** — the cause was `setproctitle`, not `fork`, and `mutmut==3.7.0` already fixes it. Mutation runs on macOS today |
 | **Found** | 2026-08-05 (re-derived the expensive way; first noted earlier the same day) |
+
+```check
+contains requirements-ci.txt "mutmut==3.7.0"
+exists tools/ci/authored_source.py
+```
 
 ### THE RECORDED ROOT CAUSE WAS WRONG — falsified by experiment, 2026-08-06
 
@@ -631,8 +799,12 @@ or accepting CI as the only source of mutation data.
 | | |
 |---|---|
 | **Severity** | HIGH — blocks the merge |
-| **Status** | ✅ **CLOSED 2026-08-06** — cap raised to 500 minutes at `66ab8cd`, and a run has since finished |
+| **Status** | `CLOSED` · ✅ **CLOSED 2026-08-06** — cap raised to 500 minutes at `66ab8cd`, and a run has since finished |
 | **Found** | 2026-08-05, after Engine 1 landed |
+
+```check
+contains .github/workflows/testing.yml "timeout-minutes: 500"
+```
 
 **How it closed.** `.github/workflows/testing.yml:213` now reads `timeout-minutes: 500`,
 landed by `66ab8cd` — *"the cap was hiding a real score regression, not just a slow job."*
@@ -715,8 +887,13 @@ at 3.45x the work in 60% as many mutants, @ commit d85861c and now EXPIRED.
 | | |
 |---|---|
 | **Severity** | MEDIUM — real production cost, not just CI |
-| **Status** | ⬜ OPEN · fix identified, blocked on typing |
+| **Status** | `OPEN` · ⬜ fix identified, blocked on typing |
 | **Found** | 2026-08-05 |
+
+```check
+contains src/accountant_dad/engines/input_engine/parser.py "from_pretrained"
+not-defines src/accountant_dad/engines/input_engine/parser.py _table_structure_model
+```
 
 **Description.** `parser.py:580-581` calls `AutoImageProcessor.from_pretrained` and
 `TableTransformerForObjectDetection.from_pretrained` inside `_bands_for`, which runs
@@ -754,8 +931,13 @@ save CI minutes.
 | | |
 |---|---|
 | **Severity** | HIGH |
-| **Status** | ⬜ OPEN · worked around in `pipeline.py`, not fixed at source |
+| **Status** | `OPEN` · ⬜ worked around in `pipeline.py`, not fixed at source |
 | **Found** | 2026-08-05, wiring the pipeline — invisible to every unit test |
+
+```check
+defines src/accountant_dad/engines/input_engine/cleaner.py decode
+contains src/accountant_dad/engines/input_engine/cleaner.py "imdecode"
+```
 
 **Description.** `cleaner.decode` calls `cv2.imdecode`, which returns `None` on real PDF
 bytes, so decode raises `UndecodableArtifactError` **unconditionally for every PDF** —
@@ -781,8 +963,13 @@ boundary question, so it is the owner's.
 | | |
 |---|---|
 | **Severity** | HIGH — architecture, not code |
-| **Status** | ✅ **CLOSED 2026-08-06** — both halves built. The residue moved to F-019 |
+| **Status** | `CLOSED` · ✅ **CLOSED 2026-08-06** — both halves built. The residue moved to F-019 |
 | **Found** | 2026-08-05, wiring the pipeline |
+
+```check
+not-defines src/accountant_dad/engines/input_engine/pipeline.py rasterise_first_page_for_cleaning
+defines tests/unit/test_input_engine_pipeline_redteam.py test_reader_and_parser_were_handed_the_same_cleaned_bytes_as_each_other
+```
 
 **How it closed, in two halves and two commits.**
 
@@ -826,8 +1013,13 @@ That changes three locked module contracts and is an architecture change, not a 
 | | |
 |---|---|
 | **Severity** | HIGH |
-| **Status** | 🔄 **HALF CLOSED 2026-08-06** — gap 1 fixed; the text-layer half is F-019 and needs the owner |
+| **Status** | `PARTIAL` · 🔄 **HALF CLOSED 2026-08-06** — gap 1 fixed; the text-layer half is F-019 and needs the owner |
 | **Found** | 2026-08-05, wiring the pipeline |
+
+```check
+contains src/accountant_dad/engines/input_engine/confidence_report.py "READ_BUT_UNSCORED"
+defines src/accountant_dad/engines/input_engine/pipeline.py detected_fields
+```
 
 **Gap 1 is fixed — `502e166`.** `confidence_report.ReadingState` now names three states,
 not two: `UNREAD`, `READ_AND_SCORED`, `READ_BUT_UNSCORED`. It mirrors the
@@ -884,8 +1076,15 @@ changes across `reader`, `parser`, `confidence_report` and `assembly`.
 | | |
 |---|---|
 | **Severity** | MEDIUM — a precedence question and a definition question, both now answered |
-| **Status** | ✅ **CLOSED 2026-08-06** — resolved at `a482ad6` by delegated engineering authority. Neither half needs the owner |
+| **Status** | `CLOSED` · ✅ **CLOSED 2026-08-06** — resolved at `a482ad6` by delegated engineering authority. Neither half needs the owner |
 | **Found** | 2026-08-05, building `classification` |
+
+```check
+defines tests/unit/test_package.py test_the_sub_engine_set_is_exactly_the_four_the_locked_specification_names
+defines tests/unit/test_package.py test_the_three_architectural_categories_are_disjoint
+defines tests/unit/test_package.py test_no_engine_1_module_exists_without_an_architectural_decision
+defines tests/unit/test_package.py test_the_evidence_object_has_no_document_type_field
+```
 
 ### How it closed — the specification was right, and so is the code
 
@@ -1113,8 +1312,16 @@ paraphrasing them.
 | | |
 |---|---|
 | **Severity** | HIGH — three sub-engines are built, tested, mutation-hardened, and never run |
-| **Status** | ✅ **FIXED 2026-08-06.** All three have real consumers in `engines/input_engine/pipeline.py`, and `test_module_wiring.py::test_every_authorised_engine_1_module_is_reachable_from_the_application_layer` is green |
+| **Status** | `CLOSED` · ✅ **FIXED 2026-08-06.** All three have real consumers in `engines/input_engine/pipeline.py`, and `test_module_wiring.py::test_every_authorised_engine_1_module_is_reachable_from_the_application_layer` is green |
 | **Found** | 2026-08-06, while verifying F-010's residual |
+
+```check
+exists tools/ci/module_wiring.py
+defines tests/unit/test_module_wiring.py test_every_authorised_engine_1_module_is_reachable_from_the_application_layer
+contains src/accountant_dad/engines/input_engine/pipeline.py "classification.classify("
+contains src/accountant_dad/engines/input_engine/pipeline.py "measurement_store"
+contains src/accountant_dad/engines/input_engine/pipeline.py "ConfidenceParameters"
+```
 
 **RE-MEASURED 2026-08-06 at commit `e921c3c`.** This entry said *"agent wiring it."* No
 agent wired it. `src/` contains exactly two imports of anything under `input_engine`:
@@ -1231,8 +1438,14 @@ discriminates, not one that is red about everything.
 | | |
 |---|---|
 | **Severity** | **CRITICAL** — this is the *"never post a wrong entry"* non-goal failing at the source |
-| **Status** | ✅ **CLOSED 2026-08-06** — Amendments 6 and 7. Residue tracked as O11–O14, none of which lets a value cross without provenance |
+| **Status** | `CLOSED` · ✅ **CLOSED 2026-08-06** — Amendments 6 and 7. Residue tracked as O11–O14, none of which lets a value cross without provenance |
 | **Found** | 2026-08-06, by two agents investigating different questions who converged on the same three lines |
+
+```check
+contains docs/ARCHITECTURE_AMENDMENTS.md "Amendment 7"
+contains src/accountant_dad/confidence.py "NOT_MEASURED"
+defines src/accountant_dad/engines/input_engine/parser.py map_cells
+```
 
 ### What closed the last of it, 2026-08-06 — Amendment 7
 
@@ -1431,8 +1644,14 @@ imports its own module and proves that module honest.
 | | |
 |---|---|
 | **Severity** | HIGH — Law 18, hidden dependencies, and the `build` gate is structurally blind to it |
-| **Status** | ✅ **CLOSED 2026-08-06** · `839645a` + the `pyproject.toml` declaration |
+| **Status** | `CLOSED` · ✅ **CLOSED 2026-08-06** · `839645a` + the `pyproject.toml` declaration |
 | **Found** | 2026-08-06 |
+
+```check
+contains pyproject.toml "opencv-python==5.0.0.93"
+contains pyproject.toml "pymupdf==1.28.0"
+exists tests/unit/test_declared_dependencies.py
+```
 
 **Permanent fix — LANDED.** `pyproject.toml` now declares every third-party module Engine
 1 imports **at module scope**, each pinned to the version already in
@@ -1485,8 +1704,14 @@ install, which nobody currently does.
 | | |
 |---|---|
 | **Severity** | HIGH — the guard Amendment 3 rests on enforces a naming convention |
-| **Status** | ✅ **CLOSED 2026-08-06** · the guard now reads code, by AST |
+| **Status** | `CLOSED` · ✅ **CLOSED 2026-08-06** · the guard now reads code, by AST |
 | **Found** | 2026-08-06 |
+
+```check
+defines tests/unit/test_package.py test_engine_1_reaches_for_nothing_outside_its_own_boundary
+defines tests/unit/test_package.py test_engine_1_imports_no_ai_vendor_package
+defines tests/unit/test_package.py test_engine_1_defines_no_accounting_or_tax_computation_identifier
+```
 
 **Permanent fix — LANDED.** `tests/unit/test_package.py` grew by 408 lines and now parses
 every Engine 1 module with `ast` instead of inspecting filenames. Three new tests, each
@@ -1539,8 +1764,13 @@ filename check.
 | | |
 |---|---|
 | **Severity** | HIGH — blocks the ROADMAP's *"a real document runs end to end"* in its intended sense |
-| **Status** | 🔒 OPEN · needs real documents, which must be obtained |
+| **Status** | `BLOCKED` · 🔒 needs real documents, which must be obtained |
 | **Found** | 2026-08-06 |
+
+```check
+absent src/tests/golden
+absent tests/golden
+```
 
 Measured: **40 PDFs · 55,526,251 bytes · 5,678 pages · 12.9 M characters · every one with a
 text layer · 0 image files of any format.**
@@ -1582,8 +1812,14 @@ does not exist — no `src/tests/golden/`, and **zero non-`.py` files anywhere u
 | | |
 |---|---|
 | **Severity** | HIGH — a pinned version can be violated while every check reports green |
-| **Status** | 🔄 **HALF CLOSED 2026-08-06** · the guard exists; the unpinned tree does not |
+| **Status** | `PARTIAL` · 🔄 **HALF CLOSED 2026-08-06** · the guard exists; the unpinned tree does not |
 | **Found** | 2026-08-06 |
+
+```check
+exists tools/ci/audit_dependency_manifests.py
+contains requirements-ci.txt "pydantic==2.12.3"
+not-contains requirements-engine1.txt "pydantic=="
+```
 
 **What closed — the metadata-vs-runtime hole.** `5066576` and `202bed4` landed
 `tests/unit/test_runtime_library_versions.py` (434 lines, new) and
@@ -1720,8 +1956,14 @@ second OCR engine, against `TECHNOLOGY_STACK.md`'s one-tool-per-capability lock.
 | | |
 |---|---|
 | **Severity** | **HIGH** — re-rated 2026-08-06. It was worse than this entry said |
-| **Status** | ⬜ OPEN · the guard is fixed; the OCR path is still unproven on CI |
+| **Status** | `OPEN` · ⬜ the guard is fixed; the OCR path is still unproven on CI |
 | **Found** | 2026-08-05 |
+
+```check
+contains tests/unit/test_input_engine_reader.py "(\"paddleocr\", \"paddle\")"
+exists tools/ci/run_ocr_tests.sh
+not-contains .github/workflows/testing.yml "requirements-engine1-ocr.txt"
+```
 
 ### CORRECTION, 2026-08-06 — those 11 tests had never run ANYWHERE
 
@@ -1802,8 +2044,14 @@ Until one lands, **no claim may be made about OCR accuracy, because none is prov
 | | |
 |---|---|
 | **Severity** | HIGH — all four destroyed document content and reported that they had not |
-| **Status** | ✅ **ALL FOUR CLOSED 2026-08-06**, each with a red-team test |
+| **Status** | `CLOSED` · ✅ **ALL FOUR CLOSED 2026-08-06**, each with a red-team test |
 | **Found** | 2026-08-06, red-teaming `cleaner` (task T-022) |
+
+```check
+exists tests/unit/test_input_engine_cleaner_redteam.py
+defines src/accountant_dad/engines/input_engine/cleaner.py _composite_over_paper
+contains src/accountant_dad/engines/input_engine/cleaner.py "ink_kept_by_crop"
+```
 
 **Why this section exists at all — a dangling-citation defect.** `cleaner.py` cites
 `KNOWN_FAILURES.md` **D2** (`:446`), **D3** (`:212`, `:1227`) and **D4** (`:709`), and the
@@ -1872,8 +2120,29 @@ where a real red gets waved through* — Law 12 failing by way of a comment.
 | | |
 |---|---|
 | **Severity** | **CRITICAL** — Law 1, keep the repo buildable always. The whole suite cannot collect |
-| **Status** | ⬜ **OPEN** · introduced by HEAD itself |
+| **Status** | `CLOSED` · **THE STATUS RECORDED HERE WAS FALSE AND IS CORRECTED — 2026-08-06.** It read *“⬜ OPEN · introduced by HEAD itself”* while this entry’s own body, two paragraphs down, already read *“SYMPTOM RESOLVED”*. Re-measured at commit `564bb1d`: `Exclusion` is bound at module scope in `src/accountant_dad/conformance.py` and the suite collects. **LOCAL ONLY — NOT AUTHORITATIVE** (Law 44) |
 | **Found** | 2026-08-06, running the suite to verify what the documents claim |
+
+```check
+defines src/accountant_dad/conformance.py Exclusion
+defines src/accountant_dad/conformance.py Uncovered
+exists tools/ci/unresolved_symbols.py
+defines tests/unit/test_unresolved_symbols.py test_the_collection_failure_does_not_recur
+```
+
+### STATUS REPAIRED 2026-08-06 — the old wording, kept
+
+> `⬜ **OPEN** · introduced by HEAD itself`
+
+**That was false, and it was false for a reason worth naming.** The claim was true at
+`e921c3c`, the symptom was fixed at `a501a69`, the body below was updated to say so, and
+**this row was not.** Nothing in the repository could compare the two halves of the entry
+against each other, so the contradiction sat in the file and was later quoted as evidence
+that the repository did not build.
+
+Re-measured at `564bb1d`, `LOCAL ONLY — NOT AUTHORITATIVE`: `Exclusion` is bound at module
+scope in `src/accountant_dad/conformance.py`, alongside `Uncovered`. **The predicate above
+now holds only while that stays true**, which is what stops this row drifting again.
 
 **Measured at commit `e921c3c` — LOCAL ONLY — NOT AUTHORITATIVE, but decisive:**
 
@@ -1936,8 +2205,30 @@ check every import against that table.
 | | |
 |---|---|
 | **Severity** | HIGH — 39 of the 40 failures at HEAD are this one cause |
-| **Status** | ⬜ **OPEN** |
+| **Status** | `CLOSED` · **THE STATUS RECORDED HERE WAS FALSE AND IS CORRECTED — 2026-08-06.** It read *“⬜ OPEN”* while this entry’s own body already read *“SYMPTOM RESOLVED”*. Re-measured at commit `564bb1d`: `recorded_at` appears 15 times in `tests/unit/test_input_engine_pipeline_redteam.py` and once in `tests/unit/test_input_engine_ablation.py`, the two files this entry named as carrying zero. **LOCAL ONLY — NOT AUTHORITATIVE** (Law 44) |
 | **Found** | 2026-08-06 |
+
+```check
+contains tests/unit/test_input_engine_pipeline_redteam.py "recorded_at"
+contains tests/unit/test_input_engine_ablation.py "recorded_at"
+exists tools/ci/signature_drift.py
+```
+
+### STATUS REPAIRED 2026-08-06 — the old wording, kept
+
+> `⬜ **OPEN**`
+
+Re-measured at `564bb1d`, `LOCAL ONLY — NOT AUTHORITATIVE`, by counting the token this
+entry itself named as absent:
+
+```
+tests/unit/test_input_engine_pipeline_redteam.py   occurrences of "recorded_at": 15
+tests/unit/test_input_engine_ablation.py           occurrences of "recorded_at":  1
+```
+
+The entry recorded **0 and 0**. Same defect shape as F-024's: true when written, fixed
+afterwards, and the status row never re-read. The predicate above now holds only while
+both files carry the argument.
 
 **Measured at commit `e921c3c`** — full suite, `test_conformance_registry.py` excluded
 because it cannot collect (F-024). **LOCAL ONLY — NOT AUTHORITATIVE:**
@@ -2016,8 +2307,36 @@ signature, not merely committed. That check is now mechanical.
 | | |
 |---|---|
 | **Severity** | HIGH — Law 44. Nothing after `f31e3cd` has been verified anywhere that counts |
-| **Status** | ⬜ **OPEN** |
+| **Status** | `PARTIAL` · **THE STATUS RECORDED HERE WAS FALSE IN ITS MEASURED HALF AND IS CORRECTED — 2026-08-06.** It read *“⬜ OPEN”* against a 24-commit unpushed backlog. **The backlog does not exist at `564bb1d`** — see the repaired measurement below. What CI has JUDGED at `564bb1d` is a different question, is not answerable from this tree, and stays **PENDING CI** (Law 44, Law 56) |
 | **Found** | 2026-08-06 |
+
+```check
+defines src/accountant_dad/conformance.py Exclusion
+contains tests/unit/test_input_engine_ablation.py "recorded_at"
+UNVERIFIABLE what GitHub has judged is a fact about check runs on a remote host, never about this working tree, and Law 44 makes CI the only authority that can answer it
+```
+
+### STATUS REPAIRED 2026-08-06 — the old wording, kept
+
+> `⬜ **OPEN**`
+
+Re-measured at `564bb1d`, `LOCAL ONLY — NOT AUTHORITATIVE`:
+
+```
+$ git rev-list --left-right --count origin/ci/mutation-runs...564bb1d
+0       0
+$ git branch -r --contains 564bb1d
+  origin/ci/mutation-runs
+```
+
+**Zero ahead, zero behind, the tip is on the remote.** The entry's own named precondition
+— *"fix F-024 and F-025 … then push"* — is also met, and the two predicates above are
+exactly those two facts, so this row cannot silently outlive them again.
+
+**The other half is deliberately NOT claimed.** Whether GitHub has produced check runs for
+`564bb1d` is a fact about a remote host. Law 44 makes CI the only authority on it, so this
+entry carries an `UNVERIFIABLE` admission rather than a green tick, and the state stays
+`PARTIAL` rather than `CLOSED`. **Unknown is correct here; a stale number would not be.**
 
 **Measured 2026-08-06 against the GitHub API:**
 
@@ -2050,9 +2369,15 @@ judge it. **Merge is not discussable until every mandatory gate is at or above i
 | | |
 |---|---|
 | **Severity** | LOW — no wrong output. It silently constrained where a specification could be edited |
-| **Status** | ✅ **CLOSED** · fixed at the root; the coordinate is gone from every identity |
+| **Status** | `CLOSED` · ✅ **CLOSED** · fixed at the root; the coordinate is gone from every identity |
 | **Found** | 2026-08-06, adding the membership test that closed F-010 |
 | **Fixed** | 2026-08-06 · **UNMEASURED on GitHub — PENDING CI** (Law 44, Law 56) |
+
+```check
+contains src/accountant_dad/conformance.py "_must_be_content_addressed"
+contains src/accountant_dad/conformance.py "_must_not_be_positional"
+not-defines src/accountant_dad/conformance.py _must_name_a_line
+```
 
 **`conformance_registry.py` pins conformance predicates to LINE NUMBERS in the locked
 documents**, and `test_the_identifier_carries_the_line_its_source_names` requires the line
@@ -2177,8 +2502,23 @@ a key — it inherits this defect and needs its own entry.
 
 ## Closed
 
+> **⚠ THIS TABLE IS A HISTORICAL INDEX AND IS NOT THE AUTHORITY.** Measured at commit
+> `564bb1d`: **17 entries carry `CLOSED`; 7 of them — F-004, F-005, F-016, F-018, F-019,
+> F-028, F-031 — have never appeared here.** It was already incomplete before anybody
+> looked. **The authority is the `CLOSED` state token on the entry itself**, which is
+> machine-readable and carries a predicate the tree can refuse.
+> `tools/ci/verify_tracker.py` enumerates it; nothing enumerates this table.
+>
+> It is kept because the *Fix* and *Guarded by* columns record things the entries
+> themselves would otherwise lose. It is deliberately **not** made
+> machine-checked: a second list of closed entries would be a second thing to keep in
+> step, and `BLOCKERS.md:3-6` already recorded what that costs — *"an index that
+> restates a conclusion can restate the wrong one."*
+
 | ID | Title | Closed | Fix | Guarded by |
 |---|---|---|---|---|
+| **F-024** | The repository does not build at HEAD | 2026-08-06 | `Exclusion` written; `tools/ci/unresolved_symbols.py` stops the class. **The entry's own status row said OPEN until 2026-08-06** — repaired with its measurement | `test_the_collection_failure_does_not_recur`, and now `test_tracker_truth.py` |
+| **F-025** | One signature change, 39 red tests | 2026-08-06 | `recorded_at` passed at every call site; `tools/ci/signature_drift.py` stops the class. **The entry's own status row said OPEN until 2026-08-06** — repaired with its measurement | `test_signature_drift.py`, and now `test_tracker_truth.py` |
 | **F-027** | A locked document is append-only after its last cited line | 2026-08-06 | Citations bind to CONTENT — `document#words@digest` over (heading path, clause). The line number is recomputed, printed, and asserted by nothing. 232 identities migrated; the fragile form is refused at construction | 17 tests, 6 mutations all caught. Both directions measured: 140 lines inserted across 7 locked docs → **0 failures**; one cited sentence reworded → **5 failures**. `LOCAL ONLY — NOT AUTHORITATIVE` |
 | **F-010** | *"Exactly four sub-engines"* vs nine modules — and whether classification is authorised | 2026-08-06 | `13ce25d`, `38b97e3`, `a482ad6` — module ≠ sub-engine; membership test stated at §9A; Amendment 5; G9.5 revised. **No code changed** | `test_package.py` — four named tests, each mutated red first. Residual (a bare type reaching the artifact) tracked by `test_the_evidence_object_has_no_document_type_field`, open under F-018 |
 | **F-003** | Stale duplicate carrying the inverted `worst_k` row | 2026-08-05 | Deleted after proving nothing depended on it and that its only unique line *was* the bug | — *(deletion; nothing to guard)* |
@@ -2191,20 +2531,37 @@ a key — it inherits this defect and needs its own entry.
 
 ---
 
-## F-026 · A cleaned scan is not byte-reproducible — the PDF file identifier
+## F-032 · A cleaned scan is not byte-reproducible — the PDF file identifier
 
 | | |
 |---|---|
 | **Severity** | LOW — no content is affected, and no reading changes |
-| **Status** | ⬜ OPEN · recorded, deliberately not fixed |
+| **Status** | `OPEN` · ⬜ recorded, deliberately not fixed |
 | **Found** | 2026-08-06, by a byte comparison in the F-017 one-path test |
+
+```check
+defines tests/unit/test_input_engine_pipeline.py test_a_rebuilt_scan_differs_only_in_the_pdf_file_identifier_never_in_a_pixel
+```
 
 **Description.** Cleaning the SAME scanned PDF twice does not produce the same bytes.
 
-> **⚠ NUMBERING COLLISION, NOT YET REPAIRED.** This entry and *"Twenty-four commits carry
-> zero CI evidence"* above are both numbered **F-026**. Recorded rather than renumbered:
-> other documents cite these identifiers, and silently moving one would break a reference
-> nobody would notice. Flagged for repair as a deliberate, single change.
+> **⚠ RENUMBERED 2026-08-06 — THIS ENTRY WAS ALSO F-026, AND IS NOW F-032.** It shared
+> that number with *"Twenty-four commits carry zero CI evidence"* above. **The direction
+> of the repair was measured, not guessed.** Every citation of `F-026` outside this file
+> was counted at commit `564bb1d`:
+>
+> ```
+> ROADMAP.md:42        "…nothing since has been judged (F-026)"    -> the CI-evidence entry
+> DECISION_LOG.md:587  "…accidentally red — which is F-026."       -> the CI-evidence entry
+> ```
+>
+> **Two citations, both to the other entry; zero to this one.** So the trade-off is
+> one-sided: renumbering THIS entry breaks nothing, and renumbering the other would
+> break two references in an append-only decision log. The old number is kept in this
+> note rather than erased, so anyone arriving from an older reading resolves it.
+>
+> The collision itself was invisible to everything until `tools/ci/verify_tracker.py`
+> existed. `test_no_two_entries_share_an_identifier` is now what stops the next one.
 
 **Measured**, on a 400x200 one-page scan at 150 dpi, commit `a967a46`: two payloads of
 identical length — 5465 bytes — differing in exactly **58** of them, every one inside
@@ -2270,8 +2627,15 @@ refused rather than passing vacuously.
 | | |
 |---|---|
 | **Severity** | HIGH — every `SourceLocation` read from a cleaned scan is in the wrong coordinate space |
-| **Status** | ✅ **FIXED** at `4c7fc78`, with a regression it introduced fixed at `78e99d4` |
+| **Status** | `CLOSED` · ✅ **FIXED** at `4c7fc78`, with a regression it introduced fixed at `78e99d4` |
 | **Found** | 2026-08-06, probing whether a candidate PDF backend preserves page geometry |
+
+```check
+defines src/accountant_dad/pdf_backend.py page_size
+defines src/accountant_dad/pdf_backend.py require_positive_dpi
+defines tests/unit/test_pdf_backend.py test_a_rebuilt_page_is_the_physical_size_its_pixels_represent_at_that_dpi
+defines tests/unit/test_pdf_backend.py test_a_rebuilt_page_stores_its_image_compressed_not_raw
+```
 
 **Description.** `cleaner._pdf_rebuilt_from_cleaned_pages` renders each page at
 `render_dpi`, cleans the pixels, re-encodes with `cleaner._encode_png`, and hands the
@@ -2390,8 +2754,14 @@ what "stored compressed" means, so it needs no invented threshold and no toleran
 | | |
 |---|---|
 | **Severity** | **CRITICAL** — Engine 1 has never been measured by the gate that is meant to measure it |
-| **Status** | ⚠️ **PARTIALLY FIXED** at `c13930c` — the false green is closed and the failure now reports its cause; the underlying CI-only parser failure is **UNDIAGNOSED** |
+| **Status** | `PARTIAL` · ⚠️ **PARTIALLY FIXED** at `c13930c` — the false green is closed and the failure now reports its cause; the underlying CI-only parser failure is **UNDIAGNOSED** |
 | **Found** | 2026-08-06, reading the CI log for the `mutation` job instead of its summary |
+
+```check
+contains .github/workflows/testing.yml "NOT SCOREABLE"
+defines tests/integration/test_engine1_end_to_end.py test_the_pages_after_the_first_are_not_silently_dropped
+defines tests/integration/test_engine1_end_to_end.py test_a_real_pdf_with_a_text_layer_produces_an_object_carrying_that_text_layers_content
+```
 
 **Description.** The `mutation` job's statistics phase runs the suite once, with `-x`, to
 time each test. One red test there ends the phase, so **no mutant is ever scored**:
@@ -2481,8 +2851,14 @@ exists at all rather than a fabricated score sitting in a report.
 | | |
 |---|---|
 | **Severity** | **HIGH** — no coordinate on a cleaned scan can be mapped back to the document it came from |
-| **Status** | ⬜ **OPEN** · found while verifying F-028's residual, recorded not fixed (`CLAUDE.md` §E.7 — out of the current task's scope, and the current task is the mutation gate) |
+| **Status** | `OPEN` · ⬜ found while verifying F-028's residual, recorded not fixed (`CLAUDE.md` §E.7 — out of the current task's scope, and the current task is the mutation gate) |
 | **Found** | 2026-08-06, checking whether preserving the source page size would remove F-028's rounding residual. It would not, and this is why |
+
+```check
+defines src/accountant_dad/engines/input_engine/cleaner.py _crop_to_content
+contains src/accountant_dad/engines/input_engine/cleaner.py "left_kept"
+not-contains src/accountant_dad/engines/input_engine/cleaner.py "crop_origin"
+```
 
 **Description.** `cleaner._crop_to_content` crops each rasterised page to its content
 box plus a margin. It computes the crop's origin and **discards it**:
@@ -2555,8 +2931,12 @@ self-consistent while being wrong about the whole page.
 | | |
 |---|---|
 | **Severity** | LOW — bounded by one pixel, and the bound is now asserted |
-| **Status** | ✅ **BOUNDED and GUARDED** at `eaa448d` · not removable, and the reason is recorded |
+| **Status** | `CLOSED` · ✅ **BOUNDED and GUARDED** at `eaa448d` · not removable, and the reason is recorded |
 | **Found** | 2026-08-06, by adversarial review of the F-028 fix |
+
+```check
+defines tests/unit/test_pdf_backend.py test_a_page_whose_points_are_not_whole_pixels_rebuilds_within_one_pixel
+```
 
 **Description.** A raster has a whole number of pixels, so a page whose size is not a
 whole number of pixels at a given DPI cannot rebuild to its exact original size.

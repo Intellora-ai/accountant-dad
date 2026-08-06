@@ -39,6 +39,7 @@ import numpy.typing as npt
 import pytest
 from authored_source import authored_source, authored_tree
 
+from accountant_dad import pdf_backend
 from accountant_dad.engines.input_engine import cleaner, reader
 
 Image = npt.NDArray[np.uint8]
@@ -2426,10 +2427,14 @@ def test_a_page_with_no_content_box_comes_back_whole_and_at_full_retention() -> 
     """
     blank = a_small_uniform_page()
 
-    cropped, kept = cleaner._crop_to_content(blank, BASELINE.crop_margin_pixels)
+    cropped, kept, origin = cleaner._crop_to_content(blank, BASELINE.crop_margin_pixels)
 
     assert np.array_equal(cropped, blank)
     assert kept == FULL_RETENTION
+    assert origin == (0, 0), (
+        "the page came back whole, so nothing was translated and its origin is "
+        "its own; any other value would misplace every coordinate on it"
+    )
 
 
 def test_a_page_with_no_ink_at_all_reports_full_retention_after_a_real_crop() -> None:
@@ -2443,9 +2448,10 @@ def test_a_page_with_no_ink_at_all_reports_full_retention_after_a_real_crop() ->
     ink, _threshold = cleaner._ink_mask(blank)
     assert int(np.count_nonzero(ink)) == 0, "the fixture is not the no-ink case it claims to be"
 
-    _cropped, kept = cleaner._crop_to_content(blank, 0, a_small_banded_page())
+    _cropped, kept, origin = cleaner._crop_to_content(blank, 0, a_small_banded_page())
 
     assert kept == FULL_RETENTION
+    assert origin == (10, 5), "the box came from the banded page, so the origin must too"
 
 
 def test_a_crop_that_throws_away_the_only_ink_pixel_reports_that_it_kept_none() -> None:
@@ -2462,7 +2468,7 @@ def test_a_crop_that_throws_away_the_only_ink_pixel_reports_that_it_kept_none() 
     ink, _threshold = cleaner._ink_mask(losing)
     assert int(np.count_nonzero(ink)) == 1, "the fixture does not carry exactly one ink pixel"
 
-    _cropped, kept = cleaner._crop_to_content(losing, 0, a_small_banded_page())
+    _cropped, kept, _origin = cleaner._crop_to_content(losing, 0, a_small_banded_page())
 
     assert kept == NO_RETENTION, (
         "the crop discarded the page's only ink pixel and reported that it had kept some"
@@ -2490,13 +2496,21 @@ def test_the_crop_box_is_drawn_from_the_document_and_never_from_the_rotation_fil
     )
     painted = cleaner._painted_by(body, CROP_TEST_TURN_DEGREES)
 
-    told, _kept = cleaner._crop_to_content(turned_page, 0, turned_page, painted)
-    untold, _also = cleaner._crop_to_content(turned_page, 0, turned_page, None)
+    told, _kept, told_origin = cleaner._crop_to_content(turned_page, 0, turned_page, painted)
+    untold, _also, untold_origin = cleaner._crop_to_content(turned_page, 0, turned_page, None)
 
     assert told.shape == TURNED_CROP_WITH_PAINTED
     assert untold.shape == TURNED_CROP_WITHOUT_PAINTED, (
         "the fixture's fill was not visible to the line profile, so this test "
         "would pass whether or not the painted region was excluded"
+    )
+    assert untold_origin == (0, 0), (
+        "the untold crop kept the entire grown canvas, so it translated nothing"
+    )
+    assert told_origin != (0, 0), (
+        "the told crop trimmed the fill off two sides and reported the origin of "
+        "a crop that did not move — every coordinate on it would be misplaced by "
+        "the inset the shape assertion above proves it took"
     )
 
 
@@ -2749,4 +2763,620 @@ def test_every_page_of_a_scan_is_reported_under_its_own_number_and_the_worst_sta
     assert joined.artifact is carrier.artifact, (
         "the first page's artifact was dropped, so nothing downstream can reach "
         "the document the pages came off"
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# WHERE ON THE SOURCE A CLEANED PIXEL CAME FROM — `KNOWN_FAILURES.md` F-030
+#
+# `_clean_image` applies THREE geometric operations and used to record none of
+# them: a crop, a turn, and a second crop. `_crop_to_content` computed each
+# crop's origin and dropped it on the next line; `_rotation` built the turn's
+# matrix and handed it to `warpAffine` and to nobody else. So a coordinate on
+# a cleaned page could not be placed on the document it came off.
+#
+# THE HALF-FIX THIS SECTION EXISTS TO REFUSE. F-030 names the crop origin, and
+# recording the origin alone would look like the fix and be wrong on every
+# scan. Measured through the real cleaner on a page planted DEAD STRAIGHT, the
+# module still measures -0.3000 degrees of skew and turns the page, and the
+# displacement no single translation can absorb is 0.9182 px; at 3 degrees it
+# is 9.3618 px and at 15 degrees 48.8693 px. A translation-only record is not
+# an approximation of the answer, it is a different answer.
+#
+# So the recorded map is the COMPOSITION of all three, and
+# `test_the_map_is_not_a_translation_because_the_page_was_turned` is the test
+# that goes red if anyone reduces it back to an origin.
+#
+# THE ORACLE IS THE INK'S CENTRE OF MASS, and it is one `cleaner` does not
+# share. An affine map carries a centroid to the transform of the centroid,
+# exactly — so the centroid is the one property a crop, a turn and a second
+# crop cannot disturb, and `cv2.moments` is a route into it that this module
+# uses nowhere in its geometry.
+
+
+#: A source raster pixel. The bound on every round trip below, and DERIVED
+#: rather than chosen (Law 10): a map into a pixel grid cannot answer more
+#: precisely than the grid it answers in. `test_pdf_backend.py`'s F-031 guard
+#: derives its own bound the same way, and this is the same pixel.
+ONE_SOURCE_PIXEL = 1.0
+
+#: The definition of a point. Arithmetic, not a setting.
+POINTS_PER_INCH = 72.0
+
+#: The two resolutions F-030 measured its disagreement across. The coarser one
+#: sets the bound, because one of ITS pixels is the larger quantum.
+COARSE_RENDER_DPI = 150
+FINE_RENDER_DPI = 300
+
+
+def ink_centroid(image: Image) -> tuple[float, float]:
+    """The ink's centre of mass as (x, y), by moments.
+
+    `cleaner` computes no centroid anywhere, so this is an oracle the module
+    under test does not share (§J.(b)). `binaryImage=True` counts each ink
+    pixel once, so the result is the geometric centroid of the ink SET and not
+    an intensity-weighted one — the quantity an affine map preserves exactly.
+    """
+    _threshold, mask = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    moments = cv2.moments(_u8(mask), binaryImage=True)
+    assert moments["m00"] > 0.0, "the fixture carries no ink, so it has no centroid to check"
+    return moments["m10"] / moments["m00"], moments["m01"] / moments["m00"]
+
+
+def a_skewed_invoice() -> Image:
+    """The established skew fixture: text lines, padded to turn into, turned.
+
+    Reused rather than invented so the turn this section maps through is the
+    same turn the deskew tests above already prove the module measures.
+    """
+    return turned(padded(a_page()), KNOWN_SKEW_DEGREES)
+
+
+def test_a_cleaned_pixel_maps_back_to_the_source_pixel_it_came_from() -> None:
+    """F-030's headline, as a round trip through the real cleaner.
+
+    The ink's centroid is located independently on the cleaned page and on the
+    page as received. Mapping the first through the recorded geometry must land
+    on the second, because an affine map carries a centroid to the transform of
+    the centroid and the map is exactly a translation, a turn and a second
+    translation composed.
+
+    THE PREMISE IS CHECKED RATHER THAN ASSUMED. `ink_kept_by_crop` is asserted
+    at full retention first: if a crop had thrown ink away, the two centroids
+    would legitimately differ and this test would be measuring the discard
+    instead of the map, and would fail for a reason that is not a defect in the
+    map at all.
+
+    Measured on this fixture: the page is turned -7.0013 degrees and the round
+    trip lands 0.270661 px from the truth, against a bound of one pixel.
+
+    THE RESIDUAL IS THE ORACLE'S, NOT THE MAP'S, and that was separated rather
+    than assumed. Interpolation and CLAHE reclassify a few stroke-edge pixels,
+    so the cleaned page's ink SET is not quite the affine image of the source's
+    and the two centroids are entitled to differ slightly. On the solid-bar
+    page of `a_page_of_solid_bars(0.0)`, where no turn fires and the ink set is
+    the same region at every resolution, the identical round trip measures
+    EXACTLY 0.000000 px at 150, 300 and 600 dpi.
+    """
+    source = a_skewed_invoice()
+    result = cleaner._clean_image(source, BASELINE)
+
+    kept = result.observed(cleaner.INK_KEPT_BY_CROP, cleaner.Stage.CLEANED).value
+    assert kept == FULL_RETENTION, (
+        "the crop discarded ink, so the two centroids are entitled to differ "
+        "and this test would be measuring the discard rather than the map"
+    )
+    turn = result.observed(cleaner.DESKEW_APPLIED, cleaner.Stage.CLEANED).value
+    assert turn is not None and abs(turn) > KNOWN_SKEW_DEGREES / 2.0, (
+        "the fixture was not turned, so this test would pass on a map that "
+        "knows nothing about rotation"
+    )
+
+    geometry = result.geometry_of()
+    mapped = geometry.source_pixel(*ink_centroid(result.cleaned))
+    truth = ink_centroid(cleaner._to_grey(result.original))
+
+    assert math.hypot(mapped[0] - truth[0], mapped[1] - truth[1]) < ONE_SOURCE_PIXEL, (
+        f"the cleaned page's ink centroid mapped to {mapped}, and on the page "
+        f"as received it sits at {truth}. A cleaned coordinate cannot be placed "
+        "on the document it came off."
+    )
+
+
+def test_the_map_is_not_a_translation_because_the_page_was_turned() -> None:
+    """THE HALF-FIX, REFUSED. F-030 names the discarded crop origin, and a
+    record of the origin alone would be a translation.
+
+    Two assertions, and the second is the one that bites. The first says the
+    map's linear part is not the identity — a turn is present in it at all. The
+    second reconstructs the best translation-only answer there is, by taking
+    the map's own offset and dropping its linear part, and requires it to MISS
+    the source centroid by more than a pixel. Without it, a map whose linear
+    part was some harmless near-identity would still pass.
+
+    Measured: the translation-only answer lands 54.453481 px from the truth,
+    where the real map lands 0.270661 px from it. Two hundred times the bound —
+    this is not a fix that is nearly right without the rotation.
+    """
+    source = a_skewed_invoice()
+    result = cleaner._clean_image(source, BASELINE)
+    geometry = result.geometry_of()
+    across, down = ink_centroid(result.cleaned)
+    truth = ink_centroid(cleaner._to_grey(result.original))
+
+    scale_x, shear_x, shift_x, shear_y, scale_y, shift_y = geometry.to_source
+    assert (scale_x, shear_x, shear_y, scale_y) != (1.0, 0.0, 0.0, 1.0), (
+        "the map's linear part is the identity, so the recorded geometry is a "
+        "pure translation and the deskew rotation was never recorded"
+    )
+
+    as_a_translation = (across + shift_x, down + shift_y)
+    missed = math.hypot(as_a_translation[0] - truth[0], as_a_translation[1] - truth[1])
+    assert missed > ONE_SOURCE_PIXEL, (
+        f"a translation-only map lands {missed:.4f} px from the truth, which is "
+        "inside the bound the real map has to meet — so this test cannot tell "
+        "the two apart and proves nothing about the rotation being recorded"
+    )
+
+
+#: The turn planted in the scanned fixture below. Small enough to be an
+#: ordinary scan and large enough that the module measures a DIFFERENT angle at
+#: each resolution — -3.8490 deg at 150 dpi against -4.0002 deg at 300 — which
+#: is what stops this test passing on a map that records one angle for both.
+SCANNED_SKEW_DEGREES = 4.0
+
+#: The page F-030 measured its 4.80 pt disagreement on, in points. Stated so
+#: the "is this answer even on the page?" assertion below reads as the question
+#: it is rather than as two bare numbers.
+SCANNED_PAGE_WIDTH_POINTS = 400
+SCANNED_PAGE_HEIGHT_POINTS = 200
+
+
+def a_page_of_solid_bars(degrees: float) -> bytes:
+    """Bars, not text, and the reason is the ORACLE rather than the module.
+
+    `an_image_page()` draws antialiased glyphs. A stroke's grey halo is a
+    different FRACTION of the stroke at 300 dpi than at 150, so Otsu calls a
+    different set of pixels ink and the centroid moves with the resolution
+    before any map is consulted — measured, that oracle drifts 0.5692 pt across
+    150 and 300 dpi on its own, which is already wider than the one-pixel bound
+    this test has to meet. A test built on it measures the instrument.
+
+    Solid bars thirty pixels thick have a halo that is a vanishing fraction of
+    the shape, so the ink set is the same region at every resolution: measured,
+    the same oracle drifts 0.0000 pt.
+    """
+    page: Image = np.full((200, 400), 255, dtype=np.uint8)
+    page[40:70, 60:340] = 0
+    page[90:120, 60:250] = 0
+    page[140:170, 60:300] = 0
+    matrix = cv2.getRotationMatrix2D((200.0, 100.0), degrees, 1.0)
+    return _png_bytes(
+        _u8(
+            cv2.warpAffine(
+                page,
+                matrix,
+                (400, 200),
+                flags=cv2.INTER_LINEAR,
+                borderMode=cv2.BORDER_CONSTANT,
+                borderValue=255.0,
+            )
+        )
+    )
+
+
+def a_scanned_pdf_of_solid_bars(degrees: float) -> bytes:
+    """The same 400x200 pt page F-030 measured, carrying bars instead of text.
+
+    The image is placed to FILL the page, and the image is 400x200 pixels, so
+    one authored pixel is exactly one point — which is what makes the authored
+    ink position a ground truth in the unit the answer is wanted in.
+    """
+    fitz = importlib.import_module("pymupdf")
+    document = fitz.open()
+    try:
+        page = document.new_page(width=SCANNED_PAGE_WIDTH_POINTS, height=SCANNED_PAGE_HEIGHT_POINTS)
+        page.insert_image(
+            fitz.Rect(0, 0, SCANNED_PAGE_WIDTH_POINTS, SCANNED_PAGE_HEIGHT_POINTS),
+            stream=a_page_of_solid_bars(degrees),
+        )
+        return bytes(document.tobytes())
+    finally:
+        document.close()
+
+
+def test_cleaning_adds_no_disagreement_between_two_render_dpis() -> None:
+    """F-030'S MEASURED CONSEQUENCE, AND THE NUMBER THIS CHANGE IS FOR.
+
+    A 400x200 pt scan rebuilds as 219.84x35.52 pt at 150 dpi and 215.04x30.96
+    pt at 300 dpi — a 4.80 pt disagreement about one document, because the
+    content box lands on different pixel boundaries at each resolution. The
+    cleaned PAGES are entitled to differ; what may not differ is where a mark
+    on them says it is on the source page.
+
+    TWO CLAIMS, AND THE FIRST IS THE STRICTER ONE.
+
+        The map's own error, with the oracle's resolution-dependence removed
+        entirely by comparing the mapped answer against the source answer AT
+        THE SAME DPI. Measured: 0.0372 and 0.0622 px at 150 dpi, 0.0446 and
+        0.0316 px at 300 — and EXACTLY 0.000000 px on the unturned page, where
+        the map is two translations and nothing else.
+
+        What cleaning ADDS to the DPI disagreement, over what rasterising the
+        page already has. This is F-030's complaint stated exactly — *"two runs
+        of the same document do not even agree with each other"* — and the
+        honest answer is not "they agree perfectly", because the rasteriser
+        itself quantises. It is that the CLEANER contributes nothing. Measured:
+        -0.0071 pt on x and +0.0222 pt on y, against 4.80 pt before this
+        change.
+
+    Both bounds are one source pixel at the coarser resolution, derived exactly
+    as `test_pdf_backend.py`'s F-031 guard derives its own. Neither is chosen,
+    and both sit an order of magnitude above what is measured.
+
+    THIS IS THE TEST THAT FAILS IF THE RESOLUTION IS NOT RECORDED. Source
+    PIXELS at 150 and at 300 dpi are different units, and only the resolution
+    converts both into the space the source page is measured in.
+    """
+    source = a_scanned_pdf_of_solid_bars(SCANNED_SKEW_DEGREES)
+    mapped: dict[int, tuple[float, float]] = {}
+    on_the_source: dict[int, tuple[float, float]] = {}
+    turns: dict[int, float | None] = {}
+
+    for dpi in (COARSE_RENDER_DPI, FINE_RENDER_DPI):
+        rendered = _to_grey_page_of(source, dpi)
+        truth = ink_centroid(rendered)
+        result = cleaner.clean_artifact(source, cleaner.MediaKind.PDF, a_settings(), render_dpi=dpi)
+        assert result.artifact is not None
+        assert result.artifact.raster is not None
+        turns[dpi] = result.observed(cleaner.DESKEW_APPLIED, cleaner.Stage.CLEANED).value
+        geometry = result.geometry_of()
+        assert geometry.render_dpi == dpi, "the resolution that rendered the page was not recorded"
+
+        in_pixels = geometry.source_pixel(*ink_centroid(result.artifact.raster))
+        assert math.hypot(in_pixels[0] - truth[0], in_pixels[1] - truth[1]) < ONE_SOURCE_PIXEL, (
+            f"at {dpi} dpi the cleaned ink maps to {in_pixels} on the rendered "
+            f"page, where it actually sits at {truth}"
+        )
+
+        points = POINTS_PER_INCH / dpi
+        mapped[dpi] = (in_pixels[0] * points, in_pixels[1] * points)
+        on_the_source[dpi] = (truth[0] * points, truth[1] * points)
+
+    coarse_turn, fine_turn = turns[COARSE_RENDER_DPI], turns[FINE_RENDER_DPI]
+    assert coarse_turn is not None and fine_turn is not None
+    assert coarse_turn != 0.0, (
+        "the fixture was not turned at all, so this test would pass on a map "
+        "that knows nothing about rotation"
+    )
+    assert coarse_turn != fine_turn, (
+        "both resolutions measured the same turn, so this test would pass on a "
+        "map that recorded one page's rotation and used it for the other"
+    )
+
+    one_pixel_in_points = POINTS_PER_INCH / COARSE_RENDER_DPI
+    for axis, name in ((0, "x"), (1, "y")):
+        after_cleaning = abs(mapped[COARSE_RENDER_DPI][axis] - mapped[FINE_RENDER_DPI][axis])
+        rasterised = abs(
+            on_the_source[COARSE_RENDER_DPI][axis] - on_the_source[FINE_RENDER_DPI][axis]
+        )
+        assert after_cleaning - rasterised <= one_pixel_in_points, (
+            f"on {name}, the same ink is placed {after_cleaning:.4f} pt apart by "
+            f"the two runs while rasterising alone places it {rasterised:.4f} pt "
+            f"apart. Cleaning added {after_cleaning - rasterised:.4f} pt of "
+            "disagreement about where the ink is."
+        )
+
+
+#: The bars are AUTHORED as a 400x200 PIXEL image placed on a 400x200 POINT
+#: page, so one authored pixel is exactly one point and the authored ink
+#: position IS the ink's position in points. That makes the authored image a
+#: ground truth measured before any rasterisation, in the unit the answer is
+#: wanted in, and reachable without the resolution the code under test uses.
+#:
+#: The bound is one authored pixel, derived the same way every other bound
+#: here is: the truth is known to the resolution it was drawn at. Measured
+#: error against it — 0.3430 pt at 150 dpi, 0.4665 at 300, 0.5690 at 600,
+#: converging on the fraction of a pixel the PDF's own image resampling moves
+#: the ink by, and not on anything the map does.
+ONE_AUTHORED_POINT = 1.0
+
+
+def test_a_cleaned_coordinate_lands_where_the_ink_was_authored_on_the_page() -> None:
+    """`source_point` on a REAL value, against a truth from outside the module.
+
+    `test_cleaning_adds_no_disagreement_between_two_render_dpis` compares two
+    runs to each other, which is the right question for F-030 and cannot see an
+    error both runs share. Measured: with that test alone, inverting the
+    conversion — multiplying by the resolution instead of dividing — SURVIVED,
+    because nothing ever asked `source_point` for an answer and checked it
+    against a page.
+
+    So this asks for one, and checks it against where the ink was drawn. A
+    conversion inverted, dropped, or applied in the wrong direction puts the
+    answer thousands of points off a page 400 points wide.
+    """
+    authored = ink_centroid(cleaner._to_grey(cleaner.decode(a_page_of_solid_bars(0.0))))
+    source = a_scanned_pdf_of_solid_bars(0.0)
+
+    for dpi in (COARSE_RENDER_DPI, FINE_RENDER_DPI):
+        result = cleaner.clean_artifact(source, cleaner.MediaKind.PDF, a_settings(), render_dpi=dpi)
+        assert result.artifact is not None
+        assert result.artifact.raster is not None
+
+        across, down = result.geometry_of().source_point(*ink_centroid(result.artifact.raster))
+
+        assert 0.0 <= across <= SCANNED_PAGE_WIDTH_POINTS, (
+            f"at {dpi} dpi the ink is reported at x={across:.4f} pt on a page "
+            f"{SCANNED_PAGE_WIDTH_POINTS} pt wide, which is not on the page at all"
+        )
+        assert 0.0 <= down <= SCANNED_PAGE_HEIGHT_POINTS, (
+            f"at {dpi} dpi the ink is reported at y={down:.4f} pt on a page "
+            f"{SCANNED_PAGE_HEIGHT_POINTS} pt tall, which is not on the page at all"
+        )
+        assert abs(across - authored[0]) < ONE_AUTHORED_POINT, (
+            f"at {dpi} dpi the ink is reported at x={across:.4f} pt; it was drawn "
+            f"at x={authored[0]:.4f} pt"
+        )
+        assert abs(down - authored[1]) < ONE_AUTHORED_POINT, (
+            f"at {dpi} dpi the ink is reported at y={down:.4f} pt; it was drawn "
+            f"at y={authored[1]:.4f} pt"
+        )
+
+
+def _to_grey_page_of(document: bytes, dpi: int) -> Image:
+    """The source raster the cleaner will be handed, rendered independently.
+
+    Through `pdf_backend` rather than through `cleaner`, so the truth this test
+    compares against is not produced by the code path under test.
+    """
+    opened = pdf_backend.open_pdf(document)
+    try:
+        rendered = pdf_backend.render_page_png(opened, 0, dpi=dpi)
+    finally:
+        pdf_backend.close_pdf(opened)
+    decoded = cv2.imdecode(np.frombuffer(rendered, np.uint8), cv2.IMREAD_GRAYSCALE)
+    assert decoded is not None, "the backend's own PNG did not decode"
+    return _u8(decoded)
+
+
+def test_the_geometry_survives_the_copy_that_attaches_the_artifact() -> None:
+    """`replace_artifact` rebuilds `CleanedDocument` field by field, so a field
+    it forgets is silently emptied on EVERY path that produces an artifact —
+    which is every path a consumer ever sees. The identity check is the point:
+    a copy that rebuilt the records would also be a copy that could rebuild
+    them differently.
+    """
+    result = cleaner._clean_image(a_skewed_invoice(), BASELINE)
+    assert result.source_geometry != (), "the fixture produced no geometry to lose"
+
+    copied = cleaner.replace_artifact(
+        result,
+        cleaner.CleanedArtifact(
+            kind=cleaner.MediaKind.IMAGE, payload=b"png", original=b"png-source"
+        ),
+    )
+
+    assert copied.source_geometry == result.source_geometry
+    assert copied.geometry_of() is result.geometry_of()
+
+
+def test_every_page_of_a_scan_carries_its_own_geometry_and_not_page_ones() -> None:
+    """`KNOWN_FAILURES.md` D3, applied to the new field before it can repeat.
+
+    D3 was page one's measurements standing for a whole document. Geometry has
+    the identical shape and a worse consequence: every page of a multi-page
+    scan is cropped and turned differently, so page one's map placed on page
+    three's coordinates is not an approximation, it is another page's answer.
+    """
+    first = cleaner._clean_image(a_small_banded_page(), BASELINE)
+    second = cleaner._clean_image(a_skewed_invoice(), BASELINE)
+
+    joined = cleaner._every_page_reported([first, second])
+
+    assert [record.page for record in joined.source_geometry] == [1, 2], (
+        "the pages were not numbered one and two in the order they were given"
+    )
+    assert joined.geometry_of(1).to_source == first.geometry_of().to_source
+    assert joined.geometry_of(2).to_source == second.geometry_of().to_source
+    assert joined.geometry_of(1).to_source != joined.geometry_of(2).to_source, (
+        "two differently cropped pages reported the same map, so the fixture "
+        "cannot tell page two's geometry from page one's"
+    )
+
+
+def test_a_page_the_document_does_not_have_is_refused_rather_than_answered() -> None:
+    """The same discipline `observed` keeps. A silent fallback to page one is
+    exactly how page one's evidence came to stand for a whole document.
+    """
+    result = cleaner._clean_image(a_small_banded_page(), BASELINE)
+
+    with pytest.raises(KeyError):
+        result.geometry_of(2)
+
+
+def test_points_are_refused_on_a_raster_this_module_did_not_render() -> None:
+    """An image arrives already rasterised, at whatever resolution it was
+    captured at. Its pixels ARE the document's own space and there is no page
+    of points behind them, so a point is a question with no answer — and
+    answering it by treating a pixel as a point would put a fabricated unit in
+    the artifact (Law 24, Law 11).
+    """
+    result = cleaner.clean_artifact(
+        _png_bytes(a_skewed_invoice()), cleaner.MediaKind.IMAGE, BASELINE, render_dpi=RENDER_DPI
+    )
+    geometry = result.geometry_of()
+
+    assert geometry.render_dpi is None, (
+        "an image path recorded a render resolution, but nothing rendered it — "
+        "the value can only have come from the caller's unused argument"
+    )
+    assert geometry.source_pixel(0.0, 0.0) is not None
+    with pytest.raises(cleaner.NoRenderResolutionError):
+        geometry.source_point(0.0, 0.0)
+
+
+def test_a_text_layer_pdf_records_no_geometry_because_nothing_was_rasterised() -> None:
+    """The honest empty. A text-layer PDF passes through untouched: there is no
+    raster, no crop and no turn, so there is no map — and its own coordinates
+    are already the document's. Inventing an identity map here would claim a
+    cleaning that never happened.
+    """
+    result = cleaner.clean_artifact(
+        a_text_layer_pdf(), cleaner.MediaKind.PDF, a_settings(), render_dpi=RENDER_DPI
+    )
+
+    assert result.source_geometry == ()
+    with pytest.raises(KeyError):
+        result.geometry_of()
+
+
+def test_the_recorded_source_extent_is_the_raster_the_map_answers_in() -> None:
+    """The map's codomain, carried so a consumer can tell an on-page answer
+    from an off-page one without holding the source array.
+
+    Asserted against `original.shape` rather than against a number in this
+    file, which turns what would otherwise be a duplicated value into a checked
+    invariant (Law 19). On a multi-page scan `original` is page one's alone, so
+    for every page after the first this record is the ONLY statement of the
+    raster its coordinates live in.
+
+    ALL THREE CHANNEL COUNTS, because `original` is carried in the shape it
+    ARRIVED in while the extent is taken off the one-channel form. One, three
+    and four channels are three different `original.shape` lengths, and a
+    reading that happened to work for the grey case could transpose or truncate
+    on the others without any grey fixture noticing.
+    """
+    grey = a_skewed_invoice()
+    colour = _u8(cv2.cvtColor(grey, cv2.COLOR_GRAY2BGR))
+    opaque = _u8(cv2.cvtColor(grey, cv2.COLOR_GRAY2BGRA))
+
+    for label, source in (("grey", grey), ("colour", colour), ("with alpha", opaque)):
+        result = cleaner._clean_image(source, BASELINE)
+        geometry = result.geometry_of()
+        assert (geometry.source_height, geometry.source_width) == result.original.shape[:2], (
+            f"the {label} page's recorded extent is not the extent of the raster "
+            "the map answers in, so an off-page answer cannot be told from an "
+            "on-page one"
+        )
+
+
+def test_the_crop_reports_the_origin_it_cropped_at() -> None:
+    """The discarded quantity, at the function that used to discard it.
+
+    Both cases, because they are different code paths: a page with a content
+    box reports the box's own inset less the margin, and a uniform page — which
+    is returned whole rather than cropped to nothing — reports the origin of a
+    crop that did not happen.
+    """
+    banded = a_small_banded_page()
+
+    _cropped, _kept, origin = cleaner._crop_to_content(banded, 0)
+    assert origin == (10, 5), (
+        "the banded fixture's ink starts at column 10, row 5, so a zero-margin "
+        "crop starts there too"
+    )
+
+    _margined, _also, inset = cleaner._crop_to_content(banded, 3)
+    assert inset == (7, 2), "the margin was not subtracted from the box's origin"
+
+    _whole, _full, nothing = cleaner._crop_to_content(a_small_uniform_page(), 4)
+    assert nothing == (0, 0), (
+        "a uniform page is returned whole, so its origin is the page's own and "
+        "not the margin the crop would have used"
+    )
+
+
+def test_the_map_is_recorded_when_the_deskew_is_refused() -> None:
+    """The branch where the turn does NOT happen, which is a different answer
+    and not a missing one.
+
+    `_deskew` refuses a skew past `max_deskew_degrees` and hands the page back
+    unturned. The map is then two translations and an identity, and a record
+    that silently omitted itself on this branch would leave the coordinates of
+    the WORST-skewed pages — the ones a human is most likely to have to go and
+    check — the only ones nobody can place.
+    """
+    beyond = turned(padded(a_page()), BEYOND_THE_LIMIT_DEGREES)
+    result = cleaner._clean_image(beyond, settings(max_deskew_degrees=15.0))
+
+    refused = result.observed(cleaner.DESKEW_APPLIED, cleaner.Stage.CLEANED)
+    assert refused.value == 0.0, "the fixture was turned, so this is not the refusal branch"
+    assert "exceeds" in refused.note, "the refusal was not the reason the page was left alone"
+
+    geometry = result.geometry_of()
+    scale_x, shear_x, _shift_x, shear_y, scale_y, _shift_y = geometry.to_source
+    assert (scale_x, shear_x, shear_y, scale_y) == (1.0, 0.0, 0.0, 1.0), (
+        "no rotation was applied, so the map's linear part must be the identity; "
+        "anything else turns coordinates the page never turned"
+    )
+    mapped = geometry.source_pixel(*ink_centroid(result.cleaned))
+    truth = ink_centroid(cleaner._to_grey(result.original))
+    assert math.hypot(mapped[0] - truth[0], mapped[1] - truth[1]) < ONE_SOURCE_PIXEL
+
+
+def test_a_page_with_no_ink_still_records_the_map_it_did_not_move_by() -> None:
+    """A blank sheet is returned whole and unturned, so its map is the identity.
+
+    Recorded rather than omitted, for the reason `decode` raises rather than
+    returning a blank page: an absent record and an identity record are
+    different statements, and a consumer that met the first would have to guess
+    which one it was looking at.
+    """
+    result = cleaner._clean_image(a_small_uniform_page(), BASELINE)
+
+    geometry = result.geometry_of()
+    assert geometry.to_source == (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
+    assert geometry.source_pixel(7.0, 11.0) == (7.0, 11.0), (
+        "nothing moved, so every coordinate must map to itself"
+    )
+
+
+def a_two_page_scan(first_turn: float, second_turn: float) -> bytes:
+    """Two scanned pages, each turned differently, so their maps must differ."""
+    fitz = importlib.import_module("pymupdf")
+    document = fitz.open()
+    try:
+        for degrees in (first_turn, second_turn):
+            page = document.new_page(
+                width=SCANNED_PAGE_WIDTH_POINTS, height=SCANNED_PAGE_HEIGHT_POINTS
+            )
+            page.insert_image(
+                fitz.Rect(0, 0, SCANNED_PAGE_WIDTH_POINTS, SCANNED_PAGE_HEIGHT_POINTS),
+                stream=a_page_of_solid_bars(degrees),
+            )
+        return bytes(document.tobytes())
+    finally:
+        document.close()
+
+
+def test_a_two_page_scan_carries_both_maps_through_the_single_entry_point() -> None:
+    """THE WIRING, end to end, which no test above can see.
+
+    `test_every_page_of_a_scan_carries_its_own_geometry_and_not_page_ones`
+    calls `_every_page_reported` directly. That proves the join and nothing
+    else: between `_clean_image` and a consumer sit `_pdf_rebuilt_from_cleaned_
+    pages`, the join, and `replace_artifact`, and the record has to survive all
+    three. §J.(a) — a gate that never loads the real path is a gate that has not
+    run it.
+
+    The two pages are turned by different amounts, so a map borrowed from page
+    one cannot pass for page two's.
+    """
+    cleaned = cleaner.clean_artifact(
+        a_two_page_scan(0.0, SCANNED_SKEW_DEGREES),
+        cleaner.MediaKind.PDF,
+        a_settings(),
+        render_dpi=COARSE_RENDER_DPI,
+    )
+
+    assert [record.page for record in cleaned.source_geometry] == [1, 2], (
+        "a two-page scan did not report two pages of geometry in page order"
+    )
+    for page in (1, 2):
+        assert cleaned.geometry_of(page).render_dpi == COARSE_RENDER_DPI, (
+            f"page {page}'s resolution was lost between rendering and the artifact"
+        )
+    assert cleaned.geometry_of(1).to_source != cleaned.geometry_of(2).to_source, (
+        "both pages reported the same map, so one of them is the other's"
     )

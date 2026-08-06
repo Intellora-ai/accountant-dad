@@ -15,6 +15,25 @@ else. There is no extracted text on it, no field, no confidence score: those
 belong to `reader`, `parser` and `confidence`, and `ENGINE_1:113` — *"no
 sub-engine overrides another."*
 
+    `source_geometry` IS PART OF THE FIRST OF THE THREE, NOT A FOURTH, and the
+    reasoning is written down here rather than assumed because the count above
+    is the module's own rule. A raster with no statement of what it is a raster
+    OF is not a representation of the artifact; it is a different picture that
+    happens to have come from it. `COMMUNICATION_RULES_INPUT_ENGINE.md` Rule 4
+    requires every extracted value to keep *"Source — where in the artifact it
+    came from"*, permanently and *"not stripped at the engine boundary"* — and
+    `reader` CANNOT honour that for a cleaned scan unless this module says
+    where the cleaned page sits on the page it was given. It did not, which is
+    `KNOWN_FAILURES.md` F-030. So this field does not add a product; it makes
+    the first product satisfy a locked rule it was silently failing.
+
+    WHERE THAT READING COULD BE WRONG, stated rather than buried: whether the
+    owner regards a source map as part of *"cleaned document representation"*
+    or as a fourth named product is a decision about the locked documents, and
+    no code change can take it. If it is the latter, `ENGINE_1:405`, §1.1 and
+    this paragraph are what need revising — the field is still required either
+    way, because Rule 4 is not optional.
+
 IT REPORTS MEASUREMENTS; IT DOES NOT JUDGE THEM.
     §1.1 — quality issues are *"reported as evidence for `confidence`, never
     repaired by guesswork."* `ENGINE_1:109` — `cleaner` emits SIGNALS and only
@@ -183,6 +202,12 @@ _ALPHA_CHANNEL = 3
 #: of a mask, so that a mask prints and inspects like the image it accompanies.
 _FULL_SCALE = 255
 
+#: The definition of a typographic point. Arithmetic, not a setting: it is what
+#: converts a pixel counted at a known resolution into the unit a PDF page is
+#: measured in. `pdf_backend` derives its own one-pixel bound from the same
+#: constant, and this is the same pixel.
+_POINTS_PER_INCH = 72.0
+
 
 class ImpossibleSettingError(ValueError):
     """A setting OpenCV or arithmetic cannot honour. Raised at construction."""
@@ -194,6 +219,19 @@ class UnusableArtifactError(ValueError):
 
 class UndecodableArtifactError(UnusableArtifactError):
     """Bytes that are not a decodable image. Never a blank page in its place."""
+
+
+class NoRenderResolutionError(LookupError):
+    """A point asked of a raster this module did not render from a page.
+
+    DELIBERATELY NOT AN `UnusableArtifactError`, for the reason
+    `NoCleanerRegisteredError` is not one either: an `UnusableArtifactError` is
+    a verdict about the DOCUMENT, and the document here is fine. An image
+    arrives already rasterised at whatever resolution it was captured at, so
+    its pixels ARE its own space and there is no page of points behind them.
+    Answering anyway — treating a pixel as a point — would put a unit in the
+    artifact that nothing measured (Law 11, Law 24).
+    """
 
 
 class Stage(StrEnum):
@@ -378,6 +416,117 @@ class CleanedArtifact:
     raster: Image | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class SourceGeometry:
+    """Where a cleaned page's pixels came from on the page as received.
+
+    `KNOWN_FAILURES.md` F-030: `_clean_image` applies THREE geometric
+    operations and recorded NONE of them — a crop, a turn, and a second crop.
+    `_crop_to_content` computed each crop's origin and dropped it on the next
+    line; `_rotation` built the turn's matrix and handed it to `warpAffine` and
+    to nobody else. A coordinate on a cleaned page therefore could not be
+    placed on the document it came off, which is the traceability contract —
+    Rule 4 of `COMMUNICATION_RULES_INPUT_ENGINE.md`, *a value must be traceable
+    back to the thing it was read off*.
+
+    WHY THIS IS A MAP AND NOT A CROP ORIGIN, WHICH IS WHAT F-030 NAMES.
+        A crop is a translation, so an origin describes it completely. The
+        deskew is a ROTATION about the centre of a frame whose canvas is then
+        grown, and no translation approximates a rotation. Measured through the
+        real cleaner: on a page planted DEAD STRAIGHT the module still measures
+        -0.3000 degrees and turns it, and the displacement no single
+        translation can absorb is 0.9182 px; at 3 degrees it is 9.3618 px and
+        at 15 degrees 48.8693 px. The turn is not an edge case that a crop
+        origin would be nearly right about — it fires on essentially every
+        scan, and an origin alone would be confidently wrong on all of them
+        while LOOKING like the fix F-030 asked for.
+
+        So the record is the composition of all three, as one affine. That also
+        makes it stage-agnostic: a stage added, removed or reordered inside
+        `_clean_image` multiplies into the same six numbers and no consumer
+        changes (Law 21, Law 32).
+
+        THE LIMIT, STATED RATHER THAN LEFT TO BE DISCOVERED. Affine covers
+        every operation §1.1 permits — *"deskewing, rotation, denoising,
+        cropping, contrast"* — because translation, rotation and scale are all
+        affine. A PERSPECTIVE de-warp is not, and would need a nine-number
+        homography. §1.1 does not name one and none is implemented; if one is
+        ever added, these six numbers cannot carry it and truncating it to them
+        would silently misplace every coordinate on the page.
+
+    SIX FLOATS RATHER THAN AN ARRAY, and that is not a storage detail. A frozen
+    dataclass holding an `ndarray` is frozen only at the top level: anything
+    handed the array can rewrite the map in place, and `CLAUDE.md` §O requires
+    an artifact to be immutable after creation. Six floats cannot be rewritten
+    by a consumer, and no consumer needs the matrix anyway — `source_pixel` and
+    `source_point` are the whole interface, which is also why the conversion
+    arithmetic lives in ONE place instead of at every call site (Law 14).
+    """
+
+    #: The affine that carries a CLEANED-page pixel to a SOURCE-raster pixel,
+    #: row-major: `(a, b, c, d, e, f)` meaning
+    #:
+    #:     source_x = a * x + b * y + c
+    #:     source_y = d * x + e * y + f
+    #:
+    #: Read it with `source_pixel`; the tuple is public so a test can prove the
+    #: linear part is not the identity, which is what refuses a translation.
+    to_source: tuple[float, float, float, float, float, float]
+    #: The extent of the raster this map ANSWERS IN, so a consumer can tell an
+    #: on-page answer from an off-page one without holding the source array. On
+    #: a multi-page scan `CleanedDocument.original` is page one's alone, so for
+    #: every page after the first this is the only statement of it.
+    source_height: int
+    source_width: int
+    #: The resolution at which THIS MODULE rendered that raster from a PDF
+    #: page. `None` means no rendering happened here — the raster is the
+    #: artifact as supplied, and its pixels are already the document's own
+    #: space. That is NOT "unknown": it is "there is nothing further to
+    #: convert", the same distinction `CleanedArtifact.raster`'s `None` keeps.
+    render_dpi: int | None = None
+    #: WHICH PAGE this describes, one-based, exactly as `QualityObservation`
+    #: carries it and for the identical reason (`KNOWN_FAILURES.md` D3). Every
+    #: page of a scan is cropped and turned differently, so page one's map
+    #: placed on page three's coordinates is not an approximation — it is
+    #: another page's answer.
+    page: int = 1
+
+    def source_pixel(self, x: float, y: float) -> tuple[float, float]:
+        """The pixel on the page as received that this cleaned pixel came from."""
+        across, shear_across, shift_across, shear_down, down, shift_down = self.to_source
+        return (
+            across * x + shear_across * y + shift_across,
+            shear_down * x + down * y + shift_down,
+        )
+
+    def source_point(self, x: float, y: float) -> tuple[float, float]:
+        """The same location in the SOURCE PAGE's own point space.
+
+        `_POINTS_PER_INCH / render_dpi` and never `page_points / raster_pixels`,
+        and the difference is measured rather than argued. A rasteriser scales
+        the page by `dpi / 72` and then encloses the result in whole pixels, so
+        the enclosure grows the canvas without rescaling anything on it — which
+        makes `72 / dpi` exact and the ratio systematically wrong. Measured on
+        a 400x200 pt page carrying a mark at (300, 150) pt: `72/dpi` reports
+        the mark at x = 299.5200 pt at 150, 300 AND 600 dpi, while the ratio
+        drifts 299.2806 -> 299.4601 -> 299.4601. The ratio's error is exactly
+        the DPI-dependence F-030 exists to remove.
+
+        Raises rather than falling back when nothing rendered this raster: see
+        `NoRenderResolutionError`.
+        """
+        if self.render_dpi is None:
+            raise NoRenderResolutionError(
+                "this raster was not rendered from a page by this module, so it "
+                "has no resolution and its pixels are not points. Refused rather "
+                "than returning the pixel coordinate wearing a unit nothing "
+                "measured."
+            )
+        across, down = self.source_pixel(x, y)
+        points_per_pixel = _POINTS_PER_INCH / self.render_dpi
+        return across * points_per_pixel, down * points_per_pixel
+
+
 @dataclass(frozen=True, slots=True, eq=False)
 class CleanedDocument:
     """The three outputs §1.1 names, plus the original it may never discard.
@@ -400,6 +549,12 @@ class CleanedDocument:
     #: layer being destroyed. `None` only on the raster-only path that predates
     #: `clean_artifact`; every path that knows its media kind sets it.
     artifact: CleanedArtifact | None = None
+    #: WHERE THE CLEANED PIXELS CAME FROM, one record per page, in page order.
+    #: `KNOWN_FAILURES.md` F-030. Empty when no raster exists to have a map at
+    #: all — a text-layer PDF passes through untouched, so there is no crop and
+    #: no turn, and its own coordinates are already the document's. An identity
+    #: map there would claim a cleaning that never happened (Law 24).
+    source_geometry: tuple[SourceGeometry, ...] = ()
 
     def observed(self, name: str, stage: Stage, page: int = 1) -> QualityObservation:
         """The measurement, or `KeyError`. A miss is never a `None` in disguise.
@@ -415,6 +570,23 @@ class CleanedDocument:
                 return observation
         raise KeyError(
             f"no measurement named {name!r} was taken on the {stage} form of page {page}"
+        )
+
+    def geometry_of(self, page: int = 1) -> SourceGeometry:
+        """Where page `page`'s cleaned pixels came from, or `KeyError`.
+
+        The same discipline `observed` keeps, for the same reason: a silent
+        fallback to page one is exactly how page one's evidence came to stand
+        for a whole document (`KNOWN_FAILURES.md` D3), and a map is the one
+        field where borrowing page one's answer misplaces every coordinate on
+        the page rather than merely mis-attributing a number.
+        """
+        for geometry in self.source_geometry:
+            if geometry.page == page:
+                return geometry
+        raise KeyError(
+            f"no source geometry was recorded for page {page}. A cleaned "
+            "coordinate on it cannot be placed on the document it came off."
         )
 
 
@@ -782,6 +954,65 @@ def _rotation(height: int, width: int, degrees: float) -> tuple[Real, int, int]:
     return matrix, grown_width, grown_height
 
 
+def _shift(across: float, down: float) -> Real:
+    """A translation, as the 3x3 that composes by multiplication."""
+    return np.array([[1.0, 0.0, across], [0.0, 1.0, down], [0.0, 0.0, 1.0]], dtype=np.float64)
+
+
+def _composable(affine: Real) -> Real:
+    """A 2x3 affine as the 3x3 that composes by multiplication.
+
+    OpenCV's affines are 2x3, which cannot be multiplied together. The bottom
+    row of a 3x3 affine is always `(0, 0, 1)`, so adding it changes nothing and
+    lets a chain of transforms be composed by `@` rather than by hand-derived
+    algebra — which is the difference between a composition a reader can check
+    and one they have to re-derive (Law 31).
+    """
+    return np.vstack([_f64(affine), np.array([[0.0, 0.0, 1.0]], dtype=np.float64)])
+
+
+def _cleaned_to_source(
+    first_crop: tuple[int, int],
+    turned_extent: tuple[int, int],
+    degrees: float,
+    second_crop: tuple[int, int],
+) -> tuple[float, float, float, float, float, float]:
+    """The whole of `_clean_image`'s geometry, inverted, as one affine.
+
+    `_clean_image` moves a page three times and only three times — crop, turn,
+    crop — so going back is those three undone in reverse:
+
+        p_straightened = p_cleaned      + second_crop
+        p_trimmed      = rotation^-1 . p_straightened
+        p_source       = p_trimmed      + first_crop
+
+    which composes to `shift(first) . rotation^-1 . shift(second)`, read right
+    to left. Denoising and CLAHE are absent from it because neither moves a
+    pixel; they remap intensities, and that is why the stage order in
+    `_clean_image` puts every intensity change before the geometry is set.
+
+    `_rotation` IS THE FUNCTION `_rotate_whole_frame` CALLED, with the same
+    extent and the same angle, so the turn is inverted from the arithmetic that
+    applied it rather than from a second copy of it. That is the reason
+    `_rotation` was factored out in the first place — see its docstring: two
+    copies would be two chances to describe a geometry the page no longer has
+    (Law 14, Law 19). `cv2.invertAffineTransform` is OpenCV's own inverse of
+    OpenCV's own matrix, for the same reason.
+    """
+    height, width = turned_extent
+    matrix, _grown_width, _grown_height = _rotation(height, width, degrees)
+    straightened_to_trimmed = _composable(_f64(cv2.invertAffineTransform(matrix)))
+    composed = _shift(*first_crop) @ straightened_to_trimmed @ _shift(*second_crop)
+    return (
+        float(composed[0, 0]),
+        float(composed[0, 1]),
+        float(composed[0, 2]),
+        float(composed[1, 0]),
+        float(composed[1, 1]),
+        float(composed[1, 2]),
+    )
+
+
 def _rotate_whole_frame(grey: Image, degrees: float, fill: float) -> Image:
     """Rotate onto a canvas grown to hold the rotated frame.
 
@@ -807,8 +1038,9 @@ def _rotate_whole_frame(grey: Image, degrees: float, fill: float) -> Image:
 
 def _crop_to_content(
     grey: Image, margin: int, source: Image | None = None, painted: Image | None = None
-) -> tuple[Image, float]:
-    """Crop to the content box plus the caller's margin. Report the INK kept.
+) -> tuple[Image, float, tuple[int, int]]:
+    """Crop to the content box plus the caller's margin. Report the INK kept,
+    AND WHERE THE CROP STARTED.
 
     The box comes from `_content_box`, which reads line profiles. The retention
     is counted with `_ink_mask`, which reads Otsu. Two different rules, so the
@@ -834,12 +1066,23 @@ def _crop_to_content(
     A uniform page has no content box, and is returned as it arrived. A blank
     sheet cropped to nothing would read downstream as a document that genuinely
     held nothing.
+
+    THE ORIGIN IS RETURNED BECAUSE IT USED TO BE THROWN AWAY, and that was
+    `KNOWN_FAILURES.md` F-030's root cause: `left_kept` and `top_kept` were
+    computed on the two lines below, consumed by the slice on the next one, and
+    never seen again. A crop is a translation of every coordinate on the page,
+    so discarding where it started discards the only record of where the pixels
+    that survived it used to be. It is `(left, top)` — the order a coordinate
+    is written in, not the order a numpy index is.
     """
     ink, _threshold = _ink_mask(grey)
     total = int(np.count_nonzero(ink))
     box = _content_box(grey if source is None else source, painted)
     if box is None:
-        return grey, 1.0
+        # Returned WHOLE, so the crop that did not happen moved nothing and the
+        # origin is the page's own. Reporting the margin here instead would
+        # describe an inset the slice below never took.
+        return grey, 1.0, (0, 0)
     top, bottom, left, right = box
     rows, columns = _extent(grey)
     top_kept = max(top - margin, 0)
@@ -847,10 +1090,11 @@ def _crop_to_content(
     bottom_kept = min(bottom + 1 + margin, rows)
     right_kept = min(right + 1 + margin, columns)
     cropped: Image = grey[top_kept:bottom_kept, left_kept:right_kept]
+    origin = (left_kept, top_kept)
     if total == 0:
-        return cropped, 1.0
+        return cropped, 1.0, origin
     kept = int(np.count_nonzero(ink[top_kept:bottom_kept, left_kept:right_kept]))
-    return cropped, kept / total
+    return cropped, kept / total, origin
 
 
 def _observe(grey: Image, stage: Stage) -> tuple[QualityObservation, ...]:
@@ -1035,13 +1279,21 @@ def decode(data: bytes) -> Image:
 
 
 def replace_artifact(document: CleanedDocument, artifact: CleanedArtifact) -> CleanedDocument:
-    """A copy of `document` carrying `artifact`. Nothing measured is touched."""
+    """A copy of `document` carrying `artifact`. Nothing measured is touched.
+
+    FIELD BY FIELD, so a field added to `CleanedDocument` and forgotten here is
+    silently emptied on every path that produces an artifact — which is every
+    path a consumer ever sees. `source_geometry` is carried for that reason and
+    `test_the_geometry_survives_the_copy_that_attaches_the_artifact` is what
+    notices if the next field is not.
+    """
     return CleanedDocument(
         original=document.original,
         cleaned=document.cleaned,
         quality_observations=document.quality_observations,
         preservation_status=document.preservation_status,
         artifact=artifact,
+        source_geometry=document.source_geometry,
     )
 
 
@@ -1117,6 +1369,7 @@ def _every_page_reported(per_page: list[CleanedDocument]) -> CleanedDocument:
     status is the worst any page reported.
     """
     combined: list[QualityObservation] = []
+    placed: list[SourceGeometry] = []
     for number, document in enumerate(per_page, start=1):
         for observation in document.quality_observations:
             combined.append(
@@ -1126,6 +1379,21 @@ def _every_page_reported(per_page: list[CleanedDocument]) -> CleanedDocument:
                     value=observation.value,
                     unit=observation.unit,
                     note=observation.note,
+                    page=number,
+                )
+            )
+        # STAMPED THE SAME WAY THE OBSERVATIONS ARE, because the geometry has
+        # D3's exact shape and a worse consequence: every page of a scan is
+        # cropped and turned differently, so page one's map placed on page
+        # three's coordinates is not an approximation of page three's answer —
+        # it is page one's, applied to the wrong page.
+        for geometry in document.source_geometry:
+            placed.append(
+                SourceGeometry(
+                    to_source=geometry.to_source,
+                    source_height=geometry.source_height,
+                    source_width=geometry.source_width,
+                    render_dpi=geometry.render_dpi,
                     page=number,
                 )
             )
@@ -1142,6 +1410,7 @@ def _every_page_reported(per_page: list[CleanedDocument]) -> CleanedDocument:
             PreservationStatus.ORIGINAL_IS_SAFER if damaged else PreservationStatus.CLEANED_IS_SAFER
         ),
         artifact=first.artifact,
+        source_geometry=tuple(placed),
     )
 
 
@@ -1177,7 +1446,14 @@ def _pdf_rebuilt_from_cleaned_pages(
     try:
         for index in range(page_count(source)):
             rendered = render_page_png(source, index, dpi=render_dpi)
-            document = _clean_image(decode(rendered), settings)
+            # `render_dpi` REACHES THE GEOMETRY, not just the rasteriser. These
+            # pixels exist only because this line rendered them at this
+            # resolution, so it is the exact conversion from a source pixel
+            # back to the point space the PDF page is measured in — and
+            # without it a coordinate mapped at 150 dpi and the same
+            # coordinate mapped at 300 dpi are different units that cannot be
+            # compared (`KNOWN_FAILURES.md` F-030).
+            document = _clean_image(decode(rendered), settings, render_dpi=render_dpi)
             cleaned_pages.append(document.cleaned)
             per_page.append(document)
     finally:
@@ -1206,7 +1482,9 @@ def _pdf_rebuilt_from_cleaned_pages(
     )
 
 
-def _clean_image(image: Image, settings: CleanerSettings) -> CleanedDocument:
+def _clean_image(
+    image: Image, settings: CleanerSettings, *, render_dpi: int | None = None
+) -> CleanedDocument:
     """THE IMAGE CLEANER. Improve the pixels' physical quality; change nothing
     they contain.
 
@@ -1296,6 +1574,22 @@ def _clean_image(image: Image, settings: CleanerSettings) -> CleanedDocument:
         than repaired because the quantity it divided was not conserved by the
         stages it spanned, which is a defect of the question and not of the
         arithmetic (Law 24, Law 49).
+
+    WHERE THE CLEANED PIXELS CAME FROM IS NOW RECORDED (`KNOWN_FAILURES.md`
+    F-030). Exactly three stages below move a pixel — the crop, the turn and
+    the second crop — and every one of them used to compute its geometry, use
+    it, and discard it. `_cleaned_to_source` composes the three into one affine
+    and `SourceGeometry` carries it, so a coordinate on the page this function
+    returns can be placed on the page it was handed.
+
+    `render_dpi` DEFAULTS TO `None`, AND THAT IS NOT A NUMBER LEFT UNCHOSEN.
+    Every field of `CleanerSettings` is required because each is an operating
+    point (Law 52); this is not one. It says whether THIS MODULE rasterised
+    these pixels from a page, and for an array handed straight in the answer is
+    no — the pixels arrived at whatever resolution the capture had, and they
+    are already the document's own space. `_pdf_rebuilt_from_cleaned_pages`
+    passes the resolution it actually rendered at; nothing else has one to
+    pass.
     """
     received = _receive(image, settings)
     grey = _to_grey(received)
@@ -1317,7 +1611,9 @@ def _clean_image(image: Image, settings: CleanerSettings) -> CleanedDocument:
     erased = _ink_erased(grey, denoised, split)
     lost = 0.0 if ink_before == 0 else erased / ink_before
 
-    trimmed, kept_by_first_crop = _crop_to_content(denoised, settings.crop_margin_pixels)
+    trimmed, kept_by_first_crop, first_crop = _crop_to_content(
+        denoised, settings.crop_margin_pixels
+    )
     contrasted = _u8(
         cv2.createCLAHE(
             clipLimit=settings.contrast_clip_limit,
@@ -1327,9 +1623,19 @@ def _clean_image(image: Image, settings: CleanerSettings) -> CleanedDocument:
     straightened, straight_source, painted, rotation, filled = _deskew(
         contrasted, trimmed, settings
     )
-    cleaned, kept_by_second_crop = _crop_to_content(
+    cleaned, kept_by_second_crop, second_crop = _crop_to_content(
         straightened, settings.crop_margin_pixels, straight_source, painted
     )
+    # THE ANGLE IS READ FROM THE MEASUREMENT THAT REPORTS IT, not passed
+    # alongside it, so the turn this map undoes and the turn the artifact
+    # claims are the same number by construction — a report that drifted from
+    # what was done would break the map loudly instead of describing a page
+    # that does not exist. `_deskew` sets a float on all three of its branches;
+    # `None` is unreachable and would mean "no rotation", which is 0.0, so the
+    # fallback is the right answer on every path that could reach it rather
+    # than a guess (Law 25).
+    turned = rotation.value or 0.0
+    source_height, source_width = _extent(grey)
     # Each crop's box is drawn from the line profiles and audited with the Otsu
     # mask, so neither factor is 1.0 by algebra; the product is the ink that
     # survived the pair of them.
@@ -1382,6 +1688,14 @@ def _clean_image(image: Image, settings: CleanerSettings) -> CleanedDocument:
         cleaned=cleaned,
         quality_observations=observations,
         preservation_status=safer,
+        source_geometry=(
+            SourceGeometry(
+                to_source=_cleaned_to_source(first_crop, _extent(contrasted), turned, second_crop),
+                source_height=source_height,
+                source_width=source_width,
+                render_dpi=render_dpi,
+            ),
+        ),
     )
 
 
