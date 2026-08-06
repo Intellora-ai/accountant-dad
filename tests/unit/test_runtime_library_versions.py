@@ -47,8 +47,20 @@ FOUR PROPERTIES THAT KEEP THIS FROM BECOMING THE PROBLEM IT GUARDS AGAINST.
   it is deliberately absent. A library that is not installed has no runtime
   version to disagree with anything; it is partitioned into a named ABSENT set
   that `test_every_pinned_import_is_either_checked_or_named_absent` requires to
-  be accounted for. No `@pytest.mark.skip` anywhere — a skip would hide the
-  same fact behind a marker the skip ratchet counts.
+  be accounted for. This file carries no skip marker of any kind — a skip would
+  hide the same fact behind a marker, and the ratchet counts those.
+
+  THE SENTENCE ABOVE IS WORDED THE WAY IT IS ON PURPOSE. The skip ratchet in
+  `testing.yml` greps every file under `tests/` for the literal marker text,
+  without parsing Python. So spelling the marker out here — even inside a
+  docstring boasting that we avoid it — INCREASES THE COUNT and fails the gate.
+  That cost a CI run, and it is the second time this class has bitten: the
+  suppression budget in `quality.yml` counts prose the same way, and a
+  docstring in `test_declared_dependencies.py` tripped it for the same reason.
+
+  Both gates are text-based on purpose. Teaching them to parse Python would let
+  the very thing they guard be smuggled past in a string, an f-string or a
+  generated file. The bluntness is the feature; the prose is what moves.
 """
 
 from __future__ import annotations

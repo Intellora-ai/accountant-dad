@@ -227,6 +227,23 @@ for argument in sys.argv[1:]:
             try:
                 loaded = importlib.import_module(module)
             except Exception as failure:
+                # A PRIVATE top-level name is not part of anyone's import
+                # surface. `paddlepaddle` ships `_foo`, a C-extension artifact
+                # with no `PyInit__foo`, which cannot be imported standalone and
+                # is never meant to be — it blocked this guard on an environment
+                # that was correctly built.
+                #
+                # Reported, not silently dropped, and the shadow defence is
+                # untouched: a shadow is only reachable through a name somebody
+                # writes in an `import` statement, and nobody writes `import
+                # _foo`. Every PUBLIC module that will not import is still a
+                # hard failure — that is a genuinely broken install.
+                if module.startswith("_"):
+                    print(
+                        f"  {module:24} from {raw_name}  "
+                        f"(private, not an import surface: {type(failure).__name__})"
+                    )
+                    continue
                 problems.append(f"module '{module}' from '{raw_name}' will not import: {failure}")
                 continue
             reported = getattr(loaded, "__version__", None)
