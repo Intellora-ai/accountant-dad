@@ -51,15 +51,61 @@ THE CLARIFICATION CYCLE HAS NO DOCUMENTED BOUND, SO THE CALLER SUPPLIES ONE.
     admits only *"a runtime failure that exhausted retries"* — and moving it
     onward would skip a stage.
 
-ARTIFACT IDS ARE SUPPLIED HERE AT P3, AND THAT IS TEMPORARY.
+    **Every artifact already produced is preserved on the exception.**
+    `APPLICATION_LAYER.md:153` and `:313` both say the same thing about a run
+    that cannot finish — *"Completed artifacts PRESERVED"*, *"Nothing
+    fabricated"* — and this module used to discard all four on the way out,
+    which is the one thing a run that fails is not allowed to do. The bound now
+    raises carrying the same `RunResult` a completed pass returns, with
+    `validation` and `execution` honestly `None` because neither engine ran.
+    Engine 1's own `PipelineStageError.preserved` is the identical shape for
+    the identical reason.
+
+ENGINE 1 IS THE REAL ENGINE, AND IT READS THE CALLER'S ACTUAL DOCUMENT.
+    `APPLICATION_LAYER.md:251` — step 1 of engine sequencing passes *"raw
+    document(s) + Transaction ID"*. `APPLICATION_LAYER_CONTRACTS.md:24` names
+    the same input artifact and `:28` makes *"at least one document supplied"* a
+    precondition. Until this module was migrated it supplied no document at all:
+    it called `engines/input_engine/stub.py`, whose own docstring records that
+    it accepts no raw artifact, so the arrow the architecture draws carried
+    nothing across it. `engines/input_engine/pipeline.py` — `cleaner` →
+    `reader` → `parser` → `confidence` → `assembly` — takes the bytes and is
+    what that arrow now carries.
+
+    The Application Layer never looks inside `intake`. It does not sniff the
+    media type, does not read the bytes, and does not pre-classify anything:
+    `APPLICATION_LAYER_CONTRACTS.md:31` forbids all three, so `DocumentIntake`
+    arrives already built by the caller and is handed on untouched.
+
+ENGINE 1'S SETTINGS ARE THE CALLER'S, AND THIS MODULE HAS NO OPINION ON THEM.
+    `input_engine.PipelineSettings` carries ten numbers — eight in
+    `cleaner_settings`, plus `render_dpi` and `vision_fallback_threshold`. Not
+    one of them has a value anywhere in this repository or in any locked
+    document. `docs/ENGINE_1_CONFIDENCE_PARAMETERS.md` names sixteen parameters
+    and marks every one `UNSET`; `render_dpi` and the eight cleaner numbers are
+    not among the sixteen at all.
+
+    So `PipelineConfig.input_engine_settings` is **required with no default**,
+    exactly like `max_clarification_rounds` and for the reason
+    `APPLICATION_LAYER.md:326` gives — *"A missing required value is a startup
+    failure, never a silent default."* Choosing a plausible `render_dpi` here
+    would be this module inventing a number the owner never set, which
+    `CLAUDE.md` §P forbids outright.
+
+ARTIFACT IDS: ENGINE 1 NOW MINTS ITS OWN; THE OTHER FIVE STILL DO NOT.
     Every P3 stub takes its own artifact id as a parameter rather than minting
     one, so that each is a pure function and the suite can assert *same input,
-    equal artifact*. Something has to supply them, and at P3 that is this
-    module.
+    equal artifact*. Something has to supply them, and for Engines 2-6 that is
+    still this module.
 
-    `ENGINE_1:95` and `:253` assign intake identity to Engine 1, so P4 must move
-    minting back into the engines. Recorded here rather than left to be
-    discovered, and `mint` is injected so no test depends on randomness.
+    `ENGINE_1:95` and `:253` assign intake identity to Engine 1, and the real
+    Engine 1 honours it — `assembly.assemble` mints the Document ID itself, so
+    `run` no longer takes one. One consequence is stated rather than left to be
+    found: two runs of the same bytes no longer produce equal Document Evidence
+    Objects, because that id is fresh each time. Nothing downstream may depend
+    on it either way — `INV-9`, *"carries no accounting meaning and must never
+    influence accounting decisions"* — and the audit trail this module owns
+    holds no artifact id, so `AL-INV-12`'s reproducibility claim is untouched.
 """
 
 from __future__ import annotations
@@ -70,7 +116,7 @@ from datetime import datetime
 
 from accountant_dad.artifacts.clarification import ClarificationRequest
 from accountant_dad.artifacts.decision import AccountingDecision, DecisionStatus
-from accountant_dad.artifacts.evidence import DocumentEvidenceObject, DocumentId
+from accountant_dad.artifacts.evidence import DocumentEvidenceObject, HumanBusinessContext
 from accountant_dad.artifacts.execution import ExecutionAttemptId, ExecutionId, ExecutionResult
 from accountant_dad.artifacts.understanding import BusinessUnderstandingObject
 
@@ -79,7 +125,11 @@ from accountant_dad.artifacts.understanding import BusinessUnderstandingObject
 from accountant_dad.artifacts.validation import APPROVING_STATUSES, ValidationDecision
 from accountant_dad.engines.accounting_engine import stub as accounting
 from accountant_dad.engines.clarification_engine import stub as clarification
-from accountant_dad.engines.input_engine import stub as input_engine
+
+# THE REAL ENGINE 1, not `input_engine.stub`. See the module docstring,
+# "ENGINE 1 IS THE REAL ENGINE". The alias keeps every call site reading as the
+# engine it addresses rather than as the file that happens to implement it.
+from accountant_dad.engines.input_engine import pipeline as input_engine
 from accountant_dad.engines.tally_engine import stub as execution_engine
 from accountant_dad.engines.understanding_engine import stub as understanding
 from accountant_dad.engines.validation_engine import stub as validation
@@ -95,7 +145,16 @@ class ClarificationCycleExhaustedError(Exception):
     Deliberately not a state. `AL-INV-13` — *"If a state is not in the locked
     state machine, it does not exist."* The transaction is left in `Accounting`,
     which is where it actually is.
+
+    `preserved` carries every artifact the run had already produced —
+    `APPLICATION_LAYER.md:153`, *"Completed artifacts PRESERVED"*. Discarding
+    them would throw away a real Document Evidence Object because a later stage
+    could not finish, which is the one thing §8 says a stopped run must not do.
     """
+
+    def __init__(self, message: str, preserved: RunResult) -> None:
+        self.preserved = preserved
+        super().__init__(message)
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +164,11 @@ class PipelineConfig:
     #: How many times `Accounting → Clarification → Accounting` may go round
     #: before the run gives up. No default: see the module docstring.
     max_clarification_rounds: int
+
+    #: Every number Engine 1 needs, supplied by the caller. No default, because
+    #: not one of the ten has a value in any locked document — see the module
+    #: docstring, "ENGINE 1'S SETTINGS ARE THE CALLER'S".
+    input_engine_settings: input_engine.PipelineSettings
 
     def __post_init__(self) -> None:
         if self.max_clarification_rounds < 1:
@@ -228,21 +292,37 @@ class ApplicationLayer:
         self,
         *,
         transaction_id: TransactionId,
-        document_id: DocumentId,
-        source_references: tuple[str, ...],
+        intake: input_engine.DocumentIntake,
+        human_business_context: HumanBusinessContext | None = None,
     ) -> RunResult:
         """One document, all the way through, artifact by artifact.
 
         Every engine is called exactly once per stage entry, its output is
         carried to the next stage by this method, and no engine is given
         another engine's address (AL-INV-5).
+
+        `intake` is the caller's — the raw bytes, the media type the caller
+        DECLARES, and the source references — handed to Engine 1 unread
+        (`APPLICATION_LAYER_CONTRACTS.md:24,31`). `human_business_context` is
+        optional because the locked contract calls it optional, and it is
+        likewise passed through without being looked at: a human note is
+        evidence, and reading it here to decide anything would be reasoning.
+
+        Engine 1 failing raises out of this method rather than being turned
+        into a state. Retry is `APPLICATION_LAYER.md` §8's, its three
+        configuration values are required-with-no-default and none of them
+        exists yet, so nothing here has exhausted anything; moving the
+        transaction to `Failed` would claim a retry policy ran (`:229`) and
+        swallowing the exception is forbidden outright (`§12`). The transaction
+        is left in `Input`, which is where it is.
         """
         self.start_transaction(transaction_id)
 
-        evidence = input_engine.read(
+        evidence = input_engine.run(
+            intake,
             identity=self._envelope(transaction_id),
-            document_id=document_id,
-            source_references=source_references,
+            settings=self._config.input_engine_settings,
+            human_business_context=human_business_context,
         )
 
         self._advance(transaction_id, TransactionState.UNDERSTANDING, engine="input", attempt=1)
@@ -289,7 +369,19 @@ class ApplicationLayer:
                 "locked document names a state for this, and AL-INV-13 forbids "
                 "inventing one, so the transaction is left in Accounting, which is "
                 "where it is: Clarification handed back and the bound stopped the "
-                "next re-decide."
+                "next re-decide. Every artifact already produced is on this "
+                "exception's `preserved` attribute; nothing is discarded and "
+                "nothing stands in for the stages that never ran.",
+                RunResult(
+                    transaction_id=transaction_id,
+                    final_state=self._store.state_of(transaction_id),
+                    evidence=evidence,
+                    understanding=story,
+                    decisions=tuple(decisions),
+                    clarifications=tuple(requests),
+                    validation=None,
+                    execution=None,
+                ),
             )
 
         self._advance(transaction_id, TransactionState.VALIDATION, engine="accounting", attempt=1)

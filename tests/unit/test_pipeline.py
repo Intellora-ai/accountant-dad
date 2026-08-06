@@ -12,32 +12,70 @@ The last clause is the one worth the most attention. A skeleton that reached
 `Completed` would be the most reassuring possible outcome and would mean the
 stubs had started fabricating — so this file asserts the run does NOT get there,
 and says why that is the pass condition rather than the failure.
+
+REAL ENGINE 1, NEVER A STAND-IN FOR IT.
+    `APPLICATION_LAYER.md:251` passes Engine 1 *"raw document(s) + Transaction
+    ID"*. Until this suite was migrated the Application Layer called
+    `engines/input_engine/stub.py`, which accepts no raw document at all — so
+    the arrow the architecture draws carried nothing, and every test here could
+    pass with Engine 1 disconnected. Every run below now drives the REAL
+    `cleaner → reader → parser → confidence → assembly` chain on a real PDF
+    this file builds, per `CLAUDE.md` §J.6.
+
+    `INVOICE_LINES` is ground truth: the fixture PDF is rendered FROM it, so
+    checking those strings reached the artifact checks against what was
+    actually put on the page, not against a transcription of whatever a run
+    happened to produce.
+
+WHAT WOULD PROVE THE MIGRATION WRONG, AND WHERE THAT IS CHECKED.
+    Wiring that only LOOKS done is the failure mode. Three separate tests are
+    shaped to catch it, and each one fails if the stub is restored:
+
+      - `test_the_application_layer_routes_what_the_real_engine_read` asserts on
+        the evidence THE RUN produced — reached through the exception's
+        `preserved`, never rebuilt by this file, because an artifact this file
+        built itself would pass whatever the Application Layer called
+      - `test_engine_1_mints_the_document_id_not_the_application_layer` proves
+        the id is Engine 1's: every id the Application Layer supplies comes from
+        a deterministic counter here, so two runs agreeing would mean it came
+        from this file
+      - `test_the_application_layer_does_not_import_the_input_engine_stub` reads
+        `src/accountant_dad/services/` off disk, so a re-import cannot slip back
+        in behind a passing behavioural test (Law 38)
 """
 
 from __future__ import annotations
 
 import ast
-import contextlib
+import inspect
 import itertools
 import pathlib
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Protocol, cast
 
+import pymupdf
 import pytest
 
-from accountant_dad.artifacts.decision import AccountingDecision, DecisionStatus
-from accountant_dad.artifacts.evidence import DocumentEvidenceObject, DocumentId
+from accountant_dad.artifacts.decision import DecisionStatus
+from accountant_dad.artifacts.evidence import (
+    Corroborated,
+    HumanBusinessContext,
+    Provenance,
+    SourceType,
+)
 from accountant_dad.artifacts.execution import ExecutionAttemptId, ExecutionId
-from accountant_dad.artifacts.understanding import BusinessUnderstandingObject
-from accountant_dad.engines.accounting_engine import stub as accounting
-from accountant_dad.engines.input_engine import stub as input_engine
-from accountant_dad.engines.understanding_engine import stub as understanding
-from accountant_dad.identity import ArtifactId, IdentityEnvelope, TransactionId
-from accountant_dad.services.audit import AuditTrail
+from accountant_dad.engines.input_engine import cleaner, reader
+from accountant_dad.engines.input_engine import pipeline as input_engine
+from accountant_dad.identity import ArtifactId, TransactionId
+from accountant_dad.services.audit import AuditTrail, Transition
 from accountant_dad.services.pipeline import (
     ApplicationLayer,
     ClarificationCycleExhaustedError,
     PipelineConfig,
+    RunResult,
     Sources,
 )
 from accountant_dad.services.state import TransactionState
@@ -48,11 +86,150 @@ SERVICES = pathlib.Path(__file__).resolve().parents[2] / "src/accountant_dad/ser
 
 #: The one hardcoded document P3 runs on. A supplier's bill — the thing a small
 #: business books most often, and the first shape the owner named.
-THE_ONE_DOCUMENT = ("supplier-bill-0001.jpg",)
+THE_ONE_DOCUMENT = ("supplier-bill-0001.pdf",)
+
+#: Ground truth. The fixture PDF is rendered FROM this tuple, so asserting that
+#: these strings reached the artifact asserts against what was drawn on the
+#: page rather than against whatever a run produced.
+INVOICE_LINES: tuple[str, ...] = (
+    "TAX INVOICE",
+    "Acme Traders Private Limited",
+    "GSTIN 27AAECS1234F1Z5",
+    "Invoice No INV-2026-0481",
+)
 
 #: Supplied, never chosen by this suite's subject. AL-INV-14 forbids a default;
 #: this number belongs to the caller, and here the caller is a test.
 ROUNDS = 3
+
+#: Test parameters, not product defaults. `PipelineConfig.input_engine_settings`
+#: still requires the caller to supply every one of them, and no locked document
+#: gives any of them a value — see `services/pipeline.py`, "ENGINE 1'S SETTINGS
+#: ARE THE CALLER'S". These are this file's own choices for its own fixture,
+#: matching `test_input_engine_pipeline.py`'s.
+RENDER_DPI = 150
+NO_VISION_FALLBACK = Decimal("0.0")
+
+#: The stub's own signature phrase, from the artifact it emitted
+#: (`engines/input_engine/stub.py`, `NO_READING_HAPPENED`). Asserted ABSENT, so
+#: restoring the stub turns this suite red rather than leaving it green on an
+#: empty artifact.
+STUB_MARKER = "P3 stub"
+
+#: The two artifacts a run makes exactly one of before the bound: the Document
+#: Evidence Object and the Business Understanding Object. Named so the
+#: completeness check below reads as arithmetic rather than as a magic number.
+SINGLETON_ARTIFACTS = 2
+
+
+# ── a typed facade over PyMuPDF, for AUTHORING the fixture only ───────────
+#
+# Identical in spirit to the facades `test_input_engine_pipeline.py` and
+# `test_input_engine_reader.py` already declare over the same untyped
+# dependency, for the same reason: PyMuPDF ships `py.typed` but leaves its
+# functions unannotated, `mypy --strict` refuses a bare call, and this
+# repository counts suppressions and blocks on any increase. Those facades are
+# module-private to their own files and are not importable from here.
+
+
+class _Page(Protocol):
+    def insert_text(
+        self, point: tuple[float, float], text: str, *, fontname: str, fontsize: int
+    ) -> int: ...
+
+
+class _Document(Protocol):
+    def new_page(self, *, width: float, height: float) -> _Page: ...
+    def tobytes(self) -> bytes: ...
+    def close(self) -> None: ...
+
+
+class _NewDocument(Protocol):
+    def __call__(self) -> _Document: ...
+
+
+open_pdf = cast(_NewDocument, pymupdf.open)
+
+
+def an_invoice_pdf(lines: tuple[str, ...] = INVOICE_LINES) -> bytes:
+    """A one-page PDF carrying a real text layer, built from `INVOICE_LINES`."""
+    document = open_pdf()
+    page = document.new_page(width=595, height=842)
+    y = 90.0
+    for line in lines:
+        page.insert_text((60, y), line, fontname="helv", fontsize=13)
+        y += 34
+    drawn = bytes(document.tobytes())
+    document.close()
+    return drawn
+
+
+def a_cleaner_settings() -> cleaner.CleanerSettings:
+    """Eight numbers, all this file's own, permissive enough that a normal
+    rendered page cleans without `cleaner` deciding the original is safer."""
+    return cleaner.CleanerSettings(
+        max_deskew_degrees=15.0,
+        denoise_strength=3.0,
+        denoise_template_window=7,
+        denoise_search_window=21,
+        contrast_clip_limit=2.0,
+        contrast_tile_grid=8,
+        crop_margin_pixels=10,
+        max_ink_loss_fraction=1.0,
+    )
+
+
+def an_input_engine_settings() -> input_engine.PipelineSettings:
+    return input_engine.PipelineSettings(
+        cleaner_settings=a_cleaner_settings(),
+        render_dpi=RENDER_DPI,
+        vision_fallback_threshold=NO_VISION_FALLBACK,
+    )
+
+
+def an_intake(
+    *,
+    document: bytes | None = None,
+    source_references: tuple[str, ...] = THE_ONE_DOCUMENT,
+) -> input_engine.DocumentIntake:
+    """The raw document the Application Layer hands Engine 1.
+
+    The media type is DECLARED here, never sniffed from the bytes: the
+    Application Layer is forbidden from pre-classifying a document
+    (`APPLICATION_LAYER_CONTRACTS.md:31`), so the caller states it.
+    """
+    return input_engine.DocumentIntake(
+        document=an_invoice_pdf() if document is None else document,
+        media_type=reader.MediaType.PDF,
+        source_references=source_references,
+    )
+
+
+def a_human_note(
+    text: str = "Advance paid to the supplier before delivery.",
+) -> HumanBusinessContext:
+    return HumanBusinessContext(
+        original_user_text=text,
+        provenance=Provenance(
+            source_type=SourceType.HUMAN,
+            source_id="chat:session-1",
+            evidence_reference="message 1",
+            timestamp=datetime(2026, 8, 5, 9, 0, tzinfo=UTC),
+            confidence=Decimal("1.0000"),
+            corroborated=Corroborated.NOT_ASSESSED,
+        ),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class _CanonicalRun:
+    """Everything one run to the bound produced, as immutable values."""
+
+    transaction_id: TransactionId
+    preserved: RunResult
+    history: tuple[Transition, ...]
+    final_state: TransactionState
+    message: str
 
 
 class _Fixture:
@@ -68,7 +245,10 @@ class _Fixture:
         self.layer = ApplicationLayer(
             store=self.store,
             audit=self.audit,
-            config=PipelineConfig(max_clarification_rounds=rounds),
+            config=PipelineConfig(
+                max_clarification_rounds=rounds,
+                input_engine_settings=an_input_engine_settings(),
+            ),
             sources=Sources(
                 artifact=lambda: ArtifactId(uuid.UUID(int=next(artifacts))),
                 execution=lambda: ExecutionId(uuid.UUID(int=next(executions))),
@@ -78,18 +258,66 @@ class _Fixture:
         )
         self.transaction_id = TransactionId(uuid.UUID(int=9_999))
 
-    def run(self) -> object:
+    def run(
+        self,
+        *,
+        intake: input_engine.DocumentIntake | None = None,
+        human_business_context: HumanBusinessContext | None = None,
+    ) -> RunResult:
         return self.layer.run(
             transaction_id=self.transaction_id,
-            document_id=DocumentId(uuid.UUID(int=7)),
-            source_references=THE_ONE_DOCUMENT,
+            intake=an_intake() if intake is None else intake,
+            human_business_context=human_business_context,
         )
+
+    def to_the_bound(
+        self, *, human_business_context: HumanBusinessContext | None = None
+    ) -> _CanonicalRun:
+        """Run, expect the bound, and return everything the run produced.
+
+        Read off the exception rather than rebuilt here. An artifact this file
+        assembled itself would prove nothing about what the Application Layer
+        routed — it would pass whether the layer called the real engine or the
+        stub, which is exactly the false green this migration exists to remove.
+        """
+        with pytest.raises(ClarificationCycleExhaustedError) as raised:
+            self.run(human_business_context=human_business_context)
+        return _CanonicalRun(
+            transaction_id=self.transaction_id,
+            preserved=raised.value.preserved,
+            history=self.audit.history(self.transaction_id),
+            final_state=self.store.state_of(self.transaction_id),
+            message=str(raised.value),
+        )
+
+
+@pytest.fixture(scope="module")
+def one_run() -> _CanonicalRun:
+    """One standard run, shared by the tests that only READ its outcome.
+
+    Engine 1 now reads a real document, and Docling's inference is the expensive
+    part of it — measured at roughly 12s per run under coverage instrumentation,
+    against a whole-suite baseline of 78s. Nine full readings to make nine
+    assertions about ONE run's outcome is the same reading paid for nine times.
+
+    Nothing mutable is shared, so this does not weaken `CLAUDE.md` §J.6: every
+    field above is frozen or already immutable — `RunResult` is a frozen
+    dataclass, its artifacts are immutable by INV-5, and `AuditTrail.history`
+    returns a tuple by construction. No test can disturb another's values, which
+    is the property isolation exists to give. Tests that need a different bound,
+    a different document, or a genuinely SECOND independent run build their own
+    `_Fixture` — and three below do exactly that.
+
+    `test_input_engine_pipeline.py`'s own session fixture makes the same trade
+    for the same measured reason.
+    """
+    return _Fixture().to_the_bound()
 
 
 # ── it runs, end to end, on one document ──────────────────────────────────
 
 
-def test_the_run_reaches_the_clarification_bound_and_says_so() -> None:
+def test_the_run_reaches_the_clarification_bound_and_says_so(one_run: _CanonicalRun) -> None:
     """With honest stubs this is the CORRECT outcome, not a failure.
 
     The Accounting stub always answers INCOMPLETE_INFORMATION_REQUIRED, because
@@ -98,12 +326,10 @@ def test_the_run_reaches_the_clarification_bound_and_says_so() -> None:
     A skeleton that instead reached `Completed` would mean a stub had started
     fabricating — which BLUEPRINT:136 forbids at this phase.
     """
-    with pytest.raises(ClarificationCycleExhaustedError) as raised:
-        _Fixture().run()
-    assert "AL-INV-13" in str(raised.value)
+    assert "AL-INV-13" in one_run.message
 
 
-def test_the_transaction_is_left_where_it_actually_is() -> None:
+def test_the_transaction_is_left_where_it_actually_is(one_run: _CanonicalRun) -> None:
     """No state exists for "asked too many times" and AL-INV-13 forbids adding
     one. Moving it to Failed would claim a runtime failure that did not happen
     (APPLICATION_LAYER.md:229 admits only runtime failures there).
@@ -113,30 +339,26 @@ def test_the_transaction_is_left_where_it_actually_is() -> None:
     it began. This test previously asserted Clarification and caught the
     module's own docstring making the same mistake.
     """
-    fixture = _Fixture()
-    with pytest.raises(ClarificationCycleExhaustedError):
-        fixture.run()
-    assert fixture.store.state_of(fixture.transaction_id) is TransactionState.ACCOUNTING
+    assert one_run.final_state is TransactionState.ACCOUNTING
+    assert one_run.preserved.final_state is TransactionState.ACCOUNTING
 
 
 def test_the_bound_is_honoured_exactly() -> None:
     """One round means one trip through Clarification, not zero and not two."""
     for rounds in (1, 2, 5):
         fixture = _Fixture(rounds=rounds)
-        with pytest.raises(ClarificationCycleExhaustedError):
-            fixture.run()
+        run = fixture.to_the_bound()
         visits = [
-            entry
-            for entry in fixture.audit.history(fixture.transaction_id)
-            if entry.to_state is TransactionState.CLARIFICATION
+            entry for entry in run.history if entry.to_state is TransactionState.CLARIFICATION
         ]
         assert len(visits) == rounds
+        assert len(run.preserved.clarifications) == rounds
 
 
 def test_a_bound_below_one_is_refused() -> None:
     """A bound of zero forbids a stage the state machine draws."""
     with pytest.raises(ValueError, match="at least 1"):
-        PipelineConfig(max_clarification_rounds=0)
+        PipelineConfig(max_clarification_rounds=0, input_engine_settings=an_input_engine_settings())
 
 
 def test_the_configuration_has_no_default() -> None:
@@ -146,43 +368,155 @@ def test_the_configuration_has_no_default() -> None:
         PipelineConfig()  # type: ignore[call-arg]
 
 
+def test_no_value_in_the_configuration_has_a_default() -> None:
+    """The same rule, applied to every field including the ten Engine 1 needs.
+
+    `cleaner_settings`, `render_dpi` and `vision_fallback_threshold` have no
+    value in any locked document — `ENGINE_1_CONFIDENCE_PARAMETERS.md` marks all
+    sixteen of its parameters UNSET and does not name `render_dpi` or any
+    cleaner number at all. A default here would be the Application Layer
+    choosing how hard to denoise somebody's invoice.
+
+    Asserted over EVERY parameter rather than the two that exist today, so a
+    field added later with a comfortable default fails this immediately.
+    """
+    parameters = inspect.signature(PipelineConfig).parameters
+    defaulted = sorted(
+        name
+        for name, parameter in parameters.items()
+        if parameter.default is not inspect.Parameter.empty
+    )
+    assert defaulted == [], f"AL-INV-14: these carry a number nobody chose: {defaulted}"
+    assert "input_engine_settings" in parameters
+
+
+# ── it runs the REAL Engine 1 ─────────────────────────────────────────────
+
+
+def test_the_application_layer_routes_what_the_real_engine_read(one_run: _CanonicalRun) -> None:
+    """The migration, asserted on the artifact THE RUN produced.
+
+    `APPLICATION_LAYER.md:251` — the Application Layer passes Engine 1 *"raw
+    document(s)"*. The stub accepted none and emitted an empty
+    `StructuredDocument`, so with it wired every line drawn on the page is
+    missing and the stub's own reliability sentence is present instead.
+    """
+    evidence = one_run.preserved.evidence
+
+    assert evidence.structured_document.extracted_text != ""
+    for line in INVOICE_LINES:
+        assert line in evidence.structured_document.extracted_text, (
+            f"{line!r} was drawn on the fixture PDF and did not reach the artifact"
+        )
+    assert STUB_MARKER not in evidence.confidence_report.reliability_information
+    assert evidence.source_references == THE_ONE_DOCUMENT
+
+
+def test_the_application_layer_does_not_import_the_input_engine_stub() -> None:
+    """Law 38 — "Never let temporary solutions become permanent architecture."
+
+    Read off disk, so re-importing the stub behind a still-passing behavioural
+    test is impossible. The other five stubs are deliberately still allowed:
+    Engines 2-6 are frozen and only Engine 1 is authorised (Amendment 3).
+    """
+    offenders: list[str] = []
+    for source in SERVICES.rglob("*.py"):
+        for node in ast.walk(ast.parse(source.read_text())):
+            imported: list[str] = []
+            if isinstance(node, ast.Import):
+                imported = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imported = [f"{node.module}.{alias.name}" for alias in node.names]
+            offenders.extend(
+                f"{source.name} imports {name}"
+                for name in imported
+                if name == "accountant_dad.engines.input_engine.stub"
+            )
+    assert offenders == [], f"the Application Layer is back on the Engine 1 stub: {offenders}"
+
+
+def test_engine_1_mints_the_document_id_not_the_application_layer(one_run: _CanonicalRun) -> None:
+    """`ENGINE_1:95`, `:253` — the Document ID *"is assigned by the Input Engine
+    at intake."*
+
+    Every id this Application Layer supplies comes from a deterministic counter
+    in `_Fixture`, so two runs of the same bytes agree on all of them. A
+    Document ID that DIFFERS between those two runs therefore cannot have come
+    from here — it was minted inside Engine 1, which is where the locked
+    specification puts it.
+    """
+    second = _Fixture().to_the_bound()
+    assert one_run.preserved.evidence.document_id != second.preserved.evidence.document_id
+
+    # The Application Layer no longer has one to give.
+    assert "document_id" not in inspect.signature(ApplicationLayer.run).parameters
+
+
+def test_the_human_note_reaches_engine_1_verbatim() -> None:
+    """`APPLICATION_LAYER_CONTRACTS.md:24` — the input artifact includes an
+    *optional human business context*, and `CLAUDE.md` §O — *"a human note is
+    evidence, not truth."*
+
+    The Application Layer must carry it without reading it. Asserted on the
+    text that came back out of the artifact, character for character.
+    """
+    note = a_human_note()
+    evidence = _Fixture().to_the_bound(human_business_context=note).preserved.evidence
+
+    assert evidence.human_business_context is not None
+    assert evidence.human_business_context.original_user_text == note.original_user_text
+    # Evidence, never merged into the reading: ENGINE_1:233 — "Engine 1 never
+    # merges the two into a single fact."
+    assert note.original_user_text not in evidence.structured_document.extracted_text
+
+
+def test_a_document_engine_1_cannot_read_stops_the_run_loudly() -> None:
+    """Law 11 — fail loudly, never silently. §12 — an exception is *"Never
+    swallowed."*
+
+    Zero bytes is real hostile input, not a mock of one, and it is refused by
+    the real `cleaner`. The transaction stays in `Input`: `Failed` is for *"a
+    runtime failure that exhausted retries"* (`:229`), and the retry policy §8
+    requires does not exist yet, so nothing has exhausted anything.
+    """
+    fixture = _Fixture()
+    with pytest.raises(input_engine.PipelineStageError) as raised:
+        fixture.run(intake=an_intake(document=b""))
+
+    assert raised.value.stage == "cleaner"
+    assert fixture.store.state_of(fixture.transaction_id) is TransactionState.INPUT
+    reached = {entry.to_state for entry in fixture.audit.history(fixture.transaction_id)}
+    assert reached == {TransactionState.INPUT}
+
+
 # ── the Transaction ID is intact ──────────────────────────────────────────
 
 
-def test_every_artifact_carries_the_same_transaction_id() -> None:
+def test_every_artifact_carries_the_same_transaction_id(one_run: _CanonicalRun) -> None:
     """BLUEPRINT:136 — "Transaction ID intact". AL-INV-1 — created once, never
-    changed, never reissued. A correction keeps the original."""
-    fixture = _Fixture()
-    with contextlib.suppress(ClarificationCycleExhaustedError):
-        fixture.run()
-    # Rebuild the run up to the bound and inspect what it produced.
-    produced = _artifacts_before_the_bound(fixture)
-    assert produced, "the run produced no artifacts to check"
-    for artifact in produced:
-        assert artifact.identity.transaction_id == fixture.transaction_id
+    changed, never reissued. A correction keeps the original.
 
+    Checked on every artifact the run itself produced — the Document Evidence
+    Object, the Business Understanding Object, and every Accounting Decision and
+    Clarification Request — not on a set this file rebuilt.
+    """
+    produced = one_run.preserved
+    expected = one_run.transaction_id
 
-def _artifacts_before_the_bound(
-    fixture: _Fixture,
-) -> tuple[DocumentEvidenceObject, BusinessUnderstandingObject, AccountingDecision]:
-    """Re-run with a bound the stubs can satisfy is impossible, so collect what
-    a single round produces instead."""
-    envelope = IdentityEnvelope(
-        artifact_id=ArtifactId(uuid.UUID(int=1)),
-        version=1,
-        parent_versions=(),
-        transaction_id=fixture.transaction_id,
+    assert produced.evidence.identity.transaction_id == expected
+    assert produced.understanding.identity.transaction_id == expected
+    assert produced.decisions, "the run recorded no Accounting Decision"
+    for decision in produced.decisions:
+        assert decision.identity.transaction_id == expected
+    assert produced.clarifications, "the run recorded no Clarification Request"
+    for request in produced.clarifications:
+        assert request.identity.transaction_id == expected
+
+    # Nothing produced is left out of the count above: the two singletons plus
+    # both sequences are the whole of what a run to the bound can make.
+    assert len(produced.artifacts) == SINGLETON_ARTIFACTS + len(produced.decisions) + len(
+        produced.clarifications
     )
-    evidence = input_engine.read(
-        identity=envelope,
-        document_id=DocumentId(uuid.UUID(int=7)),
-        source_references=THE_ONE_DOCUMENT,
-    )
-    story = understanding.StubUnderstandingEngine().understand(
-        (evidence,), ArtifactId(uuid.UUID(int=2))
-    )
-    decision = accounting.decide(story, ArtifactId(uuid.UUID(int=3)))
-    return evidence, story, decision
 
 
 def test_the_application_layer_is_the_only_source_of_the_transaction_id() -> None:
@@ -267,39 +601,30 @@ def test_the_application_layer_never_queries_the_brain() -> None:
 # ── the audit is complete ─────────────────────────────────────────────────
 
 
-def test_every_state_change_is_recorded() -> None:
+def test_every_state_change_is_recorded(one_run: _CanonicalRun) -> None:
     """BLUEPRINT:136 — "audit complete". The history's transitions must chain:
     each entry's `from` is the previous entry's `to`, with no gap."""
-    fixture = _Fixture()
-    with pytest.raises(ClarificationCycleExhaustedError):
-        fixture.run()
-    history = fixture.audit.history(fixture.transaction_id)
-    assert history, "nothing was recorded"
-    assert history[0].from_state is None, "the first entry is the creation"
-    assert history[0].to_state is TransactionState.INPUT
-    for earlier, later in itertools.pairwise(history):
+    assert one_run.history, "nothing was recorded"
+    assert one_run.history[0].from_state is None, "the first entry is the creation"
+    assert one_run.history[0].to_state is TransactionState.INPUT
+    for earlier, later in itertools.pairwise(one_run.history):
         assert later.from_state is earlier.to_state, (
             f"gap in the audit: {earlier.to_state} then {later.from_state}"
         )
 
 
-def test_the_recorded_history_ends_where_the_store_says_the_transaction_is() -> None:
+def test_the_recorded_history_ends_where_the_store_says_the_transaction_is(
+    one_run: _CanonicalRun,
+) -> None:
     """A history that disagrees with the store is worse than none — it looks
     like traceability and points somewhere else."""
-    fixture = _Fixture()
-    with pytest.raises(ClarificationCycleExhaustedError):
-        fixture.run()
-    history = fixture.audit.history(fixture.transaction_id)
-    assert history[-1].to_state is fixture.store.state_of(fixture.transaction_id)
+    assert one_run.history[-1].to_state is one_run.final_state
 
 
-def test_every_transition_names_a_trigger() -> None:
+def test_every_transition_names_a_trigger(one_run: _CanonicalRun) -> None:
     """APPLICATION_LAYER_API.md:126 — history answers "why is this transaction
     here" WITHOUT inference. A blank trigger forces inference."""
-    fixture = _Fixture()
-    with pytest.raises(ClarificationCycleExhaustedError):
-        fixture.run()
-    for entry in fixture.audit.history(fixture.transaction_id):
+    for entry in one_run.history:
         assert entry.trigger.strip()
 
 
@@ -309,19 +634,29 @@ def test_every_transition_names_a_trigger() -> None:
 def test_the_skeleton_never_reaches_completed() -> None:
     """The pass condition, stated as one. BLUEPRINT:136 — "no accuracy claim
     permitted at this phase". Reaching Completed would mean a stub decided
-    something, and a decided entry at P3 is a fabricated one."""
-    fixture = _Fixture(rounds=20)
-    with pytest.raises(ClarificationCycleExhaustedError):
-        fixture.run()
-    reached = {entry.to_state for entry in fixture.audit.history(fixture.transaction_id)}
+    something, and a decided entry at P3 is a fabricated one.
+
+    Unchanged by the Engine 1 migration, and deliberately so: real EVIDENCE
+    does not license a real DECISION. Engines 2-6 are still frozen stubs, so
+    the run must still stop short. Its own run, with a far larger bound than
+    the shared one, because the claim is that no number of rounds gets there.
+    """
+    run = _Fixture(rounds=20).to_the_bound()
+    reached = {entry.to_state for entry in run.history}
     assert TransactionState.COMPLETED not in reached
     assert TransactionState.EXECUTION not in reached
+    assert run.preserved.validation is None
+    assert run.preserved.execution is None
 
 
-def test_the_accounting_stub_never_claims_a_complete_decision() -> None:
-    """If this ever passes with COMPLETE, the skeleton above would post."""
-    fixture = _Fixture()
-    _, _, decision = _artifacts_before_the_bound(fixture)
+def test_the_accounting_stub_never_claims_a_complete_decision(one_run: _CanonicalRun) -> None:
+    """If this ever passes with COMPLETE, the skeleton above would post.
+
+    Read off the decision the RUN produced from the REAL evidence, so "the stub
+    decided nothing" is now a statement about a decision taken on a real
+    reading rather than on an empty artifact.
+    """
+    decision = one_run.preserved.decisions[-1]
     assert decision.decision_status is DecisionStatus.INCOMPLETE_INFORMATION_REQUIRED
     assert decision.debit_entries == ()
     assert decision.credit_entries == ()
@@ -330,11 +665,14 @@ def test_the_accounting_stub_never_claims_a_complete_decision() -> None:
 # ── the run is reproducible ───────────────────────────────────────────────
 
 
-def test_two_identical_runs_produce_identical_histories() -> None:
+def test_two_identical_runs_produce_identical_histories(one_run: _CanonicalRun) -> None:
     """AL-INV-12 rests on identical input producing an identical conclusion. A
-    module reaching for uuid4() or datetime.now() cannot offer that."""
-    first, second = _Fixture(), _Fixture()
-    for fixture in (first, second):
-        with pytest.raises(ClarificationCycleExhaustedError):
-            fixture.run()
-    assert first.audit.history(first.transaction_id) == second.audit.history(second.transaction_id)
+    module reaching for uuid4() or datetime.now() cannot offer that.
+
+    The audit trail holds no artifact id, so Engine 1 minting a fresh Document
+    ID per run (`ENGINE_1:253`) does not weaken this — the workflow the
+    Application Layer owns is still bit-for-bit reproducible. That is exactly
+    the pair of facts `test_engine_1_mints_the_document_id...` and this test
+    assert about the same two runs: the ids differ, the histories do not.
+    """
+    assert _Fixture().to_the_bound().history == one_run.history
