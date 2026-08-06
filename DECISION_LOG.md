@@ -16,9 +16,9 @@ when a future engineer would otherwise have to re-derive the reasoning.
 | **Date** | 2026-08-05 |
 | **Files** | `.github/workflows/testing.yml:213` |
 
-**Context.** The `mutation` job had never finished. It read 65.7%, then 99.0%, and
-both numbers were beside the point — it was cancelled by `timeout-minutes: 10` at
-997 of 1593 mutants.
+**Context.** The `mutation` job had never finished. It read 65.7%, then 99.0% — both from
+runs cancelled before `d85861c`, both **EXPIRED** — and both numbers were beside the point:
+it was cancelled by `timeout-minutes: 10` at 997 of 1593 mutants.
 
 **Alternatives.**
 1. Cut the 77 timeout-mutants. **Falsified by measurement**: a timeout costs 2.234s

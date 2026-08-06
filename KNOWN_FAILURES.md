@@ -491,7 +491,7 @@ for that specific change; it is recorded here rather than written.
 **Two things changed at once, and they multiply.**
 
 ```
-mutant population   1593 → 2933      +84%   the seven new Engine 1 modules
+mutant population   1593 → 2933      +84%   @ ed5d504, EXPIRED. Engine 1's new modules
 suite wall-clock     7 s  → 72 s     ~10×   parser's 14 Docling / Table-Transformer
                                              measurements now RUN (they used to skip,
                                              because docling was never pinned)
@@ -536,7 +536,7 @@ engineer setting a number the owner did not give.**
 **Evidence for choosing one.** 1593 mutants took 24m14s. 2933 did not finish in 100. The
 relationship is worse than linear because mutmut sorts ascending by estimated cost, so
 the added Engine 1 mutants land in the expensive tail — the same effect measured earlier
-at 3.45× the work in 60% as many mutants.
+at 3.45x the work in 60% as many mutants, @ commit d85861c and now EXPIRED.
 
 ---
 

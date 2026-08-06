@@ -56,7 +56,7 @@ build                             pass    29s
 typecheck                         pass  2m21s
 lint                              pass    20s
 unit tests                        pass  5m14s
-coverage                          pass  6m34s     97.645% vs a 97.464% ratchet
+coverage                          pass  6m34s     97.645% @ 42d2aa4 (EXPIRED) vs a 97.464% ratchet
 dependency scan                   pass    45s
 typecheck · lint · tests · build  pass  5m35s     ← legacy gate, fixed this session
 mutation                          ✗ CANNOT FINISH
@@ -70,8 +70,8 @@ mutation                          ✗ CANNOT FINISH
 | Coverage | **97.645%**, floor 97.464% (ratchets to `main`) — margin +0.18pp |
 | Suppressions | **124**, unchanged all session |
 | Engine 1 | 4,042+ lines source, ~4,500 lines tests |
-| Mutants | 1593 → **2933** (+84%) |
-| Mutation | ✅ 24m14s / 99.3% at 1593 · ❌ cancelled at 100 min at 2933 |
+| Mutants | 1593 → **2933** (+84%) — @ commit `42d2aa4`, **EXPIRED** |
+| Mutation | ✅ 24m14s / 99.3% at 1593 (`d85861c`) · ❌ cancelled at 100 min at 2933 (`ed5d504`). Both **EXPIRED** |
 
 ### Blockers
 
@@ -82,7 +82,7 @@ first: cache the model (reverted — see below), lazy imports (already correct),
 less), lower the floor (never).
 
 The F-015 caching fix was implemented **twice** and reverted both times. Module-level
-Protocols cost 0.057pp of coverage; moving them under `TYPE_CHECKING` cost 0.66pp
+Protocols cost 0.057pp of coverage @ commit `42d2aa4`; under `TYPE_CHECKING`, 0.66pp
 because the classes then never execute, and the repo forbids a non-empty
 `exclude_lines`. It also does not help the mutation clock — each mutant is a fresh
 process. Correct fix, wrong moment; recorded rather than forced through.
@@ -100,9 +100,9 @@ sweep), Brain expansion. Blocked on the owner: F-014's number, plus the four sta
 
 **The mutation gate passed. It had never once finished.**
 
-The received wisdom was that it was failing on score — 65.7%, then 99.0%. Both numbers
-were beside the point. It was being **cancelled** by `timeout-minutes: 10` at 62.6% of
-the way through the mutant list. Three hypotheses were tested and two were killed:
+The received wisdom was that it was failing on score — 65.7%, then 99.0%, both from
+cancelled runs predating `d85861c` and both **EXPIRED**. Both numbers were beside the
+point. It was being **cancelled** by `timeout-minutes: 10` at 62.6% of the mutant list. Three hypotheses were tested and two were killed:
 
 ```
 ✗  "the 77 timeout-mutants are the cost"
@@ -111,8 +111,8 @@ the way through the mutant list. Three hypotheses were tested and two were kille
 
 ✗  "the unscored tail is cheaper"
    BACKWARDS. mutmut sorts ascending by estimated cost (__main__.py:1023), so the
-   596 unscored mutants carried 3.45× the estimated work of the 997 scored, in 60%
-   as many mutants.
+   596 unscored mutants carried 3.45x the estimated work of the 997 scored, in 60%
+   as many mutants. Measured @ commit d85861c; EXPIRED, and the RATIO is the finding.
 
 ✓  "no lever exists except the clock"
    Caching: mutmut 3.3.1 overwrites exit_code_by_key with all-None before anything
@@ -310,8 +310,11 @@ ruff format --check src tests 86 files already formatted
 mypy src tools/ci tests       Success: no issues found in 92 source files
 pytest tests/unit -q          2361 passed, 11 skipped
 suppressions                  124  (unchanged)
-coverage                      97.6449%  vs a 97.4643% ratchet
+coverage                      97.6449% @ 7e0efe2  vs a 97.4643% ratchet
 ```
+
+**LOCAL ONLY — NOT AUTHORITATIVE.** Every figure in that block is **EXPIRED**: it belongs
+to commit `7e0efe2` and `src/` has moved `+2591 / −300` lines since.
 
 ### GitHub status — on `7e0efe2`
 
@@ -330,6 +333,10 @@ mutation                                                             RUNNING
 | Kills required | **64** |
 | Kills delivered | **114** |
 | Projected score | 2292 / 2405 = **95.3%** — a projection, not a result. It does not exist until CI says it |
+
+**CI has since said it, and the projection was right.** `95.3%` @ commit `7e0efe2`
+(GitHub Actions run 31041552213) — killed 2324, survived 115, 919 not scoreable. **That
+result is itself now EXPIRED**: `src/` moved `+2591 / −300` lines after it.
 
 ### Blockers
 
