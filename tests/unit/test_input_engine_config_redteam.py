@@ -312,9 +312,7 @@ def test_each_parameter_accepts_exactly_one_of_the_four_value_shapes(
     through — a number in the wrong units is a number nobody chose, and it
     would pass every "is it set?" test in the suite.
     """
-    accepted = [
-        candidate for candidate in CANDIDATE_SHAPES if _is_accepted(spec, candidate)
-    ]
+    accepted = [candidate for candidate in CANDIDATE_SHAPES if _is_accepted(spec, candidate)]
 
     assert len(accepted) == ONE_LEGAL_SHAPE, (
         f"{spec.name} accepts {accepted}; a parameter must accept values in "
@@ -348,9 +346,7 @@ def test_every_parameter_absent_is_reported_once_each_on_its_own_line() -> None:
     assert message.startswith(
         f"Engine 1 confidence configuration has {EXPECTED_PARAMETER_COUNT} problem(s):"
     )
-    assert problem_lines(message) == [
-        expected_missing_line(spec) for spec in c.PARAMETER_CATALOG
-    ]
+    assert problem_lines(message) == [expected_missing_line(spec) for spec in c.PARAMETER_CATALOG]
 
 
 def test_environment_keys_in_the_wrong_case_are_not_found() -> None:
@@ -359,9 +355,7 @@ def test_environment_keys_in_the_wrong_case_are_not_found() -> None:
     unset parameter — and must read as unset, not as an unlucky lookup that
     quietly resolves to something.
     """
-    environment = {
-        spec.env_var.lower(): a_legal_value(spec) for spec in c.PARAMETER_CATALOG
-    }
+    environment = {spec.env_var.lower(): a_legal_value(spec) for spec in c.PARAMETER_CATALOG}
 
     with pytest.raises(c.ConfigurationError) as raised:
         c.load_confidence_parameters(environment)
@@ -548,9 +542,14 @@ def test_a_weight_never_passes_through_binary_floating_point() -> None:
     weight = parameters.document_score_weights["gstin"]
     assert weight == Decimal("0.1")
     assert str(weight) == "0.1"
-    assert weight != Decimal(0.1), (
+    # `Decimal.from_float` rather than `Decimal(0.1)`: identical value, and it
+    # says out loud that the comparison target is deliberately the number a
+    # BINARY FLOAT decays into, not a typo for `Decimal("0.1")`. Ruff refuses
+    # the bare form (RUF032) precisely because that confusion is usually a bug;
+    # here it is the whole assertion.
+    assert weight != Decimal.from_float(0.1), (
         "the weight went through a binary float first: Decimal(0.1) is "
-        f"{Decimal(0.1)}, which is not the number the operator wrote."
+        f"{Decimal.from_float(0.1)}, which is not the number the operator wrote."
     )
 
 
@@ -569,7 +568,7 @@ def test_a_probability_never_passes_through_binary_floating_point() -> None:
 
     assert parameters.ocr_region_accept == Decimal("0.1000")
     assert str(parameters.ocr_region_accept) == "0.1000"
-    assert parameters.ocr_region_accept != Decimal(0.1)
+    assert parameters.ocr_region_accept != Decimal.from_float(0.1)
 
 
 def test_exponent_notation_is_held_to_the_same_decimal_place_limit() -> None:
@@ -866,5 +865,5 @@ def test_a_weight_map_of_many_fields_sums_exactly_with_no_tolerance() -> None:
     del nine_ways["field_9"]
     short = a_valid_env()
     short[env_var(c.DOCUMENT_SCORE_WEIGHTS)] = json.dumps(nine_ways)
-    with pytest.raises(c.ConfigurationError, match="sum to 1.0000"):
+    with pytest.raises(c.ConfigurationError, match=r"sum to 1\.0000"):
         c.load_confidence_parameters(short)

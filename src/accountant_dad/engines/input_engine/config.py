@@ -59,6 +59,18 @@ Python leaves defaulted to `float`, so they still arrive as `float` and are
 refused explicitly in `_parse_weights` rather than silently accepted as
 "a number that happens to be infinite."
 
+AND WHY IT IS PARSED WITH `object_pairs_hook` TOO. A JSON object may name the
+same key twice, and Python resolves that LAST-WINS while it builds the dict —
+so by the time `json.loads` returns the discarded weight is gone, and nothing
+anywhere records that it was ever written. An operator who edits a weight map
+and leaves a stale duplicate behind gets a weight they never chose between; the
+survivors can still sum to `1.0000`, so the arithmetic check cannot catch it;
+and Engine 1 starts with a number nobody agreed to, with nothing raised and
+nothing logged. `object_pairs_hook` is the only point at which both weights are
+still visible, which makes it the only place the refusal can happen at all. It
+does not displace `parse_float`: the hook is handed values that have already
+been through it.
+
 WHY `env` IS A PARAMETER, NEVER READ FROM `os.environ` INTERNALLY BY
 DEFAULT. `load_confidence_parameters(env: Mapping[str, str])` takes the
 mapping as an argument with no default value — not because `os.environ` is
@@ -285,6 +297,45 @@ def _parse_document_score_rule(raw: str) -> DocumentScoreRule:
         raise _ParameterValueError(f"must be one of {allowed}; got {raw!r}.") from exc
 
 
+class _DuplicateJsonKeyError(ValueError):
+    """Internal control flow only. A JSON object named the same key twice.
+
+    Raised from `_object_pairs_without_duplicates` while `json.loads` is still
+    running, and always caught by `_parse_weights`, which folds it into a
+    `_ParameterValueError` like every other way a weight map can be wrong.
+    """
+
+
+def _object_pairs_without_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """A JSON object's members, refusing any name written twice.
+
+    This runs as `object_pairs_hook` rather than after `json.loads` returns,
+    because the duplicate does not survive that return: Python resolves
+    repeated keys LAST-WINS while building the dict, and by the time a caller
+    holds the result the discarded weight is simply gone. Measured, not assumed
+    — `json.loads('{"gstin": 0.4000, "gstin": 1.0000}', parse_float=Decimal)`
+    is `{'gstin': Decimal('1.0000')}`, and nothing anywhere records that
+    `0.4000` was ever written. The hook is the only place both are still
+    visible, so it is the only place the refusal can happen at all.
+
+    `measurement._no_duplicate_names` refuses the identical shape one module
+    away, for the identical reason it states in its own words: two values for
+    one name leaves no authority for which one should be read. A weight has
+    strictly more authority than a measurement — it decides a document score,
+    which decides whether a document ever reaches a human.
+    """
+    names = [key for key, _ in pairs]
+    duplicated = sorted({name for name in names if names.count(name) > 1})
+    if duplicated:
+        raise _DuplicateJsonKeyError(
+            f"names the same field twice: {', '.join(duplicated)}. Two weights "
+            "for one field leaves no authority for which one the document "
+            "score should use, and the surviving pair can still sum to 1.0000, "
+            "so the arithmetic check cannot catch it."
+        )
+    return dict(pairs)
+
+
 def _parse_weights(raw: str) -> Mapping[str, Decimal]:
     """`map field -> weight, sum 1.0000`, given as a JSON object. Ordinary
     decimal literals (`0.6`) arrive already `Decimal`, routed there by
@@ -292,9 +343,19 @@ def _parse_weights(raw: str) -> Mapping[str, Decimal]:
     constants `NaN` / `Infinity` / `-Infinity` bypass that hook and still
     arrive as `float`, which is why `float` is refused explicitly below
     rather than accepted as "a number that happens to be infinite."
+
+    `object_pairs_hook` is supplied for a second, separate reason: it is the
+    only point at which a field named twice is still visible at all. See
+    `_object_pairs_without_duplicates`. It does not displace `parse_float` —
+    the hook receives values that have already been through it, so a weight
+    still never touches binary floating point on its way in.
     """
     try:
-        parsed = json.loads(raw, parse_float=Decimal)
+        parsed = json.loads(
+            raw, parse_float=Decimal, object_pairs_hook=_object_pairs_without_duplicates
+        )
+    except _DuplicateJsonKeyError as exc:
+        raise _ParameterValueError(f"{exc} ({raw!r})") from exc
     except json.JSONDecodeError as exc:
         raise _ParameterValueError(
             "must be a JSON object mapping field name to weight; got "

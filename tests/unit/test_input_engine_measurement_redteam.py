@@ -91,6 +91,7 @@ from a real file under pytest's `tmp_path`.
 from __future__ import annotations
 
 import dataclasses
+import itertools
 import json
 import sys
 import uuid
@@ -117,6 +118,15 @@ BAD_LINE_NUMBER = 7
 TOTAL_LINES = 10
 
 LONG_TEXT_LENGTH = 20000
+
+#: The smallest positive number a Python float can hold — the last denormal
+#: before zero. Named because it is asserted on as well as written, and a bare
+#: `5e-324` in the assertion says nothing about why that value is interesting:
+#: it is the one reading that a serialiser rounding to fewer than seventeen
+#: significant digits would silently turn into `0.0`, which this store must
+#: never do (a measured zero and the smallest measurable reading are different
+#: facts).
+SMALLEST_DENORMAL_FLOAT = 5e-324
 
 
 def a_document_id() -> DocumentId:
@@ -157,9 +167,7 @@ def a_stored_row(**overrides: object) -> dict[str, object]:
 
 
 def write_lines(store: Path, *payloads: dict[str, object]) -> None:
-    store.write_text(
-        "".join(json.dumps(payload) + "\n" for payload in payloads), encoding="utf-8"
-    )
+    store.write_text("".join(json.dumps(payload) + "\n" for payload in payloads), encoding="utf-8")
 
 
 def a_full_row(document_id: DocumentId | None = None) -> m.MeasurementRow:
@@ -176,8 +184,8 @@ def a_full_row(document_id: DocumentId | None = None) -> m.MeasurementRow:
         ),
         per_field=(m.NamedSignal(name="gstin", value=0.4102, instrument="PaddleOCR"),),
         classification=(
-            m.NamedSignal(name="document_type", value=0.995, instrument="document-type classifier")
-        ,),
+            m.NamedSignal(name="document_type", value=0.995, instrument="document-type classifier"),
+        ),
         table=(
             m.NamedSignal(
                 name="line_1:qty", value=1.0, instrument="table detector", region="cell (2,3)"
@@ -263,6 +271,94 @@ def test_a_stored_failed_field_of_null_is_refused_not_read_as_a_field_named_none
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# THE SAME DEFECT'S REMAINING SURFACE
+#
+# The four tests above are the four shapes that were MEASURED fabricating a
+# value. They are instances. The tests below hold the rest of the class down,
+# so a later edit cannot reintroduce a coercion at a site that happened not to
+# be one of the four — `document_id`, which only escaped because `uuid.UUID` is
+# strict enough to refuse `"None"` on its own, and the numeric-string forms,
+# which `float()` accepted for fields this module's own writer only ever emits
+# as JSON numbers.
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def test_a_stored_document_id_that_is_not_a_string_is_refused_before_uuid_sees_it(
+    tmp_path: Path,
+) -> None:
+    """`str(payload["document_id"])` was the same coercion as the other four,
+    and survived only because `uuid.UUID` happens to reject the `"None"` and
+    `"123"` it manufactures. That is luck, not a guard: the refusal must come
+    from the reader asking what the value IS, so it stays a refusal if the
+    identifier type ever becomes anything more forgiving than a UUID.
+    """
+    store = tmp_path / "store.jsonl"
+    write_lines(store, a_stored_row(document_id=None))
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as raised:
+        m.read_all(store)
+
+    assert "`document_id` must be a string; got None." in str(raised.value)
+
+
+def test_a_document_score_written_as_a_numeric_string_is_refused(tmp_path: Path) -> None:
+    """`"0.9"` is not a number, it is text that looks like one. `_row_to_json`
+    writes `document_score` as a JSON number and has no branch that could ever
+    emit a string, so a string here is by definition not a row this module could
+    have written — the exact contract `read_all` claims to enforce. Accepting it
+    would mean the store's type is decided by whoever wrote the line last.
+    """
+    store = tmp_path / "store.jsonl"
+    write_lines(store, a_stored_row(document_score="0.9"))
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as raised:
+        m.read_all(store)
+
+    assert "`document_score` must be a number; got '0.9'." in str(raised.value)
+
+
+def test_a_processing_time_written_as_a_numeric_string_is_refused(tmp_path: Path) -> None:
+    """The same for the field `ENGINE_1_CONFIDENCE_PARAMETERS.md` #16 calibrates
+    `processing_budget_ms` against. Separate from the `document_score` case
+    above because they are separate call sites, and a fix applied to one and
+    forgotten at the other is precisely how this defect had four shapes.
+    """
+    store = tmp_path / "store.jsonl"
+    write_lines(store, a_stored_row(processing_time_ms="1.0"))
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as raised:
+        m.read_all(store)
+
+    assert "`processing_time_ms` must be a number; got '1.0'." in str(raised.value)
+
+
+def test_a_signal_value_string_that_is_not_a_number_names_the_signal_and_the_line(
+    tmp_path: Path,
+) -> None:
+    """A numeric string is a DECLARED shape for `NamedSignal.value` alone, so
+    this is the one place text legitimately becomes a number — which makes it
+    the one place a non-numeric string can arrive. `"gstin"` must be refused
+    naming the signal, the line and the file, not raised as a bare
+    `could not convert string to float` with no idea which document it came
+    from (Law 11).
+    """
+    store = tmp_path / "store.jsonl"
+    write_lines(
+        store,
+        a_stored_row(),
+        a_stored_row(per_field=[{"name": "gstin", "instrument": "PaddleOCR", "value": "eight"}]),
+    )
+
+    with pytest.raises(m.MalformedMeasurementRecordError) as raised:
+        m.read_all(store)
+
+    assert str(raised.value) == (
+        f"line 2 of {store}: signal 'gstin''s value must be a number, a numeric "
+        "string, or null; got 'eight', which is not a number."
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # A SIGNAL CANNOT EXIST WITHOUT ITS INSTRUMENT
 #
 # `ConfidenceReport.FieldConfidence` has no slot for an instrument or a region,
@@ -319,9 +415,7 @@ def test_a_stored_signal_with_no_name_key_is_refused_naming_line_and_path(
     with pytest.raises(m.MalformedMeasurementRecordError) as raised:
         m.read_all(store)
 
-    assert str(raised.value) == (
-        f"line 1 of {store}: a signal's name must be a string; got None."
-    )
+    assert str(raised.value) == (f"line 1 of {store}: a signal's name must be a string; got None.")
 
 
 def test_every_category_keeps_its_instrument_and_its_region_through_the_store(
@@ -340,9 +434,7 @@ def test_every_category_keeps_its_instrument_and_its_region_through_the_store(
             m.NamedSignal(name="r0", value=0.1, instrument="PaddleOCR", region="page 0"),
         ),
         per_field=(m.NamedSignal(name="gstin", value=0.2, instrument="PDF text layer"),),
-        classification=(
-            m.NamedSignal(name="document_type", value=0.3, instrument="classifier"),
-        ),
+        classification=(m.NamedSignal(name="document_type", value=0.3, instrument="classifier"),),
         table=(
             m.NamedSignal(name="qty", value=0.4, instrument="table detector", region="cell (1,1)"),
         ),
@@ -466,14 +558,14 @@ def test_values_at_the_limits_of_a_python_float_survive_exactly(tmp_path: Path) 
         sys.float_info.max,
         -sys.float_info.max,
         sys.float_info.min,
-        5e-324,
+        SMALLEST_DENORMAL_FLOAT,
         0.1 + 0.2,
     )
     row = m.MeasurementRow(
         document_id=a_document_id(),
         source_document_type="invoice",
         processing_time_ms=sys.float_info.max,
-        document_score=5e-324,
+        document_score=SMALLEST_DENORMAL_FLOAT,
         per_field=tuple(
             m.NamedSignal(name=f"f{index}", value=value, instrument="probe")
             for index, value in enumerate(limits)
@@ -486,7 +578,7 @@ def test_values_at_the_limits_of_a_python_float_survive_exactly(tmp_path: Path) 
 
     assert tuple(signal.value for signal in signals_of(read_back.per_field)) == limits
     assert read_back.processing_time_ms == sys.float_info.max
-    assert a_score(read_back.document_score) == 5e-324
+    assert a_score(read_back.document_score) == SMALLEST_DENORMAL_FLOAT
 
 
 def test_a_twenty_thousand_character_field_survives_exactly(tmp_path: Path) -> None:
@@ -518,7 +610,16 @@ def test_emoji_combining_marks_and_a_null_character_survive_exactly(tmp_path: Pa
     plus a combining mark that must not be normalised away, a right-to-left
     mark, and a NUL — the one character a C-style writer would truncate at.
     """
-    exotic = "\U0001f9fe é ‏الفاتورة \x00 end"
+    # Every non-ASCII character is written as an escape rather than embedded
+    # literally. The STRING IS UNCHANGED — the escapes denote exactly the same
+    # code points, so the attack is identical — but the SOURCE no longer
+    # carries an invisible right-to-left mark (U+200F), which is precisely how
+    # a reviewer gets shown one thing and the parser handed another (PLE2502).
+    # Escaping it also un-hid a second finding: with the bidi mark present,
+    # ruff stopped reporting the Arabic alef as a Latin-lookalike (RUF001).
+    # U+1F9FE receipt . e + U+0301 combining acute . U+200F right-to-left mark
+    # . U+0627..U+0629 Arabic for 'the invoice' . U+0000 NUL
+    exotic = "\U0001f9fe e\u0301 \u200f\u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 \x00 end"
     row = m.MeasurementRow(
         document_id=a_document_id(),
         source_document_type=exotic,
@@ -809,7 +910,7 @@ def test_the_bytes_of_every_earlier_row_are_unchanged_by_a_later_append(
         )
         snapshots.append(store.read_bytes())
 
-    for earlier, later in zip(snapshots[:-1], snapshots[1:], strict=True):
+    for earlier, later in itertools.pairwise(snapshots):
         assert later.startswith(earlier)
         assert len(later) > len(earlier)
 

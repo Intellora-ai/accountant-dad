@@ -78,6 +78,31 @@ LINE-DELIMITED JSON, READABLE WITHOUT THIS MODULE.
     written — a store that quietly drops a line one document produced is a
     store lying about how many documents were measured (Law 11).
 
+A READER ASKS WHAT A VALUE IS. NEVER WHAT IT CAN BE TURNED INTO.
+    `float` and `str` are total functions on almost everything, and that
+    totality is precisely what makes them unable to reject anything. Used as
+    validators they do not validate, they FABRICATE: `float(True)` is `1.0`,
+    which on `document_score` is the highest value the scale has, on a document
+    nobody scored; on `processing_time_ms` it is a document that took one
+    millisecond. `str(None)` is `"None"` — four non-blank characters, so every
+    `.strip()` check downstream passes and the row asserts a source document
+    type, or a failed field, that no classifier and no document ever produced.
+    Each is a number or a name entering the store looking exactly like a real
+    one (Law 24), with nothing raised and nothing logged (Law 11).
+
+    So `_as_text`, `_as_optional_text` and `_as_number` below are the only way
+    a value leaves JSON in this module. They interrogate the type and refuse
+    anything else, naming the field and — through the line and path their
+    callers attach — where it was found. `_as_number` refuses `bool` FIRST and
+    by name, because `bool` is a subclass of `int` in Python, so any check
+    asking "is this a number?" afterwards answers yes for `true`.
+
+    This is one rule, not a guard per field: every site that once coerced —
+    `document_id`, `source_document_type`, `processing_time_ms`,
+    `document_score`, and every item of `failed_fields` — is an instance of it,
+    and a field added to this module later inherits the refusal rather than
+    having to remember it.
+
 EVERY SIGNAL CARRIES ITS INSTRUMENT, AND ITS REGION WHEN IT HAS ONE.
     `ConfidenceReport.FieldConfidence` (`accountant_dad.artifacts.evidence`)
     is `(field_name, confidence)` — no slot for which tool produced the
@@ -186,6 +211,18 @@ class MalformedMeasurementRecordError(ValueError):
     written. Raised naming the exact line and file, never swallowed (Law 11)
     — a store that skips a line it cannot parse is a store that has quietly
     forgotten a document was ever measured.
+    """
+
+
+class _UnreadableValueError(ValueError):
+    """Internal control flow only. One JSON value is not the KIND of thing the
+    field it was written into is allowed to hold.
+
+    Never reaches a caller under this name: `_signal_from_json` re-raises it
+    carrying the line and the path, and `_row_from_json`'s existing
+    `except (KeyError, TypeError, ValueError)` folds it into a
+    `MalformedMeasurementRecordError` the same way. It mirrors
+    `config._ParameterValueError`, which does the identical job one module away.
     """
 
 
@@ -328,6 +365,94 @@ class MeasurementRow:
                 )
 
 
+# ── reading untrusted JSON: what a value IS, never what it can BE TURNED INTO
+#
+# `float` and `str` are TOTAL on almost everything, and that totality is exactly
+# what makes them unable to reject anything: `float(True)` is `1.0`, `str(None)`
+# is `"None"`. Used as validators they do not validate, they fabricate — a
+# document score of `true` reads back as the highest score the scale has, on a
+# document nobody scored, and a `null` field name reads back as a field called
+# `"None"`, four non-blank characters that pass every `.strip()` check
+# downstream (Law 24, Law 11).
+#
+# So every value read out of the store goes through one of the three readers
+# below, and the module has ONE answer to "is this a number?" and ONE answer to
+# "is this text?" rather than one per field. A field added later inherits the
+# refusal instead of having to remember it.
+
+
+#: What `NamedSignal.value` may be written as. Named because two branches below
+#: put it in a message and would otherwise each retype it.
+_SIGNAL_VALUE_SHAPES: Final = "a number, a numeric string, or null"
+
+
+def _as_text(value: object, *, subject: str) -> str:
+    """The string `value` IS.
+
+    Never `str(value)`: that accepts anything printable, so `null` arrives as
+    the four-character word `"None"` — a source document type no classifier
+    ever produced, or a failed field no document ever had.
+    """
+    if not isinstance(value, str):
+        raise _UnreadableValueError(f"{subject} must be a string; got {value!r}.")
+    return value
+
+
+def _as_optional_text(value: object, *, subject: str) -> str | None:
+    """`_as_text`, except that `None` is a real answer rather than a missing
+    one — `NamedSignal.region` is `None` when the signal is not tied to one
+    page location. Nothing else is accepted: `str(123)` would invent `"123"` as
+    a region name exactly as `str(None)` invents `"None"` as a document type.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise _UnreadableValueError(f"{subject} must be a string or absent; got {value!r}.")
+    return value
+
+
+def _as_number(value: object, *, subject: str, allowed: str = "a number") -> float:
+    """The number `value` IS.
+
+    The boolean case is refused FIRST and by name, because in Python `bool` is
+    a subclass of `int` — `isinstance(True, int)` is true and `float(True)` is
+    `1.0` — so any check that asks "is this a number?" after the fact answers
+    yes for `true` and hands back a perfect score or a one-millisecond
+    document. `allowed` states the field's own contract, so a signal (which
+    also accepts a numeric string) and a plain row-level number each describe
+    themselves accurately in the refusal.
+    """
+    if isinstance(value, bool):
+        raise _UnreadableValueError(
+            f"{subject} must be a number, not a boolean; got {value!r}. In Python "
+            "`bool` is a subclass of `int`, so a coercion would record this as "
+            "1.0 or 0.0 — a reading nobody took."
+        )
+    if not isinstance(value, int | float):
+        raise _UnreadableValueError(f"{subject} must be {allowed}; got {value!r}.")
+    return float(value)
+
+
+def _signal_value(value: object, *, subject: str) -> float | None:
+    """UNREADABLE (`null`), or the number a signal's value IS.
+
+    A numeric string is a declared shape for this field alone, so it is the one
+    place text becomes a number here — and only after being asked whether it IS
+    text. `NamedSignal.__post_init__` then refuses whatever `float` produces
+    from `"NaN"` or `"1e400"`, so no infinity or NaN survives the round trip.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError as exc:
+            raise _UnreadableValueError(
+                f"{subject} must be {_SIGNAL_VALUE_SHAPES}; got {value!r}, which is not a number."
+            ) from exc
+    return _as_number(value, subject=subject, allowed=_SIGNAL_VALUE_SHAPES)
+
+
 def _signal_to_json(signal: NamedSignal) -> dict[str, object]:
     payload: dict[str, object] = {
         "name": signal.name,
@@ -344,36 +469,13 @@ def _signal_from_json(payload: object, *, line_number: int, path: Path) -> Named
         raise MalformedMeasurementRecordError(
             f"line {line_number} of {path}: a signal must be a JSON object; got {payload!r}."
         )
-    name = payload.get("name")
-    if not isinstance(name, str):
-        raise MalformedMeasurementRecordError(
-            f"line {line_number} of {path}: a signal's name must be a string; got {name!r}."
-        )
-    instrument = payload.get("instrument")
-    if not isinstance(instrument, str):
-        raise MalformedMeasurementRecordError(
-            f"line {line_number} of {path}: signal {name!r}'s instrument must "
-            f"be a string; got {instrument!r}."
-        )
-    region = payload.get("region")
-    if region is not None and not isinstance(region, str):
-        raise MalformedMeasurementRecordError(
-            f"line {line_number} of {path}: signal {name!r}'s region must be "
-            f"a string or absent; got {region!r}."
-        )
-    raw_value = payload.get("value")
-    if raw_value is not None:
-        if isinstance(raw_value, bool):
-            raise MalformedMeasurementRecordError(
-                f"line {line_number} of {path}: signal {name!r}'s value must "
-                f"be a number, not a boolean; got {raw_value!r}."
-            )
-        if not isinstance(raw_value, int | float | str):
-            raise MalformedMeasurementRecordError(
-                f"line {line_number} of {path}: signal {name!r}'s value must "
-                f"be a number, a numeric string, or null; got {raw_value!r}."
-            )
-    value = None if raw_value is None else float(raw_value)
+    try:
+        name = _as_text(payload.get("name"), subject="a signal's name")
+        instrument = _as_text(payload.get("instrument"), subject=f"signal {name!r}'s instrument")
+        region = _as_optional_text(payload.get("region"), subject=f"signal {name!r}'s region")
+        value = _signal_value(payload.get("value"), subject=f"signal {name!r}'s value")
+    except _UnreadableValueError as exc:
+        raise MalformedMeasurementRecordError(f"line {line_number} of {path}: {exc}") from exc
     return NamedSignal(name=name, value=value, instrument=instrument, region=region)
 
 
@@ -414,13 +516,19 @@ def _row_from_json(payload: object, *, line_number: int, path: Path) -> Measurem
             f"line {line_number} of {path} is not a JSON object; got {payload!r}."
         )
     try:
-        document_id = DocumentId(uuid.UUID(str(payload["document_id"])))
-        source_document_type = str(payload["source_document_type"])
-        processing_time_ms = float(payload["processing_time_ms"])
+        document_id = DocumentId(
+            uuid.UUID(_as_text(payload["document_id"], subject="`document_id`"))
+        )
+        source_document_type = _as_text(
+            payload["source_document_type"], subject="`source_document_type`"
+        )
+        processing_time_ms = _as_number(
+            payload["processing_time_ms"], subject="`processing_time_ms`"
+        )
         correctness = Correctness(payload["correctness"])
         document_score: NumericSignal = ABSENT
         if "document_score" in payload:
-            document_score = float(payload["document_score"])
+            document_score = _as_number(payload["document_score"], subject="`document_score`")
         per_region_ocr = _category_from_json(
             payload, "per_region_ocr", line_number=line_number, path=path
         )
@@ -437,7 +545,10 @@ def _row_from_json(payload: object, *, line_number: int, path: Path) -> Measurem
                     f"line {line_number} of {path}: 'failed_fields' must be a "
                     f"JSON array; got {raw_failed!r}."
                 )
-            failed_fields = tuple(str(item) for item in raw_failed)
+            failed_fields = tuple(
+                _as_text(item, subject=f"`failed_fields`[{index}]")
+                for index, item in enumerate(raw_failed)
+            )
         return MeasurementRow(
             document_id=document_id,
             source_document_type=source_document_type,
