@@ -285,8 +285,11 @@ Engine 1 ships **nine** source files. Read as a sub-engine count, that is five t
 | The document forbids implementation outright — *"Specification only — no implementation. No code, no libraries … no pipelines"* | `ENGINE_1_INPUT_ENGINE_RULES.md:8` |
 | Engine-level work that is **not** sub-engine work already exists by construction: assembly must happen, and *"No new assembler sub-engine is created"* | `ENGINE_1_INPUT_ENGINE_RULES.md:384` · `SUB_ENGINE_RESPONSIBILITIES.md` §1 boxed note |
 | The parent is a fifth **row** in the Decision Authority table with its own `Owns` column — a component, and not a sub-engine | `ENGINE_1_INPUT_ENGINE_RULES.md:95` |
+| The system-wide count behaves identically: *"45 components: 6 engines, 39 sub-engines"* — and **assembly is not among the 45**, though the architecture requires it to happen | `MVP_ARCHITECTURE.md:57` |
 
 A count written by a document that forbids code from existing cannot have been a count of code.
+
+**The third category was already in use, unnamed.** The last row above is the check on the whole amendment: the semantic tree has always excluded engine-level machinery that must nevertheless exist. This amendment names that exclusion instead of inventing one, and the 45 is unchanged.
 
 ## What decides the hard case
 

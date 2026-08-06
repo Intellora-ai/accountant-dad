@@ -674,6 +674,8 @@ The architecture already proves the two differ. It describes work Engine 1 must 
 
 **Splitting one job across two files creates no second component.** The parent's runner and its combining step are one engine-level responsibility written in two places. File layout is not architecture; a second *owner* would be.
 
+**The system-wide count already works this way, which is the check on all of the above.** [`MVP_ARCHITECTURE.md`](MVP_ARCHITECTURE.md) §3: *"45 components: 6 engines, 39 sub-engines."* Assembly is **not** among the 45 — yet the architecture requires it to happen and names the Input Engine itself as the thing that does it. So the semantic tree already excludes engine-level machinery that must exist, exactly as *"exactly four"* excludes it. **A third category was not invented here; it was already in use and unnamed.** Facilities sit outside the 45 for the same reason, and the 45 is unchanged by this section.
+
 ## What each category may and may not do
 
 - **A fifth sub-engine may never be created.** §7's rules stand unchanged: do not add, do not remove, do not merge. Anything that would produce a fifth part of the Document Evidence Object **is** a fifth sub-engine, whatever it is called, and is forbidden.
