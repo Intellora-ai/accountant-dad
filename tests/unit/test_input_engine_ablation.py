@@ -485,11 +485,57 @@ def test_changing_only_the_source_reference_changes_only_the_source_reference(
     """A source reference is an identifier too, and this one is not inert: it
     is handed to `parser.parse` as `source_reference`. It may be carried into
     the artifact and it may appear in a parser error, but it may not move a
-    single extracted value, score or ordering."""
+    single extracted value, score or ordering.
+
+    WHERE IT IS NOW CARRIED, AND WHY THAT IS THE DOCSTRING'S FIRST CLAUSE
+    RATHER THAN A LEAK. Since Amendment 5 every mapped value becomes a
+    `DetectedField`, and `Provenance.source_id` is *"WHICH artifact"* — it IS
+    the source reference, recorded where INV-11 requires each fact to state its
+    origin. Changing the reference therefore changes that slot, by definition:
+    a run of a differently-named source whose provenance still named the old
+    one would be the actual defect. Before the amendment `detected_fields` was
+    empty on this input, so the sites simply did not exist to be checked.
+
+    THE SET IS DERIVED, NEVER HARD-CODED. Writing `detected_fields[0..3]` would
+    pass for the wrong reason the day the fixture yields a fifth field. The
+    expectation is computed from the baseline's own field count, so a field
+    appearing or disappearing changes what this test demands.
+
+    STRICTER THAN BEFORE, NOT LOOSER. The four assertions below did not exist
+    previously. Permitting `source_id` to move without pinning everything
+    beside it would trade one blind spot for another, so every extracted value,
+    every name, every within-artifact location, every score and the ORDER of
+    all of them are asserted byte-identical across the two runs.
+    """
     varied = run_pipeline(BASE_IDENTITY, source_references=OTHER_SOURCE_REFERENCES)
     differences = differing_paths(baseline.model_dump(), varied.model_dump())
-    assert differences == MINTED_PER_RUN | {"source_references[0]"}, (
-        f"the source reference leaked into {sorted(differences - MINTED_PER_RUN)}"
+
+    carried_into_provenance = {
+        f"structured_document.detected_fields[{index}].provenance.source_id"
+        for index in range(len(baseline.structured_document.detected_fields))
+    }
+    permitted = MINTED_PER_RUN | {"source_references[0]"} | carried_into_provenance
+    assert differences == permitted, (
+        f"the source reference leaked into {sorted(differences - permitted)}"
+    )
+
+    base_fields = baseline.structured_document.detected_fields
+    varied_fields = varied.structured_document.detected_fields
+    assert [field.name for field in varied_fields] == [field.name for field in base_fields], (
+        "renaming the source moved a field name or reordered the fields"
+    )
+    assert [field.value for field in varied_fields] == [field.value for field in base_fields], (
+        "renaming the source moved an extracted VALUE, which is the thing this "
+        "ablation exists to forbid"
+    )
+    assert [field.provenance.evidence_reference for field in varied_fields] == [
+        field.provenance.evidence_reference for field in base_fields
+    ], "renaming the source moved WHERE WITHIN the document a value was found"
+    assert [field.provenance.confidence for field in varied_fields] == [
+        field.provenance.confidence for field in base_fields
+    ], (
+        "renaming the source moved a confidence. An identifier may never change "
+        "a score, measured or UNMEASURED (INV-9)."
     )
 
 

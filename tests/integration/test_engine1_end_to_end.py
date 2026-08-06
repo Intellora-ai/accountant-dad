@@ -71,6 +71,7 @@ from accountant_dad.artifacts.evidence import (
     Provenance,
     SourceType,
 )
+from accountant_dad.confidence import UnmeasuredType
 from accountant_dad.engines.input_engine import (
     assembly,
     cleaner,
@@ -665,51 +666,78 @@ def test_the_human_note_is_scored_for_capture_fidelity_and_never_for_truth(
     """`ENGINE_1_INPUT_ENGINE_RULES.md` §5A — *"capture confidence is not truth
     confidence."* A perfect score here means the system stored exactly what was
     typed. It must never be readable as "and it is true", so the only score the
-    note earns is the one named for capture fidelity, and it is the only score
-    in this artifact at all.
+    note earns is the one named for capture fidelity, and it is the only
+    MEASURED score in this artifact at all.
+
+    THE CLAIM IS NARROWED AND STRENGTHENED, NOT RELAXED. This used to assert
+    that capture fidelity was the only ENTRY in `confidence_scores`, which was
+    true only because every text-layer value was being dropped before it could
+    have one. Since Amendment 5 each of those values is emitted and carries an
+    entry saying nobody scored it. So the entry count is no longer the thing
+    worth pinning — the thing worth pinning is that capture fidelity is the
+    only entry carrying a NUMBER, and that is asserted directly below by
+    partitioning every entry by type. A run that quietly gave a text-layer
+    reading a real score would now turn this red; under the old assertion it
+    would have turned it red for the wrong reason, and under a merely relaxed
+    one it would not have turned it red at all.
     """
     scores = engine1_artifact.confidence_report.confidence_scores
-    assert [score.field_name for score in scores] == [confidence_report.CAPTURE_FIDELITY_FIELD_NAME]
-    assert scores[0].confidence == confidence_report.CAPTURE_FIDELITY_ON_EXACT_MATCH
+    measured = [score for score in scores if not isinstance(score.confidence, UnmeasuredType)]
+    unmeasured = [score for score in scores if isinstance(score.confidence, UnmeasuredType)]
+
+    assert [score.field_name for score in measured] == [
+        confidence_report.CAPTURE_FIDELITY_FIELD_NAME
+    ], (
+        "something other than the human note's capture fidelity carries a "
+        "measured score in this artifact. No recogniser ran on a PDF text "
+        "layer, so any other number here was invented."
+    )
+    assert measured[0].confidence == confidence_report.CAPTURE_FIDELITY_ON_EXACT_MATCH
+
+    # Every other entry states the absence of a measurement, and every one of
+    # them belongs to a value the document actually carried.
+    assert unmeasured, "the text-layer readings reached the report with no entry at all"
+    detected = {field.name for field in engine1_artifact.structured_document.detected_fields}
+    assert {score.field_name for score in unmeasured} == detected
 
 
 # ── 6. the traceability contract ─────────────────────────────────────────
 
 
-def test_reader_produced_a_source_location_for_every_region_and_the_boundary_dropped_them_all(
+def test_reader_produced_a_source_location_for_every_region_and_every_one_reaches_the_artifact(
     engine1_artifact: DocumentEvidenceObject,
 ) -> None:
-    """WHERE traceability is lost, measured, so the next test's failure has an
-    address rather than a shrug.
+    """THE WHOLE TRACEABILITY CHAIN, END TO END, ON THE MVP'S PRIMARY INPUT.
 
-    `reader` does its job: `ENGINE_1_INPUT_ENGINE_RULES.md:511` — *"source
-    locations are emitted even for low-confidence extractions"* — and it emits
-    one per region. `pipeline.reader_output` carries them into
-    `assembly.ReaderOutput.source_locations`. `assembly.assemble` then builds
-    `StructuredDocument` from `raw_extracted_text` ALONE: the schema has no
-    slot for a location, so every one of them stops at the engine boundary.
+    This test used to be named `..._and_the_boundary_dropped_them_all`, and it
+    MEASURED the loss so the next test's failure would have an address rather
+    than a shrug. The loss is gone, so it now measures the chain instead. The
+    old expectation is CORRECTED, not eased: `emitted.detected_fields == ()`
+    described a schema that no longer exists.
 
-    WHAT CHANGED WITH THE F-019 FIX, AND WHY THIS STILL READS THE SAME. The
-    `reader → parser` pipe now exists: `parser` maps every region `reader`
-    extracted, keeps its source location, and `pipeline.detected_fields` turns
-    each SCORED mapping into a real `DetectedField` carrying that location on
-    its provenance —
-    `test_an_ocr_reading_crosses_the_boundary_with_all_three_intact` proves it
-    against the real modules. This document is a PDF TEXT LAYER, and
-    `reader.read_pdf_text_layer` scores nothing: no recogniser ran, so there is
-    no measurement (`reader.py`, "THE CONFIDENCE OF A TEXT LAYER IS `None`").
-    `Provenance.confidence` is mandatory, `1.0000` is the default
-    `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids and `0.0000` is a lie the other
-    way, so `ENGINE_1_INPUT_ENGINE_RULES.md:245` leaves exactly one honest
-    option and the pipeline takes it: no field is emitted for an unscored value.
+    WHAT WAS LOST AND HOW IT WAS RECOVERED. `reader` always did its job —
+    `ENGINE_1_INPUT_ENGINE_RULES.md:511`, *"source locations are emitted even
+    for low-confidence extractions"* — and `parser` always kept the location on
+    every mapping. The break was at the last hop: this document is a PDF TEXT
+    LAYER and `reader.read_pdf_text_layer` scores nothing, `Provenance
+    .confidence` was mandatory and numeric, and `ENGINE_1_INPUT_ENGINE_RULES
+    .md:245` therefore left exactly one honest option — emit nothing. So every
+    location reached the final hop and died there.
+    `ARCHITECTURE_AMENDMENTS.md` Amendment 5 gave the schema a way to say
+    "read, and not measured", and the whole chain now completes.
 
-    So the loss is no longer "the boundary drops locations". It is now exactly
-    one thing, named: **this schema cannot say "read, and not measured"**, which
-    is a §M amendment to a frozen P2 schema and the owner's to make.
+    EVERY LINK IS ASSERTED SEPARATELY, so a break has an address:
 
-    Pinned in this direction deliberately, and the pin is now SHARPER: it
-    asserts the absence of a score is the reason, so a change that gives the
-    text-layer path a fabricated confidence turns this red rather than green.
+        reader   one region per line, each with a location, none scored
+        parser   one mapping per region, location kept, still none scored
+        artifact one DetectedField per line, in order, each carrying that
+                 location on its provenance and each saying it was never scored
+        report   one entry per field, so doubt is answerable for every value
+
+    AND STILL NO NUMBER IS INVENTED. The confidence assertions are by TYPE, so
+    a fabricated `1.0000` or `0.0000` on the text-layer path turns this red —
+    which is the property the old version of this test was protecting, kept
+    intact through the rewrite.
     """
     reading = reader.read(
         a_two_page_text_layer_pdf(),
@@ -725,19 +753,43 @@ def test_reader_produced_a_source_location_for_every_region_and_the_boundary_dro
     # and the PDF text layer scores nothing, honestly: no recogniser ran
     assert set(carried.extraction_confidence) == {"None"}
 
-    # the pipe to `parser` DOES exist now, and it carries every region across
-    # with its location intact — the mapping is not where anything is lost
+    # the pipe to `parser` carries every region across with its location intact
     mapped = parser.map_fields(pipeline.extracted_regions(reading))
     assert len(mapped) == len(ALL_LINES)
     assert [field.value for field in mapped] == list(ALL_LINES)
     assert all(field.source_location.startswith("BoundingBox(") for field in mapped)
-
-    # what stops is the FIELD, and for exactly one stated reason: no score
     assert all(field.extraction_confidence is None for field in mapped)
+
+    # and the last hop, which used to be where all of it stopped
     emitted = engine1_artifact.structured_document
     assert "SourceLocation(" not in emitted.extracted_text
     assert "SourceLocation(" not in emitted.document_structure
-    assert emitted.detected_fields == ()
+
+    assert [field.value for field in emitted.detected_fields] == list(ALL_LINES), (
+        "the artifact does not carry one detected field per extracted line, in "
+        "reader's own order. Every location reaching parser and dying at the "
+        "schema is the exact defect Amendment 5 was written for."
+    )
+    for field in emitted.detected_fields:
+        assert field.provenance.evidence_reference.startswith("BoundingBox("), (
+            f"detected field {field.name!r} names no place within its source, so "
+            "a human cannot go and look at the value that was read."
+        )
+        assert isinstance(field.provenance.confidence, UnmeasuredType), (
+            f"detected field {field.name!r} carries "
+            f"{field.provenance.confidence!r}. A PDF text layer is transcribed, "
+            "not recognised — no instrument ran, so any number here was invented."
+        )
+
+    scored = {
+        score.field_name: score.confidence
+        for score in engine1_artifact.confidence_report.confidence_scores
+    }
+    for field in emitted.detected_fields:
+        assert isinstance(scored[field.name], UnmeasuredType), (
+            f"the Confidence Report claims {scored[field.name]!r} for "
+            f"{field.name!r} while its own provenance says nothing measured it."
+        )
 
 
 def test_every_extracted_value_that_crosses_the_boundary_carries_source_confidence_and_uncertainty(

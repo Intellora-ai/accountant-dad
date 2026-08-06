@@ -62,6 +62,7 @@ from accountant_dad.artifacts.evidence import (
     Provenance,
     SourceType,
 )
+from accountant_dad.confidence import UnmeasuredType
 from accountant_dad.engines.input_engine import assembly, cleaner, parser, pipeline, reader
 from accountant_dad.engines.input_engine import confidence_report as confidence_report_module
 from accountant_dad.identity import (
@@ -1160,23 +1161,41 @@ def test_parsed_fields_mirrors_the_exact_score_object_and_the_name_parser_gave()
     assert built.extraction_confidence is score
 
 
-def test_an_unscored_reading_is_skipped_rather_than_given_an_invented_score() -> None:
-    """THE TEXT-LAYER GAP, PINNED AS THE HONEST STATE IT IS.
+def test_an_unscored_reading_is_carried_and_says_it_was_never_scored() -> None:
+    """THE TEXT-LAYER GAP, CLOSED BY AMENDMENT 5 — AND PINNED AT THE EXACT
+    LINE BETWEEN "CARRIED" AND "INVENTED".
 
-    `reader.read_pdf_text_layer` scores nothing — no recogniser ran — and
-    `Provenance.confidence` is mandatory with no member meaning "not measured".
-    `1.0000` is the default `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids and
-    `0.0000` asserts a measurement nobody made, so
-    `ENGINE_1_INPUT_ENGINE_RULES.md:245` applies: not all three, therefore not
-    emitted.
+    This test used to be `test_an_unscored_reading_is_skipped_rather_than_
+    given_an_invented_score`, and it said: *"This test goes RED the day someone
+    makes an unscored mapping produce a field, which is exactly right — that
+    change needs a §M amendment to a frozen schema, and it must not arrive
+    quietly."* The amendment arrived, in writing
+    (`docs/ARCHITECTURE_AMENDMENTS.md` Amendment 5, approved 2026-08-06), so
+    the expectation is CORRECTED rather than eased: the old one described a
+    schema that no longer exists.
 
-    This test goes RED the day someone makes an unscored mapping produce a
-    field, which is exactly right — that change needs a §M amendment to a
-    frozen schema, and it must not arrive quietly. Until then the SCORED
-    mapping beside it must still come through, so "skipped" can never
-    degenerate into "nothing works".
+    `reader.read_pdf_text_layer` still scores nothing — no recogniser runs —
+    and no number has become honest since. `1.0000` is still the default
+    `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids and `0.0000` still asserts a
+    measurement nobody made. What changed is that the schema can now hold the
+    ABSENCE of a measurement, so
+    `ENGINE_1_INPUT_ENGINE_RULES.md:245`'s disjunction is satisfied by carrying
+    all three rather than by emitting none.
+
+    WHAT WOULD PROVE THE FIX WRONG, asserted directly rather than implied:
+
+      * a number appearing on the unscored field — `1.0000`, `0.0000` or any
+        other. Asserted by TYPE, so no value can slip through: a `Decimal` of
+        any magnitude fails `isinstance(..., UnmeasuredType)`.
+      * the sentinel spreading onto the SCORED field beside it, which would
+        destroy a real measurement. Asserted by identity — the exact object
+        `reader` produced, not merely an equal one.
+      * the two mappings collapsing into one shape. Both are asserted
+        separately, so "carried" can never degenerate into "everything is
+        unmeasured" or "nothing works".
     """
     box = parser.BoundingBox(page=1, left=0.0, top=0.0, right=1.0, bottom=1.0)
+    measured = Decimal("0.7500")
     structure = parser.ParsedStructure(
         source_reference="upload:mixed.pdf",
         page_count=1,
@@ -1193,17 +1212,42 @@ def test_an_unscored_reading_is_skipped_rather_than_given_an_invented_score() ->
                 name="page 1 region 2",
                 value="scored by OCR",
                 source_location=repr(box),
-                extraction_confidence=Decimal("0.7500"),
+                extraction_confidence=measured,
             ),
         ),
     )
 
     scored = pipeline.parsed_fields(structure)
+    unmeasured = pipeline.unmeasured_field_scores(structure)
     fields = pipeline.detected_fields(structure, recorded_at=RECORDED_AT)
 
+    # BOTH mappings are now emitted, in `reader`'s order, with their text intact.
+    assert [field.name for field in fields] == ["page 1 region 1", "page 1 region 2"]
+    assert [field.value for field in fields] == [
+        "read from a PDF text layer",
+        "scored by OCR",
+    ]
+
+    # The unscored one carries the absence of a measurement, by TYPE. A number
+    # of any magnitude fails this, which is the point.
+    assert isinstance(fields[0].provenance.confidence, UnmeasuredType), (
+        f"an unscored reading was given {fields[0].provenance.confidence!r}. No "
+        "number is honest here: 1.0000 is the default "
+        "ENGINE_1_INPUT_ENGINE_RULES.md:625 forbids by name, and 0.0000 asserts "
+        "a worthlessness nobody measured."
+    )
+
+    # The scored one keeps the EXACT object reader measured. Identity, not
+    # equality: a re-derived Decimal that happened to compare equal would still
+    # mean this module had recomputed a score it may not touch (INV-2).
+    assert fields[1].provenance.confidence is measured
+
+    # Each mapping takes exactly one of the two routes into the Confidence
+    # Report, and the two routes never overlap.
     assert [field.field_name for field in scored] == ["page 1 region 2"]
-    assert [field.name for field in fields] == ["page 1 region 2"]
-    assert [field.value for field in fields] == ["scored by OCR"]
+    assert [entry.field_name for entry in unmeasured] == ["page 1 region 1"]
+    assert all(isinstance(entry.confidence, UnmeasuredType) for entry in unmeasured)
+    assert scored[0].extraction_confidence is measured
 
 
 def test_detected_fields_carry_the_source_the_score_and_the_callers_own_clock() -> None:

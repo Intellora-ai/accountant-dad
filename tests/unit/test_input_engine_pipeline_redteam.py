@@ -1225,6 +1225,19 @@ def test_the_pipeline_returns_a_document_evidence_object_only_through_assembly(
     built anywhere else would bypass every schema check INV-11 depends on.
     Rebuilding it here from the SAME real parts must reproduce it exactly,
     except for the identity, which is minted per run.
+
+    THE THIRD ARGUMENT USED TO BE A LITERAL `()`, AND THAT WAS A COINCIDENCE
+    WAITING TO BREAK. The observed run reads a PDF text layer, which scores
+    nothing, so `pipeline.parsed_fields` genuinely returned `()` and the
+    hard-coded empty tuple matched by accident rather than by construction.
+    Both real functions are called now, so this rebuild fails the day `run`
+    feeds `record_confidence` anything this test does not.
+
+    `unmeasured_field_scores` is passed for the same reason: since Amendment 5
+    every mapped value becomes a `DetectedField`, and one whose Confidence
+    Report entry is missing makes `DocumentEvidenceObject` refuse the artifact
+    outright. A rebuild that omitted them would not merely differ from `run` —
+    it would raise, which is exactly the guard doing its job.
     """
     result = observed_run.result
     reading = observed_run.reading
@@ -1238,7 +1251,7 @@ def test_the_pipeline_returns_a_document_evidence_object_only_through_assembly(
     report = confidence_report_module.record_confidence(
         cleaned,
         pipeline.region_readings(reading),
-        (),
+        pipeline.parsed_fields(parsed),
         pipeline.missing_fields(parsed),
         confidence_report_module.HumanCaptureEvidence(
             submitted_text=HUMAN_NOTE, stored=a_human_business_context()
@@ -1249,7 +1262,9 @@ def test_the_pipeline_returns_a_document_evidence_object_only_through_assembly(
             cleaner=pipeline.cleaner_output(cleaned),
             reader=pipeline.reader_output(reading),
             parser=pipeline.parser_output(parsed, recorded_at=RECORDED_AT),
-            confidence=pipeline.confidence_output(report),
+            confidence=pipeline.confidence_output(
+                report, pipeline.unmeasured_field_scores(parsed)
+            ),
         ),
         identity=an_identity(),
         source_references=("upload:observed.pdf",),
