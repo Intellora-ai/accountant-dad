@@ -814,6 +814,13 @@ def test_the_confidence_stage_failing_names_itself_and_keeps_all_three_before_it
         missing_fields: tuple[confidence_report_module.MissingField, ...],
         human_capture: confidence_report_module.HumanCaptureEvidence | None = None,
     ) -> ConfidenceReport:
+        # The full parameter list is repeated deliberately rather than shortened
+        # to `*args`: this stands in for the real `record_confidence`, and a
+        # substitute with a looser signature keeps passing after the real one
+        # changes shape — which is the substitution silently going stale, the
+        # exact failure this file's header warns about. The arguments are then
+        # discarded explicitly, because the point of the test is the raise.
+        del cleaned, reader_regions, parsed_fields, missing_fields, human_capture
         raise injected
 
     with pytest.MonkeyPatch.context() as patch:
