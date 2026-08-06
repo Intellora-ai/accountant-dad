@@ -597,14 +597,45 @@ def test_region_readings_never_raises_or_lowers_a_score_it_was_given() -> None:
     assert built.extraction_confidence is high  # the exact object, not a recomputed equal one
 
 
-# ── defect 3, proven directly: an unscored region is excluded, not invented ─
+# ── defect 3, proven directly: an unscored region is CARRIED and MARKED ────
 
 
-def test_region_readings_excludes_a_text_layer_region_but_keeps_a_scored_one() -> None:
+def test_region_readings_carries_an_unscored_text_layer_region_and_marks_it() -> None:
+    """A CORRECTED EXPECTATION, NOT AN EASED ONE (§J.4, Law 4).
+
+    This test used to be named `..._excludes_a_text_layer_region_but_keeps_a_
+    scored_one` and to assert `len(readings) == 1` for a two-region reading.
+    That expectation was WRONG, and it was wrong in the dangerous direction: it
+    pinned as correct the behaviour of dropping every region a PDF text layer
+    produces — which is every region on the MVP's primary input.
+
+    WHY IT WAS EVER WRITTEN, AND WHY THE REASON EXPIRED.
+    `confidence_report.RegionReading` once refused text with no score outright,
+    so `region_readings` could not construct one and dropping it was the least
+    dishonest option then available. `ReadingState` has since gained its third
+    member, `READ_BUT_UNSCORED`, and the refusal is gone. The filter outlived
+    its cause; the assertion outlived it too.
+
+    THE CORRECTION IS STRICTLY STRONGER. The old test made four assertions and
+    admitted any behaviour that kept the scored region. This one pins the
+    count, BOTH regions' states by name, reader's own ORDER, the scored
+    `Decimal` by IDENTITY rather than equality, and — the assertion that
+    actually catches the regression — that the unscored region reaches the
+    Confidence Report as a real `UncertaintyMarker` naming its own location.
+    Restoring the filter now fails five ways instead of passing.
+
+    MEASURED, WHY THIS MATTERS RATHER THAN BEING TIDINESS. On three text-layer
+    regions the filter suppressed three `UncertaintyMarker`s (3 -> 0) and made
+    `reliability_information` publish "0 of 0 region(s) reader attempted" for a
+    document holding three: concealed uncertainty
+    (`ENGINE_1_ARCHITECTURE.md` P-F3) on top of a fabricated denominator
+    (Law 24).
+    """
+    score = Decimal("0.7500")
     scored = reader.TextRegion(
         text="scored by OCR",
         location=reader.SourceLocation(page_index=0, left=0.0, top=0.0, right=1.0, bottom=1.0),
-        extraction_confidence=Decimal("0.7500"),
+        extraction_confidence=score,
     )
     unscored = reader.TextRegion(
         text="read from a PDF text layer",
@@ -617,10 +648,34 @@ def test_region_readings_excludes_a_text_layer_region_but_keeps_a_scored_one() -
 
     readings = pipeline.region_readings(reading)
 
-    assert len(readings) == 1
-    assert readings[0].text == "scored by OCR"
-    assert readings[0].extraction_confidence == Decimal("0.7500")
-    # the unscored region's text is not lost from the artifact: it still
+    # nothing is filtered, and reader's own order is kept
+    assert len(readings) == 2
+    assert [carried.text for carried in readings] == [
+        "scored by OCR",
+        "read from a PDF text layer",
+    ]
+    assert [carried.state for carried in readings] == [
+        confidence_report_module.ReadingState.READ_AND_SCORED,
+        confidence_report_module.ReadingState.READ_BUT_UNSCORED,
+    ]
+
+    # the scored region keeps the exact object reader measured
+    assert readings[0].extraction_confidence is score
+    # and the unscored one is given NO number in its place (ENGINE_1:337)
+    assert readings[1].extraction_confidence is None
+
+    # the absence is REPORTED, not merely tolerated: one marker, naming the
+    # unscored region's own location, and none for the scored one.
+    report = confidence_report_module.record_confidence(a_cleaned_document(), readings, (), ())
+    assert [marker.subject for marker in report.uncertainty_markers] == [
+        repr(unscored.location)
+    ]
+    assert "no per-region extraction score" in report.uncertainty_markers[0].reason
+    # and the count it publishes has the true denominator, not 0 of 0
+    assert "0 of 2 region(s) reader attempted" in report.reliability_information
+    assert "1 of them were read but carry no per-region" in report.reliability_information
+
+    # the unscored region's text is not lost from the artifact either: it still
     # reaches `raw_extracted_text` through `reader_output`, independently.
     assert "read from a PDF text layer" in pipeline.reader_output(reading).raw_extracted_text
 

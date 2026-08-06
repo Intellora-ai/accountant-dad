@@ -71,7 +71,14 @@ from accountant_dad.artifacts.evidence import (
     Provenance,
     SourceType,
 )
-from accountant_dad.engines.input_engine import cleaner, confidence_report, pipeline, reader
+from accountant_dad.engines.input_engine import (
+    assembly,
+    cleaner,
+    confidence_report,
+    parser,
+    pipeline,
+    reader,
+)
 from accountant_dad.identity import FIRST_VERSION, ArtifactId, IdentityEnvelope, TransactionId
 
 Image = npt.NDArray[np.uint8]

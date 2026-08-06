@@ -71,46 +71,44 @@ below, not assumed.
      second, narrower limit, forced by `confidence_report.record_confidence`
      itself accepting exactly one `CleanedDocument`, not one per page.
 
-  3. `confidence_report.RegionReading` CANNOT REPRESENT A SINGLE REGION
-     `reader.read_pdf_text_layer` PRODUCES. Measured directly:
-     `RegionReading(source_location=..., text="TAX INVOICE",
-     extraction_confidence=None)` raises `MalformedSignalError` — every time,
-     for every region a text layer produces. `RegionReading`'s own invariant
-     requires `text` and `extraction_confidence` to be `None` together or
-     present together, on the documented assumption that "an instrument cannot
-     score a reading that does not exist" therefore text without a score can
-     only mean "unread". That assumption is correct for OCR and wrong for a
-     PDF text layer, whose entire design (`reader.py`, "THE CONFIDENCE OF A
-     TEXT LAYER IS `None`") is to report real, successfully-read text with
-     honestly NO per-region score, because no recogniser ran to produce one.
-     `confidence_report.py`'s own module docstring already names the general
-     shape of this gap ("their landed shapes do not yet carry what this module
-     needs"); this is the concrete instance. Neither side is fixed here.
-     Inventing a score to satisfy the invariant would be exactly the
-     fabrication `ENGINE_1_INPUT_ENGINE_RULES.md:337` forbids, and reporting a
-     successfully-read region as unread would be a lie in the other direction.
-     So a region reader read via a backend that assigns it no per-region score
-     is left OUT of the Confidence Report's per-region tracking — its TEXT
-     still reaches the final artifact (`StructuredDocument.extracted_text`, via
-     `reader_output` below), so nothing is silently dropped; only the
-     per-region reliability signal for that one text is unavailable, and
-     `ConfidenceReport.reliability_information` states the count that WAS
-     scored, which is honest about what happened rather than a wrong number
-     dressed up as complete.
+  3. FIXED ON BOTH SIDES — AN UNSCORED REGION IS NOW CARRIED AND MARKED,
+     NOT DROPPED. This entry used to read: "`confidence_report.RegionReading`
+     CANNOT REPRESENT A SINGLE REGION `reader.read_pdf_text_layer` PRODUCES",
+     because `RegionReading` required `text` and `extraction_confidence` to be
+     absent together or present together — so text with no score raised
+     `MalformedSignalError`, every time, for every region a text layer
+     produces. That invariant was correct for OCR and wrong for a PDF text
+     layer, whose entire design (`reader.py`, "THE CONFIDENCE OF A TEXT LAYER
+     IS `None`") is to report real, successfully-read text with honestly NO
+     per-region score, because no recogniser ran to produce one.
 
-     A SHARPER VERSION OF THE SAME GAP, ALSO MEASURED: even a `RegionReading`
-     that DOES construct — real text, a real OCR score — never becomes a
-     `confidence_scores` entry either way.
-     `confidence_report.record_confidence`'s own `_field_confidence_scores`
-     reads ONLY its `parsed_fields` argument; `reader_regions` feeds
-     `_unread_region_markers` exclusively, which fires only when
-     `text is None` — never true for a successful reading. So `reader`'s
-     confidence signal, scored or not, cannot reach `ConfidenceReport.
-     confidence_scores` through this pipeline at all today; only a named,
-     scored `ParsedField` can, and defect 4 below is exactly why none exists.
-     Pinned as `test_a_real_region_reading_with_a_score_still_carries_no_
-     document_level_score` in the test file, so a future change to either
-     module that quietly closes or widens this gap is noticed.
+     `confidence_report.ReadingState` now names three states rather than two —
+     `UNREAD`, `READ_AND_SCORED`, `READ_BUT_UNSCORED` — the same
+     absent/zero/unread discipline `measurement.AbsentType` established for
+     F-005. `RegionReading` refuses only the one pairing that has no honest
+     meaning, a confidence with no text.
+
+     `region_readings` below therefore filters NOTHING any more, and its own
+     docstring carries the before/after measurement. What the removed filter
+     cost, measured on three text-layer regions: three `UncertaintyMarker`s
+     that `_unscored_region_markers` was ready to produce never reached the
+     artifact, and `reliability_information` published "0 of 0 region(s)
+     reader attempted" for a document holding three of them. The first is
+     concealed uncertainty (`ENGINE_1_ARCHITECTURE.md` P-F3); the second is a
+     fabricated denominator (Law 24). Both are now carried. Still no score is
+     invented for those regions — `ENGINE_1_INPUT_ENGINE_RULES.md:337` — the
+     absence is named instead.
+
+     A SHARPER VERSION OF THE ORIGINAL GAP SURVIVES AND IS UNCHANGED. Even a
+     `RegionReading` that carries a real OCR score never becomes a
+     `confidence_scores` entry by that route: `record_confidence`'s
+     `_field_confidence_scores` reads ONLY its `parsed_fields` argument, and
+     `reader_regions` feeds the marker functions exclusively. So a document
+     level score still reaches the report only through a named, scored
+     `ParsedField` — which defect 1's fix is what finally makes exist. Pinned
+     as `test_a_real_region_reading_with_a_score_still_carries_no_document_
+     level_score`, so a future change that quietly closes or widens that gap
+     is noticed.
 
   4. HALF FIXED — A NAMED, SCORED FIELD NOW EXISTS. A TABLE STILL DOES NOT, AND
      NEITHER DOES AN UNSCORED READING.
@@ -171,8 +169,7 @@ THE BOUNDARIES THIS MODULE HOLDS ITSELF TO.
     `parsed_fields`, `detected_fields`, `missing_fields`) repackages a value
     into the shape the next call needs; none of them rounds, clamps,
     reinterprets or recomputes a value a sub-engine produced. `region_readings`
-    drops nothing it CAN honestly carry (see defect 3); it never edits what it
-    does carry. `extracted_regions` performs the one conversion in this file
+    drops nothing at all (see defect 3); it never edits what it carries. `extracted_regions` performs the one conversion in this file
     that changes a number — `page_index + 1` — and that is a change of UNITS
     between two modules' conventions, not a change of value; it is made once,
     and `parser.BoundingBox` refuses a page below 1 so omitting it fails loudly.
@@ -387,21 +384,42 @@ def _payload_of(cleaned: cleaner.CleanedDocument) -> bytes:
 
 
 def region_readings(reading: reader.Reading) -> tuple[confidence_report.RegionReading, ...]:
-    """`reader.TextRegion` mapped into `confidence_report`'s own contract, for
-    every region where that mapping is honest. See the module docstring,
-    defect 3.
+    """EVERY `reader.TextRegion`, mapped into `confidence_report`'s own
+    contract. Nothing is filtered. See the module docstring, defect 3.
 
-    A region reader scored (`extraction_confidence is not None`, the OCR
-    path) becomes a `RegionReading` carrying that EXACT `Decimal`, unrounded
-    and unrenamed — confidence is never raised, lowered or invented here. A
-    region reader read but did not score (`extraction_confidence is None`,
-    every region a PDF text layer produces) cannot become a `RegionReading` at
-    all: `confidence_report.RegionReading`'s own invariant refuses text
-    without a score, on pain of `MalformedSignalError`, because it can only
-    mean "unread" — which this text is not. That region is left out of this
-    tuple rather than represented dishonestly either way; its text still
-    reaches the final artifact through `reader_output.raw_extracted_text`, so
-    it is reported, just not through this particular channel.
+    A region `reader` scored becomes a `RegionReading` carrying that EXACT
+    `Decimal`, unrounded and unrenamed — confidence is never raised, lowered
+    or invented here. A region `reader` read but did NOT score
+    (`extraction_confidence is None`, every region a PDF text layer produces)
+    now becomes one too, in state `READ_BUT_UNSCORED`, and
+    `confidence_report._unscored_region_markers` turns each into an
+    `UncertaintyMarker` naming its location.
+
+    THIS FUNCTION USED TO DROP EXACTLY THOSE REGIONS, AND THE REASON IT GAVE
+    HAS SINCE STOPPED BEING TRUE. `RegionReading` once refused text without a
+    score outright — text-with-no-confidence could only mean "unread", so
+    building one raised `MalformedSignalError` — and dropping the region was
+    the least dishonest option available. `confidence_report.ReadingState`
+    gained its third state and that constraint is gone: text with no score is
+    now a named, constructible fact rather than a contradiction. The filter
+    outlived its cause, and a filter whose reason has expired is a silent
+    suppression.
+
+    MEASURED, BEFORE AND AFTER, ON THREE TEXT-LAYER REGIONS:
+
+        with the filter     region_readings -> 0    markers -> 0
+                            "0 of 0 region(s) reader attempted..."
+        without it          region_readings -> 3    markers -> 3
+                            "0 of 3 ... 3 ... read but carry no per-region
+                             extraction score"
+
+    Three genuine uncertainty signals were being suppressed, and the count
+    `reliability_information` published said `0 of 0` for a document with
+    three regions in it — a true-looking sentence about a document that was
+    never read that way. `ENGINE_1_ARCHITECTURE.md` P-F3 forbids hiding
+    uncertainty and Law 24 forbids the fabricated denominator; this carries
+    both instead. No score is invented for these regions and none is implied:
+    `extraction_confidence` stays exactly the `None` `reader` reported.
     """
     return tuple(
         confidence_report.RegionReading(
@@ -410,7 +428,6 @@ def region_readings(reading: reader.Reading) -> tuple[confidence_report.RegionRe
             extraction_confidence=region.extraction_confidence,
         )
         for region in reading.regions
-        if region.extraction_confidence is not None
     )
 
 
@@ -615,9 +632,12 @@ def reader_output(reading: reader.Reading) -> assembly.ReaderOutput:
 
     `raw_extracted_text` joins every region's text `reader` returned, in
     `reader`'s own order (`reader.py` §1.2 — reordering is forbidden, and this
-    never sorts). This is the one channel that carries a text-layer region's
-    text into the final artifact when defect 3 keeps it out of the Confidence
-    Report's per-region tracking.
+    never sorts). It is the channel that carries a text-layer region's text
+    into `StructuredDocument.extracted_text`. It is no longer the ONLY one that
+    mentions such a region: since the `region_readings` filter was removed
+    (defect 3) each also reaches the Confidence Report as an
+    `UncertaintyMarker` naming its location. What it still cannot become is a
+    `DetectedField` — defect 4 — because that needs a score nobody measured.
     """
     return assembly.ReaderOutput(
         raw_extracted_text="\n".join(region.text for region in reading.regions),
