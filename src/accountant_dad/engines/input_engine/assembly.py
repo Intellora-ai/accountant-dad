@@ -75,17 +75,24 @@ A GAP THIS MODULE FOUND AND DID NOT FIX. `parser`'s documented output
     (`CLAUDE.md` §O), which is outside this file's remit. Reported here, not
     silently worked around.
 
-    A second tension, also reported rather than resolved: every
-    `DetectedField.provenance` requires a `Confidence` value (INV-11 — no
-    optional field), yet `ENGINE_1:109` gives only `confidence` the
-    authority to set one. `ParserOutput.detected_fields` is assumed to
-    already carry complete, valid `DetectedField` objects — how `parser` and
-    `confidence` agree on that value between themselves is not modelled by
-    any document this module answers to, so it is not modelled here either.
-    This module performs no reconciliation of its own: it hands both pieces
-    to `DocumentEvidenceObject`, whose own validator refuses the artifact if
-    a field's provenance confidence ever disagrees with the matching score
-    in the Confidence Report.
+    A second tension, RESOLVED BY AMENDMENT 7 and recorded here because the
+    resolution is what a future reader needs, not the history. Every
+    `DetectedField.provenance` requires a confidence (INV-11 — no optional
+    field), yet `ENGINE_1:109` gives only `confidence` the authority to set a
+    SCORE. Those two used to look irreconcilable, because the slot admitted
+    only a number and so the only way to fill it was to produce one.
+
+    The slot now admits four states — measured, not measured, not applicable,
+    failed (`accountant_dad.confidence.MeasurementState`) — and three of them
+    are not scores at all. Recording that no instrument produced a score is a
+    fact about what the sub-engines did, not an act of scoring, so INV-11 and
+    `ENGINE_1:109` are both satisfied without either giving way.
+
+    This module still performs no reconciliation of its own: it hands both
+    pieces to `DocumentEvidenceObject`, whose own validator refuses the
+    artifact if a field's provenance confidence ever disagrees with the
+    matching score in the Confidence Report — and since Amendment 7 that check
+    refuses two DIFFERENT absences as well as a measured-against-absent pair.
 
 DOCUMENT ID. Minted here via `DocumentId.new()`, restoring what
     `engines/input_engine/stub.py` deliberately deferred — its own
@@ -163,10 +170,20 @@ class ParserOutput:
 
     `detected_fields` and `detected_tables` are assumed to already be
     `accountant_dad.artifacts.evidence.DetectedField` / `DetectedTable`
-    objects, each carrying its own complete `Provenance` (INV-11). See the
-    module docstring's "A GAP THIS MODULE FOUND AND DID NOT FIX" section for
-    the confidence-authority tension this assumption carries, and for why
-    "missing field information" is not modelled here.
+    objects, each carrying its own complete `Provenance` (INV-11) — and since
+    Amendment 7 that provenance states one of four measurement outcomes rather
+    than a number it may not have. See the module docstring's "A GAP THIS
+    MODULE FOUND AND DID NOT FIX" section for how the confidence-authority
+    tension was resolved, and for why "missing field information" is still
+    not modelled here.
+
+    `detected_tables` carries one `Provenance` per TABLE, and that is a real
+    limit of the frozen schema rather than a choice made here: a table's
+    individual CELL values reach the artifact through `detected_fields`
+    instead, because `parser.map_cells` names each one and `pipeline` builds
+    its provenance from that name and the cell's own box. A per-cell
+    provenance inside `DetectedTable` would need a schema change this module
+    has no authority to make (`CLAUDE.md` §O).
     """
 
     document_structure: str

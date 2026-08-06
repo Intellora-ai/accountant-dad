@@ -128,6 +128,55 @@ FIELD MAPPING, AND THE NAME THIS MODULE IS ALLOWED TO ASSIGN.
     invented number Law 52 and Law 54 forbid. The layout label is therefore
     reported in full through `Region`, where it belongs, and is not smuggled
     into a field name it cannot support.
+
+A TABLE CELL'S TEXT IS A VALUE, AND IT USED TO LEAVE HERE WITHOUT AN ORIGIN.
+    THE DIAGNOSIS, and it is not the one the shape of the problem suggests. A
+    `Cell` has ALWAYS carried its `box` — where on the page it was read — so
+    the location was never missing. What was missing is a NAME. Every route
+    out of Engine 1 that attaches a provenance to a value is keyed by name:
+    `MappedField.name` becomes `DetectedField.name`, and `DetectedField.name`
+    is what the Confidence Report files a reliability entry under
+    (`ENGINE_1_INPUT_ENGINE_RULES.md:599-601`). A value with no name has
+    nowhere for its origin to be filed, so it could only cross the Input →
+    Understanding boundary the way it did: flattened into `extracted_text` as
+    a bare string, stripped of the source, confidence and uncertainty that
+    `COMMUNICATION_RULES_INPUT_ENGINE.md:113-119` says *"travel with the value
+    permanently."*
+
+    `map_cells` supplies the missing name and nothing else. Every cell that
+    carries text becomes a `MappedField` on exactly the same terms a text
+    region does — Docling's text verbatim, the cell's own box as the source
+    reference, and `extraction_confidence` left exactly as Docling reported
+    it, which is nothing at all. So a cell's provenance now identifies where
+    on the page it came from by travelling the SAME road a text region's
+    does, rather than by a second mechanism that would drift from it (Law 14,
+    Law 15).
+
+    NO CONFIDENCE IS INVENTED FOR A CELL, AND NONE COULD BE. Docling emits no
+    per-cell score, so `extraction_confidence` is `None` — the absence of a
+    measurement, carried verbatim, exactly as it is for a region `reader` did
+    not score. What that absence MEANS is not decided here: this sub-engine
+    emits signals and only `confidence` turns a signal into a state
+    (`ENGINE_1_INPUT_ENGINE_RULES.md:109`). See CONFIDENCE IS NOT PRODUCED
+    HERE above.
+
+    A GRID POSITION WITH NO TEXT IS NOT MAPPED, AND IS NOT LOST EITHER. No
+    value crosses the boundary from it, so there is nothing for a name or an
+    origin to be about, and inventing an empty `MappedField` would assert a
+    reading that was never made (the same rule `reported_text` applies). The
+    position itself is still reported in full, as a `Cell` with `text=None`
+    inside `ParsedStructure.tables` — where its row, its column and its box
+    all survive. Absence stays visible; it simply is not a value.
+
+    THE NAME IS THE PLACE, AGAIN, AND UNIQUE BY CONSTRUCTION. `_cell_name`
+    returns `page {p} table {t} cell {n} (row {r}, column {c})`. `n` counts
+    within the table in the detector's own order, which is what makes two
+    names impossible to collide — the same guarantee `map_fields` gets from
+    its per-page ordinal, and it matters because `ParsedStructure`,
+    `StructuredDocument` and `ConfidenceReport` all refuse a repeated name
+    rather than silently picking one. The row and column ride along because a
+    human looking for the cell reads a grid, not an ordinal; neither says
+    what the cell MEANS, so §1.3's boundary is untouched.
 """
 
 from __future__ import annotations
@@ -475,6 +524,57 @@ def _field_name(page: int, ordinal: int) -> str:
     return f"page {page} region {ordinal}"
 
 
+def _cell_name(page: int, table_ordinal: int, cell_ordinal: int, cell: Cell) -> str:
+    """The name `parser` assigns one mapped CELL: where it is, and nothing else.
+
+    The ordinal is what guarantees uniqueness — two cells cannot share a name
+    however the detector numbers its grid — and the row and column are what a
+    human reads to find the cell on the page. Neither is a claim about what
+    the cell holds, which is §1.3's whole boundary.
+
+    Half-open spans are reported by their START, the corner a reader looks at.
+    The full span survives on the `Cell` itself, which is also where a spanning
+    cell's `row_end` and `column_end` are, so nothing is lost by not repeating
+    them in a locator.
+    """
+    return (
+        f"page {page} table {table_ordinal} cell {cell_ordinal} "
+        f"(row {cell.row_start}, column {cell.column_start})"
+    )
+
+
+def map_cells(tables: tuple[Table, ...]) -> tuple[MappedField, ...]:
+    """One `MappedField` per table cell that carries text, in the detector's order.
+
+    See A TABLE CELL'S TEXT IS A VALUE in the module docstring for what this
+    fixes and why it fixes it by supplying a NAME rather than a location — the
+    location was always there.
+
+    A pure function of `parse`'s own already-built structure, for the reason
+    `map_fields` and `reported_text` are pure: the mapping is then testable
+    without a document and without a model.
+
+    Cells with no text are skipped and NOT dropped: they remain in
+    `ParsedStructure.tables` with their row, column and box intact. Nothing is
+    sorted, merged or renumbered — a mapping that lost a cell would lose the
+    only evidence the cell was ever read.
+    """
+    mapped: list[MappedField] = []
+    for table_index, table in enumerate(tables, start=1):
+        for cell_index, cell in enumerate(table.cells, start=1):
+            if cell.text is None:
+                continue
+            mapped.append(
+                MappedField(
+                    name=_cell_name(table.box.page, table_index, cell_index, cell),
+                    value=cell.text,
+                    source_location=repr(cell.box),
+                    extraction_confidence=None,
+                )
+            )
+    return tuple(mapped)
+
+
 def map_fields(regions: tuple[ExtractedRegion, ...]) -> tuple[MappedField, ...]:
     """One `MappedField` per extracted region, in `reader`'s own order.
 
@@ -582,11 +682,16 @@ class ParsedStructure:
     #: none of the numbers it needs. Recorded rather than implied: "no bands"
     #: and "the detector was never run" are different facts.
     table_structure_detector: str | None = None
-    #: §1.3's *"field mappings"* — one per region `reader` extracted, or empty
-    #: because `parse` was given no extraction to map. Last in the field order
-    #: deliberately: every earlier position is one an existing caller may already
-    #: be filling positionally, and inserting into that order would silently
-    #: rebind their arguments (Law 33).
+    #: §1.3's *"field mappings"* — one per region `reader` extracted, followed
+    #: by one per table cell that carries text, or empty because `parse` was
+    #: given no extraction to map and found no table. Regions and cells share
+    #: this one collection deliberately: both are values read off the artifact
+    #: that need a name so an origin can be filed against it, and a second
+    #: collection would be a second road to the same destination, free to drift
+    #: from this one (Law 14). Last in the field order deliberately: every
+    #: earlier position is one an existing caller may already be filling
+    #: positionally, and inserting into that order would silently rebind their
+    #: arguments (Law 33).
     mapped_fields: tuple[MappedField, ...] = ()
 
     def __post_init__(self) -> None:
@@ -792,6 +897,13 @@ def parse(
     A caller with a reading and no wish to map it does not exist — `pipeline`
     always supplies what `reader` returned.
 
+    Every table cell carrying text is mapped too, from this module's OWN
+    conversion rather than from `extracted_regions`, because a cell's text and
+    its grid position come from the table detector and reader never sees the
+    grid. See A TABLE CELL'S TEXT IS A VALUE in the module docstring: the
+    mapping is what gives a cell a name, and a name is what its origin gets
+    filed against downstream.
+
     `table_structure` defaults to `None`, meaning Table Transformer does not
     run. That is not a convenience default: the model needs three numbers this
     repository does not state, and running it would require inventing them.
@@ -830,5 +942,9 @@ def parse(
         tables=tables,
         missing_field_information=NO_EXPECTED_FIELD_LIST_WAS_SUPPLIED,
         table_structure_detector=detector,
-        mapped_fields=map_fields(extracted_regions),
+        # Regions first, then cells, in each producer's own order. The order is
+        # not an ordering decision about importance — nothing here ranks
+        # anything — it is simply reader's sequence followed by the detector's,
+        # so a value's position stays traceable to where it was read.
+        mapped_fields=map_fields(extracted_regions) + map_cells(tables),
     )

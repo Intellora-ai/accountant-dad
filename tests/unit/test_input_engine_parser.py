@@ -503,6 +503,153 @@ def test_a_cell_spanning_no_grid_position_is_refused(
         )
 
 
+# ── a table cell's value gets a name, and so an origin ────────────────────
+#
+# F-019's unclosed half. A `Cell` always knew WHERE it was; what it had no way
+# to have was a NAME, and every route out of Engine 1 that attaches a
+# provenance to a value is keyed by name. So a cell's text crossed the Input →
+# Understanding boundary as a bare string inside `extracted_text`, carrying
+# none of the three things `COMMUNICATION_RULES_INPUT_ENGINE.md:113-119` says
+# travel with a value permanently.
+#
+# These run everywhere: `map_cells` is a pure function of an already-built
+# structure, so no model and no document is needed to attack it.
+
+
+def _a_cell(
+    text: str | None,
+    *,
+    row: int = 0,
+    column: int = 0,
+    box: parser.BoundingBox | None = None,
+) -> parser.Cell:
+    return parser.Cell(
+        text=text,
+        row_start=row,
+        row_end=row + 1,
+        column_start=column,
+        column_end=column + 1,
+        is_column_header=False,
+        is_row_header=False,
+        box=box if box is not None else _a_box(),
+    )
+
+
+def _a_table(*cells: parser.Cell, page: int = 1) -> parser.Table:
+    return parser.Table(
+        detector=parser.DOCLING,
+        box=parser.BoundingBox(page=page, left=0.0, top=0.0, right=500.0, bottom=400.0),
+        row_count=max((cell.row_end for cell in cells), default=0),
+        column_count=max((cell.column_end for cell in cells), default=0),
+        cells=cells,
+    )
+
+
+def test_a_mapped_cell_carries_the_text_verbatim_and_the_cell_s_own_box() -> None:
+    """THE FIX, AT ITS SMALLEST, AND EVERY PART OF IT ASSERTED.
+
+    Not "a mapping was produced" — the value character for character, the
+    location the cell itself reported, and the absence of a score left exactly
+    as the detector left it. `ENGINE_1_INPUT_ENGINE_RULES.md:245`: a value
+    carried without all three is not evidence and must not be emitted.
+    """
+    box = parser.BoundingBox(page=2, left=51.0, top=118.5, right=249.0, bottom=132.25)
+    (mapped,) = parser.map_cells(
+        (_a_table(_a_cell("120000.00", row=1, column=3, box=box), page=2),)
+    )
+
+    assert mapped.value == "120000.00"
+    assert mapped.source_location == repr(box), (
+        "the source reference must be the CELL's box, not the table's — a "
+        "table-shaped location cannot point a human at one figure"
+    )
+    assert mapped.extraction_confidence is None, (
+        "Docling emits no per-cell score, and this sub-engine may not invent "
+        "one (ENGINE_1_INPUT_ENGINE_RULES.md:109)"
+    )
+    assert mapped.name == "page 2 table 1 cell 1 (row 1, column 3)"
+
+
+def test_a_read_zero_in_a_cell_is_mapped_and_not_mistaken_for_an_absence() -> None:
+    # `"0"` is a value somebody read. It is the exact string a truthiness test
+    # would drop, and dropping it would lose a legitimate zero off an invoice.
+    (mapped,) = parser.map_cells((_a_table(_a_cell("0")),))
+    assert mapped.value == "0"
+
+
+def test_a_grid_position_with_no_text_produces_no_mapping_and_is_not_lost() -> None:
+    """No value crosses from an empty position, so there is nothing for a name
+    or an origin to be about — and inventing an empty mapping would assert a
+    reading that was never made, which is `reported_text`'s own rule.
+
+    The position itself must still be visible, so the disconfirming half is
+    asserted too: the `Cell` is still on the table with its row, column and box.
+    """
+    empty = _a_cell(None, row=2, column=1)
+    table = _a_table(_a_cell("USB cable", row=2, column=0), empty)
+
+    mapped = parser.map_cells((table,))
+
+    assert [field.value for field in mapped] == ["USB cable"]
+    assert empty in table.cells, "the empty position must survive on the table itself"
+    assert empty.row_start == 2  # noqa: PLR2004  — the fixture's own coordinate
+    assert empty.box is not None
+
+
+def test_every_mapped_cell_name_is_unique_even_when_the_grid_repeats_itself() -> None:
+    """THE ATTACK ON THE NAMING SCHEME, AND WHY IT CARRIES AN ORDINAL.
+
+    Naming a cell by its row and column alone reads better and is wrong: two
+    cells at one grid position is a contradiction a detector can emit, and a
+    repeated name makes "which score belongs to which value?" unanswerable —
+    `ParsedStructure`, `StructuredDocument` and `ConfidenceReport` each refuse
+    it rather than silently picking one. The ordinal makes the collision
+    impossible by construction instead of loud after the fact.
+    """
+    duplicated = _a_table(_a_cell("first", row=0, column=0), _a_cell("second", row=0, column=0))
+    names = [field.name for field in parser.map_cells((duplicated,))]
+    assert len(set(names)) == len(names), f"two cells share a name: {names}"
+
+
+def test_cells_from_two_tables_never_collide_and_say_which_table_they_came_from() -> None:
+    # The ordinal counts within a table, so the table number is what keeps the
+    # first cell of table 1 apart from the first cell of table 2.
+    mapped = parser.map_cells((_a_table(_a_cell("A")), _a_table(_a_cell("B"))))
+    assert [field.name for field in mapped] == [
+        "page 1 table 1 cell 1 (row 0, column 0)",
+        "page 1 table 2 cell 1 (row 0, column 0)",
+    ]
+
+
+def test_a_mapped_cell_name_names_no_business_concept() -> None:
+    """§1.3's boundary: *"it may identify a field labelled 'Supplier', it may
+    not conclude that party is a supplier for accounting purposes."*
+
+    The name is a locator, so it cannot be wrong about the business. Asserted
+    against the same forbidden vocabulary the output types are held to, and on
+    a cell whose TEXT is full of those words — which is the case a naming rule
+    that reached for the cell's content would fail.
+    """
+    forbidden = {"supplier", "total", "tax", "gst", "hsn", "amount", "invoice", "rate", "qty"}
+    (mapped,) = parser.map_cells((_a_table(_a_cell("Total GST amount", row=4, column=2)),))
+    assert not {word.strip("(),") for word in mapped.name.lower().split()} & forbidden
+
+
+def test_no_cell_is_dropped_merged_or_reordered() -> None:
+    # A mapping that lost a cell would lose the only evidence the cell was ever
+    # read, and one that reordered them would break the "where it is" claim the
+    # ordinal makes. Both directions in one assertion: same count, same order.
+    texts = ("Description", "HSN", "Qty", "Amount", "Laptop computer")
+    table = _a_table(*(_a_cell(text, column=index) for index, text in enumerate(texts)))
+    assert tuple(field.value for field in parser.map_cells((table,))) == texts
+
+
+def test_no_tables_at_all_maps_nothing_rather_than_failing() -> None:
+    # A document with no table is ordinary, not an error. Empty in, empty out.
+    assert parser.map_cells(()) == ()
+    assert parser.map_cells((_a_table(),)) == ()
+
+
 def test_a_region_may_not_report_an_empty_string_either() -> None:
     with pytest.raises(ValueError, match="empty"):
         parser.Region(label="text", text="", box=_a_box(), detector="docling")

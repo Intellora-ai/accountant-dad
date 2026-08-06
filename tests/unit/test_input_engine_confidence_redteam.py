@@ -578,7 +578,16 @@ def test_the_recorder_returns_a_report_when_every_single_signal_is_bad() -> None
     )
 
     assert isinstance(report, ConfidenceReport)
-    assert scores_as_written(report) == {"Total": str(MIN)}
+    # STRICTER SINCE AMENDMENT 7. Every one of the three bad signals now states
+    # what is known about its reliability instead of only raising a marker, so
+    # the worst input produces a report that is COMPLETE rather than merely
+    # non-empty. `str(...)` on a stated absence renders its state name, which is
+    # why a missing field and a broken capture guarantee read differently here.
+    assert scores_as_written(report) == {
+        "Total": str(MIN),
+        "GSTIN": "NOT_APPLICABLE",
+        "human_business_context.capture_fidelity": "FAILED",
+    }
     assert len(report.uncertainty_markers) == FIVE_FIELDS
     assert report.risky_fields == ()
 

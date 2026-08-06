@@ -14,14 +14,20 @@ posted entry nobody can defend.
 
 from __future__ import annotations
 
+import ast
 import re
 import uuid
 from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
+from authored_source import authored_tree
 from pydantic import BaseModel, ValidationError
 
+import accountant_dad.artifacts.evidence
+import accountant_dad.engines.input_engine.assembly
+import accountant_dad.engines.input_engine.confidence_report
+import accountant_dad.engines.input_engine.pipeline
 from accountant_dad.artifacts.evidence import (
     ConfidenceReport,
     Corroborated,
@@ -1021,6 +1027,146 @@ def test_no_confidence_bearing_slot_in_this_schema_carries_a_default() -> None:
     for model, name in slots:
         with pytest.raises(ValidationError, match=name):
             model.model_validate({})
+
+
+# ── THE INVARIANT: no value may exist without measurable provenance ──────────
+#
+# Everything above proves the TYPE behaves. These two prove no code path can get
+# round it — one over the source of every module that could write a confidence,
+# one over a real artifact walked field by field. Both are needed and neither
+# replaces the other: a source rule cannot see a value computed at runtime, and
+# a runtime walk cannot see a fabrication in a branch this suite never enters.
+
+#: The two schema slots that carry a confidence into the artifact. Named rather
+#: than pattern-matched on the word "confidence": an Engine 2 result also has a
+#: `confidence=`, it is a different concept with a different owner, and a rule
+#: that swept it up would be enforcing this artifact's law on somebody else's.
+CONFIDENCE_BEARING_CONSTRUCTORS = ("Provenance", "FieldConfidence")
+
+
+def _confidence_arguments(tree: ast.Module) -> list[tuple[int, ast.expr]]:
+    """Every `confidence=` handed to one of those two constructors, with its line."""
+    found: list[tuple[int, ast.expr]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        called = node.func
+        name = called.attr if isinstance(called, ast.Attribute) else getattr(called, "id", None)
+        if name not in CONFIDENCE_BEARING_CONSTRUCTORS:
+            continue
+        found.extend(
+            (keyword.value.lineno, keyword.value)
+            for keyword in node.keywords
+            if keyword.arg == "confidence"
+        )
+    return found
+
+
+def test_no_module_writes_a_literal_into_a_confidence_slot() -> None:
+    """A fabricated confidence does not arrive as a bug. It arrives as somebody
+    typing a number that looks fine.
+
+    `1.0000` is the default `ENGINE_1_INPUT_ENGINE_RULES.md:625` forbids BY
+    NAME; `0.0000` asserts a worthlessness nobody measured. Both are one
+    keystroke away at every call site, and neither the type nor the schema can
+    tell a literal from a measurement — by the time the value exists it is just
+    a Decimal on the agreed scale.
+
+    So the rule is about the SOURCE: a confidence entering this artifact is
+    either a value some component measured (a name, an attribute, a call) or an
+    explicitly named absent state. Never a constant written in place.
+
+    Read through `authored_source`, never `inspect.getsource`: a test that
+    reads what the interpreter happens to be running is reading a rewritten
+    file, not the one under review (L-013).
+    """
+    modules = [
+        accountant_dad.artifacts.evidence,
+        accountant_dad.engines.input_engine.confidence_report,
+        accountant_dad.engines.input_engine.pipeline,
+        accountant_dad.engines.input_engine.assembly,
+    ]
+    offenders: list[str] = []
+    for module in modules:
+        for line, value in _confidence_arguments(authored_tree(module)):
+            if isinstance(value, ast.Constant):
+                offenders.append(f"{module.__name__}:{line} — confidence={value.value!r}")
+    assert offenders == [], (
+        "a confidence was written in as a constant:\n  "
+        + "\n  ".join(offenders)
+        + "\n\nA confidence is measured by a component or it is an explicitly "
+        "named absent state. A literal is neither, and nothing downstream can "
+        "tell it from a real reading (Law 24)."
+    )
+
+
+def test_the_rule_above_would_actually_catch_a_fabricated_confidence() -> None:
+    # Guards the guard. A matcher that silently found nothing would leave the
+    # test above green forever — it asserts an EMPTY list, which is what an
+    # inert matcher also produces. So the matcher is run against source that
+    # DOES fabricate one, and must find it.
+    fabricated = ast.parse(
+        'Provenance(source_type=x, confidence=Decimal("1.0000"), corroborated=y)\n'
+        "FieldConfidence(field_name='Amount', confidence=1.0)\n"
+    )
+    found = _confidence_arguments(fabricated)
+    assert [isinstance(value, ast.Constant) for _, value in found] == [False, True], (
+        "Decimal('1.0000') is a Call and 1.0 is a Constant — the matcher must "
+        "report the node it found, not a verdict of its own"
+    )
+
+
+def test_every_confidence_in_a_real_artifact_names_its_state_and_its_reason() -> None:
+    """THE RUNTIME HALF, over an artifact carrying all four states at once.
+
+    Walked rather than spot-checked: every `Provenance` and every
+    `FieldConfidence` in the object must yield a `MeasurementState`, and every
+    one that is not MEASURED must carry a non-blank reason. `measurement_state`
+    RAISES on anything that is neither a Decimal nor a stated absence, so a
+    `float`, a `None` or a stray string that reached a slot fails this test
+    rather than being reported as a measurement.
+    """
+    absences: dict[str, ConfidenceOrUnmeasured] = {
+        "Amount": HIGH,
+        "Invoice No": NOT_MEASURED,
+        "Line 3 Rate": NOT_APPLICABLE,
+        "Supplier GSTIN": FAILED,
+    }
+    evidence = an_evidence_object(
+        structured_document=a_structured_document(
+            detected_fields=tuple(
+                a_detected_field(name=name, confidence=value) for name, value in absences.items()
+            ),
+        ),
+        confidence_report=a_confidence_report(
+            confidence_scores=tuple(
+                FieldConfidence(field_name=name, confidence=value)
+                for name, value in absences.items()
+            ),
+        ),
+    )
+
+    carried: list[ConfidenceOrUnmeasured] = [
+        field.provenance.confidence for field in evidence.structured_document.detected_fields
+    ]
+    carried.extend(score.confidence for score in evidence.confidence_report.confidence_scores)
+    assert len(carried) == 2 * len(absences), "the walk must reach both sides, or it proves half"
+
+    for value in carried:
+        state = measurement_state(value)
+        if state is not MeasurementState.MEASURED:
+            assert isinstance(value, UnmeasuredType)
+            assert value.basis.strip() != "", (
+                f"a {state.value} confidence reached the artifact with no reason. "
+                "An absence with no stated reason is a gap that reads as a decision."
+            )
+
+    # And every detected field carries a source and a location alongside it —
+    # the other two thirds of what ENGINE_1_INPUT_ENGINE_RULES.md:245 requires
+    # before a value counts as evidence at all.
+    for field in evidence.structured_document.detected_fields:
+        assert field.provenance.source_id.strip() != ""
+        assert field.provenance.evidence_reference.strip() != ""
 
 
 def test_an_extra_score_for_something_that_is_not_a_detected_field_is_allowed() -> None:

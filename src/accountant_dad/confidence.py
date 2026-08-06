@@ -128,7 +128,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import Field, PlainValidator
+from pydantic import Field, PlainSerializer, PlainValidator
 
 #: Four, because the ruling wrote the bounds as `0.0000-1.0000`. Not a default
 #: and not a rounding choice - it is the agreed scale, read off the agreement.
@@ -462,6 +462,37 @@ def _a_measurement_or_its_stated_absence(value: object) -> Decimal | UnmeasuredT
     return _exactly_a_decimal_in_range(value)
 
 
+def _as_json(value: Decimal | UnmeasuredType) -> object:
+    """How a confidence slot crosses into JSON, and why it needs saying.
+
+    WITHOUT THIS, AN ARTIFACT CARRYING A STATED ABSENCE CANNOT BE DUMPED AT
+    ALL. `model_dump_json()` raised `PydanticSerializationError: Unable to
+    serialize unknown type` - measured, not assumed, on `FieldConfidence`
+    holding the sentinel. That is a real defect and not a cosmetic one: the
+    Document Evidence Object is the thing that crosses to Engine 2 and the
+    thing an auditor reads, and a component that can be built and never
+    written down is a component that cannot be audited (Law 43).
+
+    A DICT, NEVER A NUMBER AND NEVER `null`. The two shapes that would have
+    been convenient are the two that are wrong. A number would put the
+    fabricated score straight back, past every guard in this module, at the
+    one boundary where nothing is left to check it. `null` would land in the
+    JSON as the same token four other absent things in this pipeline already
+    use, and the reader on the far side would have no way to tell which.
+    `{"measurement_state": ..., "basis": ...}` is unambiguous, and it carries
+    the reason across too.
+
+    A measured value serialises as its own digits, unchanged - the string form
+    pydantic already gives a `Decimal`, so nothing about the measured path
+    moves. The two arms are deliberately different SHAPES because they are
+    different KINDS of fact, and a reader that has to branch on which it got
+    is a reader that cannot mistake one for the other.
+    """
+    if isinstance(value, UnmeasuredType):
+        return {"measurement_state": value.state.value, "basis": value.basis}
+    return str(value)
+
+
 #: A slot that records EITHER a measurement or the stated absence of one, in
 #: any of the three ways an absence can arise (Amendment 7). The annotation
 #: names the BASE, so a fourth kind of absence added later needs no change at
@@ -472,6 +503,12 @@ def _a_measurement_or_its_stated_absence(value: object) -> Decimal | UnmeasuredT
 #: PlainValidator replaces the inner schema outright so no coercion happens and
 #: an arbitrary class needs no `arbitrary_types_allowed` on the model.
 #:
+#: `when_used="json"` on the serialiser, so a Python-mode `model_dump()` still
+#: hands back the value ITSELF. Two callers depend on that: the ablation
+#: comparison walks a `model_dump()` and needs the state object to compare, and
+#: identity is what several tests use to prove a value passed through rather
+#: than being rebuilt.
+#:
 #: `Field(ge=MIN, le=MAX)` is deliberately NOT attached: a numeric bound cannot
 #: be stated over a union whose other member is not a number. Nothing is lost -
 #: `_exactly_a_decimal_in_range` is what actually enforces the range, on this
@@ -479,6 +516,7 @@ def _a_measurement_or_its_stated_absence(value: object) -> Decimal | UnmeasuredT
 ConfidenceOrUnmeasured = Annotated[
     Decimal | UnmeasuredType,
     PlainValidator(_a_measurement_or_its_stated_absence),
+    PlainSerializer(_as_json, when_used="json"),
 ]
 
 

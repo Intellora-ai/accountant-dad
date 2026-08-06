@@ -51,7 +51,15 @@ from accountant_dad.artifacts.evidence import (
     StructuredDocument,
     UncertaintyMarker,
 )
-from accountant_dad.confidence import MAX, MIN, Confidence, ConfidenceOrUnmeasured
+from accountant_dad.confidence import (
+    MAX,
+    MIN,
+    Confidence,
+    ConfidenceOrUnmeasured,
+    MeasurementState,
+    UnmeasuredType,
+    measurement_state,
+)
 from accountant_dad.engines.input_engine import confidence_report as confidence_report_module
 from accountant_dad.engines.input_engine.cleaner import CleanedDocument, PreservationStatus
 from accountant_dad.engines.input_engine.confidence_report import (
@@ -318,10 +326,24 @@ def test_absent_zero_and_unreadable_produce_three_distinguishable_outcomes() -> 
     )
 
     # "zero" reached confidence_scores and raised no uncertainty about itself.
-    scored_names = {score.field_name for score in report.confidence_scores}
-    assert scored_names == {"Discount Amount"}
+    scored = {score.field_name: score.confidence for score in report.confidence_scores}
     marker_subjects = {marker.subject for marker in report.uncertainty_markers}
     assert "Discount Amount" not in marker_subjects
+
+    # STRICTER SINCE AMENDMENT 7. The three states must be distinguishable in
+    # the SCORES as well as in the markers. "absent" used to produce a marker
+    # and no score at all, so the report named the field and then said nothing
+    # about its reliability — an omission that reads as an oversight rather
+    # than as the fact it is.
+    assert set(scored) == {"Discount Amount", "PO Number"}
+    assert measurement_state(scored["Discount Amount"]) is MeasurementState.MEASURED
+    assert measurement_state(scored["PO Number"]) is MeasurementState.NOT_APPLICABLE
+    absent_basis = scored["PO Number"]
+    assert isinstance(absent_basis, UnmeasuredType)
+    assert "absent" in absent_basis.basis, (
+        "parser's own state must be carried verbatim, not translated into a "
+        "state of this module's choosing (ENGINE_1_INPUT_ENGINE_RULES.md:569)"
+    )
 
     # "absent" and "unreadable" both produced markers, keyed differently and
     # worded differently — never collapsed into one shared state.
@@ -876,14 +898,35 @@ def test_capture_fidelity_scores_an_exact_match_at_the_scales_maximum_regardless
     assert marker is None
 
 
-def test_capture_fidelity_mismatch_produces_no_score_only_a_named_marker() -> None:
+def test_capture_fidelity_mismatch_produces_no_number_but_a_named_state() -> None:
+    """A mismatch earns no NUMBER — grading how much was lost would invent the
+    rule `ENGINE_1_CONFIDENCE_PARAMETERS.md` gap #12 says nobody has written.
+
+    It used to earn no ANSWER either, which is a different and worse thing:
+    `capture_fidelity` returned `None` and `record_confidence` then recorded
+    nothing, so this name appeared in the report on a match and vanished on a
+    mismatch — indistinguishable from no human note having been supplied. The
+    silence was about the one case where a preservation guarantee had broken.
+    """
     stored = a_human_business_context(original_user_text="Paid rent for June")
     # One character differs from what was stored.
     evidence = HumanCaptureEvidence(submitted_text="Paid rent for july", stored=stored)
 
     score, marker = capture_fidelity(evidence)
 
-    assert score is None
+    assert measurement_state(score) is MeasurementState.FAILED, (
+        "FAILED, not NOT_MEASURED: cleaner and reader are each required to pass "
+        "a provided source through untouched, so a mismatch is a guarantee "
+        "breaking at this value, not an ordinary unscored reading"
+    )
+    assert isinstance(score, UnmeasuredType)
+    # By class, not by instance: the typechecker already proves this ONE object
+    # is not a Decimal, and asserting it on the object would be unreachable
+    # code. The claim worth keeping is about the type, because a Decimal
+    # SUBCLASS is the shape that would satisfy every annotation in the schema
+    # and bring the collapse into a number back.
+    assert not issubclass(type(score), Decimal), "a mismatch must never carry a number"
+    assert "gap #12" in score.basis
     assert marker is not None
     assert marker.subject == "the human business context"
     assert "does not match" in marker.reason
@@ -912,7 +955,15 @@ def test_record_confidence_records_the_capture_fidelity_score_on_a_match() -> No
     assert report.uncertainty_markers == ()
 
 
-def test_record_confidence_adds_no_score_on_a_capture_fidelity_mismatch() -> None:
+def test_record_confidence_records_the_mismatch_as_a_state_rather_than_as_silence() -> None:
+    """THE SILENT GAP, CLOSED. This test previously asserted
+    `confidence_scores == ()` — it pinned the gap as correct.
+
+    The name must appear either way, because its ABSENCE is what a reader
+    cannot interpret: absent on a mismatch and absent when no note was
+    supplied are the same JSON, and only one of them means something went
+    wrong.
+    """
     stored = a_human_business_context(original_user_text="Paid rent for June")
     human_capture = HumanCaptureEvidence(submitted_text="paid rent for june", stored=stored)
 
@@ -924,9 +975,30 @@ def test_record_confidence_adds_no_score_on_a_capture_fidelity_mismatch() -> Non
         human_capture=human_capture,
     )
 
-    assert report.confidence_scores == ()
+    (score,) = report.confidence_scores
+    assert score.field_name == CAPTURE_FIDELITY_FIELD_NAME
+    assert measurement_state(score.confidence) is MeasurementState.FAILED
     assert len(report.uncertainty_markers) == 1
     assert report.uncertainty_markers[0].subject == "the human business context"
+
+
+def test_a_document_with_no_human_note_gains_no_capture_fidelity_entry() -> None:
+    """The disconfirming half, and the reason the fix above is not "always
+    emit an entry".
+
+    An entry for a note that was never supplied would be this module asserting
+    something about a component that does not exist. `reliability_information`
+    already reports "not supplied" for that case, so the fact is carried;
+    `confidence_scores` is for things there is a reading to speak about.
+    """
+    report = record_confidence(
+        cleaned=a_cleaned_document(),
+        reader_regions=(),
+        parsed_fields=(),
+        missing_fields=(),
+    )
+    assert report.confidence_scores == ()
+    assert "not supplied" in report.reliability_information
 
 
 def test_record_confidence_without_a_human_capture_adds_no_capture_fidelity_score() -> None:

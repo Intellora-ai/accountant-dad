@@ -15,6 +15,7 @@ audit afterwards.
 
 from __future__ import annotations
 
+import json
 import numbers
 import operator
 from decimal import Decimal
@@ -640,6 +641,68 @@ def test_every_state_describes_itself_in_words_a_reader_can_act_on(
     assert described.startswith(state.value)
     if isinstance(value, UnmeasuredType):
         assert value.basis in described
+
+
+# ── it has to survive being written down ─────────────────────────────────────
+#
+# FOUND BY A RED TEST, NOT BY READING. `model_dump_json()` on a model holding a
+# stated absence raised `PydanticSerializationError: Unable to serialize unknown
+# type`. The defect PRE-DATES the four states — Amendment 6's single sentinel
+# had it too, and it stayed invisible only because no artifact carrying one had
+# ever been dumped to JSON. An artifact that can be built and not written down
+# cannot be audited (Law 43), and this artifact is the one an auditor reads.
+
+
+class Dumped(BaseModel):  # type: ignore[explicit-any]  # pydantic BaseModel's own signature carries Any
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    confidence: ConfidenceOrUnmeasured
+
+
+@pytest.mark.parametrize("state", list(MeasurementState))
+def test_every_state_can_be_written_to_json(state: MeasurementState) -> None:
+    # The regression, for all four. A state added later that forgot a
+    # serialisation rule would raise here rather than at the first audit.
+    assert Dumped(confidence=BY_STATE[state]).model_dump_json()
+
+
+@pytest.mark.parametrize("state", [s for s in MeasurementState if s is not s.MEASURED])
+def test_an_absence_is_written_as_a_named_state_and_never_as_a_number(
+    state: MeasurementState,
+) -> None:
+    """The two convenient shapes are the two wrong ones.
+
+    A number would put the fabricated score back past every guard in the
+    module, at the one boundary with nothing left to check it. `null` would
+    land as the same token four other absent things in this pipeline already
+    use, and the far side could not tell which.
+    """
+    value = BY_STATE[state]
+    assert isinstance(value, UnmeasuredType)
+    written = json.loads(Dumped(confidence=value).model_dump_json())["confidence"]
+
+    assert written == {"measurement_state": state.value, "basis": value.basis}
+    assert not isinstance(written, int | float | str), (
+        "an absence written as a scalar is one coercion away from being read back as a score"
+    )
+    assert written is not None
+
+
+def test_a_measured_score_is_still_written_as_its_own_digits() -> None:
+    # Adding a state must not cost the state that already worked, and the
+    # digits must be the producer's own — verbatim, not padded to four places.
+    written = json.loads(Dumped(confidence=Decimal("0.31")).model_dump_json())["confidence"]
+    assert written == "0.31"
+
+
+@pytest.mark.parametrize("state", list(MeasurementState))
+def test_a_python_mode_dump_still_hands_back_the_value_itself(state: MeasurementState) -> None:
+    # `when_used="json"` is load-bearing. The ablation comparison walks a
+    # `model_dump()` and needs the state OBJECT to compare; a serialiser that
+    # fired in Python mode too would turn every artifact comparison into a
+    # comparison of dictionaries that happen to look alike.
+    value = BY_STATE[state]
+    assert Dumped(confidence=value).model_dump()["confidence"] is value
 
 
 @pytest.mark.parametrize("impostor", [1.0, 0, True, "0.98", None, ABSENT])

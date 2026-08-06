@@ -54,10 +54,13 @@ TWO INPUTS ARE CONTRACTS, NOT IMPLEMENTATIONS.
     `reader.TextRegion.text` is a required `str` with no state for "this
     region could not be read at all" (`RegionReading.text` needs `None` for
     exactly that, to build the unread-region markers §1.4 requires), and
-    `parser.ParsedStructure` has no concept of a named field at all yet — it
-    carries `Region` and `Table`/`Cell` geometry, not the "structured
-    fields" §1.3 promises. Importing either real type today would therefore
-    either lose a state this module must keep, or have nothing to import.
+    `parser.MappedField` — which DOES now name a value and keep its source
+    reference, for text regions and for table cells alike — carries
+    `reader`'s raw two-state signal (`Decimal | None`) rather than a
+    measurement STATE, because deciding what an absent signal MEANS belongs
+    to this sub-engine and not to `parser`
+    (`ENGINE_1_INPUT_ENGINE_RULES.md:109`). Importing either real type today
+    would therefore lose a state this module must keep.
     When `reader` and `parser`'s real output grows the shapes §1.2 and §1.3
     describe, that output need only be mapped into these three types, or
     these three retired in favour of theirs; nothing else here depends on
@@ -115,7 +118,13 @@ CAPTURE FIDELITY IS SCORED ONLY WHERE IT IS ACTUALLY DEFINED.
     requires no scale to justify. A mismatch earns no number at all: grading
     *how much* was lost would mean inventing the missing rule, which is
     exactly what `CLAUDE.md` Law 54 forbids. The mismatch itself becomes the
-    finding, carried as an `UncertaintyMarker`. That `MAX` score is not left
+    finding, carried as an `UncertaintyMarker` AND, since Amendment 7, as a
+    named state — `CAPTURE_FIDELITY_ON_MISMATCH`, FAILED, with its reason.
+    Before that state existed a mismatch put NOTHING in `confidence_scores`,
+    so this name appeared on a match and was absent on a mismatch, which
+    reads exactly like no Human Business Context having been supplied. That
+    silence was about the one case where a preservation guarantee had just
+    broken. That `MAX` score is not left
     as a value merely computed and implied by prose — `record_confidence`
     records it into `confidence_scores` under `CAPTURE_FIDELITY_FIELD_NAME`,
     so it survives inside the emitted artifact rather than being computed and
@@ -149,7 +158,15 @@ from accountant_dad.artifacts.evidence import (
     HumanBusinessContext,
     UncertaintyMarker,
 )
-from accountant_dad.confidence import MAX, Confidence
+from accountant_dad.confidence import (
+    MAX,
+    Confidence,
+    ConfidenceOrUnmeasured,
+    MeasurementFailedType,
+    MeasurementState,
+    NotApplicableType,
+    measurement_state,
+)
 from accountant_dad.engines.input_engine.cleaner import CleanedDocument, PreservationStatus
 
 #: The one value `capture_fidelity` ever returns for a match, and the reason
@@ -171,6 +188,24 @@ CAPTURE_FIDELITY_ON_EXACT_MATCH: Confidence = MAX
 #: than silently picking one, the same structural defence every other
 #: name collision in this schema already gets.
 CAPTURE_FIDELITY_FIELD_NAME = "human_business_context.capture_fidelity"
+
+#: What a capture-fidelity MISMATCH records instead of a number (Amendment 7).
+#: FAILED rather than NOT_MEASURED, and the difference is the whole point:
+#: `cleaner` (§1.1) and `reader` (§1.2) are each contractually required to pass
+#: a provided source through untouched, so a mismatch means that guarantee
+#: broke at this exact value. The measurement was attempted, and it could not
+#: produce a score. NOT_MEASURED would file a broken guarantee under the same
+#: heading as an ordinary unscored text-layer reading, which is the collapse
+#: the four states exist to prevent.
+CAPTURE_FIDELITY_ON_MISMATCH = MeasurementFailedType(
+    basis=(
+        "the text now stored does not match, character for character, the text "
+        "submitted, and no rule exists anywhere in this repository for grading "
+        "how much was lost (ENGINE_1_CONFIDENCE_PARAMETERS.md gap #12). The "
+        "comparison ran and produced no score; inventing a partial one is what "
+        "CLAUDE.md Law 54 forbids"
+    )
+)
 
 
 class MalformedSignalError(ValueError):
@@ -291,16 +326,26 @@ class ParsedField:
     into a `FieldConfidence` entry by `_field_confidence_scores` below and
     never modified.
 
-    `Confidence` is `Annotated[Decimal, PlainValidator(...)]`
-    (`accountant_dad/confidence.py`); that validator only runs inside
-    pydantic, so a plain dataclass field carries no runtime check by itself.
-    The check still happens — deferred to `FieldConfidence`'s own
-    construction in `record_confidence`, the one place downstream where an
-    out-of-range or wrongly-typed score cannot pass silently.
+    `extraction_confidence` is `ConfidenceOrUnmeasured`, so it holds a score OR
+    any of the three stated absences. THIS IS OPEN ITEM O11 FROM AMENDMENT 6,
+    closed on this side. It was `Confidence` — `Decimal` only — which meant an
+    unscored reading could not be expressed here at all, so `pipeline` had to
+    filter those out and assemble their Confidence Report entries itself, and
+    `ConfidenceReport.confidence_scores` acquired a second producer. Widening
+    it is the annotation O11 names; removing the filter is the other half and
+    lives in `pipeline.parsed_fields`, which this change does not own.
+
+    `Confidence` and `ConfidenceOrUnmeasured` are both
+    `Annotated[..., PlainValidator(...)]` (`accountant_dad/confidence.py`);
+    that validator only runs inside pydantic, so a plain dataclass field
+    carries no runtime check by itself. The check still happens — deferred to
+    `FieldConfidence`'s own construction in `record_confidence`, the one place
+    downstream where an out-of-range or wrongly-typed score cannot pass
+    silently.
     """
 
     field_name: str
-    extraction_confidence: Confidence
+    extraction_confidence: ConfidenceOrUnmeasured
 
     def __post_init__(self) -> None:
         if not self.field_name.strip():
@@ -351,22 +396,32 @@ class HumanCaptureEvidence:
 
 def capture_fidelity(
     evidence: HumanCaptureEvidence,
-) -> tuple[Confidence | None, UncertaintyMarker | None]:
-    """Score how faithfully a Human Business Context was stored.
+) -> tuple[ConfidenceOrUnmeasured, UncertaintyMarker | None]:
+    """Say what is known about how faithfully a Human Business Context was stored.
 
     Never whether the statement is true (`ENGINE_1_INPUT_ENGINE_RULES.md:624`)
     — only whether what is stored is what was submitted. See CAPTURE FIDELITY
     IS SCORED ONLY WHERE IT IS ACTUALLY DEFINED in the module docstring for
-    why a mismatch returns no score rather than an invented partial one.
+    why a mismatch returns no NUMBER rather than an invented partial one.
 
-    Returns `(score, marker)`. Exactly one of the two is non-`None`: a match
-    returns `CAPTURE_FIDELITY_ON_EXACT_MATCH` and no marker; a mismatch
-    returns no score and a marker naming the mismatch as the finding.
+    ALWAYS RETURNS A STATE, NEVER `None`. It used to return `None` on a
+    mismatch, and `record_confidence` then recorded nothing at all — so
+    `CAPTURE_FIDELITY_FIELD_NAME` appeared in `confidence_scores` on a match
+    and was ABSENT on a mismatch, which is indistinguishable from no Human
+    Business Context having been supplied. The worst outcome was the silent
+    one, and it was silent about the case where a preservation guarantee had
+    just broken (`ENGINE_1_ARCHITECTURE.md` P-F3, concealed uncertainty).
+    Amendment 7 gives the absence a name — `CAPTURE_FIDELITY_ON_MISMATCH`,
+    FAILED — so both outcomes are stated and neither is a number.
+
+    Returns `(state, marker)`. A match returns
+    `CAPTURE_FIDELITY_ON_EXACT_MATCH` and no marker; a mismatch returns the
+    FAILED state and a marker naming the mismatch as the finding.
     """
     if evidence.submitted_text == evidence.stored.original_user_text:
         return CAPTURE_FIDELITY_ON_EXACT_MATCH, None
     return (
-        None,
+        CAPTURE_FIDELITY_ON_MISMATCH,
         UncertaintyMarker(
             subject="the human business context",
             reason=(
@@ -462,6 +517,52 @@ def _missing_field_markers(
     )
 
 
+def _missing_field_scores(
+    missing_fields: tuple[MissingField, ...],
+) -> tuple[FieldConfidence, ...]:
+    """One Confidence Report entry per field the document does not contain,
+    each stating NOT_APPLICABLE and carrying `parser`'s own state verbatim.
+
+    THE ASYMMETRY THIS REMOVES. A missing field already produced an
+    `UncertaintyMarker` and no `FieldConfidence`, so the report NAMED it and
+    said nothing about its reliability. That reads as an oversight rather than
+    as a fact, and §1.4's job is *"the honest measurement of extraction
+    trustworthiness, per field"* — for a field the document does not contain,
+    the honest answer is that a score is not a question that applies here.
+
+    NOT_APPLICABLE, not NOT_MEASURED: there is no reading for a score to be
+    ABOUT. Collapsing the two would put "a real value carried with nothing
+    behind it" and "there is nothing here at all" under one heading, and a
+    human deciding what to check next needs them apart.
+
+    `MissingField.state` — *"absent"*, *"zero"*, *"unreadable"* — is carried
+    into the basis VERBATIM rather than mapped onto a state of this module's
+    choosing. Those three must stay distinguishable
+    (`ENGINE_1_INPUT_ENGINE_RULES.md:569`) and no document says which
+    measurement state each implies, so translating them here would be this
+    module answering a question nobody has answered (Law 54).
+
+    Empty today and not because of a choice made here: `parser` is given no
+    expected-field list and holds none, so `missing_field_information` reports
+    nothing absent (`parser.py`, "WHICH FIELDS A DOCUMENT MUST CARRY IS
+    KNOWLEDGE"). This is the mapping that will carry those fields the day one
+    is supplied, not a claim that any exist now.
+    """
+    return tuple(
+        FieldConfidence(
+            field_name=missing.field_name,
+            confidence=NotApplicableType(
+                basis=(
+                    f"parser recorded this field as {missing.state}: it was not read "
+                    "from the document, so there is no reading here for a score to "
+                    "be about"
+                )
+            ),
+        )
+        for missing in missing_fields
+    )
+
+
 def _field_confidence_scores(parsed_fields: tuple[ParsedField, ...]) -> tuple[FieldConfidence, ...]:
     """Mirror `reader`'s per-field confidence into the report, unmodified.
 
@@ -485,7 +586,7 @@ def _capture_fidelity_state(human_capture: HumanCaptureEvidence | None) -> str:
     if human_capture is None:
         return "not supplied"
     score, _marker = capture_fidelity(human_capture)
-    if score is not None:
+    if measurement_state(score) is MeasurementState.MEASURED:
         return "matched the text as submitted, character for character"
     return "could not be established: the stored text differs from what was submitted"
 
@@ -535,13 +636,21 @@ def record_confidence(
     default, it mirrors `DocumentEvidenceObject.human_business_context`'s own
     default in `accountant_dad.artifacts.evidence`.
 
-    When `human_capture` is supplied and its text matches exactly, the
-    capture-fidelity score joins `confidence_scores` under
-    `CAPTURE_FIDELITY_FIELD_NAME` — the one extra degree of freedom
+    When `human_capture` is supplied, `CAPTURE_FIDELITY_FIELD_NAME` joins
+    `confidence_scores` EITHER WAY — the one extra degree of freedom
     `FieldConfidence.field_name` is documented to allow (CONFIDENCE_SPECIFICATION.md
-    §3.4: *"the name need not be a detected field"*). A mismatch adds no
-    score to `confidence_scores`, only the `UncertaintyMarker`
-    `capture_fidelity` already returns.
+    §3.4: *"the name need not be a detected field"*). A match records the
+    score; a mismatch records `CAPTURE_FIDELITY_ON_MISMATCH`, the FAILED
+    state, alongside the `UncertaintyMarker` `capture_fidelity` returns. It
+    used to record nothing on a mismatch, so the name's ABSENCE carried the
+    finding — and an absence is indistinguishable from no Human Business
+    Context having been supplied at all.
+
+    Each `MissingField` also gets an entry, stating NOT_APPLICABLE — see
+    `_missing_field_scores`. A name appearing in both `parsed_fields` and
+    `missing_fields` is a contradiction (a field both read and not read) and
+    `ConfidenceReport` refuses the collision rather than letting this module
+    pick a side.
 
     Raises `MalformedSignalError` if a `RegionReading`, `ParsedField` or
     `MissingField` was itself malformed (that check runs at THEIR
@@ -560,12 +669,17 @@ def record_confidence(
     markers.extend(_missing_field_markers(missing_fields))
 
     scores = list(_field_confidence_scores(parsed_fields))
+    scores.extend(_missing_field_scores(missing_fields))
     if human_capture is not None:
         capture_score, capture_marker = capture_fidelity(human_capture)
-        if capture_score is not None:
-            scores.append(
-                FieldConfidence(field_name=CAPTURE_FIDELITY_FIELD_NAME, confidence=capture_score)
-            )
+        # Recorded whichever way the comparison came out. A mismatch used to
+        # add nothing here, so this name appeared on a match and vanished on a
+        # mismatch — silence about the one case where a preservation guarantee
+        # had just broken. Both outcomes are now stated; neither is a number
+        # this module chose.
+        scores.append(
+            FieldConfidence(field_name=CAPTURE_FIDELITY_FIELD_NAME, confidence=capture_score)
+        )
         if capture_marker is not None:
             markers.append(capture_marker)
 
