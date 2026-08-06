@@ -255,3 +255,55 @@ brand-new offending call site the same afternoon, in an agent's work, before it 
 Related: **L-011** — measured numbers expire when source changes. The two compound:
 a stale number attached to a gate that was not measuring is the worst artifact in the
 repository.
+## L-014 · A reference is not a check, and three failures were the same sentence
+
+**Cost:** one repository that would not build, 1712 lines of tests that could not run, and
+three finished sub-engines that never saw a document.
+
+F-018, F-024 and F-025 were filed as three unrelated defects. They are one sentence with
+three different objects:
+
+```
+F-024   a NAME is imported          and nothing defines it
+F-025   a CALL is written           and the callee's parameters have moved
+F-018   a MODULE is built           and nothing imports it
+```
+
+Every one is a reference that was never checked against the thing it refers to. Every one
+was found by a human running something expensive, long after it landed.
+
+**Why the existing gates could not see any of them.** They all ask about a component in
+isolation. `unit tests` imports a module directly and proves it works. `coverage` counts
+the lines those tests executed. `mutation` confirms those tests kill mutants. All three go
+green on a module nothing calls, a call site that no longer binds, and a name whose only
+definition is a docstring paragraph. **Nothing in the repository compared a reference to
+its referent.**
+
+The one thing that would have caught F-024 and F-025 — running the suite — is the thing
+F-024 had broken. A collection error is not one red test; it is **zero results**, and it
+takes every downstream gate with it.
+
+**Rule.** A reference is a claim, and an unchecked claim is not a check. Every kind of
+cross-file reference this repository makes gets a mechanical validator that resolves it:
+imports against definitions, calls against signatures, modules against the import graph.
+They are static, they run in under a second, and they name every offender at once — where
+the runtime equivalents take 245 seconds, report only the first failure, and cannot run at
+all when the thing they would report is what is broken.
+
+**The corollary, and it is the part that keeps being paid for.** Fixing the instance is not
+fixing the class (§I.12). `Exclusion` was written, `recorded_at` was passed, and both
+symptoms went green while the mechanism that produced them stayed exactly as it was.
+`tools/ci/unresolved_symbols.py`, `tools/ci/signature_drift.py` and
+`tools/ci/module_wiring.py` are what changed.
+
+**A validator that reads source must read AUTHORED source (L-006).** All three go through
+`tools/ci/authored_source.py`. `signature_drift` is the sharp case: under `mutmut run` the
+live function is a generated dispatcher taking `(*args, **kwargs)`, which binds every call
+— so an `inspect.signature`-based version would report green on a tree full of stale call
+sites at precisely the moment the tree is most rewritten. That is the silent direction of
+L-006, and it costs a whole gate run to discover.
+
+**Conservative beats clever, in one direction only.** Where a validator cannot resolve a
+reference with certainty — an unpacked `*args`, a rebound name — it declines and says so,
+rather than guessing. A missed check is a gap; a WRONG check is a false alarm on correct
+code, and a gate that cries wolf is a gate somebody eventually weakens (§J.4).

@@ -992,6 +992,41 @@ failures before the single cause was named.
 the pipeline — one of the three may legitimately belong to the Application Layer rather
 than the engine — then wire only what is required, test-first. In progress.
 
+### DETECTION — `tools/ci/module_wiring.py`, added on top of `a501a69`
+
+**The wiring is NOT done here.** What is added is the thing that was missing: an automated
+answer to *"is this module reached by anything that runs?"* Every gate that existed asks
+about a module in isolation and goes green on a module nothing calls — `unit tests` imports
+it directly and proves it works, `coverage` counts the lines those tests ran, `mutation`
+finds its tests kill the mutants. Three green gates, zero consumers.
+
+**The transform (Law 53).** *"Does this module do its job in production?"* needs a running
+system, a real document and a human to judge. *"Is this module reachable in the first-party
+import graph from the Application Layer's entry point?"* needs a parser, answers in
+milliseconds, and fails in the same place.
+
+**STATUS: RED, CORRECTLY.** Measured on `a501a69`, **LOCAL ONLY — NOT AUTHORITATIVE** —
+`test_every_authorised_engine_1_module_is_reachable_from_the_application_layer` names:
+
+```
+accountant_dad.engines.input_engine.classification
+accountant_dad.engines.input_engine.config
+accountant_dad.engines.input_engine.measurement
+```
+
+Six of the nine `ENGINE_1_AUTHORIZED` modules — `assembly`, `cleaner`, `confidence_report`,
+`parser`, `pipeline`, `reader` — pass the same predicate, so this is a gate that
+discriminates, not one that is red about everything.
+
+| | |
+|---|---|
+| **Guarded by** | `tests/unit/test_module_wiring.py` — 14 tests. Three separate requirements, checked separately because they have different fixes: reachable from the Application Layer · imported by at least one test · inside the `[tool.coverage.run] source` tree |
+| **Scope** | `ENGINE_1_AUTHORIZED`, imported from `test_package.py` rather than restated, so the list has one owner (Law 19) |
+| **Reachability, not popularity** | the predicate is *reachable from the entry point*, never *somebody imports it*. Two orphans importing each other each have a consumer and neither ever runs; only a walk from the thing that starts can tell those apart |
+| **Proven it can pass** | temporarily importing all three into `assembly.py` returned `orphans: ()`. It flips green the moment the wiring lands, and was reverted |
+| **`engines/input_engine/stub` is excluded** | it is in `AUTHORIZED_STUBS`, is unreachable BY DESIGN because the real pipeline replaced it, and folding it in would mean either a permanently red gate nobody intends to fix or an exception list — and an exception list is how a gate stops meaning anything |
+| **False-positive sources, checked** | every `importlib.import_module` call in `src/` takes a third-party literal (`pymupdf`, `paddleocr`, `docling…`), and no `src` module defines a module-level `__getattr__`, so no first-party module is reached in a way the static graph cannot see |
+
 ---
 
 ## F-019 · Engine 1 emits a confident, empty, valid lie
@@ -1552,6 +1587,30 @@ trap recorded in `PROGRESS.md`.
 **Permanent fix.** Write the `Exclusion` dataclass the docstring, the enum and the test all
 already describe, or remove the import. **Not chosen here — this file changes no code.**
 
+**SYMPTOM RESOLVED after `e921c3c`.** Measured on `a501a69`: `Exclusion` is defined at
+`conformance.py:236`, and the suite collects. **LOCAL ONLY — NOT AUTHORITATIVE.**
+
+### PREVENTION — `tools/ci/unresolved_symbols.py`, added on top of `a501a69`
+
+The symptom was patched; nothing stopped it recurring. Four things referred to `Exclusion`
+and **only one of them — the import — was an executable claim that it exists.** A docstring
+cannot be wrong; an enum member is not a reference; and under `from __future__ import
+annotations` every annotation is an unevaluated string. So the only load-bearing check was
+reached by RUNNING the suite, which is exactly what had stopped working.
+
+**The transform (Law 53).** *"Does the suite collect?"* is answered by collecting — minutes,
+and on failure one line about one file. *"Does every `from accountant_dad… import X` have an
+X?"* is a question about TEXT: parse every module, collect what each binds in module scope,
+check every import against that table.
+
+| | |
+|---|---|
+| **Guarded by** | `tests/unit/test_unresolved_symbols.py` — 14 tests, including the `Exclusion` shape reproduced from the module as it shipped |
+| **Scope, measured on `a501a69`** | 111 files across `src/`, `tests/`, `tools/ci/`; 43 first-party modules |
+| **Also checks** | every `__all__` entry resolves to a definition — an exported symbol cannot exist without an implementation |
+| **Proven to fail** | injecting `from accountant_dad.conformance import GhostSymbol` into `identity.py` reported `src/accountant_dad/identity.py:132 … GhostSymbol — imported, but nothing in that module defines it at module scope`; injecting a phantom MODULE reported `no such module in the first-party package`. Both reverted |
+| **What it adds over collection** | names EVERY offender at once instead of the first, in milliseconds, and sees an unresolved name in a module **no test imports yet** — which collection can never reach |
+
 ---
 
 ## F-025 · One signature change, 39 red tests, two files that were never told
@@ -1602,6 +1661,35 @@ against the *current* signature, not merely committed.
 
 **Permanent fix.** Pass `recorded_at` in both files. **Not done here — this file changes no
 tests.**
+
+**SYMPTOM RESOLVED after `e921c3c`.** Measured on `a501a69`: every `pipeline.run` call site
+passes `recorded_at`, and the full suite runs 3350 passed / 11 skipped. **LOCAL ONLY — NOT
+AUTHORITATIVE.**
+
+### PREVENTION — `tools/ci/signature_drift.py`, added on top of `a501a69`
+
+Passing `recorded_at` in two files fixed those two files. Nothing compares a call against
+its callee, so the next signature change lands the same way. `mypy` does compare them, but
+only through an import it can resolve, and these files reach `pipeline` through fixtures
+and helpers it cannot follow.
+
+**The transform (Law 53).** *"Does every test still run?"* needs the whole suite, takes 245
+seconds, and presupposes the suite collects — which under F-024 it did not. *"Does every
+call's argument list bind to its callee's parameters?"* is arithmetic over two parse trees.
+
+| | |
+|---|---|
+| **Guarded by** | `tests/unit/test_signature_drift.py` — 21 tests, including the exact `run(intake, identity=…, settings=…)` call the two stale files wrote |
+| **Scope, measured on `a501a69`** | 882 checked call sites under `tests/`, 91 distinct callees, of which **28 are `pipeline.run`** — the function this failure was about |
+| **Proven to fail** | adding a required keyword-only parameter to `config.load_confidence_parameters` reported **82 stale call sites**, each with file, line, callee and `missing a required keyword-only argument: 'recorded_at'`. Reverted |
+| **Mutation-safe by construction** | signatures are built from the AUTHORED `def`, never `inspect.signature`. Under `mutmut run` the live function is a dispatcher taking `(*args, **kwargs)`, which binds ANY call — an `inspect`-based version would report green on a tree full of stale call sites at exactly the moment the tree is most rewritten |
+| **Conservative where it cannot be exact** | a call using `*args`/`**kwargs`, or made through a rebound name, is declined rather than guessed, and `unchecked()` reports why. A missed check is a gap; a WRONG check is a false alarm, and a gate that cries wolf is a gate somebody weakens (§J.4) |
+| **Deliberately out of scope** | classes. A dataclass's or Pydantic model's `__init__` is generated, not authored, so there is no `def` to read and guessing one would produce exactly those false alarms |
+
+**The class this closes, stated generally (L-012).** Recovered work carries the contract it
+was written against. Recovery-not-restart (D-006) is still correct; the missing half was
+that an inherited file is untrusted until it has been checked against the CURRENT
+signature, not merely committed. That check is now mechanical.
 
 ---
 
