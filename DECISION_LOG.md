@@ -1087,3 +1087,106 @@ loose field has NOT come back.
 ### Files
 
 `engines/input_engine/pipeline.py` · the seven `PipelineSettings` construction sites
+
+---
+
+## D-021 · Six confidences become one by the weakest link, and the rule was missing entirely
+
+**Date:** 2026-08-06 · **Approved by:** the owner · **Status:** normative, provisional
+
+### Context
+
+`ENGINE_2:757` states one rule about Understanding Confidence:
+
+```text
+Understanding Confidence  <=  Evidence Reliability
+```
+
+That is a **ceiling**. It bounds a value; it does not produce one. Engine 2 has six
+sub-engines, each reporting its own confidence, and Story Builder must emit a single
+number onto the Business Understanding Object. **No document anywhere said how six
+become one.**
+
+Found while scoping Story Builder — the one Engine 2 sub-engine that needs no language
+model, and therefore the first buildable one. On a worked example the written rule
+admits at least four legal answers:
+
+```text
+transaction 0.90  party 0.40  item 0.85
+payment 0.70      timeline 0.95  business_context 0.60
+evidence reliability 0.80
+
+0.40  weakest link          0.73  mean
+0.80  the ceiling itself    ????  weighted, if some dimensions matter more
+```
+
+All four obey the ceiling. All four are different. The number decides whether a
+transaction auto-posts or goes to a human, so the gap sat directly on the
+never-post-a-wrong-entry non-goal.
+
+### Alternatives
+
+| Option | Why not |
+|---|---|
+| **Mean of the six** | Averages a weak dimension away. A transaction with an unidentifiable party and five strong dimensions scores well, and party identity is not optional |
+| **Weighted by dimension** | Requires weights nobody has measured. Inventing seven numbers to avoid inventing one (Law 10) |
+| **Learned aggregation** | Requires labelled accounting data that does not exist. Cannot be built today, and could not be validated if it were |
+| **Leave it undefined** | What was already happening. An undefined term in a specification is a false statement waiting to be discovered (Law 54) |
+
+### Decision
+
+```text
+Understanding Confidence = min(
+    transaction, party, item, payment, timeline,
+    business_context, evidence_reliability)
+```
+
+`evidence_reliability` sits **inside** the `min` rather than being applied after it, so
+the pre-existing ceiling holds **by construction** rather than by a second check that
+could be forgotten or reordered.
+
+`UNMEASURED` propagates: a `min` over a set containing `UNMEASURED` is `UNMEASURED`,
+never the smallest number present. A missing measurement and a measured weak one are
+different facts, and collapsing them would make the first read as the second.
+
+**Posting policy is separated from confidence calculation.** Five conditions, all
+required; confidence alone never authorises posting. Both thresholds it names are owner
+values and are UNSET, so nothing auto-posts today — the correct failure direction, and
+deliberate.
+
+### Reasoning
+
+It is the only candidate that cannot manufacture confidence. It matches the spec's own
+direction — *"the uncertainty must move forward"*, *"low confidence never becomes
+certainty"* — and it needs no number nobody has measured.
+
+### Trade-off
+
+**Gained:** an incorrect entry becomes less likely; uncertainty is preserved; no
+confidence is asserted that the evidence does not support.
+
+**Lost:** automation rate. The rule is deliberately pessimistic — one weak sub-engine
+drags an otherwise strong transaction into human review. Measured cost is unknown until
+labelled data exists, and that is stated rather than estimated.
+
+The costs are asymmetric: a wrong entry is a financial misstatement somebody answers
+for, an unnecessary review costs minutes. The rule is asymmetric to match.
+
+### What would prove it wrong
+
+On labelled data, a competing aggregation producing a **strictly lower false auto-post
+rate at an equal or higher automation rate**. Also: if the minimum is routinely supplied
+by a dimension that never changes the entry — measurable as the distribution of which
+sub-engine supplied the minimum, per transaction class.
+
+### Impact
+
+`docs/ACCOUNTING_DEFINITIONS.md` (the §M amendment, single source of truth) ·
+Story Builder specification · confidence contracts · `DATA_FLOW.md` · regression tests ·
+adversarial tests. The rule lives behind exactly one named function so a replacement is
+a one-function change, shipped shadowed before it is promoted.
+
+### Status
+
+**Provisional engineering assumption, not doctrine.** Normative until replaced under the
+Future Evolution conditions in the amendment.

@@ -172,3 +172,92 @@ confidence parameters** are owner items, but neither blocks Engine 1 under the
 permanent bottleneck rule: Engine 1 turns artifacts into a truthful DEO and never
 reasons about accounting. Decision A7 also removed the threshold gating those
 sixteen numbers were for. They belong to the Brain and to P4.
+
+---
+
+# Engine 2 — added 2026-08-06
+
+Engine 2 design is authorized and under way. Implementation is not. These are what
+stand between the finished design and the first line of Engine 2 code.
+
+---
+
+## D-E · Gemini 2.5 Flash — an API key, and permission to spend
+
+**Status: HARD BLOCKER. Nothing engineering can do reduces it.**
+
+`docs/TECHNOLOGY_STACK.md` locks Gemini 2.5 Flash as Engine 2's reasoning model.
+**Six of the engine's seven sub-engines are that model and nothing else** —
+Transaction, Party, Item, Payment, Timeline, Business Context.
+
+**Why there is no way around it.** A hardcoded or faked model would make the seam
+look alive while every downstream number measured invention. `ENGINE_2:878` names
+that as this engine's own failure: *"a fact is invented to complete the story."*
+Building the six behind a fake is worse than not building them.
+
+**What is NOT blocked by it, and is proceeding now:** the entire design —
+architecture, Story Builder's specification, contracts, the confidence model,
+evaluation methodology, synthetic datasets, adversarial cases, the implementation
+plan and package layout.
+
+**THE DECISION:** provide a key and state a spend ceiling, or say "not yet" and the
+six sub-engines stay frozen while everything around them is finished.
+
+**Cost is UNMEASURED.** Calls per document follow from the seven-sub-engine design;
+a figure will be estimated in `ENGINE_2_IMPLEMENTATION_PLAN.md` and labelled an
+estimate until a real run measures it.
+
+**Decision:** ______________________  Date: __________
+
+---
+
+## D-F · Amendment 4 — release Engine 2 implementation
+
+**Status: DRAFTED, unsigned. `CLAUDE.md` §P.**
+
+Currently marked **DRAFT — NOT SIGNED, NOT IN FORCE**, and `ENGINE_2_AUTHORIZED` in
+`tests/unit/test_package.py` is deliberately **empty**. Three guards already exist
+and have been proven against that empty set, so the day it is signed, one line
+changes and the guards are already known to work.
+
+**Two shapes to choose between:**
+
+**(a) Story Builder only.** The one sub-engine specified as pure assembly —
+*combine · organize · create*. Needs no model, no key, no spend. Buildable the hour
+it is signed. *Failure mode:* Engine 2 has an assembly layer with nothing to
+assemble until D-E is answered.
+
+**(b) All seven.** Requires D-E first, since six of them are the model.
+
+**Recommendation: (a) now, (b) when D-E is answered.** It converts the one part of
+Engine 2 that is genuinely unblocked into working code, and it does it under a
+narrower amendment that cannot be mistaken for a general release.
+
+**Decision:** ______________________  Date: __________
+
+---
+
+## D-G · The two posting thresholds
+
+**Status: named, deliberately UNSET, and blocking nothing today.**
+
+The §M amendment's posting policy requires:
+
+```text
+1. Understanding Confidence >= approved posting threshold
+2. Evidence Reliability     >= approved reliability threshold
+```
+
+**Both are owner values and no number is chosen** (Law 10, Law 52). Until they are
+set, conditions 1 and 2 cannot be satisfied and **nothing auto-posts**. That is the
+correct failure direction and is not an oversight.
+
+**Do not answer this yet.** The amendment also requires calibration against labelled
+accounting data before any raw confidence may be read as a probability. Setting a
+threshold before that calibration would be choosing a number on no evidence — the
+exact failure Law 52 exists to prevent. It is listed here so it is not forgotten,
+with its precondition attached.
+
+**Blocked on:** labelled accounting data (P1 / the golden set).
+
+**Decision:** ______________________  Date: __________
