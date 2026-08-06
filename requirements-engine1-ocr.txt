@@ -26,8 +26,38 @@
 #
 # Both packages provide `cv2`. Installation order decides which one
 # `import cv2` resolves to, and nothing in either manifest controls that.
-# Observed locally: `cv2.__version__` reported **4.10.0** while the pin said
-# 5.0.0.93. No error, no warning, wrong library.
+#
+# RE-MEASURED 2026-08-06, sequentially rather than as one resolve, because
+# that is how CI installs — one `pip install` per manifest into one
+# interpreter — and it is the ordering under which pip never objects:
+#
+#     pip install numpy==2.5.1 opencv-python==5.0.0.93
+#         cv2.__version__ 5.0.0        numpy.__version__ 2.5.1
+#
+#     pip install -r requirements-engine1-ocr.txt        exit 0
+#         Attempting uninstall: numpy
+#           Successfully uninstalled numpy-2.5.1
+#         Successfully installed ... numpy-2.3.5 opencv-contrib-python-4.10.0.84
+#
+#     AFTERWARDS:
+#         importlib.metadata.version("opencv-python")  5.0.0.93
+#         cv2.__version__                              4.10.0
+#         importlib.metadata.version("numpy")          2.3.5
+#
+# Read those last three lines together. The pin is violated and the metadata
+# still reports the pinned version, so ANY check written against installed
+# metadata reports green while the wrong library is the one being imported.
+# The numpy downgrade is announced, but only on a line that `--quiet` — which
+# every CI step passes — carries past without an error and without a warning.
+#
+# `tools/ci/assert_imports_match_pins.sh` exists because of exactly this. It
+# asks the interpreter which distribution provides each module and what that
+# module reports as its own version, so a shadow is named rather than assumed
+# absent. Run against the environment above it exits 1 with:
+#
+#     module 'cv2' is provided by ['opencv-contrib-python', 'opencv-python'];
+#     'opencv-python' is pinned but ['opencv-contrib-python'] also install it,
+#     and import order alone decides which one wins
 #
 # ── WHY THIS IS NOT SOLVED BY LOOSENING A PIN ─────────────────────────────
 #
