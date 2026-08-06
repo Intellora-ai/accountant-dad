@@ -21,10 +21,11 @@ Updated: **2026-08-06**
 | ID | Blocker | Status |
 |---|---|---|
 | **F-014** | The `mutation` gate's baseline failure is **fixed** — the gate completes and scores | ✅ closed |
-| **F-045** | Score was **90.6%** on the last complete run. 64 kills were needed; **114 delivered**. Awaiting the CI number | 🔄 active |
+| **F-029** | **The `mutation` gate has never produced a valid score.** Statistics phase collapses on one red test, so `NOT SCOREABLE : 4402 (100.00%)` and the 2% cap suppresses the number. False green underneath it fixed at `c13930c`; the CI-only parser failure is **UNDIAGNOSED** | 🔴 **active — the last engineering blocker** |
+| **F-045** | Score was **90.6% @ `2625b58`**, **EXPIRED** — 64 kills were needed, 114 delivered, but the population has since gone 1593 → 4402 and `src/` moved +5785/−801. **No current number exists**; superseded by F-029 | 🔄 active |
 | **F-018** | **Three Engine 1 modules are wired to nothing** — `classification`, `config`, `measurement` have zero consumers in `src/`. Same shape as F-012 | 🔄 agent wiring it |
 | **F-010** | *"Exactly four sub-engines"* vs nine modules, and classification's authorisation | ✅ **closed 2026-08-06.** See below |
-| **F-016** | Mutation cannot run on macOS — mutmut forks, `fork()` after OpenCV/torch segfaults | ⬜ unfixable locally; CI is the only route |
+| **F-016** | ~~Mutation cannot run on macOS — `fork()` after OpenCV/torch segfaults~~ **DISPROVEN.** The cause is `setproctitle`, which calls CoreFoundation and is not fork-safe; mutmut calls it first in the child. A/B: off → 2345 tried / 2020 killed; on → 1349/1349 segfaulted. mutmut 3.7.0 defaults it to `not Darwin` | ✅ **closed** — mutation runs locally |
 | **F-027** | A locked document is append-only after its last cited line, and nothing says so | ✅ **closed** · citations are content-addressed; line numbers are derived, not identities |
 
 **Why F-010 closed, and it blocks nothing now.** The owner delegated the decision to
